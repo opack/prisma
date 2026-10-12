@@ -47,9 +47,9 @@ describe("règles du format", () => {
     const score = importMusicXml(xml);
     expect(score.notes).toHaveLength(1);
     const { text } = roundTrip(score, 24);
-    const rows = text.split("\n").filter((l) => l.startsWith("4"));
-    expect(rows[0]).toMatch(/^4\s+\|1 /);
-    expect(rows[1]).toMatch(/^4\s+\|-1 /);
+    const rows = text.split("\n").filter((l) => l.startsWith("0 "));
+    expect(rows[0]).toMatch(/^0\s+\|1 /);
+    expect(rows[1]).toMatch(/^0\s+\|-1 /);
   });
 
   it("commence une anacrouse au bon temps", () => {
@@ -115,8 +115,8 @@ describe("règles du format", () => {
   it("place les accords d'une même octave sur plusieurs lignes", () => {
     const xml = musicXml([{ notes: [[{ midi: [60, 64, 67], dur: 4 * q }]] }]);
     const { text } = roundTrip(importMusicXml(xml));
-    const rows = text.split("\n").filter((l) => /^[ 4]\s*\|[^─]/.test(l) && !l.startsWith("m"));
-    expect(rows.map((r) => r.slice(0, 7))).toEqual(["4  |8  ", "   |5  ", "   |1  "]);
+    const rows = text.split("\n").filter((l) => /^[ 0]\s*\|[^─]/.test(l) && !l.startsWith("m"));
+    expect(rows.map((r) => r.slice(0, 7))).toEqual(["0  |8  ", "   |5  ", "   |1  "]);
   });
 });
 
@@ -171,7 +171,19 @@ describe("erreurs de saisie", () => {
   it("demande l'octave sur la première ligne d'une main", () => {
     expect(err(base("   |1  |   ||\n───┼───┼───┼┼"))).toMatch(/indiquer son octave/);
   });
-  it("accepte une saisie minimale à la main", () => {
+  it("lit les octaves relatives au do central", () => {
+    const s = parseYmn("m1 |1  ||\n+1 |1  ||\n0  |1  ||\n---\n-1 |1  ||\n-2 |1  ||\n");
+    expect(s.notes.map((n) => n.midi)).toEqual([72, 60, 48, 36]);
+  });
+  it("écrit les octaves relatives au do central", () => {
+    const text = writeYmn(parseYmn("m1 |1  ||\n+1 |1  ||\n---\n-1 |1  ||\n"));
+    expect(text).toContain("+1 |1  ||");
+    expect(text).toContain("-1 |1  ||");
+  });
+  it("refuse une octave mal écrite", () => {
+    expect(err("m1 |1  ||\n+a |1  ||\n---\n")).toMatch(/octave invalide/);
+  });
+  it("accepte encore l'ancien format (octave absolue, do central = 4)", () => {
     const s = parseYmn("m1 |1  |2  ||\n4  |5  |-  ||\n---\n3  |1  |   ||\n");
     expect(notesKey(s)).toBe(`D64@0-${2 * T} G48@0-${T}`);
   });

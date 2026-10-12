@@ -7,14 +7,16 @@
   --accent: #2b5d6e;
   --error: #9b2c2c;
   --error-bg: #fbeceb;
-  --mono: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+  /* Une seule police à chasse fixe qui contient aussi les traits ─ ┼ : sinon le
+     navigateur les prend dans une autre police et les colonnes se décalent. */
+  --mono: "Cascadia Mono", Consolas, "DejaVu Sans Mono", Menlo, monospace;
   --ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
 }
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
 body { font-family: var(--ui); color: var(--ink); background: var(--chrome); font-size: 14px; }
 
-.app { display: grid; grid-template-rows: auto 1fr; height: 100%; }
+.app { display: grid; grid-template-rows: auto auto 1fr; height: 100%; }
 .bar { display: flex; gap: 8px; align-items: center; padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
 .brand { font-weight: 700; letter-spacing: .06em; margin-right: 12px; }
 .spacer { flex: 1; }
@@ -24,6 +26,11 @@ button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent);
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 button:disabled { opacity: .5; cursor: default; }
 
+.options { padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+.options fieldset { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; }
+.options legend { float: left; font-weight: 700; margin-right: 8px; padding: 0; min-width: 5.5em; }
+.options label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.options .sample { color: var(--muted); font-variant-numeric: tabular-nums; }
 .split { display: grid; grid-template-columns: minmax(360px, 42%) 1fr; min-height: 0; }
 .source { display: grid; grid-template-rows: 1fr auto; min-height: 0; border-right: 1px solid var(--line); background: #fff; }
 textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16px; font-family: var(--mono); font-size: 13px; line-height: 1.45; white-space: pre; overflow: auto; color: var(--ink); background: #fff; font-variant-ligatures: none; }
@@ -36,9 +43,21 @@ textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16p
 @page { size: A4 portrait; margin: 0; }
 @media print {
   body { background: #fff; }
-  .bar, .source { display: none !important; }
+  .bar, .source, .options { display: none !important; }
   .app, .split { display: block; height: auto; }
   .preview { overflow: visible; padding: 0; gap: 0; display: block; }
-  .page { box-shadow: none; width: 210mm; height: 297mm; max-width: none; break-after: page; }
-  .page:last-child { break-after: auto; }
+  /* La page gravée s'adapte à la zone imprimable réelle (marges du navigateur comprises)
+     et ne peut jamais être coupée entre deux feuilles. */
+  .page {
+    box-shadow: none;
+    width: auto;
+    max-width: 100%;
+    height: calc(100vh - 1mm);
+    margin: 0 auto;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    break-after: page;
+    page-break-after: always;
+  }
+  .page:last-child { break-after: auto; page-break-after: auto; }
 }

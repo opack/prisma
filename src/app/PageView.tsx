@@ -1,13 +1,114 @@
+import { octaveOffset } from "../core/index.ts";
 import type { Meta, SystemRow } from "../core/index.ts";
 import { G, PAGE } from "./engrave.ts";
 import type { Page, PlacedSystem } from "./engrave.ts";
+import type { OctavePosition, OctaveStyle, RenderOptions } from "./options.ts";
 
 const INK = "#1b1d1f";
 const GREY = "#8a8f94";
 const LIGHT = "#c9cdd1";
+const LIGHT_TEXT = "#aeb3b8";
 const BAND = "#f1f2ee";
+const TAB = "#e6e8e3";
+const TAB_TEXT = "#4a4f54";
+
+/*
+ * Trois sortes de chiffres, trois apparences :
+ *  - notes : gras, noir, droit (la seule chose à jouer) ;
+ *  - temps : plus petits, italiques, gris ;
+ *  - octaves : onglet pâle couvrant le groupe, chiffre gris foncé.
+ */
 
 const FONT = `"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif`;
+
+/**
+ * Numéro d'octave : « 0 » pour l'octave du do central, sinon une flèche dessinée
+ * (vers le haut pour les octaves aiguës) suivie de l'écart. La flèche est tracée
+ * plutôt que prise dans la police, pour avoir la même épaisseur partout.
+ */
+function OctaveMark({ cx, cy, offset, style }: { cx: number; cy: number; offset: number; style: OctaveStyle }) {
+  if (offset !== 0 && style === "sign") {
+    // vrai signe moins (−), plus lisible que le trait d'union
+    return (
+      <text x={cx} y={cy + 0.95} fontSize={2.7} fontWeight={600} textAnchor="middle" fill={TAB_TEXT}>
+        {(offset > 0 ? "+" : "−") + Math.abs(offset)}
+      </text>
+    );
+  }
+  if (offset !== 0 && style === "triangle") {
+    const up = offset > 0;
+    const ax = cx - 0.95;
+    const half = 0.95;
+    const base = up ? cy + half : cy - half;
+    const tip = up ? cy - half : cy + half;
+    return (
+      <g>
+        <path d={`M ${ax - 0.95} ${base} L ${ax + 0.95} ${base} L ${ax} ${tip} Z`} fill={TAB_TEXT} />
+        <text x={cx + 0.35} y={cy + 0.95} fontSize={2.7} fontWeight={600} fill={TAB_TEXT}>
+          {Math.abs(offset)}
+        </text>
+      </g>
+    );
+  }
+  if (offset === 0) {
+    return (
+      <text x={cx} y={cy + 0.95} fontSize={2.7} fontWeight={600} textAnchor="middle" fill={TAB_TEXT}>
+        0
+      </text>
+    );
+  }
+  const up = offset > 0;
+  const ax = cx - 0.95; // flèche à gauche, chiffre à droite
+  const half = 1.25; // demi-hauteur de la flèche
+  const tip = up ? cy - half : cy + half;
+  const tail = up ? cy + half : cy - half;
+  const head = up ? 0.85 : -0.85;
+  return (
+    <g>
+      <path
+        d={`M ${ax} ${tail} L ${ax} ${tip} M ${ax - 0.75} ${tip + head} L ${ax} ${tip} L ${ax + 0.75} ${tip + head}`}
+        fill="none"
+        stroke={TAB_TEXT}
+        strokeWidth={0.42}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <text x={cx + 0.35} y={cy + 0.95} fontSize={2.7} fontWeight={600} fill={TAB_TEXT}>
+        {Math.abs(offset)}
+      </text>
+    </g>
+  );
+}
+
+/** Onglet vertical pâle couvrant les lignes d'un groupe d'octave ; numéro en haut ou au centre selon les options. */
+function OctaveTabs({ rows, top, style, position }: { rows: SystemRow[]; top: number; style: OctaveStyle; position: OctavePosition }) {
+  const groups: { octave: number; first: number; count: number }[] = [];
+  rows.forEach((r, i) => {
+    if (r.showOctave || !groups.length) groups.push({ octave: r.octave, first: i, count: 1 });
+    else groups[groups.length - 1].count++;
+  });
+  const x = PAGE.marginX + 0.6;
+  const w = G.prefix - 1.4;
+  return (
+    <g>
+      {groups.map((g) => {
+        const y = top + g.first * G.rowH + 0.25;
+        const h = g.count * G.rowH - 0.5;
+        return (
+          <g key={g.first}>
+            <rect x={x} y={y} width={w} height={h} rx={0.6} fill={TAB} />
+            <OctaveMark
+              cx={x + w / 2}
+              cy={position === "top" ? top + g.first * G.rowH + G.rowH / 2 : y + h / 2}
+              offset={octaveOffset(g.octave)}
+              style={style}
+            />
+          </g>
+        );
+      })}
+    </g>
+  );
+}
 
 function Row({ ps, row, y, band }: { ps: PlacedSystem; row: SystemRow; y: number; band: boolean }) {
   const { sys, xs, ws } = ps;
@@ -17,11 +118,6 @@ function Row({ ps, row, y, band }: { ps: PlacedSystem; row: SystemRow; y: number
   return (
     <g>
       {band && <rect x={x0 + G.prefix} y={y} width={right - x0 - G.prefix} height={G.rowH} fill={BAND} />}
-      {row.showOctave && (
-        <text x={x0 + G.prefix - 1.4} y={base} fontSize={3} fontWeight={700} textAnchor="end" fill={INK}>
-          {row.octave}
-        </text>
-      )}
       {row.cells.map((c, a) => {
         if (!c) return null;
         const ci = sys.anchors[a];
@@ -47,7 +143,7 @@ function Row({ ps, row, y, band }: { ps: PlacedSystem; row: SystemRow; y: number
   );
 }
 
-function SystemView({ ps }: { ps: PlacedSystem }) {
+function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions }) {
   const { sys, xs, ws, y } = ps;
   const x0 = PAGE.marginX;
   const left = x0 + G.prefix;
@@ -82,13 +178,22 @@ function SystemView({ ps }: { ps: PlacedSystem }) {
         if (col.kind !== "anchor" || !col.label) return null;
         const beat = col.k === 0;
         return (
-          <text key={a} x={xs[ci] + 0.5} y={rulerBase} fontSize={beat ? 2.9 : 2.6} fontWeight={beat ? 700 : 400} fill={beat ? INK : GREY}>
+          <text
+            key={a}
+            x={xs[ci] + 0.5}
+            y={rulerBase}
+            fontSize={beat ? 2.6 : 2.4}
+            fontStyle={beat ? "italic" : "normal"}
+            fill={beat ? GREY : LIGHT_TEXT}
+          >
             {col.label}
           </text>
         );
       })}
       <line x1={left} x2={right} y1={rhTop} y2={rhTop} stroke={LIGHT} strokeWidth={0.25} />
 
+      <OctaveTabs rows={sys.right} top={rhTop} style={options.octaveStyle} position={options.octavePosition} />
+      <OctaveTabs rows={sys.left} top={lhTop} style={options.octaveStyle} position={options.octavePosition} />
       {sys.right.map((r, i) => (
         <Row key={"d" + i} ps={ps} row={r} y={rhTop + i * G.rowH} band={rb[i]} />
       ))}
@@ -109,7 +214,7 @@ function SystemView({ ps }: { ps: PlacedSystem }) {
   );
 }
 
-export function PageView({ page, total, meta }: { page: Page; total: number; meta: Meta }) {
+export function PageView({ page, total, meta, options }: { page: Page; total: number; meta: Meta; options: RenderOptions }) {
   return (
     <svg
       className="page"
@@ -140,7 +245,7 @@ export function PageView({ page, total, meta }: { page: Page; total: number; met
         </g>
       )}
       {page.systems.map((ps, i) => (
-        <SystemView key={i} ps={ps} />
+        <SystemView key={i} ps={ps} options={options} />
       ))}
       <text x={PAGE.w / 2} y={PAGE.h - 8} fontSize={2.6} textAnchor="middle" fill={GREY}>
         {page.index + 1} / {total}

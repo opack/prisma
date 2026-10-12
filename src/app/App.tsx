@@ -4,6 +4,8 @@ import type { Score } from "../core/index.ts";
 import { engrave } from "./engrave.ts";
 import { PageView } from "./PageView.tsx";
 import { SAMPLE } from "./sample.ts";
+import { OCTAVE_POSITIONS, OCTAVE_STYLES, loadOptions, saveOptions } from "./options.ts";
+import type { RenderOptions } from "./options.ts";
 
 const STORAGE_KEY = "ymn:source";
 const load = () => {
@@ -34,6 +36,13 @@ function tryParse(text: string): { score?: Score; problem?: Problem } {
 
 export function App() {
   const [source, setSource] = useState(load);
+  const [options, setOptionsState] = useState<RenderOptions>(loadOptions);
+  const [showOptions, setShowOptions] = useState(false);
+  const setOptions = (patch: Partial<RenderOptions>) => {
+    const next = { ...options, ...patch };
+    setOptionsState(next);
+    saveOptions(next);
+  };
   const [engraved, setEngraved] = useState(() => tryParse(source));
   const [fileName, setFileName] = useState("morceau.ymn");
   const [dirty, setDirty] = useState(false);
@@ -125,10 +134,48 @@ export function App() {
         <button className="primary" onClick={engraveNow} title="Ctrl+Entrée">
           Graver{dirty ? " •" : ""}
         </button>
+        <button onClick={() => setShowOptions((v) => !v)} aria-expanded={showOptions} aria-controls="options">
+          Options
+        </button>
         <button onClick={() => window.print()} disabled={!pages.length}>
           Imprimer
         </button>
       </header>
+
+      {showOptions && (
+        <section id="options" className="options" aria-label="Options de rendu">
+          <fieldset>
+            <legend>Octaves</legend>
+            {OCTAVE_STYLES.map((s) => (
+              <label key={s.value}>
+                <input
+                  type="radio"
+                  name="octaveStyle"
+                  id={"octave-" + s.value}
+                  checked={options.octaveStyle === s.value}
+                  onChange={() => setOptions({ octaveStyle: s.value })}
+                />
+                {s.label} <span className="sample">{s.sample}</span>
+              </label>
+            ))}
+          </fieldset>
+          <fieldset>
+            <legend>Position</legend>
+            {OCTAVE_POSITIONS.map((p) => (
+              <label key={p.value}>
+                <input
+                  type="radio"
+                  name="octavePosition"
+                  id={"position-" + p.value}
+                  checked={options.octavePosition === p.value}
+                  onChange={() => setOptions({ octavePosition: p.value })}
+                />
+                {p.label}
+              </label>
+            ))}
+          </fieldset>
+        </section>
+      )}
 
       <main className="split">
         <section className="source">
@@ -153,7 +200,7 @@ export function App() {
         <section className="preview" aria-label="Aperçu">
           {score && !pages.length && <p className="empty">Aucune mesure à graver.</p>}
           {pages.map((p) => (
-            <PageView key={p.index} page={p} total={pages.length} meta={score!.meta} />
+            <PageView key={p.index} page={p} total={pages.length} meta={score!.meta} options={options} />
           ))}
         </section>
       </main>

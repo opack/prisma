@@ -19,10 +19,10 @@ Les autres clés sont conservées telles quelles.
 ```
 m12|1  :  |2  |3  :  :  ||1  |2  |
 ───┼──────┼───┼─────────┼┼───┼───┼
-5  |3  5  |7  |8  7  5  ||3  |-  |
-4  |   10 |-  |         ||   |   |
++1 |3  5  |7  |8  7  5  ||3  |-  |
+0  |   10 |-  |         ||   |   |
 ───┼──────┼───┼─────────┼┼───┼───┼
-3  |1  -  |-  |-  -  -  ||-  |   |
+-1 |1  -  |-  |-  -  -  ||-  |   |
    |      |   |8        ||   |   |
 ```
 
@@ -60,7 +60,9 @@ Une note s'arrête au premier ancrage vide de sa ligne. Une note répétée se r
 
 ### Les lignes
 
-- À gauche du premier `|`, le numéro d'octave (do central = octave 4). On ne l'écrit que sur la première ligne d'un groupe : les lignes suivantes sans numéro appartiennent à la même octave.
+- À gauche du premier `|`, l'octave, **comptée depuis celle du do central** : `0` pour l'octave qui commence au do central, `+1` pour celle du dessus, `-1` pour celle du dessous, et ainsi de suite (un piano de 88 touches va de `-4` à `+4`). Le rendu graphique les affiche avec des flèches (↑1, ↓1). On ne l'écrit que sur la première ligne d'un groupe : les lignes suivantes sans numéro appartiennent à la même octave.
+- Cette référence ne dépend d'aucune convention nationale : le do central s'appelle do3 en France et C4 dans la notation internationale, mais c'est la même touche.
+- Ancien format : un chiffre seul de `1` à `9` est lu comme une octave absolue (do central = `4`) et converti automatiquement. `0` désigne toujours l'octave du do central.
 - Une ligne ne porte jamais deux notes en même temps. Un accord occupe une ligne par note.
 - Tous les `|` d'une ligne sont alignés sur ceux de la règle. Les espaces en fin de ligne peuvent être omis.
 

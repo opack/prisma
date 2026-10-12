@@ -3,6 +3,7 @@ import { writeFrontmatter } from "./frontmatter.ts";
 import { layout } from "./layout.ts";
 import type { System } from "./layout.ts";
 import type { Score } from "./model.ts";
+import { octaveLabel } from "./pitch.ts";
 
 export const DEFAULT_WIDTH = 96;
 export const DEFAULT_CELL = 3;
@@ -25,7 +26,7 @@ export function renderSystemText(sys: System, cell: number, prefix: number): str
   };
   const ruler = head + line((a) => (sys.columns[sys.anchors[a]] as { label: string }).label);
   const rows = (list: System["right"]) =>
-    list.map((r) => ((r.showOctave ? String(r.octave) : "").padEnd(prefix - 1) + "|" + line((a) => r.cells[a])).trimEnd());
+    list.map((r) => ((r.showOctave ? octaveLabel(r.octave) : "").padEnd(prefix - 1) + "|" + line((a) => r.cells[a])).trimEnd());
   return [ruler, rule(ruler), ...rows(sys.right), rule(ruler), ...rows(sys.left)];
 }
 

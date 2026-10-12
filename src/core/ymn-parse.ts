@@ -7,7 +7,7 @@
 import { YmnError, parseFrontmatter } from "./frontmatter.ts";
 import { TICKS_PER_BEAT, sortNotes } from "./model.ts";
 import type { Beat, Division, Hand, Note, Score } from "./model.ts";
-import { midiOf } from "./pitch.ts";
+import { midiOf, parseOctaveLabel } from "./pitch.ts";
 import { DEFAULT_CELL } from "./ymn-write.ts";
 
 type Segment = { from: number; to: number; barEnd: boolean };
@@ -137,8 +137,11 @@ export function parseYmn(text: string): Score {
       }
       const lab = row.slice(0, pipe).trim();
       if (lab) {
-        if (!/^-?\d$/.test(lab)) throw new YmnError(`numéro d'octave invalide : « ${lab} »`, R, 1);
-        lastOctave[hand] = Number(lab);
+        const oct = parseOctaveLabel(lab);
+        if (oct === undefined) {
+          throw new YmnError(`octave invalide : « ${lab} » (attendu 0 pour l'octave du do central, +1, -1, +2…)`, R, 1);
+        }
+        lastOctave[hand] = oct;
       }
       const octave = lastOctave[hand];
       if (octave === undefined) throw new YmnError("la première ligne de chaque main doit indiquer son octave", R, 1);
