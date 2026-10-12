@@ -1,0 +1,15 @@
+/** Exemple affiché au premier lancement : une gamme de do et ses accords, écrite pour la démonstration. */
+export const SAMPLE = `---
+titre: Exemple
+compositeur: Gamme de do majeur
+---
+
+m1 |1  :  |2  :  |3  :  |4  :  ||1  |2  |3  :  :  |4  ||
+───┼──────┼──────┼──────┼──────┼┼───┼───┼─────────┼───┼┼
+5  |      |      |      |      ||1  |-  |-  -  -  |   ||
+4  |1  3  |5  6  |8  10 |12 -  ||   |   |8  10 12 |1  ||
+───┼──────┼──────┼──────┼──────┼┼───┼───┼─────────┼───┼┼
+4  |      |      |      |      ||1  |-  |-  -  -  |   ||
+3  |1  -  |-  -  |8  -  |-  -  ||5  |-  |-  -  -  |   ||
+   |      |      |      |      ||1  |-  |-  -  -  |   ||
+`;

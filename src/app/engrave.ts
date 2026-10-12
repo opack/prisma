@@ -1,0 +1,85 @@
+/**
+ * Gravure : place les systèmes calculés par le moteur de mise en page sur des pages A4.
+ * Toutes les dimensions sont en millimètres.
+ */
+import { layout } from "../core/index.ts";
+import type { Score, System } from "../core/index.ts";
+
+export const PAGE = { w: 210, h: 297, marginX: 15, marginTop: 14, marginBottom: 16 };
+export const CONTENT_W = PAGE.w - 2 * PAGE.marginX;
+
+export const G = {
+  cell: 5.2, // largeur naturelle d'une case
+  prefix: 7, // colonne des numéros d'octave
+  beatSep: 0.8,
+  barSep: 1.6,
+  rulerH: 4.4,
+  rowH: 4.5,
+  handGap: 1.4, // espace de part et d'autre du trait entre les mains
+  systemGap: 6.5,
+  headerH: 17, // titre, en première page
+  maxStretch: 1.7, // étirement maximal des cases pour remplir la ligne
+};
+
+export type PlacedSystem = {
+  sys: System;
+  /** Facteur d'étirement des cases. */
+  stretch: number;
+  /** Ordonnée du haut du système, depuis le haut de la page. */
+  y: number;
+  height: number;
+  /** Abscisse de chaque colonne (case ou séparateur), depuis le bord gauche de la page. */
+  xs: number[];
+  /** Largeur de chaque colonne. */
+  ws: number[];
+};
+
+export type Page = { index: number; systems: PlacedSystem[]; header: boolean };
+
+export const systemHeight = (s: System) =>
+  G.rulerH + (s.right.length + s.left.length) * G.rowH + 2 * G.handGap + 1;
+
+function place(sys: System, isLast: boolean, y: number): PlacedSystem {
+  const cells = sys.anchors.length;
+  const fixed = sys.width - cells * G.cell;
+  let stretch = (CONTENT_W - fixed) / (cells * G.cell);
+  // la dernière ligne n'est étirée que si elle est déjà presque pleine
+  if (isLast && stretch > 1.25) stretch = 1;
+  stretch = Math.max(0.5, Math.min(stretch, G.maxStretch));
+  const xs: number[] = [];
+  const ws: number[] = [];
+  let x = PAGE.marginX + G.prefix;
+  for (const c of sys.columns) {
+    const w = c.kind === "anchor" ? G.cell * stretch : c.kind === "barSep" ? G.barSep : G.beatSep;
+    xs.push(x);
+    ws.push(w);
+    x += w;
+  }
+  return { sys, stretch, y, height: systemHeight(sys), xs, ws };
+}
+
+export function engrave(score: Score): Page[] {
+  const systems = layout(score, {
+    width: CONTENT_W,
+    prefix: G.prefix,
+    cell: G.cell,
+    beatSep: G.beatSep,
+    barSep: G.barSep,
+  });
+  const pages: Page[] = [];
+  let page: Page = { index: 0, systems: [], header: true };
+  let y = PAGE.marginTop + G.headerH;
+  const bottom = PAGE.h - PAGE.marginBottom;
+  systems.forEach((sys, i) => {
+    const h = systemHeight(sys);
+    if (y + h > bottom && page.systems.length) {
+      pages.push(page);
+      page = { index: pages.length, systems: [], header: false };
+      y = PAGE.marginTop;
+    }
+    page.systems.push(place(sys, i === systems.length - 1, y));
+    y += h + G.systemGap;
+  });
+  pages.push(page);
+  return pages;
+}
