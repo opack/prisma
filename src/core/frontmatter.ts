@@ -16,7 +16,7 @@ export class YmnError extends Error {
   }
 }
 
-const NUMERIC_KEYS = new Set(["case", "division"]);
+const NUMERIC_KEYS = new Set(["cell", "division"]);
 
 export function parseFrontmatter(lines: string[]): FrontmatterResult {
   const meta: Meta = {};
@@ -30,21 +30,22 @@ export function parseFrontmatter(lines: string[]): FrontmatterResult {
     if (raw.trim() === "" || raw.trim().startsWith("#")) continue;
     const m = raw.match(/^\s*([A-Za-zÀ-ÿ_][\wÀ-ÿ-]*)\s*:\s*(.*)$/);
     if (!m) throw new YmnError("ligne de frontmatter attendue sous la forme « clé: valeur »", i + 1);
+    const key = m[1];
     let value = m[2].trim();
     if (/^(["']).*\1$/.test(value)) value = value.slice(1, -1);
-    if (NUMERIC_KEYS.has(m[1])) {
+    if (NUMERIC_KEYS.has(key)) {
       const n = Number(value);
-      if (!Number.isInteger(n) || n < 2) throw new YmnError(`« ${m[1]} » doit être un entier ≥ 2`, i + 1);
-      if (m[1] === "division" && n !== 2 && n !== 3) throw new YmnError("« division » vaut 2 (binaire) ou 3 (ternaire)", i + 1);
-      meta[m[1]] = n;
+      if (!Number.isInteger(n) || n < 2) throw new YmnError(`« ${key} » doit être un entier ≥ 2`, i + 1);
+      if (key === "division" && n !== 2 && n !== 3) throw new YmnError("« division » vaut 2 (binaire) ou 3 (ternaire)", i + 1);
+      meta[key] = n;
     } else {
-      meta[m[1]] = value;
+      meta[key] = value;
     }
   }
   throw new YmnError("frontmatter non fermé : il manque la ligne « --- » de fin", lines.length);
 }
 
-const ORDER = ["titre", "compositeur", "tempo", "source", "division", "case"];
+const ORDER = ["title", "composer", "tempo", "source", "division", "cell"];
 
 export function writeFrontmatter(meta: Meta): string[] {
   const keys = Object.keys(meta).filter((k) => meta[k] !== undefined && meta[k] !== "");

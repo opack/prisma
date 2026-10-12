@@ -189,10 +189,10 @@ export function importMusicXml(xml: string, fileName?: string): Score {
   const meta: Meta = {};
   const work = find(rootKids, "work");
   const title = text(find(kids(work), "work-title")) || text(find(rootKids, "movement-title"));
-  if (title) meta.titre = title;
+  if (title) meta.title = title;
   const ident = kids(find(rootKids, "identification"));
   const composer = findAll(ident, "creator").find((c) => attr(c, "type") === "composer");
-  if (composer && text(composer)) meta.compositeur = text(composer);
+  if (composer && text(composer)) meta.composer = text(composer);
   if (fileName) meta.source = fileName;
 
   const measures = readMeasures(part);

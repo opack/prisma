@@ -8,11 +8,11 @@ Entre deux lignes `---`, une clé par ligne, sous la forme `clé: valeur`.
 
 | Clé | Rôle |
 |---|---|
-| `titre`, `compositeur`, `tempo`, `source` | Informations affichées. |
-| `case` | Largeur d'une case en caractères. Vaut 3 par défaut. |
+| `title`, `composer`, `tempo`, `source` | Informations affichées. |
+| `cell` | Largeur d'une case en caractères. Vaut 3 par défaut. |
 | `division` | Découpage par défaut d'un temps : `2` (binaire, par défaut) ou `3` (ternaire, pour le 6/8 par exemple). |
 
-Les autres clés sont conservées telles quelles.
+Les clés sont en anglais. Les autres clés sont conservées telles quelles.
 
 ## Un système
 
@@ -36,7 +36,7 @@ Les traits s'écrivent avec `─`, `-`, `=`, `+` ou `┼`, sans espace.
 
 ### Les cases
 
-Un temps est une suite de cases de largeur fixe (`case`, 3 par défaut). Un temps de 12 caractères contient donc 4 ancres.
+Un temps est une suite de cases de largeur fixe (`cell`, 3 par défaut). Un temps de 12 caractères contient donc 4 ancres.
 
 Sur la règle de comptage :
 
@@ -62,7 +62,6 @@ Une note s'arrête au premier ancrage vide de sa ligne. Une note répétée se r
 
 - À gauche du premier `|`, l'octave, **comptée depuis celle du do central** : `0` pour l'octave qui commence au do central, `+1` pour celle du dessus, `-1` pour celle du dessous, et ainsi de suite (un piano de 88 touches va de `-4` à `+4`). Le rendu graphique les affiche avec des flèches (↑1, ↓1). On ne l'écrit que sur la première ligne d'un groupe : les lignes suivantes sans numéro appartiennent à la même octave.
 - Cette référence ne dépend d'aucune convention nationale : le do central s'appelle do3 en France et C4 dans la notation internationale, mais c'est la même touche.
-- Ancien format : un chiffre seul de `1` à `9` est lu comme une octave absolue (do central = `4`) et converti automatiquement. `0` désigne toujours l'octave du do central.
 - Une ligne ne porte jamais deux notes en même temps. Un accord occupe une ligne par note.
 - Tous les `|` d'une ligne sont alignés sur ceux de la règle. Les espaces en fin de ligne peuvent être omis.
 

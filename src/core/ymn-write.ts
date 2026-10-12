@@ -66,7 +66,7 @@ export function prefixWidth(score: Score): number {
 }
 
 export function writeYmn(score: Score, opts: WriteOptions = {}): string {
-  const cell = Number(score.meta.case ?? DEFAULT_CELL);
+  const cell = Number(score.meta.cell ?? DEFAULT_CELL);
   const prefix = prefixWidth(score);
   const systems = layout(score, {
     width: opts.width ?? DEFAULT_WIDTH,

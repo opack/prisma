@@ -23,13 +23,9 @@ export const octaveOffset = (octave: number) => octave - CENTRAL_OCTAVE;
 
 /**
  * Lit un numéro d'octave relatif au do central : « 0 », « +1 », « -2 ».
- * Un chiffre seul de 1 à 9 vient d'un fichier de l'ancien format (octave absolue,
- * do central = 4) : il est accepté et converti.
  */
 export function parseOctaveLabel(label: string): number | undefined {
-  const s = label.replace("−", "-");
-  if (s === "0") return CENTRAL_OCTAVE;
-  if (/^[+-][1-9]$/.test(s)) return CENTRAL_OCTAVE + Number(s);
-  if (/^[1-9]$/.test(s)) return Number(s);
+  if (label === "0") return CENTRAL_OCTAVE;
+  if (/^[+-][1-9]$/.test(label)) return CENTRAL_OCTAVE + Number(label);
   return undefined;
 }

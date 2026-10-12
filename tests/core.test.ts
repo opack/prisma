@@ -260,16 +260,16 @@ describe("erreurs de saisie", () => {
   };
 
   it("exige le trait entre les mains", () => {
-    expect(err("m1 |1  |2  ||\n4  |1  |-  ||")).toMatch(/trait qui sépare/);
+    expect(err("m1 |1  |2  ||\n0  |1  |-  ||")).toMatch(/trait qui sépare/);
   });
   it("signale une largeur de temps incorrecte", () => {
-    expect(err("m1 |1   |2  ||\n───\n4  |1   |-  ||\n───")).toMatch(/ligne 1, col\. 5 : le temps fait 4 caractères/);
+    expect(err("m1 |1   |2  ||\n───\n0  |1   |-  ||\n───")).toMatch(/ligne 1, col\. 5 : le temps fait 4 caractères/);
   });
   it("refuse un « - » en début de système", () => {
-    expect(err(base("4  |-  |   ||\n───┼───┼───┼┼"))).toMatch(/ligne 3.*écris le numéro de la note/);
+    expect(err(base("0  |-  |   ||\n───┼───┼───┼┼"))).toMatch(/ligne 3.*écris le numéro de la note/);
   });
   it("refuse un numéro hors de 1 à 12", () => {
-    expect(err(base("4  |13 |   ||\n───┼───┼───┼┼"))).toMatch(/ligne 3, col\. 5 : case invalide « 13 »/);
+    expect(err(base("0  |13 |   ||\n───┼───┼───┼┼"))).toMatch(/ligne 3, col\. 5 : case invalide « 13 »/);
   });
   it("demande l'octave sur la première ligne d'une main", () => {
     expect(err(base("   |1  |   ||\n───┼───┼───┼┼"))).toMatch(/indiquer son octave/);
@@ -283,11 +283,21 @@ describe("erreurs de saisie", () => {
     expect(text).toContain("+1 |1  ||");
     expect(text).toContain("-1 |1  ||");
   });
+  it("refuse un numéro d'octave sans signe", () => {
+    expect(err("m1 |1  ||\n4  |1  ||\n---\n")).toMatch(/octave invalide/);
+  });
   it("refuse une octave mal écrite", () => {
     expect(err("m1 |1  ||\n+a |1  ||\n---\n")).toMatch(/octave invalide/);
   });
-  it("accepte encore l'ancien format (octave absolue, do central = 4)", () => {
-    const s = parseYmn("m1 |1  |2  ||\n4  |5  |-  ||\n---\n3  |1  |   ||\n");
+  it("lit et écrit le frontmatter en anglais", () => {
+    const s = parseYmn("---\ntitle: Essai\ncomposer: Moi\ncell: 3\n---\nm1 |1  ||\n0  |1  ||\n---\n");
+    expect(s.meta).toMatchObject({ title: "Essai", composer: "Moi", cell: 3 });
+    const text = writeYmn(s);
+    expect(text).toContain("title: Essai");
+    expect(text).toContain("composer: Moi");
+  });
+  it("accepte une saisie minimale à la main", () => {
+    const s = parseYmn("m1 |1  |2  ||\n0  |5  |-  ||\n---\n-1 |1  |   ||\n");
     expect(notesKey(s)).toBe(`D64@0-${2 * T} G48@0-${T}`);
   });
 });

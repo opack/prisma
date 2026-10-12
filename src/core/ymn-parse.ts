@@ -77,7 +77,7 @@ function markTokens(line: string, pipe: number) {
 export function parseYmn(text: string): Score {
   const lines = text.replace(/\t/g, "    ").split(/\r?\n/);
   const { meta, bodyStartLine } = parseFrontmatter(lines);
-  const cw = Number(meta.case ?? DEFAULT_CELL);
+  const cw = Number(meta.cell ?? DEFAULT_CELL);
   const defaultDivision = (Number(meta.division ?? 2) === 3 ? 3 : 2) as Division;
 
   // découpage en blocs : lignes @, une règle de comptage, puis les lignes qui la suivent

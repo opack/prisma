@@ -321,14 +321,14 @@ export function PageView({ page, total, meta, options }: { page: Page; total: nu
       <rect width={PAGE.w} height={PAGE.h} fill="#fff" />
       {page.header && (
         <g>
-          {meta.titre && (
+          {meta.title && (
             <text x={PAGE.w / 2} y={PAGE.marginTop + 6} fontSize={6.4} fontWeight={700} textAnchor="middle" fill={INK}>
-              {meta.titre}
+              {meta.title}
             </text>
           )}
-          {meta.compositeur && (
+          {meta.composer && (
             <text x={PAGE.w - PAGE.marginX} y={PAGE.marginTop + 12} fontSize={3.4} textAnchor="end" fill={INK}>
-              {meta.compositeur}
+              {meta.composer}
             </text>
           )}
           {meta.tempo && (

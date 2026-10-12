@@ -35,12 +35,12 @@ export type Note = {
 };
 
 export type Meta = {
-  titre?: string;
-  compositeur?: string;
+  title?: string;
+  composer?: string;
   tempo?: string;
   source?: string;
   /** Largeur d'une case dans le texte .ymn (3 par défaut). */
-  case?: number;
+  cell?: number;
   /** Autres clés du frontmatter, conservées telles quelles. */
   [key: string]: string | number | undefined;
 };
