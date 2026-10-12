@@ -6,10 +6,12 @@
  * - Mesures composées (6/8, 9/8, 12/8) comptées en noires pointées, découpage ternaire.
  * - Anacrouse : la première mesure incomplète commence au temps voulu (ex. temps 3 en 3/4).
  * - Liaisons de tenue fusionnées. Petites notes ignorées.
+ * - Nuances, soufflets et textes de chaque main ; les indications de tempo et de structure
+ *   (rit., a tempo, D.C., Fine…) vont au-dessus du système.
  */
 import { XMLParser } from "fast-xml-parser";
-import { TICKS_PER_BEAT, sortNotes } from "./model.ts";
-import type { Beat, Division, Ending, Hand, Meta, Note, Repeat, Score } from "./model.ts";
+import { DYNAMICS, TICKS_PER_BEAT, sortNotes } from "./model.ts";
+import type { Beat, Division, Ending, Expression, Hairpin, Hand, Meta, Note, Repeat, Score, TextMark } from "./model.ts";
 
 type XNode = Record<string, any>;
 const parser = new XMLParser({ preserveOrder: true, ignoreAttributes: false, attributeNamePrefix: "" });
@@ -36,6 +38,13 @@ export function pulse(beats: number, beatType: number): { count: number; quarter
   return { count: beats, quarters: 4 / beatType, division: 2 };
 }
 
+/** Indication d'une direction MusicXML, positionnée en noires depuis le début de la mesure. */
+type RawDirection = { hand: Hand; at: number; kind: "dynamic" | "words" | "wedge"; text: string; number?: string };
+
+/** Textes qui concernent tout le système : tempo, structure du morceau. */
+const SYSTEM_WORDS =
+  /^(rit|ritard|ritardando|rall|rallentando|accel|accelerando|a tempo|tempo|tempo primo|tempo i|rubato|meno mosso|più mosso|piu mosso|poco rit|molto rit|allarg|allargando|fermata|d\.\s*c\.?|d\.\s*s\.?|da capo|dal segno|fine|coda|to coda|segno|grave|largo|larghetto|lento|adagio|andante|andantino|moderato|allegretto|allegro|vivace|presto|prestissimo|lent|très lent|modéré|vif|animé|cédez|retenu|en retenant|en serrant)(?![a-zà-ÿ])/i;
+
 type RawNote = { hand: Hand; midi: number; on: number; off: number; tieStart: boolean; tieStop: boolean };
 type RawMeasure = {
   number: string;
@@ -46,6 +55,7 @@ type RawMeasure = {
   length: number;
   implicit: boolean;
   notes: RawNote[]; // positions en noires depuis le début de la mesure
+  directions: RawDirection[];
   startRepeat: boolean;
   endRepeat: boolean;
   times: number;
@@ -63,6 +73,7 @@ function readMeasures(part: XNode): RawMeasure[] {
     const items = kids(measure);
     let cursor = 0, lastStart = 0, maxCursor = 0;
     const notes: RawNote[] = [];
+    const directions: RawDirection[] = [];
     let startRepeat = false, endRepeat = false, times = 2;
     let endings = openEnding;
     let closeEndingAfter = false;
@@ -82,6 +93,30 @@ function readMeasures(part: XNode): RawMeasure[] {
         cursor -= num(find(kids(item), "duration")) / divisions;
       } else if (t === "forward") {
         cursor += num(find(kids(item), "duration")) / divisions;
+      } else if (t === "direction") {
+        const d = kids(item);
+        const at = cursor + num(find(d, "offset")) / divisions;
+        const hand: Hand = num(find(d, "staff"), 1) === 1 ? "D" : "G";
+        const words: string[] = [];
+        for (const dt of findAll(d, "direction-type")) {
+          for (const c of kids(dt)) {
+            const ct = tag(c);
+            if (ct === "dynamics") {
+              for (const k of kids(c)) {
+                const kt = tag(k);
+                if (!kt || kt === "#text") continue;
+                const value = kt === "other-dynamics" ? text(k).trim() : kt;
+                if (value) directions.push({ hand, at, kind: "dynamic", text: value });
+              }
+            } else if (ct === "wedge") {
+              directions.push({ hand, at, kind: "wedge", text: attr(c, "type") ?? "", number: String(attr(c, "number") ?? "1") });
+            } else if (ct === "words") {
+              const w = text(c).replace(/\s+/g, " ").trim();
+              if (w) words.push(w);
+            }
+          }
+        }
+        if (words.length) directions.push({ hand, at, kind: "words", text: words.join(" ") });
       } else if (t === "barline") {
         const b = kids(item);
         const rep = find(b, "repeat");
@@ -136,7 +171,7 @@ function readMeasures(part: XNode): RawMeasure[] {
       divisions, beats, beatType,
       length: maxCursor,
       implicit: attr(measure, "implicit") === "yes",
-      notes, startRepeat, endRepeat, times, endings, endingOpen,
+      notes, directions, startRepeat, endRepeat, times, endings, endingOpen,
     });
   }
   return out;
@@ -202,6 +237,7 @@ export function importMusicXml(xml: string, fileName?: string): Score {
   const measures = readMeasures(part);
   const beats: Beat[] = [];
   const raw: (Note & { tieStart: boolean; tieStop: boolean })[] = [];
+  const rawDirections: (RawDirection & { t: number })[] = [];
   const EPS = 1e-6;
 
   // Mesures numérotées dans l'ordre d'écriture : 0 pour une anacrouse, puis 1, 2, 3…
@@ -242,6 +278,7 @@ export function importMusicXml(xml: string, fileName?: string): Score {
     const shift = pickup ? nominal - length - (firstLabel - 1) * p.quarters : 0;
     const ticksPerQuarter = TICKS_PER_BEAT / p.quarters;
     const base = firstBeat * TICKS_PER_BEAT;
+    for (const d of m.directions) rawDirections.push({ ...d, t: base + Math.round((d.at + shift) * ticksPerQuarter) });
     for (const n of m.notes) {
       raw.push({
         hand: n.hand,
@@ -280,5 +317,50 @@ export function importMusicXml(xml: string, fileName?: string): Score {
     }
     notes.push({ hand: n.hand, midi: n.midi, start: n.start, end: n.end });
   }
-  return { meta, beats, notes: sortNotes(notes), repeats, endings, texts: [] };
+  const sorted = sortNotes(notes);
+  return { meta, beats, notes: sorted, repeats, endings, ...directionsOf(rawDirections, sorted, beats.length) };
+}
+
+/**
+ * Nuances, soufflets et textes. Chaque indication est calée sur l'attaque ou le début de
+ * temps le plus proche, pour ne jamais imposer de découpage plus fin que les notes.
+ */
+function directionsOf(dirs: (RawDirection & { t: number })[], notes: Note[], beatCount: number) {
+  const end = beatCount * TICKS_PER_BEAT;
+  const grid = [...new Set([...notes.map((n) => n.start), ...Array.from({ length: beatCount + 1 }, (_, i) => i * TICKS_PER_BEAT)])].sort((a, b) => a - b);
+  const snap = (t: number) => grid.reduce((best, g) => (Math.abs(g - t) < Math.abs(best - t) ? g : best), grid[0]);
+  const texts: TextMark[] = [];
+  const expressions: Expression[] = [];
+  const hairpins: Hairpin[] = [];
+  const open: (Hairpin & { number: string })[] = [];
+  const seen = new Set<string>();
+  for (const d of [...dirs].sort((a, b) => a.t - b.t)) {
+    const t = Math.min(snap(d.t), end);
+    if (d.kind === "wedge") {
+      if (d.text === "crescendo" || d.text === "diminuendo") {
+        open.push({ hand: d.hand, kind: d.text === "crescendo" ? "<" : ">", start: Math.min(t, end - 1), end, number: d.number! });
+      } else if (d.text === "stop") {
+        const i = open.findIndex((w) => w.number === d.number && w.hand === d.hand);
+        const j = i >= 0 ? i : open.findIndex((w) => w.number === d.number);
+        if (j < 0) continue;
+        const [w] = open.splice(j, 1);
+        if (t > w.start) hairpins.push({ hand: w.hand, kind: w.kind, start: w.start, end: t });
+      }
+      continue;
+    }
+    if (t >= end) continue;
+    // une même indication répétée dans les deux portées n'est gardée qu'une fois par main
+    const key = `${d.hand}|${t}|${d.text}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (d.kind === "words" && SYSTEM_WORDS.test(d.text)) {
+      if (!texts.some((x) => x.t === t && x.text === d.text)) texts.push({ t, text: d.text });
+    } else {
+      expressions.push({ hand: d.hand, t, text: d.text, kind: d.kind === "dynamic" && DYNAMICS.includes(d.text) ? "dynamic" : "text" });
+    }
+  }
+  // soufflet jamais refermé : jusqu'à la fin du morceau
+  for (const w of open) hairpins.push({ hand: w.hand, kind: w.kind, start: w.start, end: w.end });
+  hairpins.sort((a, b) => a.start - b.start);
+  return { texts, expressions, hairpins };
 }

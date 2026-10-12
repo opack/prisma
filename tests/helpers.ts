@@ -2,7 +2,15 @@
 const STEPS = ["C", "C", "D", "D", "E", "F", "F", "G", "G", "A", "A", "B"];
 const ALTER = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0];
 
-export type XNote = { midi?: number[]; dur: number; staff?: number; voice?: number; tie?: ("start" | "stop")[] };
+export type XNote = {
+  midi?: number[];
+  dur: number;
+  staff?: number;
+  voice?: number;
+  tie?: ("start" | "stop")[];
+  /** XML brut placé juste avant la note (directions : nuances, soufflets, textes). */
+  before?: string;
+};
 export type XMeasure = {
   notes: XNote[][]; // une liste d'événements par voix, jouées en parallèle
   time?: [number, number];
@@ -22,6 +30,7 @@ export function musicXml(measures: XMeasure[], divisions = 12): string {
     m.notes.forEach((voice, vi) => {
       if (vi) body += `<backup><duration>${m.notes[vi - 1].reduce((s, n) => s + n.dur, 0)}</duration></backup>`;
       for (const n of voice) {
+        if (n.before) body += n.before;
         const staff = `<staff>${n.staff ?? 1}</staff><voice>${n.voice ?? vi + 1}</voice>`;
         if (!n.midi?.length) {
           body += `<note><rest/><duration>${n.dur}</duration>${staff}</note>`;

@@ -66,6 +66,21 @@ export type Ending = { numbers: number[]; firstBar: number; lastBar: number; ope
 /** Indication de texte pour tout le système, placée sur une ancre (« rit. », « D.C. »…). */
 export type TextMark = { t: number; text: string };
 
+/** Nuances reconnues : écrites en gras italique, comme sur une partition. */
+export const DYNAMICS = ["ppp", "pp", "p", "mp", "mf", "f", "ff", "fff", "sf", "sfz", "sfp", "fp", "fz", "rfz"];
+
+/**
+ * Indication propre à une voix, placée sur une ancre : une nuance (« p », « mf »…) ou un
+ * texte (« cresc. », « dolce »…).
+ */
+export type Expression = { hand: Hand; t: number; text: string; kind: "dynamic" | "text" };
+
+/** Soufflet d'une voix : crescendo (« < ») ou decrescendo (« > »), de start à end (fin exclue). */
+export type Hairpin = { hand: Hand; kind: "<" | ">"; start: number; end: number };
+
+/** Soufflet écrit sur une ligne @ de voix : « <---- » (crescendo) ou « >---- » (decrescendo). */
+export const isHairpin = (t: string) => /^[<>][-|]*$/.test(t);
+
 export type Score = {
   meta: Meta;
   /** Temps du morceau, dans l'ordre. Le temps i couvre [i·TICKS_PER_BEAT, (i+1)·TICKS_PER_BEAT[. */
@@ -74,6 +89,8 @@ export type Score = {
   repeats: Repeat[];
   endings: Ending[];
   texts: TextMark[];
+  expressions: Expression[];
+  hairpins: Hairpin[];
 };
 
 /** Reprise portée par une mesure, s'il y en a une. */

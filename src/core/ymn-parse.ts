@@ -5,8 +5,8 @@
  * de comptage. Voir FORMAT.md pour la grammaire complète.
  */
 import { YmnError, parseFrontmatter } from "./frontmatter.ts";
-import { TICKS_PER_BEAT, sortNotes } from "./model.ts";
-import type { Beat, Division, Ending, Hand, Note, Repeat, Score, TextMark } from "./model.ts";
+import { DYNAMICS, TICKS_PER_BEAT, isHairpin, sortNotes } from "./model.ts";
+import type { Beat, Division, Ending, Expression, Hairpin, Hand, Note, Repeat, Score, TextMark } from "./model.ts";
 import { midiOf, parseOctaveLabel } from "./pitch.ts";
 import { DEFAULT_CELL } from "./ymn-write.ts";
 
@@ -61,8 +61,9 @@ const nextBar = (bar: string) => (/^\d+$/.test(bar) ? String(Number(bar) + 1) : 
 
 /**
  * Indications d'une ligne @ : groupes de mots séparés par au moins deux espaces
- * (« a tempo » reste un seul texte). Les signes de case « [1. » et « ] » sont toujours
- * des indications à part, même collés (« ][2. ») ou séparés par une seule espace.
+ * (« a tempo », « più f » restent un seul texte). Les signes de case « [1. » et « ] »,
+ * et les soufflets « <--- », sont toujours des indications à part, même séparés par une
+ * seule espace (ou collés, pour « ][2. »).
  */
 function markTokens(line: string) {
   const out: { col: number; text: string }[] = [];
@@ -77,7 +78,7 @@ function markTokens(line: string) {
       col += part.length;
     }
   }
-  const structural = (t: string) => t.startsWith("[") || t === "]";
+  const structural = (t: string) => t.startsWith("[") || t === "]" || isHairpin(t);
   for (const p of pieces) {
     // les barres recopiées pour se repérer sont ignorées
     const lead = p.text.length - p.text.replace(/^[|:]+/, "").length;
@@ -111,10 +112,9 @@ export function parseYmn(text: string): Score {
     }
     if (isMarkLine(l)) {
       const last = blocks[blocks.length - 1];
-      if (last && !last.lines.includes(-1)) {
-        throw new YmnError("les lignes @ sous les voix (nuances) ne sont pas encore prises en charge : place celle-ci au-dessus de la règle de comptage", i + 1);
-      }
-      pendingMarks.push(i);
+      // sous les lignes d'une main, sans ligne vide : ligne @ de cette voix (nuances, soufflets)
+      if (last && !last.lines.includes(-1) && !pendingMarks.length) last.lines.push(i);
+      else pendingMarks.push(i);
       continue;
     }
     if (isRuler(l)) {
@@ -138,6 +138,8 @@ export function parseYmn(text: string): Score {
     return repeats.get(barIndex)!;
   };
   const texts: TextMark[] = [];
+  const expressions: Expression[] = [];
+  const hairpins: Hairpin[] = [];
   const endingStarts: { numbers: number[]; bar: number }[] = [];
   const endingCloses: number[] = [];
   const timesMarks: { bar: number; times: number; line: number; col: number }[] = [];
@@ -245,14 +247,44 @@ export function parseYmn(text: string): Score {
     }
     const inSpan = (c: number) => spans.some((s) => c >= s.from && c < s.to);
 
+    // ligne @ d'une voix : nuances, textes (« cresc. », « dolce »…) et soufflets
+    const readVoiceLine = (row: string, R: number, hand: Hand) => {
+      for (const tok of markTokens(row)) {
+        const ai = anchors.findIndex((x) => x.from === tok.col);
+        if (ai < 0) throw new YmnError(`« ${tok.text} » doit commencer exactement sur une case de la règle de comptage`, R, tok.col + 1);
+        const a = anchors[ai];
+        if (isHairpin(tok.text)) {
+          // le soufflet finit avec la case qui contient son dernier caractère
+          const last = tok.col + tok.text.length - 1;
+          const next = anchors.find((x) => x.from > last);
+          const end = next ? next.t : t1;
+          const kind = tok.text[0] as Hairpin["kind"];
+          // suite d'un soufflet du système précédent
+          const prev = ai === 0 ? hairpins.find((h) => h.hand === hand && h.kind === kind && h.end === t0) : undefined;
+          if (prev) prev.end = end;
+          else hairpins.push({ hand, kind, start: a.t, end });
+        } else {
+          expressions.push({ hand, t: a.t, text: tok.text, kind: DYNAMICS.includes(tok.text) ? "dynamic" : "text" });
+        }
+      }
+    };
+
     const nextPending: Note[] = [];
     const lastOctave: Record<Hand, number | undefined> = { D: undefined, G: undefined };
+    const voiceLine: Record<Hand, boolean> = { D: false, G: false };
     for (const li of content) {
       if (seps.includes(li)) continue;
       const row = lines[li];
       const R = li + 1;
       const hand: Hand = li < handSep ? "D" : "G";
-      if (row.startsWith("@")) throw new YmnError("les lignes @ sous les voix (nuances) ne sont pas encore prises en charge", R, 1);
+      if (isMarkLine(row)) {
+        voiceLine[hand] = true;
+        readVoiceLine(row, R, hand);
+        continue;
+      }
+      if (voiceLine[hand]) {
+        throw new YmnError(`ligne de notes sous une ligne @ : les lignes @ se placent ${hand === "D" ? "juste au-dessus du trait entre les mains" : "à la fin du système"}`, R, 1);
+      }
       if (row[pipe] !== "|") throw new YmnError("le « | » de début de ligne doit être aligné sur celui de la règle", R, Math.min(row.length, pipe) + 1);
       // les barres (et leurs deux points de reprise, facultatifs) sont alignées sur la règle
       for (let c = pipe; c < row.length; c++) {
@@ -365,5 +397,7 @@ export function parseYmn(text: string): Score {
     repeats: [...repeats.values()].sort((a, b) => a.barIndex - b.barIndex),
     endings,
     texts,
+    expressions: expressions.sort((a, b) => a.t - b.t || (a.hand === b.hand ? 0 : a.hand === "D" ? -1 : 1)),
+    hairpins: hairpins.sort((a, b) => a.start - b.start || (a.hand === b.hand ? 0 : a.hand === "D" ? -1 : 1)),
   };
 }

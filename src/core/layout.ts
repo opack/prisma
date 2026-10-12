@@ -6,7 +6,7 @@
  * des millimètres pour le rendu graphique. Seules les mesures changent.
  */
 import { TICKS_PER_BEAT, beatStart, repeatOf } from "./model.ts";
-import type { Beat, Division, Ending, Hand, Note, Score } from "./model.ts";
+import type { Beat, Division, Ending, Hairpin, Hand, Note, Score } from "./model.ts";
 import { numberOf, octaveOf } from "./pitch.ts";
 
 export type Metrics = {
@@ -84,6 +84,23 @@ export type EndingSpan = {
   hook: boolean;
 };
 
+/** Indication d'une voix (nuance ou texte), sur une ancre. */
+export type VoiceMark = { anchor: number; text: string; kind: "dynamic" | "text" };
+
+/** Portion d'un soufflet visible dans un système. */
+export type HairpinSpan = {
+  kind: Hairpin["kind"];
+  /** Première et dernière ancres couvertes. */
+  fromAnchor: number;
+  toAnchor: number;
+  /** Avancement du soufflet (0 à 1) au début et à la fin de la portion : un soufflet coupé reste ouvert. */
+  from: number;
+  to: number;
+};
+
+/** Ligne @ d'une voix : sous les lignes de sa main. */
+export type Voice = { marks: VoiceMark[]; hairpins: HairpinSpan[] };
+
 export type System = {
   /** Numéro de la mesure par laquelle commence le système. */
   bar: string;
@@ -96,6 +113,7 @@ export type System = {
   left: SystemRow[];
   marks: Mark[];
   endings: EndingSpan[];
+  voices: Record<Hand, Voice>;
   /** Largeur naturelle du système, en unités. */
   width: number;
 };
@@ -154,6 +172,11 @@ function beatGrids(score: Score): BeatGrid[] {
     add(n.end, false);
   }
   for (const m of score.texts) add(m.t, false);
+  for (const e of score.expressions) add(e.t, false);
+  for (const h of score.hairpins) {
+    add(h.start, false);
+    add(h.end, false);
+  }
   return score.beats.map((b, i) => {
     const n = resolution(offsets[i]);
     const base = baseDivision(n, b.division, attacks[i]);
@@ -412,6 +435,34 @@ export function layout(score: Score, m: Metrics): System[] {
     }
     marks.sort((x, y) => markColumn({ anchors }, x) - markColumn({ anchors }, y));
 
+    const anchorAt = (t: number) => anchors.findIndex((ci) => (columns[ci] as { t: number }).t === t);
+    const lastAnchorBefore = (t: number) => {
+      let a = -1;
+      anchors.forEach((ci, i) => {
+        if ((columns[ci] as { t: number }).t < t) a = i;
+      });
+      return a;
+    };
+    const voice = (hand: Hand): Voice => ({
+      marks: score.expressions
+        .filter((e) => e.hand === hand)
+        .map((e) => ({ anchor: anchorAt(e.t), text: e.text, kind: e.kind }))
+        .filter((m) => m.anchor >= 0),
+      hairpins: score.hairpins
+        .filter((h) => h.hand === hand && h.start < t1 && h.end > t0 && h.end > h.start)
+        .map((h) => {
+          const s = Math.max(h.start, t0), e = Math.min(h.end, t1);
+          return {
+            kind: h.kind,
+            fromAnchor: anchorAt(s),
+            toAnchor: lastAnchorBefore(e),
+            from: (s - h.start) / (h.end - h.start),
+            to: (e - h.start) / (h.end - h.start),
+          };
+        })
+        .filter((h) => h.fromAnchor >= 0 && h.toAnchor >= h.fromAnchor),
+    });
+
     return {
       bar: firstBeat.bar,
       start: t0,
@@ -422,6 +473,7 @@ export function layout(score: Score, m: Metrics): System[] {
       left: toRows("G"),
       marks,
       endings,
+      voices: { D: voice("D"), G: voice("G") },
       width,
     };
   });

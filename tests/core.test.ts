@@ -392,3 +392,88 @@ describe("erreurs de saisie", () => {
     expect(notesKey(s)).toBe(`D64@0-${2 * T} G48@0-${T}`);
   });
 });
+
+describe("nuances et soufflets", () => {
+  const expr = (s: Score) => s.expressions.map((e) => `${e.hand}:${e.kind}:${e.text}@${e.t / T}`).join(" ");
+  const pins = (s: Score) => s.hairpins.map((h) => `${h.hand}${h.kind}${h.start / T}-${h.end / T}`).join(" ");
+  const piece = [
+    "m1 |1  |2  |3  |4  ||",
+    "0  |1  |3  |5  |-  ||",
+    "@   p   <------",
+    "---",
+    "-1 |1  |   |   |   ||",
+    "@   mf      >--",
+    "",
+  ].join("\n");
+
+  it("lit les lignes @ sous chaque main", () => {
+    const s = parseYmn(piece);
+    expect(expr(s)).toBe("D:dynamic:p@0 G:dynamic:mf@0");
+    // le soufflet finit avec la case qui contient son dernier caractère
+    expect(pins(s)).toBe("D<1-3 G>2-3");
+  });
+
+  it("écrit nuances et soufflets sous leur main, et les relit à l'identique", () => {
+    const s = parseYmn(piece);
+    const text = writeYmn(s);
+    const lines = text.split("\n");
+    const sep = lines.findIndex((l, i) => i > 2 && /^─/.test(l) && lines[i - 1].startsWith("@"));
+    expect(lines[sep - 1]).toMatch(/^@ +p +<-+$/);
+    expect(lines.filter((l) => l.startsWith("@")).pop()).toMatch(/^@ +mf +>-+$/);
+    const back = parseYmn(text);
+    expect(expr(back)).toBe(expr(s));
+    expect(pins(back)).toBe(pins(s));
+  });
+
+  it("garde un soufflet qui passe d'un système au suivant", () => {
+    const bars = Array.from({ length: 8 }, () => "1  |2  |3  ||").join("");
+    const notes = Array.from({ length: 8 }, () => "1  |   |   ||").join("");
+    const s = parseYmn(`m1 |${bars}\n0  |${notes}\n@   <\n---\n`);
+    s.hairpins[0].end = 20 * T; // de la mesure 1 au milieu de la mesure 7
+    const text = writeYmn(s, { width: 40 });
+    expect(text.split("\n").filter((l) => /^@ +<-*$/.test(l)).length).toBeGreaterThan(1);
+    const back = parseYmn(text);
+    expect(pins(back)).toBe("D<0-20");
+    // un soufflet coupé reste ouvert au point de coupure
+    const spans = layout(back, { width: 40, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 }).flatMap((x) => x.voices.D.hairpins);
+    expect(spans[0].from).toBe(0);
+    expect(spans[0].to).toBeGreaterThan(0);
+    expect(spans[spans.length - 1].to).toBe(1);
+  });
+
+  it("garde « più f » comme un seul texte", () => {
+    const s = parseYmn("m1 |1  |2  ||\n0  |1  |   ||\n@   più f\n---\n");
+    expect(expr(s)).toBe("D:text:più f@0");
+  });
+
+  it("refuse une ligne de notes sous la ligne @ de sa main", () => {
+    expect(() => parseYmn("m1 |1  ||\n0  |1  ||\n@   p\n   |3  ||\n---\n")).toThrow(/sous une ligne @/);
+  });
+
+  it("refuse une nuance qui ne commence pas sur une case", () => {
+    expect(() => parseYmn("m1 |1  |2  ||\n0  |1  |   ||\n@    p\n---\n")).toThrow(/doit commencer exactement sur une case/);
+  });
+
+  it("importe nuances, soufflets et textes du MusicXML", () => {
+    const dir = (staff: number, inner: string) => `<direction><direction-type>${inner}</direction-type><staff>${staff}</staff></direction>`;
+    const xml = musicXml([
+      {
+        notes: [
+          [
+            { midi: [C4], dur: q, before: dir(1, "<dynamics><p/></dynamics>") + dir(1, "<words>rit.</words>") },
+            { midi: [C4 + 2], dur: q, before: dir(1, '<wedge type="crescendo"/>') },
+            { midi: [C4 + 4], dur: q },
+            { midi: [C4 + 5], dur: q, before: dir(1, '<wedge type="stop"/>') + dir(1, "<dynamics><f/></dynamics>") },
+          ],
+          [{ midi: [48], dur: 4 * q, staff: 2, before: dir(2, "<words>dolce</words>") }],
+        ],
+      },
+    ]);
+    const s = importMusicXml(xml);
+    expect(s.texts).toEqual([{ t: 0, text: "rit." }]);
+    expect(expr(s)).toBe("D:dynamic:p@0 G:text:dolce@0 D:dynamic:f@3");
+    expect(pins(s)).toBe("D<1-3");
+    roundTrip(s);
+    expect(expr(parseYmn(writeYmn(s)))).toBe("D:dynamic:p@0 G:text:dolce@0 D:dynamic:f@3");
+  });
+});

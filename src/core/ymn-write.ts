@@ -1,7 +1,8 @@
 /** Écriture d'un morceau au format texte .ymn, pour une largeur donnée en caractères. */
 import { writeFrontmatter } from "./frontmatter.ts";
 import { layout } from "./layout.ts";
-import type { Column, Mark, System } from "./layout.ts";
+import type { Column, Mark, System, Voice } from "./layout.ts";
+import { isHairpin } from "./model.ts";
 import type { Score } from "./model.ts";
 import { octaveLabel } from "./pitch.ts";
 
@@ -20,26 +21,33 @@ export function separatorText(c: Exclude<Column, { kind: "anchor" }>): string {
   return (c.endRepeat ? ":" : "") + "||" + (c.startRepeat ? ":" : "");
 }
 
+type Item = { col: number; text: string };
+
+/** Indication toujours lue à part, même à une espace de sa voisine. */
+const solid = (t: string) => t.startsWith("[") || t === "]" || isHairpin(t);
+
 /**
- * Place les indications de la ligne @ : chacune commence sur la colonne de son ancre, ou
- * sur celle de sa barre de mesure pour « [1. » et « ] ».
- * Quand deux indications se chevaucheraient, la seconde passe sur une ligne @ de plus.
+ * Range des indications sur des lignes @ : chacune commence à sa colonne. Deux textes
+ * voisins sont séparés par au moins deux espaces (une seule les réunirait en un même
+ * texte), une espace suffit à côté d'un signe de case ou d'un soufflet, et « ][2. »
+ * s'écrivent collés sur une même barre. Sinon, l'indication passe sur une ligne de plus.
  */
-function markLines(sys: System, colOf: (m: Mark) => number): string[] {
+function stackLines(items: Item[]): string[] {
   const lines: { text: string[]; end: number; last: string }[] = [];
-  const marks = [...sys.marks].sort((a, b) => colOf(a) - colOf(b));
-  for (const m of marks) {
-    const col = colOf(m);
-    // au moins une espace entre deux indications, sauf « ][2. » sur une même barre
-    const fits = (l: { end: number; last: string }) => l.end < col || (l.end === col && l.last === "]" && m.text.startsWith("["));
+  for (const m of [...items].sort((a, b) => a.col - b.col)) {
+    const fits = (l: { end: number; last: string }) => {
+      if (!l.last) return true;
+      if (l.end === m.col) return l.last === "]" && m.text.startsWith("[");
+      return m.col >= l.end + (solid(l.last) || solid(m.text) ? 1 : 2);
+    };
     let line = lines.find(fits);
     if (!line) {
       line = { text: [], end: -1, last: "" };
       lines.push(line);
     }
-    while (line.text.length < col) line.text.push(" ");
+    while (line.text.length < m.col) line.text.push(" ");
     line.text.push(...m.text);
-    line.end = col + m.text.length;
+    line.end = m.col + m.text.length;
     line.last = m.text;
   }
   return lines.map((l) => ("@" + l.text.join("").slice(1)).trimEnd());
@@ -73,7 +81,27 @@ export function renderSystemText(sys: System, cell: number, prefix: number): str
     const t = sepText(m.column!);
     return columnCol[m.column!] + (m.kind === "endingClose" ? t.indexOf("|") : t.lastIndexOf("|"));
   };
-  return [...markLines(sys, colOf), ruler, rule(ruler), ...rows(sys.right), rule(ruler), ...rows(sys.left)];
+  // lignes @ d'une voix : nuances et textes sur leur ancre ; un soufflet couvre ses cases
+  // (son dernier caractère tombe dans la dernière case, en laissant une espace avant la suivante)
+  const voiceLines = (v: Voice) =>
+    stackLines([
+      ...v.marks.map((m) => ({ col: anchorCol[m.anchor], text: m.text })),
+      ...v.hairpins.map((h) => {
+        const col = anchorCol[h.fromAnchor];
+        const last = Math.max(col, anchorCol[h.toAnchor] + cell - 2);
+        return { col, text: h.kind + "-".repeat(last - col) };
+      }),
+    ]);
+  return [
+    ...stackLines(sys.marks.map((m) => ({ col: colOf(m), text: m.text }))),
+    ruler,
+    rule(ruler),
+    ...rows(sys.right),
+    ...voiceLines(sys.voices.D),
+    rule(ruler),
+    ...rows(sys.left),
+    ...voiceLines(sys.voices.G),
+  ];
 }
 
 export function prefixWidth(score: Score): number {

@@ -28,9 +28,9 @@ m12|1  :  |2  |3  :  :  ||1  |2  |
 
 1. **La règle de comptage** commence par `m` suivi du numéro de la première mesure. Chaque temps est encadré par des `|`, et une fin de mesure s'écrit `||`.
 2. **Un trait sous la règle**, facultatif.
-3. **Les lignes de la main droite.**
+3. **Les lignes de la main droite**, suivies si besoin de ses lignes `@` de nuances.
 4. **Le trait entre les mains**, obligatoire, même quand une main ne joue pas.
-5. **Les lignes de la main gauche.**
+5. **Les lignes de la main gauche**, suivies si besoin de ses lignes `@` de nuances.
 
 Les traits s'écrivent avec `─`, `-`, `=`, `+` ou `┼`, sans espace.
 
@@ -94,7 +94,7 @@ Une ou plusieurs lignes facultatives, **au-dessus** de la règle de comptage, qu
 | `[1.` `[2.` `[1.2.` | le **dernier** `|` de la barre qui ouvre la mesure | Ouvre une case de reprise (« 1.2. » : jouée aux passages 1 et 2). |
 | `]` | le **premier** `|` de la barre qui ferme la mesure | Ferme la case en cours à cette barre. |
 | `3×` (ou `3x`) | une case de la mesure qui se termine par `:||` | Le passage se joue 3 fois. |
-| autre texte | une case | Indication pour tout le système : `rit.`, `a tempo`, `D.C.`, `Fine`… |
+| autre texte | une case | Indication pour tout le système : `rit.`, `a tempo`, `D.C.`, `Fine`… (les nuances d'une main vont sous ses lignes, voir plus bas) |
 
 Sur une barre `||`, une case qui se ferme et la suivante qui s'ouvre s'écrivent donc à la suite : `][2.`. Pour la première mesure d'un système, `[` se place sur le `|` de la colonne de gauche (ou sur celui de `|:` quand le système commence par une reprise).
 
@@ -109,9 +109,34 @@ m1 ||:1  |2  |3  |4  ||1  |2  |3  |4  ||1  |2  |3  |4  :||1  |2  |3  |4  ||1  |2
 -1 ||:1  |-  |-  |-  ||8  |-  |-  |-  ||8  |-  |-  |-  :||1  |-  |-  |-  ||1  |-  |-  |-  ||
 ```
 
+## Nuances et soufflets : lignes `@` sous chaque main
+
+Une ou plusieurs lignes `@` placées **sous les lignes d'une main** portent ses nuances : juste au-dessus du trait entre les mains pour la main droite, à la fin du système pour la main gauche. Aucune ligne de notes de cette main ne peut les suivre. Comme au-dessus de la règle, chaque indication commence exactement sur une case, et deux indications sont séparées par au moins deux espaces.
+
+| Indication | Sens |
+|---|---|
+| `ppp` `pp` `p` `mp` `mf` `f` `ff` `fff` `sf` `sfz` `sfp` `fp` `fz` `rfz` | Nuance, gravée en gras italique. |
+| `<----` | Crescendo, de sa première case à la case qui contient son dernier caractère. |
+| `>----` | Decrescendo, de même. |
+| autre texte | Indication pour cette main : `cresc.`, `dim.`, `dolce`, `sempre legato`, `più f`… |
+
+Un soufflet est toujours lu à part : une seule espace suffit entre lui et sa voisine. Il peut traverser les barres (avec des `-` ou des `|`). Coupé par un changement de système, il se réécrit au début du système suivant et se lit comme un seul soufflet ; la gravure le laisse ouvert au point de coupure.
+
+```
+m1 |1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||
+───┼───┼───┼───┼┼───┼───┼───┼┼───┼───┼───┼┼───┼───┼───┼┼
+0  |5  |7  |8  ||10 |8  |7  ||5  |-  |3  ||1  |-  |-  ||
+@   p   <------------------   mf  >------------------
+───┼───┼───┼───┼┼───┼───┼───┼┼───┼───┼───┼┼───┼───┼───┼┼
+-1 |1  |-  |-  ||8  |-  |-  ||6  |-  |-  ||1  |-  |-  ||
+@   pp           sempre legato
+```
+
+À l'import MusicXML, nuances, soufflets et textes suivent leur portée ; les indications de tempo et de structure (`rit.`, `a tempo`, `D.C.`, `Fine`, `Coda`, `Andante`…) vont sur la ligne `@` au-dessus de la règle. Chaque indication est calée sur l'attaque ou le début de temps le plus proche.
+
 ## Hors format pour l'instant
 
-Nuances et indications propres à une voix (ligne `@` sous chaque voix), pédale (ligne `Ped`), ornements, articulations.
+Pédale (ligne `Ped`), ornements, articulations.
 
 ## Outil en ligne de commande
 

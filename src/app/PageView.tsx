@@ -1,5 +1,5 @@
 import { octaveOffset } from "../core/index.ts";
-import type { Meta, SystemRow } from "../core/index.ts";
+import type { Meta, SystemRow, Voice } from "../core/index.ts";
 import { G, PAGE } from "./engrave.ts";
 import type { Page, PlacedSystem } from "./engrave.ts";
 import type { OctavePosition, OctaveStyle, RenderOptions } from "./options.ts";
@@ -20,6 +20,8 @@ const TAB_TEXT = "#4a4f54";
  */
 
 const FONT = `"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif`;
+/** Nuances en gras italique à empattements, comme sur une partition. */
+const DYNAMIC_FONT = `Georgia, "Times New Roman", serif`;
 
 /**
  * Numéro d'octave : « 0 » pour l'octave du do central, sinon une flèche dessinée
@@ -234,6 +236,52 @@ function Marks({ ps }: { ps: PlacedSystem }) {
   );
 }
 
+/**
+ * Bande des nuances d'une main : nuances (p, mf…), textes (cresc., dolce…) et soufflets.
+ * Un soufflet coupé par un changement de système garde son ouverture au point de coupure.
+ */
+function VoiceBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: number }) {
+  const { sys, xs, ws } = ps;
+  const ax = (a: number) => xs[sys.anchors[a]];
+  const aEnd = (a: number) => xs[sys.anchors[a]] + ws[sys.anchors[a]];
+  const cy = top + G.voiceH / 2;
+  const base = top + G.voiceH * 0.7;
+  const open = 0.95; // demi-ouverture maximale d'un soufflet
+  // halo blanc : le texte reste lisible quand il traverse une séparation de temps
+  const halo = { stroke: "#fff", strokeWidth: 0.6, paintOrder: "stroke" as const, strokeLinejoin: "round" as const };
+  return (
+    <g>
+      {voice.hairpins.map((h, i) => {
+        const x1 = ax(h.fromAnchor) + (h.from === 0 ? 0.5 : 0);
+        const x2 = aEnd(h.toAnchor) - (h.to === 1 ? 0.6 : 0);
+        const size = (f: number) => (h.kind === "<" ? f : 1 - f) * open;
+        const a = size(h.from), b = size(h.to);
+        return (
+          <path
+            key={"h" + i}
+            d={`M ${x2} ${cy - b} L ${x1} ${cy - a} ${a === 0 ? "" : `M ${x1} ${cy + a}`} L ${x2} ${cy + b}`}
+            fill="none"
+            stroke={INK}
+            strokeWidth={0.28}
+            strokeLinejoin="round"
+          />
+        );
+      })}
+      {voice.marks.map((m, i) =>
+        m.kind === "dynamic" ? (
+          <text key={"m" + i} x={ax(m.anchor) + 0.9} y={base} fontFamily={DYNAMIC_FONT} fontSize={3.6} fontWeight={700} fontStyle="italic" fill={INK} {...halo}>
+            {m.text}
+          </text>
+        ) : (
+          <text key={"m" + i} x={ax(m.anchor) + 0.7} y={base} fontSize={2.8} fontStyle="italic" fill={INK} {...halo}>
+            {m.text}
+          </text>
+        ),
+      )}
+    </g>
+  );
+}
+
 function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions }) {
   const { sys, xs, ws } = ps;
   const y = ps.y + ps.textBand + ps.endingBand; // haut de la règle de comptage
@@ -243,9 +291,11 @@ function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions 
   const rulerBase = y + G.rulerH * 0.72;
   const top = y;
   const rhTop = y + G.rulerH;
-  const handY = rhTop + sys.right.length * G.rowH + G.handGap;
+  const rhVoice = rhTop + sys.right.length * G.rowH; // bande des nuances de la main droite
+  const handY = rhVoice + ps.voiceBand.D + G.handGap;
   const lhTop = handY + G.handGap;
-  const bottom = lhTop + sys.left.length * G.rowH;
+  const lhVoice = lhTop + sys.left.length * G.rowH;
+  const bottom = lhVoice + ps.voiceBand.G;
 
   // bandes alternées par groupe d'octave, dans chaque main
   const bands = (rows: SystemRow[]) => {
@@ -312,6 +362,8 @@ function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions 
         return <BarLine key={ci} x={xs[ci]} w={ws[ci]} col={c} top={top} bottom={bottom} sections={sections} />;
       })}
 
+      {ps.voiceBand.D > 0 && <VoiceBand ps={ps} voice={sys.voices.D} top={rhVoice} />}
+      {ps.voiceBand.G > 0 && <VoiceBand ps={ps} voice={sys.voices.G} top={lhVoice} />}
       <Marks ps={ps} />
     </g>
   );
