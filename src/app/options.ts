@@ -1,6 +1,7 @@
 /** Options de rendu, choisies dans le panneau « Options » et gardées dans le navigateur. */
 export type OctaveStyle = "arrow" | "sign" | "triangle";
 export type OctavePosition = "top" | "center";
+export type NotePosition = "top" | "center";
 
 export type RenderOptions = {
   /** Marque des octaves : flèche (↑1), signe (+1) ou triangle (▲1). */
@@ -9,9 +10,11 @@ export type RenderOptions = {
   octavePosition: OctavePosition;
   /** Regraver automatiquement peu après la dernière frappe. */
   autoEngrave: boolean;
+  /** Place des notes dans un couloir d'octave : en haut, ou chaque bloc centré verticalement. */
+  notePosition: NotePosition;
 };
 
-export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false };
+export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top" };
 
 export const OCTAVE_STYLES: { value: OctaveStyle; label: string; sample: string }[] = [
   { value: "arrow", label: "Flèches", sample: "↑1  0  ↓1" },
@@ -24,6 +27,11 @@ export const OCTAVE_POSITIONS: { value: OctavePosition; label: string }[] = [
   { value: "center", label: "Au centre" },
 ];
 
+export const NOTE_POSITIONS: { value: NotePosition; label: string }[] = [
+  { value: "top", label: "En haut" },
+  { value: "center", label: "Centrées" },
+];
+
 const KEY = "ymn:options";
 
 export function loadOptions(): RenderOptions {
@@ -34,7 +42,8 @@ export function loadOptions(): RenderOptions {
       ? raw.octavePosition
       : DEFAULT_OPTIONS.octavePosition;
     const autoEngrave = typeof raw.autoEngrave === "boolean" ? raw.autoEngrave : DEFAULT_OPTIONS.autoEngrave;
-    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave };
+    const notePosition = NOTE_POSITIONS.some((p) => p.value === raw.notePosition) ? raw.notePosition : DEFAULT_OPTIONS.notePosition;
+    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition };
   } catch {
     return DEFAULT_OPTIONS;
   }

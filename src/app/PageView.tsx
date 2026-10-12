@@ -110,31 +110,32 @@ function OctaveTabs({ rows, top, style, position }: { rows: SystemRow[]; top: nu
   );
 }
 
-function Row({ ps, row, y, band }: { ps: PlacedSystem; row: SystemRow; y: number; band: boolean }) {
+function Row({ ps, row, y, centered }: { ps: PlacedSystem; row: SystemRow; y: number; centered: boolean }) {
   const { sys, xs, ws } = ps;
   const x0 = PAGE.marginX;
   const right = xs[xs.length - 1] + ws[ws.length - 1];
   const base = y + G.rowH * 0.74;
   return (
     <g>
-      {band && <rect x={x0 + G.prefix} y={y} width={right - x0 - G.prefix} height={G.rowH} fill={BAND} />}
       {row.cells.map((c, a) => {
         if (!c) return null;
+        // option « notes centrées » : le bloc de notes est centré dans son couloir
+        const dy = centered ? row.center[a] * G.rowH : 0;
         const ci = sys.anchors[a];
         const x = xs[ci];
         const w = ws[ci];
         if (c === "-") {
-          return <line key={a} x1={x + w * 0.22} x2={x + w * 0.62} y1={y + G.rowH / 2} y2={y + G.rowH / 2} stroke={INK} strokeWidth={0.32} />;
+          return <line key={a} x1={x + w * 0.22} x2={x + w * 0.62} y1={y + dy + G.rowH / 2} y2={y + dy + G.rowH / 2} stroke={INK} strokeWidth={0.32} />;
         }
         if (c.startsWith("-")) {
           return (
-            <text key={a} x={x + 0.5} y={base} fontSize={3.1} fill={GREY}>
+            <text key={a} x={x + 0.5} y={base + dy} fontSize={3.1} fill={GREY}>
               {"–" + c.slice(1)}
             </text>
           );
         }
         return (
-          <text key={a} x={x + 0.5} y={base} fontSize={3.3} fontWeight={600} fill={INK}>
+          <text key={a} x={x + 0.5} y={base + dy} fontSize={3.3} fontWeight={600} fill={INK}>
             {c}
           </text>
         );
@@ -143,8 +144,90 @@ function Row({ ps, row, y, band }: { ps: PlacedSystem; row: SystemRow; y: number
   );
 }
 
+type BarCol = Extract<PlacedSystem["sys"]["columns"][number], { kind: "barSep" }>;
+
+/**
+ * Barre de mesure, avec ses signes de reprise : « :|| » (points, trait fin, trait épais),
+ * « ||: » (trait épais, trait fin, points). Les points sont placés au milieu de chaque main.
+ */
+function BarLine({ x, w, col, top, bottom, sections }: { x: number; w: number; col: BarCol; top: number; bottom: number; sections: number[][] }) {
+  const thin = (lx: number, k: string) => <line key={k} x1={lx} x2={lx} y1={top} y2={bottom} stroke={INK} strokeWidth={0.22} />;
+  const thick = (lx: number, k: string) => <line key={k} x1={lx} x2={lx} y1={top} y2={bottom} stroke={INK} strokeWidth={0.6} />;
+  const dots = (dx: number, k: string) =>
+    sections.map(([a, b], i) => {
+      const mid = (a + b) / 2;
+      return (
+        <g key={k + i}>
+          <circle cx={dx} cy={mid - 0.95} r={0.38} fill={INK} />
+          <circle cx={dx} cy={mid + 0.95} r={0.38} fill={INK} />
+        </g>
+      );
+    });
+  if (col.lead) return <g>{thin(x + 0.55, "t")}{dots(x + w - 0.75, "d")}</g>;
+  if (!col.endRepeat && !col.startRepeat) {
+    return <line x1={x + w / 2} x2={x + w / 2} y1={top} y2={bottom} stroke={INK} strokeWidth={0.45} />;
+  }
+  if (col.endRepeat && col.startRepeat) {
+    const m = x + w / 2;
+    return <g>{dots(x + 0.6, "a")}{thin(m - 0.75, "t1")}{thick(m, "T")}{thin(m + 0.75, "t2")}{dots(x + w - 0.6, "b")}</g>;
+  }
+  if (col.endRepeat) return <g>{dots(x + 0.6, "a")}{thin(x + w - 1.25, "t")}{thick(x + w - 0.45, "T")}</g>;
+  return <g>{thick(x + 0.45, "T")}{thin(x + 1.25, "t")}{dots(x + w - 0.6, "b")}</g>;
+}
+
+/** Bandes au-dessus de la règle : textes (rit., D.C.…), puis crochets des cases et « 3× ». */
+function Marks({ ps }: { ps: PlacedSystem }) {
+  const { sys, xs, ws } = ps;
+  const left = PAGE.marginX + G.prefix;
+  const right = xs[xs.length - 1] + ws[ws.length - 1];
+  const ax = (a: number) => xs[sys.anchors[a]];
+  const aEnd = (a: number) => xs[sys.anchors[a]] + ws[sys.anchors[a]];
+  const textY = ps.y + G.markH * 0.72;
+  const by = ps.y + ps.textBand + 0.9; // trait horizontal des crochets
+  const hookBottom = ps.y + ps.textBand + ps.endingBand;
+  return (
+    <g>
+      {sys.marks
+        .filter((m) => m.kind === "text")
+        .map((m, i) => (
+          <text key={"t" + i} x={ax(m.anchor) + 0.5} y={textY} fontSize={2.9} fontStyle="italic" fill={INK}>
+            {m.text}
+          </text>
+        ))}
+      {sys.endings.map((e, i) => {
+        const x1 = e.opens ? ax(e.fromAnchor) + 0.3 : left;
+        const x2 = e.closes ? aEnd(e.toAnchor) - 0.3 : right;
+        const label = e.ending.numbers.map((n) => n + ".").join(" ");
+        return (
+          <g key={"e" + i}>
+            <path
+              d={`${e.opens ? `M ${x1} ${hookBottom} L ${x1} ${by}` : `M ${x1} ${by}`} L ${x2} ${by}${e.closedByRepeat ? ` L ${x2} ${hookBottom}` : ""}`}
+              fill="none"
+              stroke={INK}
+              strokeWidth={0.3}
+            />
+            {e.opens && (
+              <text x={x1 + 0.8} y={by + 2.6} fontSize={2.6} fontWeight={700} fill={INK}>
+                {label}
+              </text>
+            )}
+          </g>
+        );
+      })}
+      {sys.marks
+        .filter((m) => m.kind === "times")
+        .map((m, i) => (
+          <text key={"x" + i} x={aEnd(m.anchor) - 0.4} y={by + 2.6} fontSize={2.6} fontWeight={700} textAnchor="end" fill={INK}>
+            {m.text}
+          </text>
+        ))}
+    </g>
+  );
+}
+
 function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions }) {
-  const { sys, xs, ws, y } = ps;
+  const { sys, xs, ws } = ps;
+  const y = ps.y + ps.textBand + ps.endingBand; // haut de la règle de comptage
   const x0 = PAGE.marginX;
   const left = x0 + G.prefix;
   const right = xs[xs.length - 1] + ws[ws.length - 1];
@@ -194,22 +277,33 @@ function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions 
 
       <OctaveTabs rows={sys.right} top={rhTop} style={options.octaveStyle} position={options.octavePosition} />
       <OctaveTabs rows={sys.left} top={lhTop} style={options.octaveStyle} position={options.octavePosition} />
+      {/* fonds des couloirs d'abord : les notes, dessinées ensuite, ne sont jamais recouvertes */}
+      {rb.map((b, i) => b && <rect key={"bd" + i} x={left} y={rhTop + i * G.rowH} width={right - left} height={G.rowH} fill={BAND} />)}
+      {lb.map((b, i) => b && <rect key={"bg" + i} x={left} y={lhTop + i * G.rowH} width={right - left} height={G.rowH} fill={BAND} />)}
       {sys.right.map((r, i) => (
-        <Row key={"d" + i} ps={ps} row={r} y={rhTop + i * G.rowH} band={rb[i]} />
+        <Row key={"d" + i} ps={ps} row={r} y={rhTop + i * G.rowH} centered={options.notePosition === "center"} />
       ))}
       <line x1={left} x2={right} y1={handY} y2={handY} stroke={INK} strokeWidth={0.5} />
       {sys.left.map((r, i) => (
-        <Row key={"g" + i} ps={ps} row={r} y={lhTop + i * G.rowH} band={lb[i]} />
+        <Row key={"g" + i} ps={ps} row={r} y={lhTop + i * G.rowH} centered={options.notePosition === "center"} />
       ))}
 
-      {/* séparations verticales : temps fins, mesures épaisses */}
+      {/* séparations verticales : temps fins, mesures épaisses, reprises */}
       <line x1={left} x2={left} y1={top} y2={bottom} stroke={INK} strokeWidth={0.45} />
       {sys.columns.map((c, ci) => {
         if (c.kind === "anchor") return null;
-        const x = xs[ci] + ws[ci] / 2;
-        const bar = c.kind === "barSep";
-        return <line key={ci} x1={x} x2={x} y1={top} y2={bottom} stroke={bar ? INK : LIGHT} strokeWidth={bar ? 0.45 : 0.22} />;
+        if (c.kind === "beatSep") {
+          const x = xs[ci] + ws[ci] / 2;
+          return <line key={ci} x1={x} x2={x} y1={top} y2={bottom} stroke={LIGHT} strokeWidth={0.22} />;
+        }
+        const sections = [
+          sys.right.length ? [rhTop, rhTop + sys.right.length * G.rowH] : null,
+          sys.left.length ? [lhTop, lhTop + sys.left.length * G.rowH] : null,
+        ].filter(Boolean) as number[][];
+        return <BarLine key={ci} x={xs[ci]} w={ws[ci]} col={c} top={top} bottom={bottom} sections={sections} />;
       })}
+
+      <Marks ps={ps} />
     </g>
   );
 }

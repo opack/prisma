@@ -2,14 +2,14 @@
  * Import MusicXML (format « score-partwise ») vers le modèle.
  *
  * - Première partie uniquement. Portée 1 = main droite, portées 2 et suivantes = main gauche.
- * - Reprises et cases 1/2 déroulées. Les numéros de mesure d'origine sont conservés.
+ * - Reprises et cases 1/2 conservées telles qu'écrites (barres de reprise, cases, nombre de passages).
  * - Mesures composées (6/8, 9/8, 12/8) comptées en noires pointées, découpage ternaire.
  * - Anacrouse : la première mesure incomplète commence au temps voulu (ex. temps 3 en 3/4).
  * - Liaisons de tenue fusionnées. Petites notes ignorées.
  */
 import { XMLParser } from "fast-xml-parser";
 import { TICKS_PER_BEAT, sortNotes } from "./model.ts";
-import type { Beat, Division, Hand, Meta, Note, Score } from "./model.ts";
+import type { Beat, Division, Ending, Hand, Meta, Note, Repeat, Score } from "./model.ts";
 
 type XNode = Record<string, any>;
 const parser = new XMLParser({ preserveOrder: true, ignoreAttributes: false, attributeNamePrefix: "" });
@@ -200,11 +200,26 @@ export function importMusicXml(xml: string, fileName?: string): Score {
   const raw: (Note & { tieStart: boolean; tieStop: boolean })[] = [];
   const EPS = 1e-6;
 
-  // Les reprises étant déroulées, les mesures sont renumérotées dans l'ordre de lecture :
-  // 0 pour une anacrouse, puis 1, 2, 3…
+  // Mesures numérotées dans l'ordre d'écriture : 0 pour une anacrouse, puis 1, 2, 3…
   let barNumber = 0;
-  unfold(measures).forEach((mi, barIndex) => {
-    const m = measures[mi];
+  const repeats: Repeat[] = [];
+  const endings: Ending[] = [];
+  measures.forEach((m, barIndex) => {
+    if (m.startRepeat || m.endRepeat) {
+      const r: Repeat = { barIndex };
+      if (m.startRepeat) r.start = true;
+      if (m.endRepeat) {
+        r.end = true;
+        if (m.times !== 2) r.times = m.times;
+      }
+      repeats.push(r);
+    }
+    // les mesures d'une même case partagent le même tableau de numéros
+    if (m.endings) {
+      const prev = endings[endings.length - 1];
+      if (prev && prev.lastBar === barIndex - 1 && measures[barIndex - 1].endings === m.endings) prev.lastBar = barIndex;
+      else endings.push({ numbers: [...m.endings], firstBar: barIndex, lastBar: barIndex });
+    }
     const p = pulse(m.beats, m.beatType);
     const nominal = p.count * p.quarters;
     const length = m.length > EPS ? Math.min(m.length, nominal) : nominal;
@@ -260,5 +275,5 @@ export function importMusicXml(xml: string, fileName?: string): Score {
     }
     notes.push({ hand: n.hand, midi: n.midi, start: n.start, end: n.end });
   }
-  return { meta, beats, notes: sortNotes(notes) };
+  return { meta, beats, notes: sortNotes(notes), repeats, endings, texts: [] };
 }

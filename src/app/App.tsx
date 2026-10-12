@@ -4,7 +4,7 @@ import type { Score } from "../core/index.ts";
 import { engrave } from "./engrave.ts";
 import { PageView } from "./PageView.tsx";
 import { SAMPLE } from "./sample.ts";
-import { OCTAVE_POSITIONS, OCTAVE_STYLES, loadOptions, saveOptions } from "./options.ts";
+import { NOTE_POSITIONS, OCTAVE_POSITIONS, OCTAVE_STYLES, loadOptions, saveOptions } from "./options.ts";
 import type { RenderOptions } from "./options.ts";
 import { canWriteInPlace, download, pickFile, pickSaveTarget, writeFile } from "./files.ts";
 
@@ -249,6 +249,22 @@ export function App() {
                 {p.label}
               </label>
             ))}
+          </fieldset>
+          <fieldset>
+            <legend>Notes</legend>
+            {NOTE_POSITIONS.map((p) => (
+              <label key={p.value}>
+                <input
+                  type="radio"
+                  name="notePosition"
+                  id={"notes-" + p.value}
+                  checked={options.notePosition === p.value}
+                  onChange={() => setOptions({ notePosition: p.value })}
+                />
+                {p.label}
+              </label>
+            ))}
+            <span className="sample">dans un couloir d'octave de plusieurs lignes</span>
           </fieldset>
           <fieldset>
             <legend>Gravure</legend>

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { TICKS_PER_BEAT as T, importMusicXml, parseYmn, writeYmn } from "../src/core/index.ts";
+import { TICKS_PER_BEAT as T, importMusicXml, layout, parseYmn, writeYmn } from "../src/core/index.ts";
 import type { Score } from "../src/core/index.ts";
 import { unfold } from "../src/core/musicxml.ts";
 import { musicXml, q } from "./helpers.ts";
@@ -112,6 +112,24 @@ describe("règles du format", () => {
     expect(text).toMatch(/^m1 \|3 /m); // le second système reprend la mesure 1 au temps 3
   });
 
+  it("met une note seule sur la ligne du haut de son couloir, même si un accord suit", () => {
+    // do5 seul, puis l'accord do5-mi5-sol5 : l'ancien tri par hauteur moyenne
+    // plaçait le do5 seul sur la ligne du milieu
+    const xml = musicXml([{ notes: [[{ midi: [72], dur: 4 * q }]] }, { notes: [[{ midi: [72, 76, 79], dur: 4 * q }]] }]);
+    const { text } = roundTrip(importMusicXml(xml));
+    const rows = text.split("\n").filter((l) => /^(\+1| ) *\|/.test(l) && !l.startsWith("m"));
+    expect(rows[0]).toMatch(/^\+1 \|1 /);
+    expect(rows.map((r) => r.slice(-15))).toEqual(["|-  |-  ||8  |-  |-  |-  ||".slice(-15), "|   |   ||5  |-  |-  |-  ||".slice(-15), "|   |   ||1  |-  |-  |-  ||".slice(-15)]);
+  });
+
+  it("calcule le décalage qui centre un bloc dans son couloir", () => {
+    const xml = musicXml([{ notes: [[{ midi: [72], dur: 4 * q }]] }, { notes: [[{ midi: [72, 76, 79], dur: 4 * q }]] }]);
+    const [sys] = layout(importMusicXml(xml), { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 });
+    // couloir de 3 lignes : la note seule (mesure 1) descend d'une ligne, l'accord (mesure 2) ne bouge pas
+    expect(sys.right[0].center[0]).toBe(1);
+    expect(sys.right[0].center[4]).toBe(0);
+  });
+
   it("place les accords d'une même octave sur plusieurs lignes", () => {
     const xml = musicXml([{ notes: [[{ midi: [60, 64, 67], dur: 4 * q }]] }]);
     const { text } = roundTrip(importMusicXml(xml));
@@ -132,16 +150,101 @@ describe("reprises", () => {
     expect(unfold(ms)).toEqual([0, 1, 2, 0, 1, 3, 4]);
   });
 
-  it("lit les barres de reprise du MusicXML", () => {
-    const n = (p: number) => ({ notes: [[{ midi: [p], dur: 4 * q }]] });
+  const n = (p: number) => ({ notes: [[{ midi: [p], dur: 4 * q }]] });
+
+  it("garde les reprises et les cases du MusicXML telles qu'écrites", () => {
     const xml = musicXml([
       n(60),
       { ...n(62), barlineLeft: `<ending number="1" type="start"/>`, barline: `<ending number="1" type="stop"/><repeat direction="backward"/>` },
       { ...n(64), barlineLeft: `<ending number="2" type="start"/>`, barline: `<ending number="2" type="stop"/>` },
     ]);
     const score = importMusicXml(xml);
-    expect(score.notes.map((x) => x.midi)).toEqual([60, 62, 60, 64]);
-    expect(beatsKey(score).split(" ").filter((b) => b.endsWith(".1"))).toEqual(["1.1", "2.1", "3.1", "4.1"]);
+    expect(score.notes.map((x) => x.midi)).toEqual([60, 62, 64]);
+    expect(score.repeats).toEqual([{ barIndex: 1, end: true }]);
+    expect(score.endings).toEqual([
+      { numbers: [1], firstBar: 1, lastBar: 1 },
+      { numbers: [2], firstBar: 2, lastBar: 2 },
+    ]);
+    const { text } = roundTrip(score);
+    expect(text).toContain(":||");
+    expect(text).toMatch(/^@ +\[1\. +\[2\. +\]$/m);
+  });
+
+  it("écrit ||: :|| et :||: sur la règle et sur chaque ligne de notes", () => {
+    const xml = musicXml([
+      n(60),
+      { ...n(62), barlineLeft: `<repeat direction="forward"/>`, barline: `<repeat direction="backward"/>` },
+      { ...n(64), barlineLeft: `<repeat direction="forward"/>`, barline: `<repeat direction="backward"/>` },
+      n(65),
+    ]);
+    const score = importMusicXml(xml);
+    expect(score.repeats).toEqual([
+      { barIndex: 1, start: true, end: true },
+      { barIndex: 2, start: true, end: true },
+    ]);
+    const { text } = roundTrip(score);
+    const ruler = text.split("\n").find((l) => l.startsWith("m1"))!;
+    expect(ruler).toMatch(/\|\|:1 .*:\|\|:1 .*:\|\|1 /);
+    const row = text.split("\n").find((l) => l.startsWith("0 "))!;
+    expect(row.replace(/[^|:]/g, "")).toBe(ruler.replace(/[^|:]/g, ""));
+  });
+
+  it("met « ||: » en tête du système suivant quand la reprise commence après un saut de ligne", () => {
+    const xml = musicXml([n(60), n(62), { ...n(64), barlineLeft: `<repeat direction="forward"/>`, barline: `<repeat direction="backward"/>` }]);
+    const { text } = roundTrip(importMusicXml(xml), 30);
+    expect(text).toMatch(/^m3 \|\|:1 /m);
+  });
+
+  it("note le nombre de passages « 3× »", () => {
+    const xml = musicXml([{ ...n(60), barlineLeft: `<repeat direction="forward"/>`, barline: `<repeat direction="backward" times="3"/>` }]);
+    const score = importMusicXml(xml);
+    expect(score.repeats[0].times).toBe(3);
+    const { text } = roundTrip(score);
+    expect(text).toContain("3×");
+  });
+
+  it("garde une case de plusieurs mesures et une case groupée « 1.2. »", () => {
+    const xml = musicXml([
+      { ...n(60), barlineLeft: `<repeat direction="forward"/>` },
+      { ...n(62), barlineLeft: `<ending number="1, 2" type="start"/>` },
+      { ...n(64), barline: `<ending number="1, 2" type="stop"/><repeat direction="backward" times="3"/>` },
+      { ...n(65), barlineLeft: `<ending number="3" type="start"/>` },
+      { ...n(67), barline: `<ending number="3" type="stop"/>` },
+      n(69),
+    ]);
+    const score = importMusicXml(xml);
+    expect(score.endings).toEqual([
+      { numbers: [1, 2], firstBar: 1, lastBar: 2 },
+      { numbers: [3], firstBar: 3, lastBar: 4 },
+    ]);
+    const { text } = roundTrip(score);
+    expect(text).toContain("[1.2.");
+    expect(text).toContain("[3.");
+  });
+
+  it("lit une reprise écrite à la main, sans les deux points sur les lignes de notes", () => {
+    const s = parseYmn(
+      "@     [1.       [2.\nm1 ||:1  |2  :||1  |2  ||\n0  ||:1  |-   ||5  |   ||\n---\n-1 || 1  |    ||1  |   ||\n",
+    );
+    expect(s.repeats).toEqual([{ barIndex: 0, start: true, end: true }]);
+    expect(s.endings).toEqual([
+      { numbers: [1], firstBar: 0, lastBar: 0 },
+      { numbers: [2], firstBar: 1, lastBar: 1 },
+    ]);
+  });
+
+  it("garde les textes de la ligne @", () => {
+    const s = parseYmn("@   rit.     a tempo\nm1 |1  |2  ||1  ||\n0  |1  |   ||1  ||\n---\n");
+    expect(s.texts.map((t) => t.text)).toEqual(["rit.", "a tempo"]);
+    expect(writeYmn(s)).toMatch(/^@ +rit\. +a tempo$/m);
+  });
+
+  it("refuse une indication qui ne commence pas sur une case", () => {
+    expect(() => parseYmn("@     rit.\nm1 |1  |2  ||\n0  |1  |   ||\n---\n")).toThrow(/doit commencer exactement sur une case/);
+  });
+
+  it("refuse « 3× » hors d'une fin de reprise", () => {
+    expect(() => parseYmn("@   3×\nm1 |1  ||\n0  |1  ||\n---\n")).toThrow(/:\|\|/);
   });
 });
 

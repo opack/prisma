@@ -74,9 +74,43 @@ Une anacrouse commence directement au temps voulu : `m0|3  ||` pour un levé d'u
 
 Les lignes qui commencent par `#` sont des commentaires.
 
+## Reprises
+
+Les signes de reprise remplacent une barre de mesure, sur la règle de comptage **et** sur chaque ligne de notes :
+
+| Signe | Sens |
+|---|---|
+| `||:` | Un passage répété commence à la mesure suivante. En tête de système, il s'écrit directement après la colonne de gauche : `m5 ||:1 …`. |
+| `:||` | Le passage répété se termine ici : on revient au dernier `||:`, ou au début du morceau. |
+| `:||:` | Une reprise se termine et la suivante commence. |
+
+Sur les lignes de notes, les deux points peuvent être remplacés par une espace, mais la colonne doit être conservée : les barres restent alignées sur la règle.
+
+## Ligne d'indications `@`
+
+Une ou plusieurs lignes facultatives, **au-dessus** de la règle de comptage, qui commencent par `@`. Chaque indication commence exactement sur la colonne d'une case de la règle (le lecteur signale une erreur sinon), et peut déborder sur les cases suivantes. Deux indications sont séparées par au moins deux espaces. Les `|` et `:` recopiés pour se repérer sont ignorés.
+
+| Indication | Sens |
+|---|---|
+| `[1.` `[2.` `[1.2.` | Ouvre une case de reprise (« 1.2. » : jouée aux passages 1 et 2). |
+| `]` | Ferme la case en cours à la fin de cette mesure. |
+| `3×` (ou `3x`) | Le passage se joue 3 fois. À placer dans la mesure qui se termine par `:||`. |
+| autre texte | Indication pour tout le système : `rit.`, `a tempo`, `D.C.`, `Fine`… |
+
+Une case se ferme sur `]`, ou sur la fin de reprise `:||` qu'elle contient. Sans l'une ni l'autre, elle s'arrête à la fin de sa première mesure. Pour éviter toute ambiguïté, l'import et `format` écrivent toujours le `]` d'une case qui ne se termine pas par `:||`.
+
+```
+@                                       [1.               [2.         ]
+m1 ||:1  |2  |3  |4  ||1  |2  |3  |4  ||1  |2  |3  |4  :||1  |2  |3  |4  ||
+───┼┼────┼───┼───┼───┼┼───┼───┼───┼───┼┼───┼───┼───┼────┼┼───┼───┼───┼───┼┼
+0  ||:1  |3  |5  |8  ||5  |3  |1  |   ||3  |-  |-  |-  :||1  |-  |-  |-  ||
+───┼┼────┼───┼───┼───┼┼───┼───┼───┼───┼┼───┼───┼───┼────┼┼───┼───┼───┼───┼┼
+-1 ||:1  |-  |-  |-  ||8  |-  |-  |-  ||8  |-  |-  |-  :||1  |-  |-  |-  ||
+```
+
 ## Hors format pour l'instant
 
-Reprises (déroulées à l'import), pédale, ornements, articulations, nuances.
+Nuances et indications propres à une voix (ligne `@` sous chaque voix), pédale (ligne `Ped`), ornements, articulations.
 
 ## Outil en ligne de commande
 

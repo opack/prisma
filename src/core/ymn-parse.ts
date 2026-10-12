@@ -6,39 +6,73 @@
  */
 import { YmnError, parseFrontmatter } from "./frontmatter.ts";
 import { TICKS_PER_BEAT, sortNotes } from "./model.ts";
-import type { Beat, Division, Hand, Note, Score } from "./model.ts";
+import type { Beat, Division, Ending, Hand, Note, Repeat, Score, TextMark } from "./model.ts";
 import { midiOf, parseOctaveLabel } from "./pitch.ts";
 import { DEFAULT_CELL } from "./ymn-write.ts";
 
-type Segment = { from: number; to: number; barEnd: boolean };
+/** Un temps de la règle de comptage, et la barre qui le termine. */
+type Segment = { from: number; to: number; barEnd: boolean; endRepeat: boolean; startRepeatAfter: boolean };
+/** Plage de colonnes occupée par un séparateur (« | », « :|| »…). */
+type SepSpan = { from: number; to: number };
 
 const isSeparator = (line: string) => {
   const t = line.trim();
   return t.length >= 3 && /^[─━\-=+┼|]+$/.test(t) && /[─━\-=]/.test(t);
 };
 const isRuler = (line: string) => /^m[^|\s]*\s*\|/.test(line);
+const isMarkLine = (line: string) => line.startsWith("@");
 
-/** Positions des temps d'une règle de comptage. */
-function segments(ruler: string, lineNo: number, pipe: number): Segment[] {
-  const pipes: number[] = [];
-  for (let i = pipe; i < ruler.length; i++) if (ruler[i] === "|") pipes.push(i);
-  const trailing = ruler.slice(pipes[pipes.length - 1] + 1);
-  if (trailing.trim()) throw new YmnError("la règle de comptage doit se terminer par « | » ou « || »", lineNo, pipes[pipes.length - 1] + 2);
+const SEPARATORS = new Set(["|", "||", ":||", "||:", ":||:"]);
+
+/** Découpe une règle de comptage en temps et en séparateurs. */
+function parseRuler(ruler: string, lineNo: number, pipe: number) {
+  const seps: { from: number; text: string }[] = [];
+  let i = pipe;
+  while (i < ruler.length) {
+    if (ruler[i] === "|" || (ruler[i] === ":" && ruler[i + 1] === "|")) {
+      let j = i;
+      while (j < ruler.length && (ruler[j] === "|" || ruler[j] === ":")) j++;
+      seps.push({ from: i, text: ruler.slice(i, j) });
+      i = j;
+    } else i++;
+  }
+  const trailing = ruler.slice(seps[seps.length - 1].from + seps[seps.length - 1].text.length);
+  if (trailing.trim()) throw new YmnError("la règle de comptage doit se terminer par une barre (« | », « || » ou « :|| »)", lineNo, ruler.length - trailing.length + 1);
+
+  // la première barre fait partie de la colonne de gauche : « | » ou « ||: »
+  const lead = seps[0].text;
+  if (lead !== "|" && lead !== "||:") throw new YmnError(`début de règle invalide « ${lead} » : attendu « | » ou « ||: »`, lineNo, pipe + 1);
+  for (const s of seps.slice(1)) {
+    if (!SEPARATORS.has(s.text)) throw new YmnError(`barre invalide « ${s.text} » : attendu |, ||, :||, ||: ou :||:`, lineNo, s.from + 1);
+  }
   const segs: Segment[] = [];
-  for (let j = 0; j + 1 < pipes.length; j++) {
-    const from = pipes[j] + 1, to = pipes[j + 1];
-    if (from === to) {
-      if (!segs.length) throw new YmnError("« || » en tête de règle", lineNo, from);
-      segs[segs.length - 1].barEnd = true;
-    } else {
-      segs.push({ from, to, barEnd: false });
-    }
+  for (let k = 0; k + 1 < seps.length; k++) {
+    const from = seps[k].from + seps[k].text.length;
+    const to = seps[k + 1].from;
+    const t = seps[k + 1].text;
+    segs.push({ from, to, barEnd: t !== "|", endRepeat: t.startsWith(":"), startRepeatAfter: t.endsWith(":") });
   }
   if (!segs.length) throw new YmnError("règle de comptage sans aucun temps", lineNo);
-  return segs;
+  const spans: SepSpan[] = seps.map((s) => ({ from: s.from, to: s.from + s.text.length }));
+  return { segs, spans, leadRepeat: lead === "||:" };
 }
 
 const nextBar = (bar: string) => (/^\d+$/.test(bar) ? String(Number(bar) + 1) : bar + "'");
+
+/** Indications d'une ligne @ : groupes de mots séparés par au moins deux espaces. */
+function markTokens(line: string, pipe: number) {
+  const out: { col: number; text: string }[] = [];
+  const re = /\S+(?: \S+)*/g;
+  const body = " ".repeat(pipe + 1) + line.slice(pipe + 1);
+  for (let m = re.exec(body); m; m = re.exec(body)) {
+    // les barres recopiées pour se repérer sont ignorées
+    const raw = m[0];
+    const lead = raw.length - raw.replace(/^[|:]+/, "").length;
+    const text = raw.slice(lead).replace(/[|:]+$/, "");
+    if (text) out.push({ col: m.index + lead, text });
+  }
+  return out;
+}
 
 export function parseYmn(text: string): Score {
   const lines = text.replace(/\t/g, "    ").split(/\r?\n/);
@@ -46,31 +80,52 @@ export function parseYmn(text: string): Score {
   const cw = Number(meta.case ?? DEFAULT_CELL);
   const defaultDivision = (Number(meta.division ?? 2) === 3 ? 3 : 2) as Division;
 
-  // découpage en blocs : une règle de comptage et les lignes qui la suivent
-  type Block = { ruler: number; lines: number[] };
+  // découpage en blocs : lignes @, une règle de comptage, puis les lignes qui la suivent
+  type Block = { marks: number[]; ruler: number; lines: number[] };
   const blocks: Block[] = [];
+  let pendingMarks: number[] = [];
   for (let i = bodyStartLine; i < lines.length; i++) {
     const l = lines[i];
     if (!l.trim() || l.trimStart().startsWith("#")) {
       if (!l.trim() && blocks.length) blocks[blocks.length - 1].lines.push(-1); // fin de bloc
       continue;
     }
+    if (isMarkLine(l)) {
+      const last = blocks[blocks.length - 1];
+      if (last && !last.lines.includes(-1)) {
+        throw new YmnError("les lignes @ sous les voix (nuances) ne sont pas encore prises en charge : place celle-ci au-dessus de la règle de comptage", i + 1);
+      }
+      pendingMarks.push(i);
+      continue;
+    }
     if (isRuler(l)) {
-      blocks.push({ ruler: i, lines: [] });
+      blocks.push({ marks: pendingMarks, ruler: i, lines: [] });
+      pendingMarks = [];
       continue;
     }
     const last = blocks[blocks.length - 1];
-    if (!last) throw new YmnError("une règle de comptage (« m1 |1 … ») doit précéder les lignes de notes", i + 1);
+    if (!last || pendingMarks.length) throw new YmnError("une règle de comptage (« m1 |1 … ») doit précéder les lignes de notes", i + 1);
     if (last.lines.includes(-1)) throw new YmnError("ligne de notes séparée de sa règle de comptage par une ligne vide", i + 1);
     last.lines.push(i);
   }
+  if (pendingMarks.length) throw new YmnError("ligne @ sans règle de comptage en dessous", pendingMarks[0] + 1);
   if (!blocks.length) throw new YmnError("aucune règle de comptage trouvée", bodyStartLine + 1);
 
   const beats: Beat[] = [];
   const notes: Note[] = [];
+  const repeats = new Map<number, Repeat>();
+  const repeatAt = (barIndex: number) => {
+    if (!repeats.has(barIndex)) repeats.set(barIndex, { barIndex });
+    return repeats.get(barIndex)!;
+  };
+  const texts: TextMark[] = [];
+  const endingStarts: { numbers: number[]; bar: number }[] = [];
+  const endingCloses: number[] = [];
+  const timesMarks: { bar: number; times: number; line: number; col: number }[] = [];
   let barIndex = -1;
   let lastBar = "0";
   let lastBarClosed = true;
+  let repeatNext = false; // « ||: » en fin de système : la mesure suivante commence une reprise
   let pending: Note[] = []; // notes encore tenues à la fin du bloc précédent
 
   for (const block of blocks) {
@@ -78,12 +133,12 @@ export function parseYmn(text: string): Score {
     const L = block.ruler + 1;
     const pipe = rulerLine.indexOf("|");
     const barLabel = rulerLine.slice(1, pipe).trim();
-    const segs = segments(rulerLine, L, pipe);
+    const { segs, spans, leadRepeat } = parseRuler(rulerLine, L, pipe);
 
     // temps du bloc
     const blockBeat0 = beats.length;
     let bar = barLabel || nextBar(lastBar);
-    const anchors: { t: number; from: number; seg: number }[] = [];
+    const anchors: { t: number; from: number; seg: number; barIndex: number }[] = [];
     segs.forEach((s, si) => {
       const w = s.to - s.from;
       if (w % cw) throw new YmnError(`le temps fait ${w} caractères, ce n'est pas un multiple de ${cw}`, L, s.from + 1);
@@ -94,22 +149,45 @@ export function parseYmn(text: string): Score {
       if (!/^\d+$/.test(cells[0]) || label < 1) throw new YmnError("chaque temps commence par son numéro", L, s.from + 1);
       const colons = cells.filter((c) => c === ":").length;
       const division: Division = colons === 2 ? 3 : colons === 1 ? 2 : defaultDivision;
-      // nouvelle mesure ? (début de bloc après une mesure fermée, ou après « || »)
+      // nouvelle mesure ? (début de bloc après une mesure fermée, ou après une barre de mesure)
       const newBar = si === 0 ? lastBarClosed || label === 1 : segs[si - 1].barEnd;
       if (si === 0 && !newBar && barLabel && barLabel !== lastBar) {
         throw new YmnError(`la mesure ${lastBar} n'est pas terminée : ce système devrait commencer par « m${lastBar} »`, L, 1);
       }
+      if (si === 0 && !newBar && leadRepeat) throw new YmnError("« ||: » ne peut pas couper une mesure en deux", L, pipe + 1);
       if (si === 0 && !newBar) bar = lastBar;
       if (si > 0 && newBar) bar = nextBar(bar);
-      if (newBar) barIndex++;
+      if (newBar) {
+        barIndex++;
+        if (repeatNext || (si === 0 && leadRepeat) || (si > 0 && segs[si - 1].startRepeatAfter)) repeatAt(barIndex).start = true;
+        repeatNext = false;
+      }
+      if (s.endRepeat) repeatAt(barIndex).end = true;
       const gi = beats.length;
       beats.push({ bar, barIndex, label, division });
-      for (let k = 0; k < n; k++) anchors.push({ t: gi * TICKS_PER_BEAT + (k * TICKS_PER_BEAT) / n, from: s.from + k * cw, seg: si });
+      for (let k = 0; k < n; k++) {
+        anchors.push({ t: gi * TICKS_PER_BEAT + (k * TICKS_PER_BEAT) / n, from: s.from + k * cw, seg: si, barIndex });
+      }
     });
+    repeatNext = segs[segs.length - 1].startRepeatAfter;
     lastBar = bar;
     lastBarClosed = segs[segs.length - 1].barEnd;
     const t0 = blockBeat0 * TICKS_PER_BEAT;
     const t1 = beats.length * TICKS_PER_BEAT;
+
+    // ligne(s) @ au-dessus de la règle : cases de reprise, nombre de passages, textes
+    for (const li of block.marks) {
+      for (const tok of markTokens(lines[li], pipe)) {
+        const a = anchors.find((x) => x.from === tok.col);
+        if (!a) throw new YmnError(`« ${tok.text} » doit commencer exactement sur une case de la règle de comptage`, li + 1, tok.col + 1);
+        const ending = tok.text.match(/^\[((?:\d+\.)+)$/);
+        const times = tok.text.match(/^(\d+)\s*[×xX]$/);
+        if (ending) endingStarts.push({ numbers: ending[1].split(".").filter(Boolean).map(Number), bar: a.barIndex });
+        else if (tok.text === "]") endingCloses.push(a.barIndex);
+        else if (times) timesMarks.push({ bar: a.barIndex, times: Number(times[1]), line: li + 1, col: tok.col + 1 });
+        else texts.push({ t: a.t, text: tok.text });
+      }
+    }
 
     // séparateurs : un trait obligatoire entre les mains, un trait facultatif sous la règle
     const content = block.lines.filter((i) => i >= 0);
@@ -120,19 +198,25 @@ export function parseYmn(text: string): Score {
     if (seps.length === 2 && content.indexOf(seps[0]) !== 0) {
       throw new YmnError("le premier trait doit suivre directement la règle de comptage", seps[0] + 1);
     }
+    const inSpan = (c: number) => spans.some((s) => c >= s.from && c < s.to);
 
     const nextPending: Note[] = [];
-    let lastOctave: Record<Hand, number | undefined> = { D: undefined, G: undefined };
+    const lastOctave: Record<Hand, number | undefined> = { D: undefined, G: undefined };
     for (const li of content) {
       if (seps.includes(li)) continue;
       const row = lines[li];
       const R = li + 1;
       const hand: Hand = li < handSep ? "D" : "G";
+      if (row.startsWith("@")) throw new YmnError("les lignes @ sous les voix (nuances) ne sont pas encore prises en charge", R, 1);
       if (row[pipe] !== "|") throw new YmnError("le « | » de début de ligne doit être aligné sur celui de la règle", R, Math.min(row.length, pipe) + 1);
-      for (let c = pipe; c < Math.max(row.length, rulerLine.length); c++) {
-        const inRuler = rulerLine[c] === "|", inRow = row[c] === "|";
-        if (c < row.length && inRuler !== inRow) {
-          throw new YmnError(inRow ? "« | » mal placé : il ne tombe pas sur une séparation de la règle" : "séparation de temps attendue ici", R, c + 1);
+      // les barres (et leurs deux points de reprise, facultatifs) sont alignées sur la règle
+      for (let c = pipe; c < row.length; c++) {
+        const rc = rulerLine[c], ch = row[c];
+        if (inSpan(c)) {
+          if (rc === "|" && ch !== "|") throw new YmnError("barre attendue ici, alignée sur la règle de comptage", R, c + 1);
+          if (rc === ":" && ch !== ":" && ch !== " ") throw new YmnError("« : » de reprise ou espace attendu ici", R, c + 1);
+        } else if (ch === "|") {
+          throw new YmnError("« | » mal placé : il ne tombe pas sur une barre de la règle", R, c + 1);
         }
       }
       const lab = row.slice(0, pipe).trim();
@@ -177,7 +261,7 @@ export function parseYmn(text: string): Score {
         }
         const midi = midiOf(octave, Number(digits));
         if (open) {
-          if (open.midi !== midi) throw new YmnError(`« -${digits} » prolonge une note différente (${open.midi % 12 + 1})`, R, col);
+          if (open.midi !== midi) throw new YmnError(`« -${digits} » prolonge une note différente (${(open.midi % 12) + 1})`, R, col);
           return;
         }
         const prev = ai === 0 ? pending.find((p) => p.hand === hand && p.midi === midi && p.end === t0) : undefined;
@@ -197,5 +281,37 @@ export function parseYmn(text: string): Score {
     }
     pending = nextPending;
   }
-  return { meta, beats, notes: sortNotes(notes) };
+
+  // nombre de passages : porté par une mesure qui finit une reprise
+  for (const tm of timesMarks) {
+    const r = repeats.get(tm.bar);
+    if (!r?.end) throw new YmnError(`« ${tm.times}× » doit être placé dans une mesure qui se termine par « :|| »`, tm.line, tm.col);
+    if (tm.times !== 2) r.times = tm.times;
+  }
+
+  // cases : une case se ferme sur « ] » ou sur une fin de reprise « :|| » ;
+  // sinon, à la fin de sa première mesure
+  const endings: Ending[] = [];
+  const lastBarIndex = barIndex;
+  endingStarts.forEach((e, i) => {
+    const limit = Math.min(i + 1 < endingStarts.length ? endingStarts[i + 1].bar - 1 : lastBarIndex, lastBarIndex);
+    let lastBar = e.bar;
+    for (let b = e.bar; b <= limit; b++) {
+      if (b > e.bar && repeats.get(b)?.start) break;
+      if (endingCloses.includes(b) || repeats.get(b)?.end) {
+        lastBar = b;
+        break;
+      }
+    }
+    endings.push({ numbers: e.numbers, firstBar: e.bar, lastBar });
+  });
+
+  return {
+    meta,
+    beats,
+    notes: sortNotes(notes),
+    repeats: [...repeats.values()].sort((a, b) => a.barIndex - b.barIndex),
+    endings,
+    texts,
+  };
 }

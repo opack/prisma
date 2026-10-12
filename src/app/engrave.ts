@@ -13,7 +13,9 @@ export const G = {
   prefix: 7, // colonne des numéros d'octave
   beatSep: 0.8,
   barSep: 1.6,
+  repeatDots: 1.3, // place des deux points d'une barre de reprise, de chaque côté
   rulerH: 4.4,
+  markH: 4, // une bande d'indications au-dessus du système (cases de reprise, textes)
   rowH: 4.5,
   handGap: 1.4, // espace de part et d'autre du trait entre les mains
   systemGap: 6.5,
@@ -25,8 +27,11 @@ export type PlacedSystem = {
   sys: System;
   /** Facteur d'étirement des cases. */
   stretch: number;
-  /** Ordonnée du haut du système, depuis le haut de la page. */
+  /** Ordonnée du haut du système, depuis le haut de la page (bandes d'indications comprises). */
   y: number;
+  /** Hauteur des bandes d'indications au-dessus de la règle : cases de reprise, puis textes. */
+  endingBand: number;
+  textBand: number;
   height: number;
   /** Abscisse de chaque colonne (case ou séparateur), depuis le bord gauche de la page. */
   xs: number[];
@@ -36,8 +41,20 @@ export type PlacedSystem = {
 
 export type Page = { index: number; systems: PlacedSystem[]; header: boolean };
 
-export const systemHeight = (s: System) =>
-  G.rulerH + (s.right.length + s.left.length) * G.rowH + 2 * G.handGap + 1;
+/** Bandes au-dessus de la règle : une pour les cases et les « 3× », une pour les textes. */
+export const bands = (s: System) => ({
+  endingBand: s.endings.length || s.marks.some((m) => m.kind === "times") ? G.markH : 0,
+  textBand: s.marks.some((m) => m.kind === "text") ? G.markH : 0,
+});
+
+export const systemHeight = (s: System) => {
+  const b = bands(s);
+  return b.endingBand + b.textBand + G.rulerH + (s.right.length + s.left.length) * G.rowH + 2 * G.handGap + 1;
+};
+
+/** Largeur d'une barre de mesure, selon ses signes de reprise (identique au calcul du moteur). */
+const barSepWidth = (c: Extract<System["columns"][number], { kind: "barSep" }>) =>
+  c.lead ? G.repeatDots + G.beatSep : G.barSep + (c.endRepeat ? G.repeatDots : 0) + (c.startRepeat ? G.repeatDots : 0);
 
 function place(sys: System, isLast: boolean, y: number): PlacedSystem {
   const cells = sys.anchors.length;
@@ -50,12 +67,12 @@ function place(sys: System, isLast: boolean, y: number): PlacedSystem {
   const ws: number[] = [];
   let x = PAGE.marginX + G.prefix;
   for (const c of sys.columns) {
-    const w = c.kind === "anchor" ? G.cell * stretch : c.kind === "barSep" ? G.barSep : G.beatSep;
+    const w = c.kind === "anchor" ? G.cell * stretch : c.kind === "barSep" ? barSepWidth(c) : G.beatSep;
     xs.push(x);
     ws.push(w);
     x += w;
   }
-  return { sys, stretch, y, height: systemHeight(sys), xs, ws };
+  return { sys, stretch, y, height: systemHeight(sys), xs, ws, ...bands(sys) };
 }
 
 export function engrave(score: Score): Page[] {
@@ -65,6 +82,7 @@ export function engrave(score: Score): Page[] {
     cell: G.cell,
     beatSep: G.beatSep,
     barSep: G.barSep,
+    repeatDots: G.repeatDots,
   });
   const pages: Page[] = [];
   let page: Page = { index: 0, systems: [], header: true };

@@ -45,12 +45,35 @@ export type Meta = {
   [key: string]: string | number | undefined;
 };
 
+/** Barre de reprise portée par une mesure (repérée par son rang dans le morceau). */
+export type Repeat = {
+  barIndex: number;
+  /** « ||: » : un passage répété commence au début de cette mesure. */
+  start?: boolean;
+  /** « :|| » : le passage répété se termine à la fin de cette mesure. */
+  end?: boolean;
+  /** Nombre de passages, pour une fin de reprise (2 par défaut). */
+  times?: number;
+};
+
+/** Case de reprise (« 1. », « 2. », « 1.2. »…), de la mesure firstBar à lastBar incluses. */
+export type Ending = { numbers: number[]; firstBar: number; lastBar: number };
+
+/** Indication de texte pour tout le système, placée sur une ancre (« rit. », « D.C. »…). */
+export type TextMark = { t: number; text: string };
+
 export type Score = {
   meta: Meta;
   /** Temps du morceau, dans l'ordre. Le temps i couvre [i·TICKS_PER_BEAT, (i+1)·TICKS_PER_BEAT[. */
   beats: Beat[];
   notes: Note[];
+  repeats: Repeat[];
+  endings: Ending[];
+  texts: TextMark[];
 };
+
+/** Reprise portée par une mesure, s'il y en a une. */
+export const repeatOf = (score: Score, barIndex: number) => score.repeats.find((r) => r.barIndex === barIndex);
 
 export const beatStart = (i: number) => i * TICKS_PER_BEAT;
 
