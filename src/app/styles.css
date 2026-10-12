@@ -20,6 +20,9 @@ body { font-family: var(--ui); color: var(--ink); background: var(--chrome); fon
 .bar { display: flex; gap: 8px; align-items: center; padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
 .brand { font-weight: 700; letter-spacing: .06em; margin-right: 12px; }
 .spacer { flex: 1; }
+.file { color: var(--muted); margin-left: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.unsaved { color: var(--accent); }
+.notice { color: var(--accent); margin-left: 12px; white-space: nowrap; }
 button { font: inherit; padding: 6px 12px; border: 1px solid var(--line); border-radius: 4px; background: #fff; color: var(--ink); cursor: pointer; }
 button:hover { border-color: var(--muted); }
 button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

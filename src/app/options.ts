@@ -7,9 +7,11 @@ export type RenderOptions = {
   octaveStyle: OctaveStyle;
   /** Place du numéro dans l'onglet : en face de la première ligne du groupe, ou au centre. */
   octavePosition: OctavePosition;
+  /** Regraver automatiquement peu après la dernière frappe. */
+  autoEngrave: boolean;
 };
 
-export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top" };
+export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false };
 
 export const OCTAVE_STYLES: { value: OctaveStyle; label: string; sample: string }[] = [
   { value: "arrow", label: "Flèches", sample: "↑1  0  ↓1" },
@@ -31,7 +33,8 @@ export function loadOptions(): RenderOptions {
     const octavePosition = OCTAVE_POSITIONS.some((p) => p.value === raw.octavePosition)
       ? raw.octavePosition
       : DEFAULT_OPTIONS.octavePosition;
-    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition };
+    const autoEngrave = typeof raw.autoEngrave === "boolean" ? raw.autoEngrave : DEFAULT_OPTIONS.autoEngrave;
+    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave };
   } catch {
     return DEFAULT_OPTIONS;
   }

@@ -168,9 +168,9 @@ function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions 
 
   return (
     <g>
-      {/* numéro de la première mesure */}
-      <text x={x0 + G.prefix - 1.4} y={rulerBase} fontSize={2.3} fill={GREY} textAnchor="end" fontStyle="italic">
-        {sys.bar}
+      {/* numéro de la première mesure, préfixé de « m » pour ne pas le confondre avec les temps */}
+      <text x={x0 + G.prefix - 1.2} y={rulerBase} fontSize={2.3} fill={GREY} textAnchor="end" fontStyle="italic">
+        {"m" + sys.bar}
       </text>
       {/* règle de comptage */}
       {sys.anchors.map((ci, a) => {

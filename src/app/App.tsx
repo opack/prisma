@@ -6,6 +6,10 @@ import { PageView } from "./PageView.tsx";
 import { SAMPLE } from "./sample.ts";
 import { OCTAVE_POSITIONS, OCTAVE_STYLES, loadOptions, saveOptions } from "./options.ts";
 import type { RenderOptions } from "./options.ts";
+import { canWriteInPlace, download, pickFile, pickSaveTarget, writeFile } from "./files.ts";
+
+/** Délai sans frappe avant la gravure automatique. */
+const AUTO_ENGRAVE_DELAY = 600;
 
 const STORAGE_KEY = "ymn:source";
 const load = () => {
@@ -15,7 +19,7 @@ const load = () => {
     return SAMPLE;
   }
 };
-const save = (s: string) => {
+const persist = (s: string) => {
   try {
     localStorage.setItem(STORAGE_KEY, s);
   } catch {
@@ -45,15 +49,46 @@ export function App() {
   };
   const [engraved, setEngraved] = useState(() => tryParse(source));
   const [fileName, setFileName] = useState("morceau.ymn");
-  const [dirty, setDirty] = useState(false);
+  /** Fichier .ymn ouvert ou enregistré, réécrit en place par « Enregistrer » (Chrome, Edge). */
+  const [handle, setHandle] = useState<FileSystemFileHandle | null>(null);
+  /** Texte tel qu'il est sur le disque, pour savoir s'il reste des modifications à enregistrer. */
+  const [savedText, setSavedText] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  /** Dernier texte gravé : la pastille « • » ne s'affiche que si le texte actuel en diffère. */
+  const [engravedSource, setEngravedSource] = useState(source);
+  const dirty = source !== engravedSource;
+  const unsaved = savedText !== null && source !== savedText;
   const editor = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const engraveNow = useCallback(() => {
     setEngraved(tryParse(source));
-    setDirty(false);
-    save(source);
+    setEngravedSource(source);
+    persist(source);
   }, [source]);
+
+  const saveFile = useCallback(async () => {
+    try {
+      let target = handle;
+      if (!target && canWriteInPlace) {
+        target = await pickSaveTarget(fileName);
+        if (!target) return; // annulé
+        setHandle(target);
+        setFileName(target.name);
+      }
+      if (target) {
+        await writeFile(target, source);
+        setSavedText(source);
+        setNotice(`Enregistré dans ${target.name}`);
+      } else {
+        download(fileName, source);
+        setSavedText(source);
+        setNotice(`Téléchargé sous le nom ${fileName}`);
+      }
+    } catch (e) {
+      setNotice(`Enregistrement impossible : ${(e as Error).message}`);
+    }
+  }, [handle, fileName, source]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -61,17 +96,46 @@ export function App() {
         e.preventDefault();
         engraveNow();
       }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        saveFile();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [engraveNow]);
+  }, [engraveNow, saveFile]);
+
+  // gravure automatique, après un court délai sans frappe
+  useEffect(() => {
+    if (!options.autoEngrave || !dirty) return;
+    const t = setTimeout(engraveNow, AUTO_ENGRAVE_DELAY);
+    return () => clearTimeout(t);
+  }, [options.autoEngrave, dirty, engraveNow]);
+
+  // prévenir avant de quitter avec des modifications non enregistrées
+  useEffect(() => {
+    if (!unsaved) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [unsaved]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(null), 3500);
+    return () => clearTimeout(t);
+  }, [notice]);
 
   const pages = useMemo(() => (engraved.score ? engrave(engraved.score) : []), [engraved]);
 
-  const open = async (file: File) => {
+  const open = async (file: File, fileHandle: FileSystemFileHandle | null = null) => {
     const text = await file.text();
     let ymn = text;
-    if (/\.(musicxml|xml)$/i.test(file.name)) {
+    const isXml = /\.(musicxml|xml)$/i.test(file.name);
+    // un MusicXML n'est jamais réécrit : le premier enregistrement crée un nouveau .ymn
+    setHandle(isXml ? null : fileHandle);
+    setSavedText(isXml ? null : text);
+    if (isXml) {
       try {
         ymn = writeYmn(importMusicXml(text, file.name), { width: DEFAULT_WIDTH });
       } catch (e) {
@@ -84,17 +148,18 @@ export function App() {
     }
     setSource(ymn);
     setEngraved(tryParse(ymn));
-    setDirty(false);
-    save(ymn);
+    setEngravedSource(ymn);
+    persist(ymn);
   };
 
-  const download = () => {
-    const blob = new Blob([source], { type: "text/plain;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = fileName;
-    a.click();
-    URL.revokeObjectURL(a.href);
+  const openFile = async () => {
+    if (!canWriteInPlace) return fileInput.current?.click();
+    try {
+      const picked = await pickFile();
+      if (picked) await open(picked.file, picked.handle);
+    } catch (e) {
+      setNotice(`Ouverture impossible : ${(e as Error).message}`);
+    }
   };
 
   /** Place le curseur sur la ligne et la colonne d'une erreur. */
@@ -117,7 +182,7 @@ export function App() {
     <div className="app">
       <header className="bar">
         <span className="brand">ymn</span>
-        <button onClick={() => fileInput.current?.click()}>Ouvrir…</button>
+        <button onClick={openFile}>Ouvrir…</button>
         <input
           ref={fileInput}
           type="file"
@@ -129,7 +194,18 @@ export function App() {
             e.target.value = "";
           }}
         />
-        <button onClick={download}>Enregistrer</button>
+        <button onClick={saveFile} title="Ctrl+S">
+          Enregistrer
+        </button>
+        <span className="file" title={handle ? "Enregistrer réécrit ce fichier" : undefined}>
+          {fileName}
+          {unsaved || savedText === null ? <span className="unsaved"> · non enregistré</span> : null}
+        </span>
+        {notice && (
+          <span className="notice" role="status">
+            {notice}
+          </span>
+        )}
         <span className="spacer" />
         <button className="primary" onClick={engraveNow} title="Ctrl+Entrée">
           Graver{dirty ? " •" : ""}
@@ -174,6 +250,18 @@ export function App() {
               </label>
             ))}
           </fieldset>
+          <fieldset>
+            <legend>Gravure</legend>
+            <label>
+              <input
+                type="checkbox"
+                id="auto-engrave"
+                checked={options.autoEngrave}
+                onChange={(e) => setOptions({ autoEngrave: e.target.checked })}
+              />
+              Graver automatiquement pendant la saisie
+            </label>
+          </fieldset>
         </section>
       )}
 
@@ -187,7 +275,6 @@ export function App() {
             aria-label="Source .ymn"
             onChange={(e) => {
               setSource(e.target.value);
-              setDirty(true);
             }}
           />
           {problem && (
