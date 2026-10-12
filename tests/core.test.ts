@@ -64,6 +64,17 @@ describe("règles du format", () => {
     expect(text).toMatch(/^m0 \|3  \|\|1 /m);
   });
 
+  it("numérote 1 une anacrouse que le fichier compte comme mesure 1", () => {
+    const score = importMusicXml(
+      musicXml([
+        { time: [3, 4], notes: [[{ midi: [67], dur: q }]] },
+        { notes: [[{ midi: [60], dur: 3 * q }]] },
+      ]),
+    );
+    expect(beatsKey(score)).toBe("1.3 2.1 2.2 2.3");
+    roundTrip(score);
+  });
+
   it("compte le 6/8 en deux temps ternaires", () => {
     const e = q / 2;
     const xml = musicXml([

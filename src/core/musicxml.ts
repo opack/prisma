@@ -5,6 +5,8 @@
  * - Reprises et cases 1/2 conservées telles qu'écrites (barres de reprise, cases, nombre de passages).
  * - Mesures composées (6/8, 9/8, 12/8) comptées en noires pointées, découpage ternaire.
  * - Anacrouse : la première mesure incomplète commence au temps voulu (ex. temps 3 en 3/4).
+ *   Elle est numérotée 0 seulement si le fichier l'exclut du décompte (implicit="yes") ;
+ *   sinon la numérotation du fichier est suivie, à partir du numéro de sa première mesure.
  * - Liaisons de tenue fusionnées. Petites notes ignorées.
  * - Nuances, soufflets et textes de chaque main ; les indications de tempo et de structure
  *   (rit., a tempo, D.C., Fine…) vont au-dessus du système.
@@ -240,8 +242,12 @@ export function importMusicXml(xml: string, fileName?: string): Score {
   const rawDirections: (RawDirection & { t: number })[] = [];
   const EPS = 1e-6;
 
-  // Mesures numérotées dans l'ordre d'écriture : 0 pour une anacrouse, puis 1, 2, 3…
-  let barNumber = 0;
+  // Mesures numérotées comme dans le fichier : à partir du numéro de la première mesure,
+  // ou 0 pour une anacrouse exclue du décompte (implicit="yes"), puis à la suite.
+  const first = measures[0];
+  const firstNumber = Number(first?.number);
+  const uncounted = !!first?.implicit;
+  let barNumber = uncounted || !Number.isInteger(firstNumber) ? 0 : firstNumber - 1;
   const repeats: Repeat[] = [];
   const endings: Ending[] = [];
   measures.forEach((m, barIndex) => {
@@ -270,7 +276,7 @@ export function importMusicXml(xml: string, fileName?: string): Score {
     const pickup = incomplete && (barIndex === 0 || m.implicit);
     const firstLabel = pickup ? p.count - present + 1 : 1;
     const firstBeat = beats.length;
-    const bar = pickup ? "0" : String(++barNumber);
+    const bar = barIndex === 0 && uncounted ? "0" : String(++barNumber);
     for (let k = 0; k < present; k++) {
       beats.push({ bar, barIndex, label: firstLabel + k, division: p.division });
     }
