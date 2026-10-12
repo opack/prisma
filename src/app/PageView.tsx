@@ -163,7 +163,9 @@ function BarLine({ x, w, col, top, bottom, sections }: { x: number; w: number; c
         </g>
       );
     });
-  if (col.lead) return <g>{thin(x + 0.55, "t")}{dots(x + w - 0.75, "d")}</g>;
+  // les points sont centrés dans la place qui leur est réservée (G.repeatDots)
+  const d = G.repeatDots / 2;
+  if (col.lead) return <g>{thin(x + 0.55, "t")}{dots(x + w - d, "d")}</g>;
   if (!col.endRepeat && !col.startRepeat) {
     // fin du morceau : double barre, trait fin puis trait épais
     if (col.final) return <g>{thin(x + w - 1.25, "t")}{thick(x + w - 0.45, "T")}</g>;
@@ -171,10 +173,10 @@ function BarLine({ x, w, col, top, bottom, sections }: { x: number; w: number; c
   }
   if (col.endRepeat && col.startRepeat) {
     const m = x + w / 2;
-    return <g>{dots(x + 0.6, "a")}{thin(m - 0.75, "t1")}{thick(m, "T")}{thin(m + 0.75, "t2")}{dots(x + w - 0.6, "b")}</g>;
+    return <g>{dots(x + d, "a")}{thin(m - 0.75, "t1")}{thick(m, "T")}{thin(m + 0.75, "t2")}{dots(x + w - d, "b")}</g>;
   }
-  if (col.endRepeat) return <g>{dots(x + 0.6, "a")}{thin(x + w - 1.25, "t")}{thick(x + w - 0.45, "T")}</g>;
-  return <g>{thick(x + 0.45, "T")}{thin(x + 1.25, "t")}{dots(x + w - 0.6, "b")}</g>;
+  if (col.endRepeat) return <g>{dots(x + d, "a")}{thin(x + w - 1.25, "t")}{thick(x + w - 0.45, "T")}</g>;
+  return <g>{thick(x + 0.45, "T")}{thin(x + 1.25, "t")}{dots(x + w - d, "b")}</g>;
 }
 
 /** Bandes au-dessus de la règle : textes (rit., D.C.…), puis crochets des cases et « 3× ». */

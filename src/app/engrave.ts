@@ -13,7 +13,7 @@ export const G = {
   prefix: 7, // colonne des numéros d'octave
   beatSep: 0.8,
   barSep: 1.6,
-  repeatDots: 1.3, // place des deux points d'une barre de reprise, de chaque côté
+  repeatDots: 1.8, // place des deux points d'une barre de reprise, de chaque côté (points centrés dedans)
   rulerH: 4.4,
   markH: 4, // une bande d'indications au-dessus du système (cases de reprise, textes)
   rowH: 4.5,
