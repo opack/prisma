@@ -165,6 +165,8 @@ function BarLine({ x, w, col, top, bottom, sections }: { x: number; w: number; c
     });
   if (col.lead) return <g>{thin(x + 0.55, "t")}{dots(x + w - 0.75, "d")}</g>;
   if (!col.endRepeat && !col.startRepeat) {
+    // fin du morceau : double barre, trait fin puis trait épais
+    if (col.final) return <g>{thin(x + w - 1.25, "t")}{thick(x + w - 0.45, "T")}</g>;
     return <line x1={x + w / 2} x2={x + w / 2} y1={top} y2={bottom} stroke={INK} strokeWidth={0.45} />;
   }
   if (col.endRepeat && col.startRepeat) {
@@ -184,24 +186,29 @@ function Marks({ ps }: { ps: PlacedSystem }) {
   const aEnd = (a: number) => xs[sys.anchors[a]] + ws[sys.anchors[a]];
   const textY = ps.y + G.markH * 0.72;
   const by = ps.y + ps.textBand + 0.9; // trait horizontal des crochets
-  const hookBottom = ps.y + ps.textBand + ps.endingBand;
+  // les crochets verticaux s'arrêtent un peu au-dessus de la règle, sans toucher la barre de mesure
+  const hookBottom = ps.y + ps.textBand + ps.endingBand - 0.9;
   return (
     <g>
       {sys.marks
         .filter((m) => m.kind === "text")
         .map((m, i) => (
-          <text key={"t" + i} x={ax(m.anchor) + 0.5} y={textY} fontSize={2.9} fontStyle="italic" fill={INK}>
+          <text key={"t" + i} x={ax(m.anchor!) + 0.5} y={textY} fontSize={2.9} fontStyle="italic" fill={INK}>
             {m.text}
           </text>
         ))}
       {sys.endings.map((e, i) => {
-        const x1 = e.opens ? ax(e.fromAnchor) + 0.3 : left;
-        const x2 = e.closes ? aEnd(e.toAnchor) - 0.3 : right;
+        // le crochet va d'une barre de mesure à l'autre, comme sur une partition
+        const barX = (c: number) => xs[c] + ws[c] / 2;
+        // un peu d'espace de part et d'autre de la barre : deux cases consécutives ne se touchent pas
+        const gap = 0.6;
+        const x1 = (e.fromColumn >= 0 ? barX(e.fromColumn) : left) + gap;
+        const x2 = (e.toColumn >= 0 ? barX(e.toColumn) : right) - gap;
         const label = e.ending.numbers.map((n) => n + ".").join(" ");
         return (
           <g key={"e" + i}>
             <path
-              d={`${e.opens ? `M ${x1} ${hookBottom} L ${x1} ${by}` : `M ${x1} ${by}`} L ${x2} ${by}${e.closedByRepeat ? ` L ${x2} ${hookBottom}` : ""}`}
+              d={`${e.opens ? `M ${x1} ${hookBottom} L ${x1} ${by}` : `M ${x1} ${by}`} L ${x2} ${by}${e.hook ? ` L ${x2} ${hookBottom}` : ""}`}
               fill="none"
               stroke={INK}
               strokeWidth={0.3}
@@ -217,7 +224,7 @@ function Marks({ ps }: { ps: PlacedSystem }) {
       {sys.marks
         .filter((m) => m.kind === "times")
         .map((m, i) => (
-          <text key={"x" + i} x={aEnd(m.anchor) - 0.4} y={by + 2.6} fontSize={2.6} fontWeight={700} textAnchor="end" fill={INK}>
+          <text key={"x" + i} x={aEnd(m.anchor!) - 0.4} y={by + 2.6} fontSize={2.6} fontWeight={700} textAnchor="end" fill={INK}>
             {m.text}
           </text>
         ))}

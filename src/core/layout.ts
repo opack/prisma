@@ -29,7 +29,8 @@ export type Column =
    * startRepeat : « ||: » (la mesure suivante en commence une). lead : barre de début de
    * système, présente seulement quand le système commence par « ||: ».
    */
-  | { kind: "barSep"; endRepeat?: boolean; startRepeat?: boolean; lead?: boolean };
+  | { kind: "barSep"; endRepeat?: boolean; startRepeat?: boolean; lead?: boolean; final?: boolean };
+// final : dernière barre du morceau (double barre de fin, trait fin puis trait épais)
 
 export type SystemRow = {
   hand: Hand;
@@ -46,11 +47,20 @@ export type SystemRow = {
 };
 
 /** Indication de la ligne @ placée sur une ancre (index dans anchors). */
+/**
+ * Indication de la ligne @. Les cases de reprise (« [1. », « ] ») sont placées sur une
+ * barre de mesure (column : index dans columns, -1 pour la barre de gauche du système) ;
+ * les autres indications sur une ancre (anchor : index dans anchors).
+ */
 export type Mark = {
-  anchor: number;
+  anchor?: number;
+  column?: number;
   text: string;
   kind: "ending" | "endingClose" | "times" | "text";
 };
+
+/** Position d'une indication dans l'ordre des colonnes du système, pour les trier. */
+export const markColumn = (sys: { anchors: number[] }, m: Mark) => (m.anchor !== undefined ? sys.anchors[m.anchor] : m.column!);
 
 /** Portion d'une case de reprise visible dans un système. */
 export type EndingSpan = {
@@ -58,12 +68,20 @@ export type EndingSpan = {
   /** Première et dernière ancres couvertes. */
   fromAnchor: number;
   toAnchor: number;
+  /**
+   * Barres de mesure où commence et finit le crochet (index dans columns).
+   * -1 : bord gauche du système (fromColumn) ou bord droit (toColumn, case qui continue).
+   */
+  fromColumn: number;
+  toColumn: number;
   /** La case commence dans ce système (on y écrit son numéro). */
   opens: boolean;
   /** La case se termine dans ce système. */
   closes: boolean;
-  /** Elle se termine sur une barre de reprise « :|| » (crochet fermé à droite). */
+  /** Elle se termine sur une barre de reprise « :|| ». */
   closedByRepeat: boolean;
+  /** Crochet descendant à droite : case fermée par « :|| », par « ] » ou par la fin du morceau. */
+  hook: boolean;
 };
 
 export type System = {
@@ -311,6 +329,7 @@ export function layout(score: Score, m: Metrics): System[] {
       const col: Column = { kind: "barSep" };
       if (endRepeat) col.endRepeat = true;
       if (startRepeat) col.startRepeat = true;
+      if (bi === score.beats.length - 1) col.final = true;
       columns.push(col);
       width += m.barSep + (endRepeat ? m.repeatDots : 0) + (startRepeat ? m.repeatDots : 0);
     });
@@ -361,16 +380,26 @@ export function layout(score: Score, m: Metrics): System[] {
     const marks: Mark[] = [];
     const endings: EndingSpan[] = [];
     for (const e of score.endings) {
-      const bars = [...barAnchors.keys()].filter((b) => b >= e.firstBar && b <= e.lastBar);
+      // une case sans fin explicite n'a de crochet qu'au-dessus de sa première mesure
+      const drawnLast = e.open ? e.firstBar : e.lastBar;
+      const bars = [...barAnchors.keys()].filter((b) => b >= e.firstBar && b <= drawnLast);
       if (!bars.length) continue;
       const fromBar = bars[0], toBar = bars[bars.length - 1];
       const list = barAnchors.get(toBar)!;
       const opens = firstAnchorOfBar(e.firstBar) !== undefined;
-      const closes = toBar === e.lastBar && lastAnchorOfBar(e.lastBar) !== undefined;
-      const closedByRepeat = closes && !!repeatOf(score, e.lastBar)?.end;
-      endings.push({ ending: e, fromAnchor: barAnchors.get(fromBar)![0], toAnchor: list[list.length - 1], opens, closes, closedByRepeat });
-      if (opens) marks.push({ anchor: firstAnchorOfBar(e.firstBar)!, text: endingLabel(e), kind: "ending" });
-      if (closes && !closedByRepeat) marks.push({ anchor: lastAnchorOfBar(e.lastBar)!, text: "]", kind: "endingClose" });
+      const closes = toBar === drawnLast && lastAnchorOfBar(drawnLast) !== undefined;
+      const closedByRepeat = closes && !e.open && !!repeatOf(score, e.lastBar)?.end;
+      const fromAnchor = barAnchors.get(fromBar)![0];
+      const toAnchor = list[list.length - 1];
+      // barre qui ouvre la mesure : -1 si c'est la barre de gauche du système
+      const before = anchors[fromAnchor] - 1;
+      const fromColumn = opens && before >= 0 && columns[before].kind === "barSep" && !(columns[before] as { lead?: boolean }).lead ? before : -1;
+      const toColumn = closes ? anchors[toAnchor] + 1 : -1;
+      // une case dont la mesure finit le morceau est fermée, comme sur « :|| »
+      const endsPiece = drawnLast === score.beats[score.beats.length - 1].barIndex;
+      endings.push({ ending: e, fromAnchor, toAnchor, fromColumn, toColumn, opens, closes, closedByRepeat, hook: closes && (!e.open || endsPiece) });
+      if (opens) marks.push({ column: fromColumn, text: endingLabel(e), kind: "ending" });
+      if (closes && !e.open && !closedByRepeat) marks.push({ column: toColumn, text: "]", kind: "endingClose" });
     }
     for (const r of score.repeats) {
       if (!r.end || !r.times || r.times === 2) continue;
@@ -381,7 +410,7 @@ export function layout(score: Score, m: Metrics): System[] {
       const a = anchors.findIndex((ci) => (columns[ci] as { t: number }).t === tm.t);
       if (a >= 0) marks.push({ anchor: a, text: tm.text, kind: "text" });
     }
-    marks.sort((x, y) => x.anchor - y.anchor);
+    marks.sort((x, y) => markColumn({ anchors }, x) - markColumn({ anchors }, y));
 
     return {
       bar: firstBeat.bar,

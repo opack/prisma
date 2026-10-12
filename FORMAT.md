@@ -87,24 +87,26 @@ Sur les lignes de notes, les deux points peuvent être remplacés par une espace
 
 ## Ligne d'indications `@`
 
-Une ou plusieurs lignes facultatives, **au-dessus** de la règle de comptage, qui commencent par `@`. Chaque indication commence exactement sur la colonne d'une case de la règle (le lecteur signale une erreur sinon), et peut déborder sur les cases suivantes. Deux indications sont séparées par au moins deux espaces. Les `|` et `:` recopiés pour se repérer sont ignorés.
+Une ou plusieurs lignes facultatives, **au-dessus** de la règle de comptage, qui commencent par `@`. Chaque indication est alignée sur une colonne de la règle (le lecteur signale une erreur sinon), et peut déborder sur les colonnes suivantes. Deux indications sont séparées par au moins deux espaces. Les `|` et `:` recopiés pour se repérer sont ignorés.
 
-| Indication | Sens |
-|---|---|
-| `[1.` `[2.` `[1.2.` | Ouvre une case de reprise (« 1.2. » : jouée aux passages 1 et 2). |
-| `]` | Ferme la case en cours à la fin de cette mesure. |
-| `3×` (ou `3x`) | Le passage se joue 3 fois. À placer dans la mesure qui se termine par `:||`. |
-| autre texte | Indication pour tout le système : `rit.`, `a tempo`, `D.C.`, `Fine`… |
+| Indication | Placée sur | Sens |
+|---|---|---|
+| `[1.` `[2.` `[1.2.` | le **dernier** `|` de la barre qui ouvre la mesure | Ouvre une case de reprise (« 1.2. » : jouée aux passages 1 et 2). |
+| `]` | le **premier** `|` de la barre qui ferme la mesure | Ferme la case en cours à cette barre. |
+| `3×` (ou `3x`) | une case de la mesure qui se termine par `:||` | Le passage se joue 3 fois. |
+| autre texte | une case | Indication pour tout le système : `rit.`, `a tempo`, `D.C.`, `Fine`… |
 
-Une case se ferme sur `]`, ou sur la fin de reprise `:||` qu'elle contient. Sans l'une ni l'autre, elle s'arrête à la fin de sa première mesure. Pour éviter toute ambiguïté, l'import et `format` écrivent toujours le `]` d'une case qui ne se termine pas par `:||`.
+Sur une barre `||`, une case qui se ferme et la suivante qui s'ouvre s'écrivent donc à la suite : `][2.`. Pour la première mesure d'un système, `[` se place sur le `|` de la colonne de gauche (ou sur celui de `|:` quand le système commence par une reprise).
+
+Une case se poursuit jusqu'à son `]`, ou jusqu'à la fin de reprise `:||` qu'elle contient. Sans l'une ni l'autre, elle va jusqu'à la case suivante, jusqu'au `||:` suivant, ou jusqu'à la fin du morceau. Dans ce dernier cas, comme sur une partition, son crochet n'est tracé qu'au-dessus de sa première mesure, ouvert à droite (il est fermé si cette mesure termine le morceau).
 
 ```
-@                                       [1.               [2.         ]
-m1 ||:1  |2  |3  |4  ||1  |2  |3  |4  ||1  |2  |3  |4  :||1  |2  |3  |4  ||
-───┼┼────┼───┼───┼───┼┼───┼───┼───┼───┼┼───┼───┼───┼────┼┼───┼───┼───┼───┼┼
-0  ||:1  |3  |5  |8  ||5  |3  |1  |   ||3  |-  |-  |-  :||1  |-  |-  |-  ||
-───┼┼────┼───┼───┼───┼┼───┼───┼───┼───┼┼───┼───┼───┼────┼┼───┼───┼───┼───┼┼
--1 ||:1  |-  |-  |-  ||8  |-  |-  |-  ||8  |-  |-  |-  :||1  |-  |-  |-  ||
+@                                      [1.               [2.             ]
+m1 ||:1  |2  |3  |4  ||1  |2  |3  |4  ||1  |2  |3  |4  :||1  |2  |3  |4  ||1  |2  |3  |4  ||
+───┼┼────┼───┼───┼───┼┼───┼───┼───┼───┼┼───┼───┼───┼────┼┼───┼───┼───┼───┼┼───┼───┼───┼───┼┼
+0  ||:1  |3  |5  |8  ||5  |3  |1  |   ||3  |-  |-  |-  :||1  |-  |-  |-  ||5  |-  |-  |-  ||
+───┼┼────┼───┼───┼───┼┼───┼───┼───┼───┼┼───┼───┼───┼────┼┼───┼───┼───┼───┼┼───┼───┼───┼───┼┼
+-1 ||:1  |-  |-  |-  ||8  |-  |-  |-  ||8  |-  |-  |-  :||1  |-  |-  |-  ||1  |-  |-  |-  ||
 ```
 
 ## Hors format pour l'instant

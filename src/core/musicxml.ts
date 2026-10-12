@@ -50,6 +50,8 @@ type RawMeasure = {
   endRepeat: boolean;
   times: number;
   endings?: number[];
+  /** La case se termine sans crochet de fin (« discontinue » en MusicXML). */
+  endingOpen?: boolean;
 };
 
 function readMeasures(part: XNode): RawMeasure[] {
@@ -64,6 +66,7 @@ function readMeasures(part: XNode): RawMeasure[] {
     let startRepeat = false, endRepeat = false, times = 2;
     let endings = openEnding;
     let closeEndingAfter = false;
+    let endingOpen = false;
 
     for (const item of items) {
       const t = tag(item);
@@ -97,6 +100,7 @@ function readMeasures(part: XNode): RawMeasure[] {
           } else if (type === "stop" || type === "discontinue") {
             endings = endings ?? nums;
             closeEndingAfter = true;
+            if (type === "discontinue") endingOpen = true;
           }
         }
       } else if (t === "note") {
@@ -132,7 +136,7 @@ function readMeasures(part: XNode): RawMeasure[] {
       divisions, beats, beatType,
       length: maxCursor,
       implicit: attr(measure, "implicit") === "yes",
-      notes, startRepeat, endRepeat, times, endings,
+      notes, startRepeat, endRepeat, times, endings, endingOpen,
     });
   }
   return out;
@@ -219,6 +223,7 @@ export function importMusicXml(xml: string, fileName?: string): Score {
       const prev = endings[endings.length - 1];
       if (prev && prev.lastBar === barIndex - 1 && measures[barIndex - 1].endings === m.endings) prev.lastBar = barIndex;
       else endings.push({ numbers: [...m.endings], firstBar: barIndex, lastBar: barIndex });
+      if (m.endingOpen) endings[endings.length - 1].open = true;
     }
     const p = pulse(m.beats, m.beatType);
     const nominal = p.count * p.quarters;

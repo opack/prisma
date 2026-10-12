@@ -13,7 +13,7 @@ import { DEFAULT_CELL } from "./ymn-write.ts";
 /** Un temps de la règle de comptage, et la barre qui le termine. */
 type Segment = { from: number; to: number; barEnd: boolean; endRepeat: boolean; startRepeatAfter: boolean };
 /** Plage de colonnes occupée par un séparateur (« | », « :|| »…). */
-type SepSpan = { from: number; to: number };
+type SepSpan = { from: number; to: number; text: string };
 
 const isSeparator = (line: string) => {
   const t = line.trim();
@@ -53,23 +53,42 @@ function parseRuler(ruler: string, lineNo: number, pipe: number) {
     segs.push({ from, to, barEnd: t !== "|", endRepeat: t.startsWith(":"), startRepeatAfter: t.endsWith(":") });
   }
   if (!segs.length) throw new YmnError("règle de comptage sans aucun temps", lineNo);
-  const spans: SepSpan[] = seps.map((s) => ({ from: s.from, to: s.from + s.text.length }));
+  const spans: SepSpan[] = seps.map((s) => ({ from: s.from, to: s.from + s.text.length, text: s.text }));
   return { segs, spans, leadRepeat: lead === "||:" };
 }
 
 const nextBar = (bar: string) => (/^\d+$/.test(bar) ? String(Number(bar) + 1) : bar + "'");
 
-/** Indications d'une ligne @ : groupes de mots séparés par au moins deux espaces. */
-function markTokens(line: string, pipe: number) {
+/**
+ * Indications d'une ligne @ : groupes de mots séparés par au moins deux espaces
+ * (« a tempo » reste un seul texte). Les signes de case « [1. » et « ] » sont toujours
+ * des indications à part, même collés (« ][2. ») ou séparés par une seule espace.
+ */
+function markTokens(line: string) {
   const out: { col: number; text: string }[] = [];
-  const re = /\S+(?: \S+)*/g;
-  const body = " ".repeat(pipe + 1) + line.slice(pipe + 1);
-  for (let m = re.exec(body); m; m = re.exec(body)) {
+  const body = " " + line.slice(1); // seul le « @ » est retiré
+  // morceaux : mots, en coupant devant chaque « [ » et derrière chaque « ] »
+  const pieces: { col: number; text: string }[] = [];
+  for (let m = /\S+/g, w = m.exec(body); w; w = m.exec(body)) {
+    // la découpe ne retire aucun caractère : chaque morceau commence où finit le précédent
+    let col = w.index;
+    for (const part of w[0].split(/(?=\[)|(?<=\])/)) {
+      pieces.push({ col, text: part });
+      col += part.length;
+    }
+  }
+  const structural = (t: string) => t.startsWith("[") || t === "]";
+  for (const p of pieces) {
     // les barres recopiées pour se repérer sont ignorées
-    const raw = m[0];
-    const lead = raw.length - raw.replace(/^[|:]+/, "").length;
-    const text = raw.slice(lead).replace(/[|:]+$/, "");
-    if (text) out.push({ col: m.index + lead, text });
+    const lead = p.text.length - p.text.replace(/^[|:]+/, "").length;
+    const text = p.text.slice(lead).replace(/[|:]+$/, "");
+    if (!text) continue;
+    const col = p.col + lead;
+    const prev = out[out.length - 1];
+    // un mot de texte qui suit un autre mot à une seule espace prolonge le même texte
+    if (prev && !structural(prev.text) && !structural(text) && col === prev.col + prev.text.length + 1) {
+      prev.text += " " + text;
+    } else out.push({ col, text });
   }
   return out;
 }
@@ -139,6 +158,8 @@ export function parseYmn(text: string): Score {
     const blockBeat0 = beats.length;
     let bar = barLabel || nextBar(lastBar);
     const anchors: { t: number; from: number; seg: number; barIndex: number }[] = [];
+    const segBar: number[] = []; // mesure de chaque temps
+    const segOpensBar: boolean[] = []; // le temps ouvre une mesure
     segs.forEach((s, si) => {
       const w = s.to - s.from;
       if (w % cw) throw new YmnError(`le temps fait ${w} caractères, ce n'est pas un multiple de ${cw}`, L, s.from + 1);
@@ -163,6 +184,8 @@ export function parseYmn(text: string): Score {
         repeatNext = false;
       }
       if (s.endRepeat) repeatAt(barIndex).end = true;
+      segBar.push(barIndex);
+      segOpensBar.push(newBar);
       const gi = beats.length;
       beats.push({ bar, barIndex, label, division });
       for (let k = 0; k < n; k++) {
@@ -177,14 +200,36 @@ export function parseYmn(text: string): Score {
 
     // ligne(s) @ au-dessus de la règle : cases de reprise, nombre de passages, textes
     for (const li of block.marks) {
-      for (const tok of markTokens(lines[li], pipe)) {
+      for (const tok of markTokens(lines[li])) {
+        const ending = tok.text.match(/^\[((?:\d+\.)+)$/);
+        if (ending || tok.text === "]") {
+          // « [1. » sur le dernier « | » de la barre qui ouvre la mesure,
+          // « ] » sur le premier « | » de la barre qui la ferme : « ][2. » s'enchaînent
+          const j = spans.findIndex((sp) => tok.col >= sp.from && tok.col < sp.to);
+          const sp = spans[j];
+          if (ending) {
+            if (j < 0 || j >= segs.length || !segOpensBar[j]) {
+              throw new YmnError(`« ${tok.text} » doit être placé sur la barre qui ouvre une mesure`, li + 1, tok.col + 1);
+            }
+            if (tok.col !== sp.from + sp.text.lastIndexOf("|")) {
+              throw new YmnError(`« ${tok.text} » doit être placé sur le dernier « | » de la barre`, li + 1, tok.col + 1);
+            }
+            endingStarts.push({ numbers: ending[1].split(".").filter(Boolean).map(Number), bar: segBar[j] });
+          } else {
+            if (j < 1 || !segs[j - 1].barEnd) {
+              throw new YmnError("« ] » doit être placé sur la barre qui ferme une mesure", li + 1, tok.col + 1);
+            }
+            if (tok.col !== sp.from + sp.text.indexOf("|")) {
+              throw new YmnError("« ] » doit être placé sur le premier « | » de la barre", li + 1, tok.col + 1);
+            }
+            endingCloses.push(segBar[j - 1]);
+          }
+          continue;
+        }
         const a = anchors.find((x) => x.from === tok.col);
         if (!a) throw new YmnError(`« ${tok.text} » doit commencer exactement sur une case de la règle de comptage`, li + 1, tok.col + 1);
-        const ending = tok.text.match(/^\[((?:\d+\.)+)$/);
         const times = tok.text.match(/^(\d+)\s*[×xX]$/);
-        if (ending) endingStarts.push({ numbers: ending[1].split(".").filter(Boolean).map(Number), bar: a.barIndex });
-        else if (tok.text === "]") endingCloses.push(a.barIndex);
-        else if (times) timesMarks.push({ bar: a.barIndex, times: Number(times[1]), line: li + 1, col: tok.col + 1 });
+        if (times) timesMarks.push({ bar: a.barIndex, times: Number(times[1]), line: li + 1, col: tok.col + 1 });
         else texts.push({ t: a.t, text: tok.text });
       }
     }
@@ -289,21 +334,28 @@ export function parseYmn(text: string): Score {
     if (tm.times !== 2) r.times = tm.times;
   }
 
-  // cases : une case se ferme sur « ] » ou sur une fin de reprise « :|| » ;
-  // sinon, à la fin de sa première mesure
+  // cases : une case se poursuit jusqu'à « ] » ou jusqu'à la fin de reprise « :|| »
+  // qu'elle contient ; sinon jusqu'à la case suivante, au « ||: » suivant ou à la fin du morceau
   const endings: Ending[] = [];
   const lastBarIndex = barIndex;
   endingStarts.forEach((e, i) => {
     const limit = Math.min(i + 1 < endingStarts.length ? endingStarts[i + 1].bar - 1 : lastBarIndex, lastBarIndex);
-    let lastBar = e.bar;
+    let lastBar = limit;
+    let explicit = false;
     for (let b = e.bar; b <= limit; b++) {
-      if (b > e.bar && repeats.get(b)?.start) break;
+      if (b > e.bar && repeats.get(b)?.start) {
+        lastBar = b - 1;
+        break;
+      }
       if (endingCloses.includes(b) || repeats.get(b)?.end) {
         lastBar = b;
+        explicit = true;
         break;
       }
     }
-    endings.push({ numbers: e.numbers, firstBar: e.bar, lastBar });
+    const ending: Ending = { numbers: e.numbers, firstBar: e.bar, lastBar };
+    if (!explicit) ending.open = true;
+    endings.push(ending);
   });
 
   return {

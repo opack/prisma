@@ -56,8 +56,12 @@ export type Repeat = {
   times?: number;
 };
 
-/** Case de reprise (« 1. », « 2. », « 1.2. »…), de la mesure firstBar à lastBar incluses. */
-export type Ending = { numbers: number[]; firstBar: number; lastBar: number };
+/**
+ * Case de reprise (« 1. », « 2. », « 1.2. »…), de la mesure firstBar à lastBar incluses.
+ * open : la case n'a pas de fin explicite (ni « ] » ni « :|| ») ; comme sur une partition,
+ * son crochet n'est tracé qu'au-dessus de sa première mesure.
+ */
+export type Ending = { numbers: number[]; firstBar: number; lastBar: number; open?: boolean };
 
 /** Indication de texte pour tout le système, placée sur une ancre (« rit. », « D.C. »…). */
 export type TextMark = { t: number; text: string };

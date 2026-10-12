@@ -224,13 +224,104 @@ describe("reprises", () => {
 
   it("lit une reprise écrite à la main, sans les deux points sur les lignes de notes", () => {
     const s = parseYmn(
-      "@     [1.       [2.\nm1 ||:1  |2  :||1  |2  ||\n0  ||:1  |-   ||5  |   ||\n---\n-1 || 1  |    ||1  |   ||\n",
+      "@   [1.        [2.\nm1 ||:1  |2  :||1  |2  ||\n0  ||:1  |-   ||5  |   ||\n---\n-1 || 1  |    ||1  |   ||\n",
     );
     expect(s.repeats).toEqual([{ barIndex: 0, start: true, end: true }]);
     expect(s.endings).toEqual([
       { numbers: [1], firstBar: 0, lastBar: 0 },
-      { numbers: [2], firstBar: 1, lastBar: 1 },
+      { numbers: [2], firstBar: 1, lastBar: 1, open: true },
     ]);
+  });
+
+  // règle de 4 mesures d'un temps : barres aux colonnes 3, 7-8, 12-13, 17-18 et 22-23
+  const grid = (marks: string) =>
+    `@${marks}\nm1 |1  ||1  ||1  ||1  ||\n0  |1  ||1  ||1  ||1  ||\n---\n`;
+
+  it("prolonge une case sans « ] » jusqu'à la fin du morceau", () => {
+    const s = parseYmn(grid("       [2."));
+    expect(s.endings).toEqual([{ numbers: [2], firstBar: 1, lastBar: 3, open: true }]);
+  });
+
+  it("ferme une case sur le « ] » placé sur la barre de fin de mesure", () => {
+    const s = parseYmn(grid("       [2.      ]"));
+    expect(s.endings).toEqual([{ numbers: [2], firstBar: 1, lastBar: 2 }]);
+  });
+
+  it("arrête une case sans fin avant le « ||: » suivant", () => {
+    const s = parseYmn("@       [2.\nm1 |1  ||1  ||1  ||:1  ||\n0  |1  ||1  ||1  ||:1  ||\n---\n");
+    expect(s.endings).toEqual([{ numbers: [2], firstBar: 1, lastBar: 2, open: true }]);
+  });
+
+  it("enchaîne « ][2. » sur une même barre, à la lecture comme à l'écriture", () => {
+    // case 1 sur la mesure 2, fermée sur le premier « | » de la barre 12-13 ; case 2 ouverte sur le second
+    const s = parseYmn(grid("       [1. ][2."));
+    expect(s.endings).toEqual([
+      { numbers: [1], firstBar: 1, lastBar: 1 },
+      { numbers: [2], firstBar: 2, lastBar: 3, open: true },
+    ]);
+    const at = writeYmn(s).split("\n").filter((l) => l.startsWith("@"));
+    expect(at).toEqual(["@       [1. ][2."]);
+  });
+
+  it("refuse « [1. » sur le premier « | » d'une barre « || »", () => {
+    expect(() => parseYmn(grid("      [2."))).toThrow(/dernier « \| » de la barre/);
+  });
+
+  it("refuse « ] » sur le second « | » d'une barre « || »", () => {
+    expect(() => parseYmn(grid("       [2.       ]"))).toThrow(/premier « \| » de la barre/);
+  });
+
+  it("refuse « [1. » placé sur une case au lieu d'une barre", () => {
+    expect(() => parseYmn(grid("        [2."))).toThrow(/barre qui ouvre une mesure/);
+  });
+
+  it("refuse « ] » placé ailleurs que sur une barre de fin de mesure", () => {
+    expect(() => parseYmn(grid("       [2.    ]"))).toThrow(/barre qui ferme une mesure/);
+  });
+
+  it("écrit « [ » et « ] » sur les barres de mesure", () => {
+    const text = writeYmn(parseYmn(grid("       [2.      ]")));
+    const at = text.split("\n").find((l) => l.startsWith("@"))!;
+    const ruler = text.split("\n").find((l) => l.startsWith("m1"))!;
+    expect(ruler[at.indexOf("[")]).toBe("|");
+    expect(ruler[at.indexOf("]")]).toBe("|");
+  });
+
+  it("importe une case MusicXML sans crochet de fin comme une case ouverte", () => {
+    const xml = musicXml([
+      n(60),
+      { ...n(62), barlineLeft: `<ending number="1" type="start"/>`, barline: `<ending number="1" type="stop"/><repeat direction="backward"/>` },
+      { ...n(64), barlineLeft: `<ending number="2" type="start"/>` },
+      { ...n(65), barline: `<ending number="2" type="discontinue"/>` },
+    ]);
+    const score = importMusicXml(xml);
+    expect(score.endings[1]).toEqual({ numbers: [2], firstBar: 2, lastBar: 3, open: true });
+    const { text } = roundTrip(score);
+    expect(text).not.toContain("]"); // pas de fin explicite à écrire
+  });
+
+  it("ne trace le crochet d'une case ouverte qu'au-dessus de sa première mesure", () => {
+    const sys = layout(parseYmn(grid("       [2.")), { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 })[0];
+    const span = sys.endings[0];
+    expect(span.toAnchor).toBe(1); // ancre de la mesure 2 seulement
+    expect(span.hook).toBe(false);
+  });
+
+  it("ferme le crochet d'une case dont la mesure finit le morceau", () => {
+    const sys = layout(parseYmn(grid("                 [2.")), { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 })[0];
+    expect(sys.endings[0].hook).toBe(true);
+  });
+
+  it("marque la dernière barre du morceau comme barre de fin", () => {
+    const sys = layout(parseYmn(grid("")), { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 })[0];
+    const bars = sys.columns.filter((c) => c.kind === "barSep");
+    expect(bars.map((c) => !!(c as { final?: boolean }).final)).toEqual([false, false, false, true]);
+  });
+
+  it("ferme le crochet d'une case terminée par « ] »", () => {
+    const sys = layout(parseYmn(grid("       [2.      ]")), { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 })[0];
+    expect(sys.endings[0].hook).toBe(true);
+    expect(sys.endings[0].toAnchor).toBe(2);
   });
 
   it("garde les textes de la ligne @", () => {
