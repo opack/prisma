@@ -58,8 +58,27 @@ Sur les lignes de notes :
 | `-` | La note continue. |
 | `-7` | En début de système : le 7 commencé plus tôt continue. |
 | vide | Rien ne sonne sur cette ligne. |
+| `3'` | Petite note, devant le contenu de la case (voir « Petites notes »). |
 
 Une note s'arrête au premier ancrage vide de sa ligne. Une note répétée se réécrit.
+
+### Petites notes
+
+Une petite note (appoggiature, acciaccature) se joue très vite, juste avant la note de sa case, sans compter dans le temps. Elle s'écrit avec son numéro suivi d'une apostrophe, **dans la case de la note principale**, sur la ligne de son octave : `3'5` joue un 3 bref, puis le 5 sur le temps.
+
+```
+m1 |1        |2  |
++1 |3'       |   |
+0  |  7'9'5  |-  |
+```
+
+- Plusieurs petites notes s'enchaînent : `7'9'5`. L'apostrophe sépare aussi les numéros à deux chiffres : `10'12'7`.
+- Elles se jouent de gauche à droite à l'intérieur de la case, quelle que soit leur ligne : ici 3 (octave du dessus), 7, 9, puis le 5. Deux petites notes alignées sur la même colonne se jouent ensemble.
+- Une petite note seule sur sa ligne n'y fait rien sonner ensuite : `3'` puis rien, c'est juste la petite note.
+- À l'écriture, le contenu des cases vient après les petites notes, sur toutes les lignes, pour que les notes jouées ensemble restent alignées.
+- La gravure les dessine en petit, en exposant et en gris foncé, en tête de case.
+
+Une seule sorte de petite note : barrée ou non, c'est au pianiste de la placer, comme sur une partition classique.
 
 ### Les lignes
 
@@ -194,7 +213,7 @@ m1 |1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||
 
 ## Hors format pour l'instant
 
-Petites notes, ornements, liaisons d'expression, doigtés, articulations. Voir ROADMAP.md.
+Ornements, liaisons d'expression, doigtés, articulations. Voir ROADMAP.md.
 
 ## Outil en ligne de commande
 

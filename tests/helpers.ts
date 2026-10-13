@@ -10,6 +10,8 @@ export type XNote = {
   tie?: ("start" | "stop")[];
   /** XML brut placé juste avant la note (directions : nuances, soufflets, textes). */
   before?: string;
+  /** Petite note (dur vaut alors 0) ; « slash » : barrée (acciaccature). */
+  grace?: boolean | "slash";
   /** XML brut placé dans <notations> de la note (point d'orgue…). */
   notations?: string;
 };
@@ -43,7 +45,9 @@ export function musicXml(measures: XMeasure[], divisions = 12): string {
           const pc = p % 12;
           const alt = ALTER[pc] ? `<alter>1</alter>` : "";
           const ties = (n.tie ?? []).map((t) => `<tie type="${t}"/>`).join("");
-          body += `<note>${k ? "<chord/>" : ""}<pitch><step>${STEPS[pc]}</step>${alt}<octave>${Math.floor(p / 12) - 1}</octave></pitch><duration>${n.dur}</duration>${ties}${staff}</note>`;
+          const grace = n.grace ? `<grace${n.grace === "slash" ? ' slash="yes"' : ""}/>` : "";
+          const dur = n.grace ? "" : `<duration>${n.dur}</duration>`;
+          body += `<note>${grace}${k ? "<chord/>" : ""}<pitch><step>${STEPS[pc]}</step>${alt}<octave>${Math.floor(p / 12) - 1}</octave></pitch>${dur}${ties}${staff}</note>`;
         });
       }
     });

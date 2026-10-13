@@ -34,6 +34,16 @@ export type Note = {
   end: number;
 };
 
+/**
+ * Petite note : jouée très vite juste avant l'instant t, sans compter dans le temps.
+ * slot : rang dans la suite des petites notes de cette main à cet instant (0 en premier) ;
+ * deux petites notes de même rang se jouent ensemble.
+ */
+export type Grace = { hand: Hand; midi: number; t: number; slot: number };
+
+/** Marque d'une petite note dans une case : son numéro suivi d'une apostrophe (« 3'5 »). */
+export const GRACE_MARK = "'";
+
 export type Meta = {
   title?: string;
   composer?: string;
@@ -118,6 +128,8 @@ export type Score = {
   /** Temps du morceau, dans l'ordre. Le temps i couvre [i·TICKS_PER_BEAT, (i+1)·TICKS_PER_BEAT[. */
   beats: Beat[];
   notes: Note[];
+  /** Petites notes, rangées par instant, main, rang, de l'aigu au grave. */
+  graces: Grace[];
   repeats: Repeat[];
   texts: TextMark[];
   expressions: Expression[];
@@ -140,4 +152,24 @@ export function sortNotes(notes: Note[]): Note[] {
   return [...notes].sort(
     (a, b) => a.start - b.start || (a.hand === b.hand ? 0 : a.hand === "D" ? -1 : 1) || b.midi - a.midi || a.end - b.end,
   );
+}
+
+/** Trie les petites notes : par instant, main droite d'abord, par rang, de l'aigu au grave. */
+export function sortGraces(graces: Grace[]): Grace[] {
+  return [...graces].sort(
+    (a, b) => a.t - b.t || (a.hand === b.hand ? 0 : a.hand === "D" ? -1 : 1) || a.slot - b.slot || b.midi - a.midi,
+  );
+}
+
+/**
+ * Rangs des petites notes d'une main à un instant : pour chaque rang, le nombre de
+ * chiffres le plus grand (1 ou 2), qui fixe sa largeur. Vide s'il n'y en a pas.
+ */
+export function graceDigits(graces: Grace[], hand: Hand, t: number): number[] {
+  const out: number[] = [];
+  for (const g of graces) {
+    if (g.hand !== hand || g.t !== t) continue;
+    out[g.slot] = Math.max(out[g.slot] ?? 1, String((g.midi % 12) + 1).length);
+  }
+  return Array.from(out, (d) => d ?? 1);
 }

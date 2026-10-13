@@ -5,8 +5,8 @@
  * de comptage. Voir FORMAT.md pour la grammaire complète.
  */
 import { YmnError, parseFrontmatter } from "./frontmatter.ts";
-import { FERMATA, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, joinsText, sortNotes } from "./model.ts";
-import type { Beat, Division, Expression, Hairpin, Hand, Marker, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
+import { FERMATA, GRACE_MARK, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, joinsText, sortGraces, sortNotes } from "./model.ts";
+import type { Beat, Division, Expression, Grace, Hairpin, Hand, Marker, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
 import { midiOf, parseOctaveLabel } from "./pitch.ts";
 
 /** Un temps de la règle de comptage, et la barre qui le termine. */
@@ -130,6 +130,7 @@ export function parseYmn(text: string): Score {
 
   const beats: Beat[] = [];
   const notes: Note[] = [];
+  const graces: Grace[] = [];
   const repeats = new Map<number, Repeat>();
   const repeatAt = (barIndex: number) => {
     if (!repeats.has(barIndex)) repeats.set(barIndex, { barIndex });
@@ -277,6 +278,8 @@ export function parseYmn(text: string): Score {
     };
 
     const nextPending: Note[] = [];
+    // petites notes du bloc, par main et instant : leur rang se lit de gauche à droite dans la case
+    const blockGraces = new Map<string, { hand: Hand; t: number; col: number; midi: number }[]>();
     const lastOctave: Record<Hand, number | undefined> = { D: undefined, G: undefined };
     const voiceLine: Record<Hand, boolean> = { D: false, G: false };
     for (const li of content) {
@@ -320,12 +323,28 @@ export function parseYmn(text: string): Score {
         open = undefined;
       };
       anchors.forEach((a, ai) => {
-        const raw = row.slice(a.from, a.to);
+        let raw = row.slice(a.from, a.to);
+        // petites notes (« 3' »), avant la note de la case
+        let graceEnd = 0;
+        for (const g of raw.matchAll(/(\d+)'/g)) {
+          const gc = a.from + g.index! + 1;
+          const k = Number(g[1]);
+          if (k < 1 || k > 12) throw new YmnError(`petite note invalide « ${g[0]} » : attendu un numéro de 1 à 12 suivi de « ${GRACE_MARK} »`, R, gc);
+          const key = hand + ":" + a.t;
+          if (!blockGraces.has(key)) blockGraces.set(key, []);
+          blockGraces.get(key)!.push({ hand, t: a.t, col: gc, midi: midiOf(octave, k) });
+          graceEnd = g.index! + g[0].length;
+        }
+        if (graceEnd) {
+          const before = raw.slice(0, graceEnd).replace(/\d+'/g, (x) => " ".repeat(x.length));
+          if (before.trim()) throw new YmnError("une petite note se place avant la note de sa case", R, a.from + before.search(/\S/) + 1);
+          raw = " ".repeat(graceEnd) + raw.slice(graceEnd);
+        }
         const c = raw.trim();
         const col = a.from + 1 + (raw.length - raw.trimStart().length);
         const m = c.match(/^(-?)(\d{0,2})$/);
         if (!m || (m[2] && (Number(m[2]) < 1 || Number(m[2]) > 12)) || (!m[1] && !m[2] && c)) {
-          throw new YmnError(`case invalide « ${c} » : attendu un numéro de 1 à 12, « - », « -N » ou une case vide`, R, col);
+          throw new YmnError(`case invalide « ${c} » : attendu un numéro de 1 à 12, « - », « -N », des petites notes « N' » ou une case vide`, R, col);
         }
         const [, dash, digits] = m;
         if (!c) return close(a.t);
@@ -364,6 +383,10 @@ export function parseYmn(text: string): Score {
       }
     }
     pending = nextPending;
+    for (const list of blockGraces.values()) {
+      const cols = [...new Set(list.map((g) => g.col))].sort((x, y) => x - y);
+      for (const g of list) graces.push({ hand: g.hand, midi: g.midi, t: g.t, slot: cols.indexOf(g.col) });
+    }
 
     // pédale : dans l'ordre du temps, en relâchant avant d'enfoncer à un même instant
     const order = (x: string) => (x === PEDAL_UP ? 0 : x === PEDAL_CHANGE ? 1 : 2);
@@ -424,6 +447,7 @@ export function parseYmn(text: string): Score {
     meta,
     beats,
     notes: sortNotes(notes),
+    graces: sortGraces(graces),
     repeats: [...repeats.values()].sort((a, b) => a.barIndex - b.barIndex),
     texts,
     expressions: expressions.sort((a, b) => a.t - b.t || (a.hand === b.hand ? 0 : a.hand === "D" ? -1 : 1)),

@@ -1,6 +1,6 @@
 import { octaveOffset } from "../core/index.ts";
 import type { Meta, SystemRow, Voice } from "../core/index.ts";
-import { G, PAGE } from "./engrave.ts";
+import { G, PAGE, graceExtra, graceSlotW } from "./engrave.ts";
 import type { Page, PlacedSystem } from "./engrave.ts";
 import type { OctavePosition, OctaveStyle, RenderOptions } from "./options.ts";
 
@@ -11,6 +11,7 @@ const LIGHT_TEXT = "#aeb3b8";
 const BAND = "#f1f2ee";
 const TAB = "#e6e8e3";
 const TAB_TEXT = "#4a4f54";
+const GRACE = "#5a5f64"; // petites notes : gris foncé, entre les notes et les tenues
 
 /*
  * Trois sortes de chiffres, trois apparences :
@@ -117,15 +118,32 @@ function Row({ ps, row, y, centered }: { ps: PlacedSystem; row: SystemRow; y: nu
   const x0 = PAGE.marginX;
   const right = xs[xs.length - 1] + ws[ws.length - 1];
   const base = y + G.rowH * 0.74;
+  // petites notes : en petit, en exposant et en gris foncé, en tête de case, rang par rang
+  const graces = row.graces.flatMap((list, a) => {
+    let x = xs[sys.anchors[a]] + 0.4;
+    const dy = centered ? row.center[a] * G.rowH : 0;
+    return sys.graceDigits[row.hand][a].map((d, k) => {
+      const gx = x;
+      x += graceSlotW(d);
+      return list[k] ? (
+        <text key={`g${a}-${k}`} x={gx} y={base + dy - 1.05} fontSize={2.3} fontWeight={600} fill={GRACE}>
+          {list[k]}
+        </text>
+      ) : null;
+    });
+  });
   return (
     <g>
+      {graces}
       {row.cells.map((c, a) => {
         if (!c) return null;
         // option « notes centrées » : le bloc de notes est centré dans son couloir
         const dy = centered ? row.center[a] * G.rowH : 0;
         const ci = sys.anchors[a];
-        const x = xs[ci];
-        const w = ws[ci];
+        // la note vient après les petites notes de sa case
+        const extra = graceExtra(sys, a);
+        const x = xs[ci] + extra;
+        const w = ws[ci] - extra;
         if (c === "-") {
           return <line key={a} x1={x + w * 0.22} x2={x + w * 0.62} y1={y + dy + G.rowH / 2} y2={y + dy + G.rowH / 2} stroke={INK} strokeWidth={0.32} />;
         }
@@ -238,7 +256,7 @@ function Marks({ ps }: { ps: PlacedSystem }) {
       {sys.marks
         .filter((m) => m.kind === "fermata")
         .map((m, i) => (
-          <Fermata key={"f" + i} cx={ax(m.anchor!) + 1.4} y={top} />
+          <Fermata key={"f" + i} cx={ax(m.anchor!) + graceExtra(sys, m.anchor!) + 1.4} y={top} />
         ))}
       {sys.marks
         .filter((m) => m.kind === "times")

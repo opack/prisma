@@ -5,7 +5,7 @@
  * Le moteur ne connaît que des « unités » de largeur : des caractères pour le texte,
  * des millimètres pour le rendu graphique. Seules les mesures changent.
  */
-import { PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, beatStart, repeatOf } from "./model.ts";
+import { PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, beatStart, graceDigits, repeatOf } from "./model.ts";
 import type { Beat, Division, Hairpin, Hand, Note, Score } from "./model.ts";
 import { numberOf, octaveOf } from "./pitch.ts";
 
@@ -45,6 +45,11 @@ export type SystemRow = {
   showOctave: boolean;
   /** Contenu de chaque ancre : "", "-", "-N" (rappel en début de système) ou "N". */
   cells: string[];
+  /**
+   * Petites notes de chaque ancre, jouées avant son contenu : un numéro par rang (voir
+   * System.graceDigits), "" pour un rang joué sur une autre ligne. Vide sans petite note.
+   */
+  graces: string[][];
   /**
    * Pour chaque ancre, décalage vertical (en lignes) qui centre le bloc de notes dans
    * son couloir d'octave. Sert seulement au rendu graphique « notes centrées ».
@@ -113,6 +118,8 @@ export type System = {
   endsSection: boolean;
   voices: Record<Hand, Voice>;
   pedal: PedalLine;
+  /** Pour chaque main et chaque ancre, le nombre de chiffres de chaque rang de petites notes. */
+  graceDigits: Record<Hand, number[][]>;
   /** Largeur naturelle du système, en unités. */
   width: number;
 };
@@ -172,6 +179,7 @@ function beatGrids(score: Score): BeatGrid[] {
   }
   for (const m of score.texts) add(m.t, false);
   for (const t of score.fermatas) add(t, false);
+  for (const g of score.graces) add(g.t, false);
   for (const e of score.expressions) add(e.t, false);
   for (const h of score.hairpins) {
     add(h.start, false);
@@ -374,13 +382,40 @@ export function layout(score: Score, m: Metrics): System[] {
     });
 
     const inSystem = score.notes.filter((n) => n.start < t1 && n.end > t0);
-    const toRows = (hand: Hand): SystemRow[] =>
-      groups(inSystem.filter((n) => n.hand === hand), t0).flatMap((g) =>
+    const anchorT = anchors.map((ci) => (columns[ci] as { t: number }).t);
+    const digits = (hand: Hand) => anchorT.map((t) => graceDigits(score.graces, hand, t));
+    const toRows = (hand: Hand): SystemRow[] => {
+      const gs = groups(inSystem.filter((n) => n.hand === hand), t0);
+      // petites notes : sur la première ligne libre de leur couloir d'octave (créé au besoin)
+      const graces = score.graces.filter((g) => g.hand === hand && g.t >= t0 && g.t < t1);
+      const slotsAt = digits(hand);
+      const placed = new Map<Lane, string[][]>();
+      for (const g of graces) {
+        const octave = octaveOf(g.midi);
+        let group = gs.find((x) => x.octave === octave);
+        if (!group) {
+          group = { hand, octave, lanes: [], blocks: [] };
+          gs.push(group);
+          gs.sort((x, y) => y.octave - x.octave);
+        }
+        const a = anchorT.indexOf(g.t);
+        let lane = group.lanes.find((l) => !placed.get(l)?.[a]?.[g.slot]);
+        if (!lane) {
+          lane = { hand, octave, notes: [] };
+          group.lanes.push(lane);
+        }
+        if (!placed.has(lane)) placed.set(lane, anchorT.map(() => []));
+        const cellGraces = placed.get(lane)![a];
+        while (cellGraces.length < slotsAt[a].length) cellGraces.push("");
+        cellGraces[g.slot] = String(numberOf(g.midi));
+      }
+      return gs.flatMap((g) =>
         g.lanes.map((lane, i) => ({
           hand,
           octave: g.octave,
           showOctave: i === 0,
-          cells: anchors.map((ci) => cell(lane, (columns[ci] as { t: number }).t, t0)),
+          cells: anchorT.map((t) => cell(lane, t, t0)),
+          graces: placed.get(lane) ?? anchorT.map(() => []),
           // décalage pour centrer chaque bloc dans son couloir (rendu graphique, option)
           center: anchors.map((ci) => {
             const t = (columns[ci] as { t: number }).t;
@@ -389,6 +424,7 @@ export function layout(score: Score, m: Metrics): System[] {
           }),
         })),
       );
+    };
 
     // ancres de chaque mesure du système
     const barAnchors = new Map<number, number[]>();
@@ -503,6 +539,7 @@ export function layout(score: Score, m: Metrics): System[] {
       endsSection: score.markers.some((mk) => mk.barIndex > 0 && lastAnchorOfBar(mk.barIndex - 1) === anchors.length - 1),
       voices: { D: voice("D"), G: voice("G") },
       pedal: { signs, spans },
+      graceDigits: { D: digits("D"), G: digits("G") },
       width,
     };
   });

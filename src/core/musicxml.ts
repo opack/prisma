@@ -13,8 +13,8 @@
  *   (rit., a tempo…) vont au-dessus du système. Pédale de résonance.
  */
 import { XMLParser } from "fast-xml-parser";
-import { TICKS_PER_BEAT, isDynamic, sortNotes } from "./model.ts";
-import type { Beat, Division, Expression, Hairpin, Hand, Marker, Meta, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
+import { TICKS_PER_BEAT, isDynamic, sortGraces, sortNotes } from "./model.ts";
+import type { Beat, Division, Expression, Grace, Hairpin, Hand, Marker, Meta, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
 
 type XNode = Record<string, any>;
 const parser = new XMLParser({ preserveOrder: true, ignoreAttributes: false, attributeNamePrefix: "" });
@@ -80,8 +80,11 @@ function structureOf(d: XNode[], words: string[], at: number): RawStructure[] {
 }
 
 type RawNote = { hand: Hand; midi: number; on: number; off: number; tieStart: boolean; tieStop: boolean };
+/** Petite note, jouée juste avant l'instant on (en noires depuis le début de la mesure). */
+type RawGrace = { hand: Hand; midi: number; on: number; slot: number };
 type RawMeasure = {
   number: string;
+  graces: RawGrace[];
   divisions: number;
   beats: number;
   beatType: number;
@@ -106,6 +109,9 @@ function readMeasures(part: XNode): RawMeasure[] {
     const items = kids(measure);
     let cursor = 0, lastStart = 0, maxCursor = 0;
     const notes: RawNote[] = [];
+    const graces: RawGrace[] = [];
+    // petites notes en attente de leur note principale, par voix
+    const waiting = new Map<string, Omit<RawGrace, "on">[]>();
     const directions: RawDirection[] = [];
     const structure: RawStructure[] = [];
     let startRepeat = false, endRepeat = false, times = 2;
@@ -180,10 +186,26 @@ function readMeasures(part: XNode): RawMeasure[] {
         }
       } else if (t === "note") {
         const n = kids(item);
-        if (find(n, "grace")) continue; // sans durée : ne fait pas avancer le temps
         const isChord = !!find(n, "chord");
+        const hand: Hand = num(find(n, "staff"), 1) === 1 ? "D" : "G";
+        const voice = hand + ":" + (text(find(n, "voice")) || "1");
+        const pitchOf = (p: XNode[]) => Math.round(12 * (num(find(p, "octave")) + 1) + STEP[text(find(p, "step"))] + num(find(p, "alter")));
+        if (find(n, "grace")) {
+          // sans durée : ne fait pas avancer le temps ; attend la note principale de sa voix
+          const pitch = find(n, "pitch");
+          if (!pitch || find(n, "cue") || attr(item, "print-object") === "no") continue;
+          if (!waiting.has(voice)) waiting.set(voice, []);
+          const list = waiting.get(voice)!;
+          const last = list[list.length - 1];
+          list.push({ hand, midi: pitchOf(kids(pitch)), slot: isChord && last ? last.slot : (last ? last.slot + 1 : 0) });
+          continue;
+        }
         const dur = num(find(n, "duration")) / divisions;
         const on = isChord ? lastStart : cursor;
+        if (!isChord && waiting.has(voice)) {
+          graces.push(...waiting.get(voice)!.map((g) => ({ ...g, on })));
+          waiting.delete(voice);
+        }
         if (!isChord) {
           lastStart = cursor;
           cursor += dur;
@@ -212,13 +234,15 @@ function readMeasures(part: XNode): RawMeasure[] {
       }
       maxCursor = Math.max(maxCursor, cursor);
     }
+    // petites notes sans note principale dans la mesure : jouées juste avant la mesure suivante
+    for (const list of waiting.values()) graces.push(...list.map((g) => ({ ...g, on: maxCursor })));
     if (closeEndingAfter) openEnding = undefined;
     out.push({
       number: String(attr(measure, "number") ?? out.length + 1),
       divisions, beats, beatType,
       length: maxCursor,
       implicit: attr(measure, "implicit") === "yes",
-      notes, directions, structure, startRepeat, endRepeat, times, endings,
+      notes, graces, directions, structure, startRepeat, endRepeat, times, endings,
     });
   }
   return out;
@@ -442,6 +466,7 @@ export function importMusicXml(xml: string, fileName?: string): Score {
   const measures = readMeasures(part);
   const beats: Beat[] = [];
   const raw: (Note & { tieStart: boolean; tieStop: boolean })[] = [];
+  const rawGraces: Grace[] = [];
   const rawDirections: (RawDirection & { t: number })[] = [];
   const EPS = 1e-6;
 
@@ -470,6 +495,7 @@ export function importMusicXml(xml: string, fileName?: string): Score {
     const ticksPerQuarter = TICKS_PER_BEAT / p.quarters;
     const base = firstBeat * TICKS_PER_BEAT;
     for (const d of m.directions) rawDirections.push({ ...d, t: base + Math.round((d.at + shift) * ticksPerQuarter) });
+    for (const g of m.graces) rawGraces.push({ hand: g.hand, midi: g.midi, t: base + Math.round((g.on + shift) * ticksPerQuarter), slot: g.slot });
     for (const n of m.notes) {
       raw.push({
         hand: n.hand,
@@ -516,7 +542,15 @@ export function importMusicXml(xml: string, fileName?: string): Score {
     notes.push({ hand: n.hand, midi: n.midi, start: n.start, end: n.end });
   }
   const sorted = sortNotes(notes);
-  return { meta, beats, notes: sorted, ...directionsOf(rawDirections, sorted, beats.length), ...sectionsOf(playOrder(measures), measures.length) };
+  // petites notes : calées comme les notes, une seule par main, instant, rang et hauteur
+  const graces: Grace[] = [];
+  const end = beats.length * TICKS_PER_BEAT;
+  for (const g of rawGraces) {
+    const t = q(g.t);
+    if (t >= end) continue;
+    if (!graces.some((x) => x.hand === g.hand && x.t === t && x.slot === g.slot && x.midi === g.midi)) graces.push({ ...g, t });
+  }
+  return { meta, beats, notes: sorted, graces: sortGraces(graces), ...directionsOf(rawDirections, sorted, beats.length), ...sectionsOf(playOrder(measures), measures.length) };
 }
 
 /**

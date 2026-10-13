@@ -2,7 +2,7 @@
  * Gravure : place les systèmes calculés par le moteur de mise en page sur des pages A4.
  * Toutes les dimensions sont en millimètres.
  */
-import { layout } from "../core/index.ts";
+import { graceDigits, layout } from "../core/index.ts";
 import type { Score, System } from "../core/index.ts";
 
 export const PAGE = { w: 210, h: 297, marginX: 15, marginTop: 14, marginBottom: 16 };
@@ -26,7 +26,15 @@ export const G = {
   headerH: 17, // titre, en première page
   orderH: 6, // ordre de jeu des sections, en tête de chaque page
   maxStretch: 1.7, // étirement maximal des cases pour remplir la ligne
+  graceDigit: 1.25, // largeur d'un chiffre de petite note
+  graceGap: 0.75, // espace après chaque rang de petites notes
 };
+
+/** Largeur des rangs de petites notes d'une main, dans une case. */
+export const graceSlotW = (d: number) => d * G.graceDigit + G.graceGap;
+const graceW = (digits: number[]) => digits.reduce((w, d) => w + graceSlotW(d), 0);
+/** Place ajoutée en tête d'une case par ses petites notes (la main qui en a le plus). */
+export const graceExtra = (sys: System, a: number) => Math.max(graceW(sys.graceDigits.D[a]), graceW(sys.graceDigits.G[a]));
 
 export type PlacedSystem = {
   sys: System;
@@ -82,7 +90,8 @@ function place(sys: System, isLast: boolean, y: number, cellW: number): PlacedSy
   const ws: number[] = [];
   let x = PAGE.marginX + G.prefix;
   for (const c of sys.columns) {
-    const w = c.kind === "anchor" ? cellW * stretch : c.kind === "barSep" ? barSepWidth(c) : G.beatSep;
+    // les petites notes s'ajoutent en tête de case, sans étirement
+    const w = c.kind === "anchor" ? cellW * stretch + graceExtra(sys, sys.anchors.indexOf(xs.length)) : c.kind === "barSep" ? barSepWidth(c) : G.beatSep;
     xs.push(x);
     ws.push(w);
     x += w;
@@ -97,6 +106,7 @@ export function engrave(score: Score, compact = false): Page[] {
     width: CONTENT_W,
     prefix: G.prefix,
     cell: cellW,
+    cellAt: (t) => cellW + Math.max(graceW(graceDigits(score.graces, "D", t)), graceW(graceDigits(score.graces, "G", t))),
     beatSep: G.beatSep,
     barSep: G.barSep,
     repeatDots: G.repeatDots,

@@ -634,3 +634,60 @@ describe("point d'orgue", () => {
     expect(importMusicXml(xml).expressions.map((e) => e.text)).toEqual(["dolce"]);
   });
 });
+
+describe("petites notes", () => {
+  const gk = (s: Score) => s.graces.map((g) => `${g.hand}${g.midi}@${g.t / T}#${g.slot}`).join(" ");
+  const piece = [
+    "m1 |1        |2  |3        |4  ||",
+    "+1 |3'       |   |         |   ||",
+    "0  |   7'9'5 |-  |10'12'7  |1  ||",
+    "---",
+    "-1 |1        |8  |5'5'5    |1  ||",
+    "",
+  ].join("\n");
+
+  it("lit les petites notes de gauche à droite dans la case, chacune dans son octave", () => {
+    const s = parseYmn(piece);
+    expect(gk(s)).toBe("D74@0#0 D66@0#1 D68@0#2 D69@2#0 D71@2#1 G52@2#0 G52@2#1");
+    // les petites notes ne comptent pas dans le temps
+    expect(notesKey(s)).toBe("D64@0-5760 G48@0-2880 G55@2880-5760 D66@5760-8640 G52@5760-8640 D60@8640-11520 G48@8640-11520");
+  });
+
+  it("joue ensemble deux petites notes alignées", () => {
+    const s = parseYmn("m1 |1     |2  ||\n+1 |3'    |   ||\n0  |7'5   |   ||\n---\n");
+    expect(gk(s)).toBe("D74@0#0 D66@0#0");
+  });
+
+  it("refuse une petite note placée après la note de sa case", () => {
+    expect(() => parseYmn("m1 |1     |2  ||\n0  |5 3'  |   ||\n---\n")).toThrow(/avant la note de sa case/);
+  });
+
+  it("garde les petites notes à l'aller-retour, en alignant les notes de la case", () => {
+    const s = parseYmn(piece);
+    const { text, back } = roundTrip(s);
+    expect(gk(back)).toBe(gk(s));
+    expect(text).toContain("|3'      ");
+    expect(text).toMatch(/^0  \|  7'9'5  \|/m);
+  });
+
+  it("importe les petites notes du MusicXML, barrées ou non, et les accords de petites notes", () => {
+    const xml = musicXml([
+      {
+        notes: [
+          [
+            { midi: [C4 + 2], dur: 0, grace: "slash" },
+            { midi: [C4 + 4], dur: 0, grace: true },
+            { midi: [C4], dur: 2 * q },
+            { midi: [C4 + 7, C4 + 11], dur: 0, grace: true },
+            { midi: [C4 + 12], dur: 2 * q },
+          ],
+          [{ midi: [48], dur: 4 * q, staff: 2 }],
+        ],
+      },
+    ]);
+    const s = importMusicXml(xml);
+    expect(gk(s)).toBe("D62@0#0 D64@0#1 D71@2#0 D67@2#0");
+    expect(notesKey(s)).toBe("D60@0-5760 G48@0-11520 D72@5760-11520");
+    expect(gk(roundTrip(s).back)).toBe(gk(s));
+  });
+});

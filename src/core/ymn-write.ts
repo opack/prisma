@@ -1,8 +1,8 @@
 /** Écriture d'un morceau au format texte .ymn, pour une largeur donnée en caractères. */
 import { writeFrontmatter } from "./frontmatter.ts";
 import { layout } from "./layout.ts";
-import type { Column, Mark, System, Voice } from "./layout.ts";
-import { joinsText } from "./model.ts";
+import type { Column, Mark, System, SystemRow, Voice } from "./layout.ts";
+import { GRACE_MARK, graceDigits, joinsText } from "./model.ts";
 import type { Score } from "./model.ts";
 import { octaveLabel } from "./pitch.ts";
 
@@ -22,6 +22,9 @@ export function separatorText(c: Exclude<Column, { kind: "anchor" }>): string {
 }
 
 type Item = { col: number; text: string };
+
+/** Largeur des petites notes d'une case : chaque rang prend son numéro le plus long, plus « ' ». */
+const graceWidth = (digits: number[]) => digits.reduce((w, d) => w + d + GRACE_MARK.length, 0);
 
 /**
  * Range des indications sur des lignes @ : chacune commence à sa colonne. Deux indications
@@ -69,8 +72,15 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
     return s;
   };
   const ruler = head + line((a) => (sys.columns[sys.anchors[a]] as { label: string }).label, true);
+  // petites notes en tête de case, rang par rang ; le contenu de la case vient après, sur
+  // toutes les lignes, pour que les notes jouées ensemble restent alignées
+  const graceW = sys.anchors.map((_, a) => Math.max(graceWidth(sys.graceDigits.D[a]), graceWidth(sys.graceDigits.G[a])));
+  const cellText = (r: SystemRow, a: number) => {
+    const g = sys.graceDigits[r.hand][a].map((d, k) => (r.graces[a][k] ? r.graces[a][k] + GRACE_MARK : "").padEnd(d + GRACE_MARK.length)).join("");
+    return g.trim() || r.cells[a] ? g.padEnd(graceW[a]) + r.cells[a] : "";
+  };
   const rows = (list: System["right"]) =>
-    list.map((r) => ((r.showOctave ? octaveLabel(r.octave) : "").padEnd(prefix - 1) + "|" + line((a) => r.cells[a])).trimEnd());
+    list.map((r) => ((r.showOctave ? octaveLabel(r.octave) : "").padEnd(prefix - 1) + "|" + line((a) => cellText(r, a))).trimEnd());
   // « ] » sur le premier « | » de sa barre, « [ » sur le dernier ; -1 : barre de gauche du
   // système (le « | » de la colonne de gauche, ou celui de « |: » si le système commence par une reprise)
   const sepText = (ci: number) => separatorText(sys.columns[ci] as Exclude<Column, { kind: "anchor" }>);
@@ -116,6 +126,7 @@ export function prefixWidth(score: Score): number {
  * Largeur des cases qui doivent être élargies : une indication posée sur une case doit y
  * tenir, suivie de deux espaces (une seule réunirait deux textes voisins en un seul).
  * Un soufflet qui part de la même case qu'une nuance demande en plus sa place (« p <- »).
+ * Les petites notes d'une case s'ajoutent à sa largeur de base.
  */
 function cellWidths(score: Score, cell: number): (t: number) => number {
   const need = new Map<number, number>();
@@ -125,6 +136,7 @@ function cellWidths(score: Score, cell: number): (t: number) => number {
     want(e.t, e.text.length + (pin ? 3 : 2));
   }
   for (const tm of score.texts) want(tm.t, tm.text.length + 2);
+  for (const g of score.graces) want(g.t, Math.max(graceWidth(graceDigits(score.graces, "D", g.t)), graceWidth(graceDigits(score.graces, "G", g.t))) + cell);
   for (const p of score.pedals) {
     const change = score.pedals.some((q) => q.end === p.start);
     want(p.start, (change ? "*Ped." : "Ped.").length + 1);
