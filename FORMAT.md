@@ -159,7 +159,7 @@ m1 |1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||
 
 ## Hors format pour l'instant
 
-Repères et sauts, doigtés, ornements, articulations. Voir ROADMAP.md.
+Repères et sauts, point d'orgue, petites notes, ornements, liaisons d'expression, doigtés, articulations. Voir ROADMAP.md.
 
 ## Outil en ligne de commande
 
