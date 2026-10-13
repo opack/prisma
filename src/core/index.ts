@@ -2,7 +2,7 @@ export * from "./model.ts";
 export * from "./pitch.ts";
 export { YmnError } from "./frontmatter.ts";
 export { importMusicXml } from "./musicxml.ts";
-export { layout } from "./layout.ts";
+export { layout, noteText } from "./layout.ts";
 export type { Column, HairpinSpan, Metrics, System, SystemRow, Voice, VoiceMark } from "./layout.ts";
 export { writeYmn, DEFAULT_WIDTH, DEFAULT_CELL } from "./ymn-write.ts";
 export { parseYmn } from "./ymn-parse.ts";

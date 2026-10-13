@@ -126,7 +126,12 @@ export function App() {
     return () => clearTimeout(t);
   }, [notice]);
 
-  const pages = useMemo(() => (engraved.score ? engrave(engraved.score, options.density === "compact") : []), [engraved, options.density]);
+  const pages = useMemo(() => {
+    if (!engraved.score) return [];
+    // doigtés masqués : retirés avant la gravure, pour que les cases reprennent leur largeur
+    const score = options.fingerings ? engraved.score : { ...engraved.score, notes: engraved.score.notes.map(({ finger: _, ...n }) => n) };
+    return engrave(score, options.density === "compact");
+  }, [engraved, options.density, options.fingerings]);
 
   const open = async (file: File, fileHandle: FileSystemFileHandle | null = null) => {
     const text = await file.text();
@@ -280,6 +285,18 @@ export function App() {
                 {d.label}
               </label>
             ))}
+          </fieldset>
+          <fieldset>
+            <legend>Doigtés</legend>
+            <label>
+              <input
+                type="checkbox"
+                id="fingerings"
+                checked={options.fingerings}
+                onChange={(e) => setOptions({ fingerings: e.target.checked })}
+              />
+              Afficher les doigtés
+            </label>
           </fieldset>
           <fieldset>
             <legend>Gravure</legend>

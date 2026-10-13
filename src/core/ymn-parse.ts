@@ -5,7 +5,7 @@
  * de comptage. Voir FORMAT.md pour la grammaire complète.
  */
 import { YmnError, parseFrontmatter } from "./frontmatter.ts";
-import { ARPEGGIO_DOWN, FERMATA, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isSlur, isPedalText, joinsText, sortGraces, sortNotes } from "./model.ts";
+import { ARPEGGIO_DOWN, FERMATA, FINGER_MARK, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isSlur, isPedalText, joinsText, sortGraces, sortNotes } from "./model.ts";
 import type { Arpeggio, Beat, Division, Expression, Grace, Hairpin, Slur, Hand, Marker, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
 import { midiOf, parseOctaveLabel } from "./pitch.ts";
 
@@ -22,7 +22,7 @@ const isRuler = (line: string) => /^m[^|\s]*\s*\|/.test(line);
 const isMarkLine = (line: string) => line.startsWith("@");
 
 const SEPARATORS = new Set(["|", "||", ":||", "||:", ":||:"]);
-const SUB_LABELS = new Set([":", ".", ","]);
+const SUB_LABELS = new Set(["*", ".", ","]);
 
 /** Découpe une règle de comptage en temps et en séparateurs. */
 function parseRuler(ruler: string, lineNo: number, pipe: number) {
@@ -180,7 +180,7 @@ export function parseYmn(text: string): Score {
     const segBar: number[] = []; // mesure de chaque temps
     const segOpensBar: boolean[] = []; // le temps ouvre une mesure
     segs.forEach((s, si) => {
-      // chaque case du temps commence par son étiquette : le numéro du temps, puis « : », « . » ou « , »
+      // chaque case du temps commence par son étiquette : le numéro du temps, puis « * », « . » ou « , »
       const labels: { from: number; text: string }[] = [];
       const body = rulerLine.slice(s.from, s.to);
       for (let re = /\S+/g, w = re.exec(body); w; w = re.exec(body)) labels.push({ from: s.from + w.index, text: w[0] });
@@ -188,14 +188,14 @@ export function parseYmn(text: string): Score {
         throw new YmnError("chaque temps commence par son numéro, collé à la barre", L, s.from + 1);
       }
       for (const lb of labels.slice(1)) {
-        if (!SUB_LABELS.has(lb.text)) throw new YmnError(`étiquette de case « ${lb.text} » inconnue : attendu « : », « . » ou « , »`, L, lb.from + 1);
+        if (!SUB_LABELS.has(lb.text)) throw new YmnError(`étiquette de case « ${lb.text} » inconnue : attendu « * », « . » ou « , »`, L, lb.from + 1);
       }
       const n = labels.length;
       if (TICKS_PER_BEAT % n) throw new YmnError(`découpage en ${n} cases non pris en charge`, L, s.from + 1);
       const cells = labels.map((lb) => lb.text);
       const label = Number(cells[0]);
-      const colons = cells.filter((c) => c === ":").length;
-      const division: Division = colons === 2 ? 3 : colons === 1 ? 2 : defaultDivision;
+      const stars = cells.filter((c) => c === "*").length;
+      const division: Division = stars === 2 ? 3 : stars === 1 ? 2 : defaultDivision;
       // nouvelle mesure ? (début de bloc après une mesure fermée, ou après une barre de mesure)
       const newBar = si === 0 ? lastBarClosed || label === 1 : segs[si - 1].barEnd;
       if (si === 0 && !newBar && barLabel && barLabel !== lastBar) {
@@ -382,21 +382,22 @@ export function parseYmn(text: string): Score {
         }
         const c = raw.trim();
         const col = a.from + 1 + (raw.length - raw.trimStart().length);
-        const m = c.match(/^(-?)(\d{0,2})(?:~(\d{1,2}))?$/);
+        const m = c.match(/^(-?)(\d{0,2})(?:~(\d{1,2}))?(?:_(\d))?$/);
         const bad = (k?: string) => !!k && (Number(k) < 1 || Number(k) > 12);
-        if (!m || bad(m[2]) || bad(m[3]) || (!m[1] && !m[2] && c) || (m[3] && (m[1] || !m[2]))) {
+        const badFinger = m && m[4] && (Number(m[4]) < 1 || Number(m[4]) > 5 || m[1] || !m[2]);
+        if (!m || bad(m[2]) || bad(m[3]) || (!m[1] && !m[2] && c) || (m[3] && (m[1] || !m[2])) || badFinger) {
           throw new YmnError(
-            `case invalide « ${c} » : attendu un numéro de 1 à 12, « - », « -N », une trille « N${TRILL_MARK}N », des petites notes « N' » ou une case vide`,
+            `case invalide « ${c} » : attendu un numéro de 1 à 12, « - », « -N », une trille « N${TRILL_MARK}N », un doigté « N${FINGER_MARK}D » (doigt de 1 à 5), des petites notes « N' » ou une case vide`,
             R, col,
           );
         }
-        const [, dash, digits, aux] = m;
+        const [, dash, digits, aux, finger] = m;
         if (!c) return close(a.t);
         if (!dash) {
           close(a.t);
           const midi = midiOf(octave, Number(digits));
           if (aux && Number(aux) === Number(digits)) throw new YmnError("une trille alterne avec une autre note", R, col);
-          open = { hand, midi, start: a.t, end: t1, ...(aux ? { trill: trillAux(midi, Number(aux)) } : {}) };
+          open = { hand, midi, start: a.t, end: t1, ...(aux ? { trill: trillAux(midi, Number(aux)) } : {}), ...(finger ? { finger: Number(finger) } : {}) };
           notes.push(open);
           return;
         }

@@ -2,7 +2,7 @@
  * Gravure : place les systèmes calculés par le moteur de mise en page sur des pages A4.
  * Toutes les dimensions sont en millimètres.
  */
-import { graceDigits, layout } from "../core/index.ts";
+import { FINGER_MARK, TRILL_MARK, graceDigits, layout, noteText } from "../core/index.ts";
 import type { Score, System } from "../core/index.ts";
 
 export const PAGE = { w: 210, h: 297, marginX: 15, marginTop: 14, marginBottom: 16 };
@@ -38,18 +38,31 @@ export const G = {
 const slurH = (v: System["voices"]["D"]) => (v.slurs.length ? 1 + (Math.max(...v.slurs.map((s) => s.level)) + 1) * G.slurLevel : 0);
 
 /**
- * Largeur ajoutée à une case par une trille trop longue pour elle : la note, sa voisine en
- * petit, puis un peu de trait ondulé (« 12~10 » ne tient pas dans une case normale).
+ * Doigté gravé : un chiffre blanc sur une pastille sombre, en bas à droite de la note. Le
+ * négatif reste lisible en petit, s'imprime en noir et blanc, et ne ressemble à aucune note.
+ * r : demi-largeur de la pastille.
  */
-export const trillW = (main: number, aux: number, cellW: number) =>
-  Math.max(0, 0.5 + main * G.noteDigit + 0.35 + aux * G.graceDigit + 1 - cellW);
-const trillCell = (c: string, cellW: number) => {
-  const [main, aux] = c.split("~");
-  return aux === undefined ? 0 : trillW(main.length, aux.length, cellW);
-};
-/** Place ajoutée par les trilles d'une case, sur la ligne qui en demande le plus. */
-export const trillExtra = (sys: System, a: number, cellW: number) =>
-  Math.max(0, ...[...sys.right, ...sys.left].map((r) => trillCell(r.cells[a], cellW)));
+export const FINGER = { r: 1.2, gap: 0.3 };
+
+/** Morceaux d'une attaque : la note, la voisine d'une trille, le doigt. */
+export function noteParts(c: string) {
+  const [body, finger] = c.split(FINGER_MARK);
+  const [main, aux] = body.split(TRILL_MARK);
+  return { main, aux, finger };
+}
+
+/**
+ * Largeur ajoutée à une case par une note annotée trop longue pour elle : la note, sa
+ * voisine de trille en petit, son doigt, puis un peu de trait ondulé pour une trille.
+ */
+function noteW(c: string, cellW: number) {
+  const { main, aux, finger } = noteParts(c);
+  if (aux === undefined && finger === undefined) return 0;
+  const w = 0.5 + main.length * G.noteDigit + (aux ? 0.35 + aux.length * G.graceDigit : 0) + (finger ? FINGER.gap + 2 * FINGER.r : 0) + (aux ? 1 : 0.3);
+  return Math.max(0, w - cellW);
+}
+/** Place ajoutée par les notes annotées d'une case, sur la ligne qui en demande le plus. */
+export const noteExtra = (sys: System, a: number, cellW: number) => Math.max(0, ...[...sys.right, ...sys.left].map((r) => noteW(r.cells[a], cellW)));
 
 /** Hauteur de l'en-tête de la première page : titre, sous-titre éventuel, compositeur. */
 export const headerHeight = (meta: Score["meta"]) => G.headerH + (meta.subtitle ? G.subtitleH : 0);
@@ -123,7 +136,7 @@ function place(sys: System, isLast: boolean, y: number, cellW: number): PlacedSy
   for (const c of sys.columns) {
     // les petites notes s'ajoutent en tête de case, sans étirement
     const a = anchorOf(xs.length);
-    const w = c.kind === "anchor" ? cellW * stretch + leadExtra(sys, a) + trillExtra(sys, a, cellW) : c.kind === "barSep" ? barSepWidth(c) : G.beatSep;
+    const w = c.kind === "anchor" ? cellW * stretch + leadExtra(sys, a) + noteExtra(sys, a, cellW) : c.kind === "barSep" ? barSepWidth(c) : G.beatSep;
     xs.push(x);
     ws.push(w);
     x += w;
@@ -142,7 +155,7 @@ export function engrave(score: Score, compact = false): Page[] {
       cellW +
       Math.max(graceW(graceDigits(score.graces, "D", t)), graceW(graceDigits(score.graces, "G", t))) +
       (score.arpeggios.some((x) => x.t === t) ? G.arpeggioW : 0) +
-      Math.max(0, ...score.notes.filter((n) => n.start === t && n.trill !== undefined).map((n) => trillW(String((n.midi % 12) + 1).length, String((n.trill! % 12) + 1).length, cellW))),
+      Math.max(0, ...score.notes.filter((n) => n.start === t).map((n) => noteW(noteText(n), cellW))),
     beatSep: G.beatSep,
     barSep: G.barSep,
     repeatDots: G.repeatDots,

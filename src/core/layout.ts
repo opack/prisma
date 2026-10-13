@@ -5,7 +5,7 @@
  * Le moteur ne connaît que des « unités » de largeur : des caractères pour le texte,
  * des millimètres pour le rendu graphique. Seules les mesures changent.
  */
-import { ARPEGGIO_DOWN, ARPEGGIO_UP, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, TRILL_MARK, beatStart, graceDigits, repeatOf } from "./model.ts";
+import { ARPEGGIO_DOWN, ARPEGGIO_UP, FINGER_MARK, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, TRILL_MARK, beatStart, graceDigits, repeatOf } from "./model.ts";
 import type { Beat, Division, Hairpin, Hand, Note, Score } from "./model.ts";
 import { numberOf, octaveOf } from "./pitch.ts";
 
@@ -43,7 +43,7 @@ export type SystemRow = {
   octave: number;
   /** Faux pour les lignes suivantes d'un même groupe d'octave : on n'écrit le numéro qu'une fois. */
   showOctave: boolean;
-  /** Contenu de chaque ancre : "", "-", "-N" (rappel en début de système), "N" ou "N~N" (trille). */
+  /** Contenu de chaque ancre : "", "-", "-N" (rappel en début de système), "N", "N~N" (trille), "N_D" (doigté). */
   cells: string[];
   /** Pour chaque ancre, vrai si la note qui y sonne est une trille (attaque ou tenue). */
   trill: boolean[];
@@ -165,10 +165,10 @@ function baseDivision(n: number, def: Division, attacks: number[]): Division {
   return def;
 }
 
-/** Nom d'une ancre : chiffre du temps, « : » premier découpage, « . » second, « , » au-delà. */
+/** Nom d'une ancre : chiffre du temps, « * » premier découpage, « . » second, « , » au-delà. */
 export function anchorLabel(k: number, n: number, base: Division, beatLabel: number): string {
   if (k === 0) return String(beatLabel);
-  if ((k * base) % n === 0) return ":";
+  if ((k * base) % n === 0) return "*";
   if ((k * base * 2) % n === 0) return ".";
   return ",";
 }
@@ -347,9 +347,13 @@ function groups(notes: Note[], t0: number): Group[] {
   return out.sort((a, b) => b.octave - a.octave);
 }
 
+/** Texte d'une attaque : le numéro, puis la voisine d'une trille (« 5~7 ») et le doigt (« 5_3 »). */
+export const noteText = (n: Note) =>
+  String(numberOf(n.midi)) + (n.trill !== undefined ? TRILL_MARK + numberOf(n.trill) : "") + (n.finger ? FINGER_MARK + n.finger : "");
+
 function cell(lane: Lane, t: number, t0: number): string {
   const attack = lane.notes.find((n) => n.start === t);
-  if (attack) return String(numberOf(attack.midi)) + (attack.trill !== undefined ? TRILL_MARK + numberOf(attack.trill) : "");
+  if (attack) return noteText(attack);
   const held = lane.notes.find((n) => n.start < t && n.end > t);
   if (!held) return "";
   return t === t0 ? "-" + numberOf(held.midi) : "-";

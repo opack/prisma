@@ -84,7 +84,7 @@ describe("règles du format", () => {
     expect(score.beats).toHaveLength(2);
     expect(score.beats.every((b) => b.division === 3)).toBe(true);
     const { text } = roundTrip(score);
-    expect(text).toContain("|1  :  :  |2  :  :  ||");
+    expect(text).toContain("|1  *  *  |2  *  *  ||");
     expect(text).toContain("division: 3");
   });
 
@@ -92,7 +92,7 @@ describe("règles du format", () => {
     const s = q / 4;
     const xml = musicXml([{ time: [6, 8], notes: [[...Array(12)].map((_, i) => ({ midi: [60 + i], dur: s }))] }]);
     const { text } = roundTrip(importMusicXml(xml));
-    expect(text).toContain("|1  .  :  .  :  .  |2  .  :  .  :  .  ||");
+    expect(text).toContain("|1  .  *  .  *  .  |2  .  *  .  *  .  ||");
   });
 
   it("traite un triolet en 4/4 comme un temps ternaire", () => {
@@ -101,7 +101,7 @@ describe("règles du format", () => {
       { notes: [[{ midi: [60], dur: q }, { midi: [62], dur: t }, { midi: [64], dur: t }, { midi: [65], dur: t }, { midi: [67], dur: 2 * q }]] },
     ]);
     const { text } = roundTrip(importMusicXml(xml));
-    expect(text).toContain("|1  |2  :  :  |3  |4  ||");
+    expect(text).toContain("|1  |2  *  *  |3  |4  ||");
   });
 
   it("garde l'alignement d'un 2 contre 3 entre les mains", () => {
@@ -532,18 +532,18 @@ describe("cases de largeur libre", () => {
   const expr = (s: Score) => s.expressions.map((e) => `${e.hand}:${e.kind}:${e.text}@${e.t / T}`).join(" ");
 
   it("lit une case élargie : une case va d'une étiquette à la suivante", () => {
-    const s = parseYmn("m1 |1      :  |2  ||\n0  |1      3  |5  ||\n---\n");
+    const s = parseYmn("m1 |1      *  |2  ||\n0  |1      3  |5  ||\n---\n");
     expect(notesKey(s)).toBe(`D60@0-${T / 2} D62@${T / 2}-${T} D64@${T}-${2 * T}`);
   });
 
   it("nomme « , » les cases plus fines que « . »", () => {
-    const s = parseYmn("m1 |1  ,  .  ,  :  ,  .  ,  ||\n0  |1  2  3  4  5  6  7  8  ||\n---\n");
+    const s = parseYmn("m1 |1  ,  .  ,  *  ,  .  ,  ||\n0  |1  2  3  4  5  6  7  8  ||\n---\n");
     expect(s.notes.length).toBe(8);
-    expect(writeYmn(s)).toContain("|1  ,  .  ,  :  ,  .  ,  ||");
+    expect(writeYmn(s)).toContain("|1  ,  .  ,  *  ,  .  ,  ||");
   });
 
   it("élargit la case d'une indication trop longue, plutôt que d'empiler les lignes @", () => {
-    const s = parseYmn("m1 |1  :  |2  :  ||\n0  |1  3  |5  7  ||\n@   (mp)\n---\n");
+    const s = parseYmn("m1 |1  *  |2  *  ||\n0  |1  3  |5  7  ||\n@   (mp)\n---\n");
     s.expressions.push({ hand: "D", t: T / 2, text: "dolce", kind: "text" }, { hand: "D", t: T, text: "cresc.", kind: "text" });
     const text = writeYmn(s);
     expect(text.split("\n").filter((l) => l.startsWith("@")).length).toBe(1);
@@ -571,7 +571,7 @@ describe("cases de largeur libre", () => {
     const s = importMusicXml(musicXml([{ time: [1, 4], notes: [notes] }], 84));
     expect(s.notes.map((n) => n.start / (T / 8))).toEqual([0, 1, 2, 3, 5, 6, 7]);
     const { text } = roundTrip(s);
-    expect(text).toContain("|1  ,  .  ,  :  ,  .  ,  ||");
+    expect(text).toContain("|1  ,  .  ,  *  ,  .  ,  ||");
   });
 
   it("ignore les petites notes de réplique et les notes cachées, sans décaler le temps", () => {
@@ -870,5 +870,30 @@ describe("sous-titre", () => {
     const xml = musicXml(one).replace("</work>", "</work><movement-title>Clair de lune</movement-title>");
     expect(importMusicXml(xml).meta).toMatchObject({ title: "Test", subtitle: "Clair de lune" });
     expect(importMusicXml(musicXml(one)).meta.subtitle).toBeUndefined();
+  });
+});
+
+describe("doigtés", () => {
+  const fk = (s: Score) => s.notes.filter((n) => n.finger).map((n) => `${n.midi}_${n.finger}`).join(" ");
+  const ruler = "m1 |1      |2      |3  |4  ||";
+
+  it("lit un doigté « 5_3 », seul ou avec une trille, et le garde à l'aller-retour", () => {
+    const s = parseYmn([ruler, "0  |5_1    |7~9_3  |8  |   ||", "   |1_5    |       |   |   ||", "---", ""].join("\n"));
+    expect(fk(s)).toBe("64_1 60_5 66_3");
+    expect(s.notes.find((n) => n.midi === 66)!.trill).toBe(68);
+    const { text, back } = roundTrip(s);
+    expect(fk(back)).toBe(fk(s));
+    expect(text).toContain("7~9_3");
+  });
+
+  it("refuse un doigt hors de 1 à 5, ou posé sur une tenue", () => {
+    expect(() => parseYmn([ruler, "0  |5_6    |       |   |   ||", "---", ""].join("\n"))).toThrow(/doigt de 1 à 5/);
+    expect(() => parseYmn([ruler, "0  |5      |-_2    |   |   ||", "---", ""].join("\n"))).toThrow(/case invalide/);
+  });
+
+  it("importe les doigtés du MusicXML, le premier doigt d'une substitution", () => {
+    const fing = (f: string) => `<technical><fingering>${f}</fingering></technical>`;
+    const xml = musicXml([{ notes: [[{ midi: [C4], dur: 2 * q, notations: fing("1") }, { midi: [C4 + 4], dur: 2 * q, notations: fing("4-3") }]] }]);
+    expect(fk(importMusicXml(xml))).toBe("60_1 64_4");
   });
 });

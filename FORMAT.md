@@ -18,7 +18,7 @@ Les clés sont en anglais. Les autres clés sont conservées telles quelles.
 ## Un système
 
 ```
-m12|1  :  |2  |3  :  :  ||1  |2  |
+m12|1  *  |2  |3  *  *  ||1  |2  |
 ───┼──────┼───┼─────────┼┼───┼───┼
 +1 |3  5  |7  |8  7  5  ||3  |-  |
 0  |   10 |-  |         ||   |   |
@@ -42,13 +42,15 @@ Un temps est une suite de cases, toutes de même durée. Sur la règle de compta
 | Étiquette | Sens |
 |---|---|
 | chiffre | Début du temps, avec son numéro, collé à la barre qui le précède. |
-| `:` | Premier découpage du temps : un `:` coupe en 2, deux `:` coupent en 3. |
+| `*` | Premier découpage du temps : un `*` coupe en 2, deux `*` coupent en 3. |
 | `.` | Second découpage : chaque morceau recoupé en 2. |
 | `,` | Découpage plus fin. |
 
-Un temps de 4 cases s'écrit `1  .  :  .  `, un temps de 8 cases `1  ,  .  ,  :  ,  .  ,  `.
+Un temps de 4 cases s'écrit `1  .  *  .  `, un temps de 8 cases `1  ,  .  ,  *  ,  .  ,  `.
 
-La largeur d'une case est libre : seul son nombre compte pour le temps. L'écriture leur donne la largeur `cell`, et élargit une case quand une indication posée dessus ne tient pas (`(mp)`, `cresc.`…) : `1      :  ` est un temps de deux cases dont la première est élargie. À la main, on ajoute simplement des espaces là où il faut de la place. La gravure, elle, garde des temps de largeur égale, et marque chaque case comme les graduations d'une règle, posées sur son trait du bas : deux petits traits superposés pour `:`, un seul pour `.` et un point pour `,`.
+Le `:` ne sert qu'aux reprises (`||:`, `:||`) : un signe, un seul sens.
+
+La largeur d'une case est libre : seul son nombre compte pour le temps. L'écriture leur donne la largeur `cell`, et élargit une case quand une indication posée dessus ne tient pas (`(mp)`, `cresc.`…) : `1      *  ` est un temps de deux cases dont la première est élargie. À la main, on ajoute simplement des espaces là où il faut de la place. La gravure, elle, garde des temps de largeur égale, et marque chaque case comme les graduations d'une règle, posées sur son trait du bas : comme dans le texte : un astérisque pour `*`, un point pour `.` et une virgule pour `,`.
 
 Sur les lignes de notes :
 
@@ -59,6 +61,7 @@ Sur les lignes de notes :
 | `-7` | En début de système : le 7 commencé plus tôt continue. |
 | vide | Rien ne sonne sur cette ligne. |
 | `5~7` | Trille : le 5 alterne avec le 7 pendant toute sa durée (voir « Ornements »). |
+| `5_3` | Doigté : le 5 se joue avec le doigt 3 (1 = pouce, 5 = auriculaire). Se combine : `5~7_2`. |
 | `3'` | Petite note, devant le contenu de la case (voir « Petites notes »). |
 
 Une note s'arrête au premier ancrage vide de sa ligne. Une note répétée se réécrit.
@@ -80,6 +83,10 @@ m1 |1        |2  |
 - La gravure les dessine en petit, en exposant et en gris foncé, en tête de case.
 
 Une seule sorte de petite note : barrée ou non, c'est au pianiste de la placer, comme sur une partition classique.
+
+### Doigtés
+
+Le doigt suit la note dans sa case, après `_` : `5_3`. Chaque note d'un accord porte le sien, sur sa ligne. `'` et `_` vont par paire : la petite note est gravée en exposant, devant la note ; le doigt en indice, en bas à droite de la note, en chiffre blanc sur une pastille sombre : une forme qu'aucune note ne peut imiter, et qui s'imprime en noir et blanc. Le doigt se pose sur l'attaque, jamais sur une tenue. L'application peut masquer les doigtés, sans toucher au fichier. À l'import, une substitution (« 4-3 » : changer de doigt sur une note tenue) garde le premier doigt.
 
 ### Ornements
 
@@ -231,7 +238,7 @@ m1 |1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||
 
 ## Hors format pour l'instant
 
-Doigtés, articulations. Voir ROADMAP.md.
+Articulations. Voir ROADMAP.md.
 
 ## Outil en ligne de commande
 

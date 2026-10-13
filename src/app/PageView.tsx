@@ -1,6 +1,6 @@
-import { TRILL_MARK, octaveOffset } from "../core/index.ts";
+import { FINGER_MARK, TRILL_MARK, octaveOffset } from "../core/index.ts";
 import type { Meta, SystemRow, Voice } from "../core/index.ts";
-import { G, PAGE, graceExtra, graceSlotW, headerHeight, leadExtra } from "./engrave.ts";
+import { FINGER, G, PAGE, graceExtra, graceSlotW, headerHeight, leadExtra, noteParts } from "./engrave.ts";
 import type { Page, PlacedSystem } from "./engrave.ts";
 import type { OctavePosition, OctaveStyle, RenderOptions } from "./options.ts";
 
@@ -146,15 +146,18 @@ function Row({ ps, row, y, centered }: { ps: PlacedSystem; row: SystemRow; y: nu
         const w = ws[ci] - extra;
         const mid = y + dy + G.rowH / 2;
         // trille : la note, sa voisine en petit, puis un trait ondulé sur toute sa durée
-        if (row.trill[a]) {
-          if (c === "-") return <path key={a} d={wave(xs[ci], x + w, mid)} {...WAVE} />;
-          const [main, aux] = c.startsWith("-") ? ["–" + c.slice(1), ""] : c.split(TRILL_MARK);
-          const mw = main.length * G.noteDigit;
-          const auxX = x + 0.5 + mw + 0.35;
-          const end = auxX + (aux ? aux.length * 1.25 + 0.3 : 0);
+        if (row.trill[a] && c === "-") return <path key={a} d={wave(xs[ci], x + w, mid)} {...WAVE} />;
+        // note annotée : la voisine de trille en petit (en haut), le doigt en négatif (en bas à droite)
+        if (!c.startsWith("-") && (c.includes(TRILL_MARK) || c.includes(FINGER_MARK))) {
+          const { main, aux, finger } = noteParts(c);
+          let end = x + 0.5 + main.length * G.noteDigit;
+          const auxX = end + 0.35;
+          if (aux) end = auxX + aux.length * 1.25;
+          const fx = end + FINGER.gap + FINGER.r;
+          if (finger) end = fx + FINGER.r;
           return (
             <g key={a}>
-              <text x={x + 0.5} y={base + dy} fontSize={c.startsWith("-") ? 3.1 : 3.3} fontWeight={c.startsWith("-") ? 400 : 600} fill={c.startsWith("-") ? GREY : INK}>
+              <text x={x + 0.5} y={base + dy} fontSize={3.3} fontWeight={600} fill={INK}>
                 {main}
               </text>
               {aux && (
@@ -162,6 +165,26 @@ function Row({ ps, row, y, centered }: { ps: PlacedSystem; row: SystemRow; y: nu
                   {aux}
                 </text>
               )}
+              {finger && (
+                <g>
+                  <rect x={fx - FINGER.r} y={base + dy - 1.95} width={2 * FINGER.r} height={2.9} rx={0.6} fill={TAB_TEXT} />
+                  <text x={fx} y={base + dy + 0.3} fontSize={2.2} fontWeight={700} textAnchor="middle" fill="#fff">
+                    {finger}
+                  </text>
+                </g>
+              )}
+              {aux && end + 0.3 < x + w && <path d={wave(end + 0.3, x + w, mid)} {...WAVE} />}
+            </g>
+          );
+        }
+        if (row.trill[a]) {
+          // trille commencée au système précédent : le rappel « –N », puis l'ondulation
+          const end = x + 0.5 + c.length * G.noteDigit;
+          return (
+            <g key={a}>
+              <text x={x + 0.5} y={base + dy} fontSize={3.1} fill={GREY}>
+                {"–" + c.slice(1)}
+              </text>
               {end < x + w && <path d={wave(end, x + w, mid)} {...WAVE} />}
             </g>
           );
@@ -487,25 +510,30 @@ function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions 
             </text>
           );
         }
-        // découpages du temps, gravés comme les graduations d'une règle, posés sur le trait
-        // du bas de la règle de comptage : le « : » devient deux petits traits superposés, le
-        // « . » un seul, le « , » un point
+        // découpages du temps, gravés comme les graduations d'une règle, à mi-hauteur des
+        // numéros des temps, comme dans le texte : astérisque, point, virgule
         const x = xs[ci] + 0.9;
-        // juste au-dessus du trait horizontal (épais de 0,25 mm), sans empiéter dessus
-        const foot = rhTop - 0.125;
-        // même épaisseur partout (0,4 mm), dans le gris clair des anciens « : » et « . » :
-        // les graduations restent moins visibles que les numéros des temps
-        if (col.label === ",") return <circle key={a} cx={x} cy={foot - 0.2} r={0.2} fill={LIGHT_TEXT} />;
-        // un petit trait de 1 mm, assez long pour ne pas ressembler au point ; deux superposés
-        // tiennent sur 2,7 mm, avec 0,7 mm entre eux
-        const tick = (bottom: number) => <line x1={x} x2={x} y1={bottom - 1} y2={bottom} stroke={LIGHT_TEXT} strokeWidth={0.4} />;
-        if (col.label === ".") return <g key={a}>{tick(foot)}</g>;
-        return (
-          <g key={a}>
-            {tick(foot)}
-            {tick(foot - 1.7)}
-          </g>
-        );
+        // centrées sur la hauteur des chiffres des temps (hauteur de capitale ≈ 0,7 × 2,6 mm)
+        const cy = rulerBase - 0.92;
+        // dans le gris clair : les graduations restent moins visibles que les numéros des temps
+        // « . » : un point ; « , » : une virgule (un point plus petit, avec sa queue)
+        if (col.label === ".") return <circle key={a} cx={x} cy={cy} r={0.3} fill={LIGHT_TEXT} />;
+        if (col.label === ",") {
+          return (
+            <path
+              key={a}
+              d={`M ${x - 0.22} ${cy} a 0.22 0.22 0 1 1 0.44 0 q 0 0.55 -0.4 0.8 q 0.2 -0.35 0.1 -0.62 z`}
+              fill={LIGHT_TEXT}
+            />
+          );
+        }
+        // astérisque à trois branches, plus fin que le trait du « . »
+        const r = 0.8;
+        const arms = [90, 30, -30].map((deg) => {
+          const t = (deg * Math.PI) / 180, dx = r * Math.cos(t), dy = r * Math.sin(t);
+          return `M ${x - dx} ${cy + dy} L ${x + dx} ${cy - dy}`;
+        });
+        return <path key={a} d={arms.join(" ")} stroke={LIGHT_TEXT} strokeWidth={0.28} strokeLinecap="round" />;
       })}
       <line x1={left} x2={right} y1={rhTop} y2={rhTop} stroke={LIGHT} strokeWidth={0.25} />
 

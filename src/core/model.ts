@@ -34,7 +34,12 @@ export type Note = {
   end: number;
   /** Trille : hauteur MIDI de la note voisine (celle du dessus), alternée pendant toute la note. */
   trill?: number;
+  /** Doigté : le doigt qui joue la note (1 = pouce, 5 = auriculaire). */
+  finger?: number;
 };
+
+/** Doigté dans une case : la note, « _ », puis le doigt (« 5_3 ») ; gravé en indice. */
+export const FINGER_MARK = "_";
 
 /** Trille dans une case : la note, « ~ », puis sa voisine (« 5~7 »). */
 export const TRILL_MARK = "~";

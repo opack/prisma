@@ -1,6 +1,6 @@
 /** Écriture d'un morceau au format texte .ymn, pour une largeur donnée en caractères. */
 import { writeFrontmatter } from "./frontmatter.ts";
-import { layout } from "./layout.ts";
+import { layout, noteText } from "./layout.ts";
 import type { Column, Mark, System, SystemRow, Voice } from "./layout.ts";
 import { GRACE_MARK, graceDigits, joinsText } from "./model.ts";
 import type { Score } from "./model.ts";
@@ -146,11 +146,11 @@ function cellWidths(score: Score, cell: number): (t: number) => number {
     want(e.t, e.text.length + (pin ? 3 : 2));
   }
   for (const tm of score.texts) want(tm.t, tm.text.length + 2);
-  // une trille (« 12~10 ») élargit sa case, suivie d'une espace
+  // une trille ou un doigté (« 12~10 », « 12_3 ») élargit sa case, suivie d'une espace
   const trillNeed = new Map<number, number>();
   for (const n of score.notes) {
-    if (n.trill === undefined) continue;
-    const len = `${(n.midi % 12) + 1}~${(n.trill % 12) + 1}`.length + 1;
+    if (n.trill === undefined && !n.finger) continue;
+    const len = noteText(n).length + 1;
     trillNeed.set(n.start, Math.max(trillNeed.get(n.start) ?? cell, len));
     want(n.start, len);
   }

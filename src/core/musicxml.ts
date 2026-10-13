@@ -100,7 +100,7 @@ function structureOf(d: XNode[], words: string[], at: number): RawStructure[] {
   return out;
 }
 
-type RawNote = { hand: Hand; midi: number; on: number; off: number; tieStart: boolean; tieStop: boolean; trill?: number };
+type RawNote = { hand: Hand; midi: number; on: number; off: number; tieStart: boolean; tieStop: boolean; trill?: number; finger?: number };
 /** Arpège : number regroupe les notes d'un même arpège, d'une portée à l'autre. */
 type RawArpeggio = { hand: Hand; on: number; number?: string; down: boolean };
 /** Petite note, jouée juste avant l'instant on (en noires depuis le début de la mesure). */
@@ -289,6 +289,10 @@ function readMeasures(part: XNode): RawMeasure[] {
             const type = String(attr(sl, "type") ?? "");
             if (type === "start" || type === "stop") directions.push({ hand, at: on, kind: "slur", text: type, number: String(attr(sl, "number") ?? "1") });
           }
+          // doigté : le premier doigt (une substitution « 4-3 » sur une note tenue garde le 4)
+          const fingering = notations.filter((x) => tag(x) === "technical").flatMap((x) => kids(x)).find((x) => tag(x) === "fingering");
+          const finger = fingering ? Number(text(fingering).match(/[1-5]/)?.[0]) : NaN;
+          if (finger) raw.finger = finger;
           const arp = notations.find((x) => tag(x) === "arpeggiate");
           if (arp && !arpeggios.some((x) => x.hand === hand && x.on === on)) {
             arpeggios.push({ hand, on, number: attr(arp, "number") as string | undefined, down: attr(arp, "direction") === "down" });
@@ -584,6 +588,7 @@ export function importMusicXml(xml: string, fileName?: string): Score {
         tieStart: n.tieStart,
         tieStop: n.tieStop,
         ...(n.trill !== undefined ? { trill: n.trill } : {}),
+        ...(n.finger ? { finger: n.finger } : {}),
       });
     }
   });
@@ -618,9 +623,14 @@ export function importMusicXml(xml: string, fileName?: string): Score {
       dup.start = Math.min(dup.start, n.start);
       dup.end = Math.max(dup.end, n.end);
       if (n.trill !== undefined) dup.trill = n.trill;
+      if (n.finger && !dup.finger) dup.finger = n.finger;
       continue;
     }
-    notes.push({ hand: n.hand, midi: n.midi, start: n.start, end: n.end, ...(n.trill !== undefined ? { trill: n.trill } : {}) });
+    notes.push({
+      hand: n.hand, midi: n.midi, start: n.start, end: n.end,
+      ...(n.trill !== undefined ? { trill: n.trill } : {}),
+      ...(n.finger ? { finger: n.finger } : {}),
+    });
   }
   const sorted = sortNotes(notes);
   // petites notes : calées comme les notes, une seule par main, instant, rang et hauteur
