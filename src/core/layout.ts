@@ -5,7 +5,7 @@
  * Le moteur ne connaît que des « unités » de largeur : des caractères pour le texte,
  * des millimètres pour le rendu graphique. Seules les mesures changent.
  */
-import { TICKS_PER_BEAT, beatStart, repeatOf } from "./model.ts";
+import { PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, beatStart, repeatOf } from "./model.ts";
 import type { Beat, Division, Ending, Hairpin, Hand, Note, Score } from "./model.ts";
 import { numberOf, octaveOf } from "./pitch.ts";
 
@@ -101,6 +101,16 @@ export type HairpinSpan = {
 /** Ligne @ d'une voix : sous les lignes de sa main. */
 export type Voice = { marks: VoiceMark[]; hairpins: HairpinSpan[] };
 
+/**
+ * Pédale dans un système : ses signes (pour le texte .ymn) et ses traits (pour la gravure).
+ * Un trait va de l'ancre où la pédale s'enfonce (-1 : bord gauche, pédale déjà enfoncée)
+ * à l'ancre où elle se relâche (-1 : bord droit du système).
+ */
+export type PedalLine = {
+  signs: { anchor: number; text: string }[];
+  spans: { fromAnchor: number; toAnchor: number; opens: boolean; closes: boolean; changeStart: boolean; changeEnd: boolean }[];
+};
+
 export type System = {
   /** Numéro de la mesure par laquelle commence le système. */
   bar: string;
@@ -114,6 +124,7 @@ export type System = {
   marks: Mark[];
   endings: EndingSpan[];
   voices: Record<Hand, Voice>;
+  pedal: PedalLine;
   /** Largeur naturelle du système, en unités. */
   width: number;
 };
@@ -176,6 +187,10 @@ function beatGrids(score: Score): BeatGrid[] {
   for (const h of score.hairpins) {
     add(h.start, false);
     add(h.end, false);
+  }
+  for (const p of score.pedals) {
+    add(p.start, false);
+    add(p.end, false);
   }
   return score.beats.map((b, i) => {
     const n = resolution(offsets[i]);
@@ -463,6 +478,33 @@ export function layout(score: Score, m: Metrics): System[] {
         .filter((h) => h.fromAnchor >= 0 && h.toAnchor >= h.fromAnchor),
     });
 
+    const signs: PedalLine["signs"] = [];
+    const spans: PedalLine["spans"] = [];
+    for (const p of score.pedals) {
+      const change = (t: number) => score.pedals.some((q) => q !== p && (q.end === t || q.start === t));
+      if (p.start >= t0 && p.start < t1) {
+        const a = anchorAt(p.start);
+        if (a >= 0) signs.push({ anchor: a, text: score.pedals.some((q) => q.end === p.start) ? PEDAL_CHANGE : PEDAL_DOWN });
+      }
+      // relâchée à un instant où une autre pédale s'enfonce : c'est ce changement qui l'écrit
+      if (p.end >= t0 && p.end < t1 && !score.pedals.some((q) => q.start === p.end)) {
+        const a = anchorAt(p.end);
+        if (a >= 0) signs.push({ anchor: a, text: PEDAL_UP });
+      }
+      if (p.start < t1 && p.end > t0) {
+        const opens = p.start >= t0, closes = p.end <= t1;
+        spans.push({
+          fromAnchor: opens ? anchorAt(p.start) : -1,
+          toAnchor: p.end < t1 ? anchorAt(p.end) : -1,
+          opens,
+          closes,
+          changeStart: opens && change(p.start),
+          changeEnd: closes && change(p.end),
+        });
+      }
+    }
+    signs.sort((a, b) => a.anchor - b.anchor);
+
     return {
       bar: firstBeat.bar,
       start: t0,
@@ -474,6 +516,7 @@ export function layout(score: Score, m: Metrics): System[] {
       marks,
       endings,
       voices: { D: voice("D"), G: voice("G") },
+      pedal: { signs, spans },
       width,
     };
   });

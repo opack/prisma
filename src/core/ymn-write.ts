@@ -2,7 +2,7 @@
 import { writeFrontmatter } from "./frontmatter.ts";
 import { layout } from "./layout.ts";
 import type { Column, Mark, System, Voice } from "./layout.ts";
-import { isHairpin } from "./model.ts";
+import { isHairpin, isPedalSign } from "./model.ts";
 import type { Score } from "./model.ts";
 import { octaveLabel } from "./pitch.ts";
 
@@ -24,7 +24,7 @@ export function separatorText(c: Exclude<Column, { kind: "anchor" }>): string {
 type Item = { col: number; text: string };
 
 /** Indication toujours lue à part, même à une espace de sa voisine. */
-const solid = (t: string) => t.startsWith("[") || t === "]" || isHairpin(t);
+const solid = (t: string) => t.startsWith("[") || t === "]" || isHairpin(t) || isPedalSign(t);
 
 /**
  * Range des indications sur des lignes @ : chacune commence à sa colonne. Deux textes
@@ -101,6 +101,8 @@ export function renderSystemText(sys: System, cell: number, prefix: number): str
     rule(ruler),
     ...rows(sys.left),
     ...voiceLines(sys.voices.G),
+    // la pédale sur sa propre ligne @, tout en bas
+    ...stackLines(sys.pedal.signs.map((p) => ({ col: anchorCol[p.anchor], text: p.text }))),
   ];
 }
 

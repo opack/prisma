@@ -282,6 +282,43 @@ function VoiceBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: nu
   );
 }
 
+/**
+ * Pédale : trait sous le système, comme sur les partitions modernes. Il commence par un
+ * crochet là où la pédale s'enfonce, finit par un crochet là où elle se relâche, et
+ * marque d'une pointe chaque changement. Sa longueur montre exactement ce qui est tenu.
+ */
+function PedalBand({ ps, top }: { ps: PlacedSystem; top: number }) {
+  const { sys, xs, ws } = ps;
+  const left = PAGE.marginX + G.prefix;
+  const right = xs[xs.length - 1] + ws[ws.length - 1];
+  const y = top + G.pedalH * 0.7;
+  const hook = 1.5; // hauteur des crochets et des pointes
+  const notch = 0.8; // demi-largeur d'une pointe de changement
+  const px = (a: number) => xs[sys.anchors[a]] + 0.3;
+  const parts: string[] = [];
+  for (const s of sys.pedal.spans) {
+    let x1 = s.fromAnchor >= 0 ? px(s.fromAnchor) : left;
+    let x2 = s.toAnchor >= 0 ? px(s.toAnchor) : right;
+    if (s.changeStart) {
+      // pointe du changement, dessinée une seule fois, par la pédale qui commence
+      parts.push(`M ${x1 - notch} ${y} L ${x1} ${y - hook} L ${x1 + notch} ${y}`);
+      x1 += notch;
+    } else if (s.opens) parts.push(`M ${x1} ${y - hook} L ${x1} ${y}`);
+    // un changement en fin de système se dessine au début du système suivant
+    if (s.changeEnd && s.toAnchor >= 0) x2 -= notch;
+    parts.push(`M ${x1} ${y} L ${x2} ${y}`);
+    if (s.closes && !s.changeEnd) parts.push(`M ${x2} ${y} L ${x2} ${y - hook}`);
+  }
+  return (
+    <g>
+      <text x={PAGE.marginX + G.prefix - 1.2} y={y} fontSize={2.3} fill={GREY} textAnchor="end" fontStyle="italic">
+        Ped.
+      </text>
+      <path d={parts.join(" ")} fill="none" stroke={INK} strokeWidth={0.3} strokeLinejoin="round" />
+    </g>
+  );
+}
+
 function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions }) {
   const { sys, xs, ws } = ps;
   const y = ps.y + ps.textBand + ps.endingBand; // haut de la règle de comptage
@@ -364,6 +401,7 @@ function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions 
 
       {ps.voiceBand.D > 0 && <VoiceBand ps={ps} voice={sys.voices.D} top={rhVoice} />}
       {ps.voiceBand.G > 0 && <VoiceBand ps={ps} voice={sys.voices.G} top={lhVoice} />}
+      {ps.pedalBand > 0 && <PedalBand ps={ps} top={bottom} />}
       <Marks ps={ps} />
     </g>
   );

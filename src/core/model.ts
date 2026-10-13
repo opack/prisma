@@ -81,6 +81,18 @@ export type Hairpin = { hand: Hand; kind: "<" | ">"; start: number; end: number 
 /** Soufflet écrit sur une ligne @ de voix : « <---- » (crescendo) ou « >---- » (decrescendo). */
 export const isHairpin = (t: string) => /^[<>][-|]*$/.test(t);
 
+/**
+ * Pédale de résonance enfoncée de start à end (fin exclue). Deux pédales qui se touchent
+ * (end de l'une = start de la suivante) forment un changement de pédale.
+ */
+export type Pedal = { start: number; end: number };
+
+/** Signes de pédale d'une ligne @ sous la main gauche : enfoncer, relâcher, changer. */
+export const PEDAL_DOWN = "Ped.";
+export const PEDAL_UP = "*";
+export const PEDAL_CHANGE = "*Ped.";
+export const isPedalSign = (t: string) => t === PEDAL_DOWN || t === PEDAL_UP || t === PEDAL_CHANGE;
+
 export type Score = {
   meta: Meta;
   /** Temps du morceau, dans l'ordre. Le temps i couvre [i·TICKS_PER_BEAT, (i+1)·TICKS_PER_BEAT[. */
@@ -91,6 +103,7 @@ export type Score = {
   texts: TextMark[];
   expressions: Expression[];
   hairpins: Hairpin[];
+  pedals: Pedal[];
 };
 
 /** Reprise portée par une mesure, s'il y en a une. */

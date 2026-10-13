@@ -30,7 +30,7 @@ m12|1  :  |2  |3  :  :  ||1  |2  |
 2. **Un trait sous la règle**, facultatif.
 3. **Les lignes de la main droite**, suivies si besoin de ses lignes `@` de nuances.
 4. **Le trait entre les mains**, obligatoire, même quand une main ne joue pas.
-5. **Les lignes de la main gauche**, suivies si besoin de ses lignes `@` de nuances.
+5. **Les lignes de la main gauche**, suivies si besoin de ses lignes `@` de nuances et de pédale.
 
 Les traits s'écrivent avec `─`, `-`, `=`, `+` ou `┼`, sans espace.
 
@@ -134,9 +134,32 @@ m1 |1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||
 
 À l'import MusicXML, nuances, soufflets et textes suivent leur portée ; les indications de tempo et de structure (`rit.`, `a tempo`, `D.C.`, `Fine`, `Coda`, `Andante`…) vont sur la ligne `@` au-dessus de la règle. Chaque indication est calée sur l'attaque ou le début de temps le plus proche.
 
+## Pédale
+
+La pédale de résonance se note sur une ligne `@` **sous la main gauche**, avec trois signes posés sur les cases :
+
+| Signe | Sens |
+|---|---|
+| `Ped.` | Enfoncer la pédale. |
+| `*` | La relâcher. |
+| `*Ped.` | La changer : relâcher et enfoncer au même instant. |
+
+Une pédale enfoncée le reste d'un système au suivant sans rien réécrire. Sans `*`, elle tient jusqu'à la fin du morceau. La remise en page écrit la pédale sur sa propre ligne, tout en bas du système ; la gravure la trace comme un trait sous le système, dont la longueur montre exactement ce qui est tenu, avec une pointe à chaque changement.
+
+```
+m1 |1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||
+───┼───┼───┼───┼┼───┼───┼───┼┼───┼───┼───┼┼───┼───┼───┼┼
+0  |5  |7  |8  ||10 |8  |7  ||5  |-  |3  ||1  |-  |-  ||
+@   p   <------------------   mf  >------------------
+───┼───┼───┼───┼┼───┼───┼───┼┼───┼───┼───┼┼───┼───┼───┼┼
+-1 |1  |-  |-  ||8  |-  |-  ||6  |-  |-  ||1  |-  |-  ||
+@   pp           sempre legato
+@   Ped.         *Ped.        *Ped.                *
+```
+
 ## Hors format pour l'instant
 
-Pédale (ligne `Ped`), ornements, articulations.
+Repères et sauts, doigtés, ornements, articulations. Voir ROADMAP.md.
 
 ## Outil en ligne de commande
 

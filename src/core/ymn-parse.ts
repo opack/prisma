@@ -5,8 +5,8 @@
  * de comptage. Voir FORMAT.md pour la grammaire complète.
  */
 import { YmnError, parseFrontmatter } from "./frontmatter.ts";
-import { DYNAMICS, TICKS_PER_BEAT, isHairpin, sortNotes } from "./model.ts";
-import type { Beat, Division, Ending, Expression, Hairpin, Hand, Note, Repeat, Score, TextMark } from "./model.ts";
+import { DYNAMICS, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isHairpin, isPedalSign, sortNotes } from "./model.ts";
+import type { Beat, Division, Ending, Expression, Hairpin, Hand, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
 import { midiOf, parseOctaveLabel } from "./pitch.ts";
 import { DEFAULT_CELL } from "./ymn-write.ts";
 
@@ -62,8 +62,8 @@ const nextBar = (bar: string) => (/^\d+$/.test(bar) ? String(Number(bar) + 1) : 
 /**
  * Indications d'une ligne @ : groupes de mots séparés par au moins deux espaces
  * (« a tempo », « più f » restent un seul texte). Les signes de case « [1. » et « ] »,
- * et les soufflets « <--- », sont toujours des indications à part, même séparés par une
- * seule espace (ou collés, pour « ][2. »).
+ * les soufflets « <--- » et les signes de pédale sont toujours des indications à part,
+ * même séparés par une seule espace (ou collés, pour « ][2. »).
  */
 function markTokens(line: string) {
   const out: { col: number; text: string }[] = [];
@@ -78,7 +78,7 @@ function markTokens(line: string) {
       col += part.length;
     }
   }
-  const structural = (t: string) => t.startsWith("[") || t === "]" || isHairpin(t);
+  const structural = (t: string) => t.startsWith("[") || t === "]" || isHairpin(t) || isPedalSign(t);
   for (const p of pieces) {
     // les barres recopiées pour se repérer sont ignorées
     const lead = p.text.length - p.text.replace(/^[|:]+/, "").length;
@@ -140,6 +140,8 @@ export function parseYmn(text: string): Score {
   const texts: TextMark[] = [];
   const expressions: Expression[] = [];
   const hairpins: Hairpin[] = [];
+  const pedals: Pedal[] = [];
+  let pedalDown: Pedal | undefined; // pédale enfoncée, peut-être depuis un système précédent
   const endingStarts: { numbers: number[]; bar: number }[] = [];
   const endingCloses: number[] = [];
   const timesMarks: { bar: number; times: number; line: number; col: number }[] = [];
@@ -247,13 +249,17 @@ export function parseYmn(text: string): Score {
     }
     const inSpan = (c: number) => spans.some((s) => c >= s.from && c < s.to);
 
-    // ligne @ d'une voix : nuances, textes (« cresc. », « dolce »…) et soufflets
+    // ligne @ d'une voix : nuances, textes (« cresc. », « dolce »…), soufflets, et pédale sous la main gauche
+    const pedalSigns: { t: number; text: string; line: number; col: number }[] = [];
     const readVoiceLine = (row: string, R: number, hand: Hand) => {
       for (const tok of markTokens(row)) {
         const ai = anchors.findIndex((x) => x.from === tok.col);
         if (ai < 0) throw new YmnError(`« ${tok.text} » doit commencer exactement sur une case de la règle de comptage`, R, tok.col + 1);
         const a = anchors[ai];
-        if (isHairpin(tok.text)) {
+        if (isPedalSign(tok.text)) {
+          if (hand === "D") throw new YmnError(`« ${tok.text} » : la pédale se note sur une ligne @ sous la main gauche`, R, tok.col + 1);
+          pedalSigns.push({ t: a.t, text: tok.text, line: R, col: tok.col + 1 });
+        } else if (isHairpin(tok.text)) {
           // le soufflet finit avec la case qui contient son dernier caractère
           const last = tok.col + tok.text.length - 1;
           const next = anchors.find((x) => x.from > last);
@@ -357,7 +363,27 @@ export function parseYmn(text: string): Score {
       }
     }
     pending = nextPending;
+
+    // pédale : dans l'ordre du temps, en relâchant avant d'enfoncer à un même instant
+    const order = (x: string) => (x === PEDAL_UP ? 0 : x === PEDAL_CHANGE ? 1 : 2);
+    pedalSigns.sort((a, b) => a.t - b.t || order(a.text) - order(b.text));
+    for (const p of pedalSigns) {
+      if (p.text !== PEDAL_DOWN) {
+        if (!pedalDown) {
+          throw new YmnError(p.text === PEDAL_UP ? "« * » sans pédale enfoncée" : "« *Ped. » sans pédale enfoncée : écris « Ped. »", p.line, p.col);
+        }
+        pedalDown.end = p.t;
+        pedalDown = undefined;
+      }
+      if (p.text !== PEDAL_UP) {
+        if (pedalDown) throw new YmnError("« Ped. » alors que la pédale est déjà enfoncée : écris « *Ped. » pour la changer", p.line, p.col);
+        pedalDown = { start: p.t, end: -1 };
+        pedals.push(pedalDown);
+      }
+    }
   }
+  // une pédale jamais relâchée tient jusqu'à la fin du morceau
+  if (pedalDown) pedalDown.end = beats.length * TICKS_PER_BEAT;
 
   // nombre de passages : porté par une mesure qui finit une reprise
   for (const tm of timesMarks) {
@@ -399,5 +425,6 @@ export function parseYmn(text: string): Score {
     texts,
     expressions: expressions.sort((a, b) => a.t - b.t || (a.hand === b.hand ? 0 : a.hand === "D" ? -1 : 1)),
     hairpins: hairpins.sort((a, b) => a.start - b.start || (a.hand === b.hand ? 0 : a.hand === "D" ? -1 : 1)),
+    pedals: pedals.filter((p) => p.end > p.start),
   };
 }

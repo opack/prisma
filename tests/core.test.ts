@@ -488,3 +488,65 @@ describe("nuances et soufflets", () => {
     expect(expr(parseYmn(writeYmn(s)))).toBe("D:dynamic:p@0 G:text:dolce@0 D:dynamic:f@3");
   });
 });
+
+describe("pédale", () => {
+  const pk = (s: Score) => s.pedals.map((p) => `${p.start / T}-${p.end / T}`).join(" ");
+  /** Ligne @ avec chaque signe à sa colonne : évite de compter les espaces à la main. */
+  const at = (...signs: [number, string][]) => {
+    let l = "@";
+    for (const [col, text] of signs) l = l.padEnd(col) + text;
+    return l;
+  };
+  const ruler = "m1 |1  |2  |3  ||1  |2  |3  ||";
+  const body = (pedal: string) => [ruler, "0  |1  |   |   ||3  |   |   ||", "---", "-1 |1  |-  |-  ||8  |-  |-  ||", pedal, ""].join("\n");
+
+  it("lit Ped., *Ped. et * sous la main gauche", () => {
+    const s = parseYmn(body(at([4, "Ped."], [17, "*Ped."], [25, "*"])));
+    expect(pk(s)).toBe("0-3 3-5");
+  });
+
+  it("écrit la pédale sur sa propre ligne, tout en bas, et la relit à l'identique", () => {
+    const s = parseYmn(body(at([4, "Ped."], [17, "*Ped."], [25, "*"])));
+    const text = writeYmn(s);
+    expect(text.trimEnd().split("\n").pop()).toMatch(/^@ +Ped\. +\*Ped\. +\*$/);
+    expect(pk(parseYmn(text))).toBe(pk(s));
+  });
+
+  it("tient la pédale d'un système au suivant sans la réécrire", () => {
+    const bars = Array.from({ length: 8 }, () => "1  |2  |3  ||").join("");
+    const notes = Array.from({ length: 8 }, () => "1  |   |   ||").join("");
+    const s = parseYmn(`m1 |${bars}\n---\n-1 |${notes}\n${at([4, "Ped."])}\n`);
+    expect(pk(s)).toBe("0-24"); // jamais relâchée : jusqu'à la fin du morceau
+    const text = writeYmn(s, { width: 40 });
+    expect(text.match(/Ped\./g)?.length).toBe(1);
+    expect(pk(parseYmn(text))).toBe("0-24");
+  });
+
+  it("refuse les signes de pédale incohérents", () => {
+    expect(() => parseYmn(body(at([4, "*"])))).toThrow(/sans pédale enfoncée/);
+    expect(() => parseYmn(body(at([4, "Ped."], [12, "Ped."])))).toThrow(/déjà enfoncée/);
+    const rh = [ruler, "0  |1  |   |   ||3  |   |   ||", at([4, "Ped."]), "---", "-1 |1  |   |   ||8  |   |   ||", ""].join("\n");
+    expect(() => parseYmn(rh)).toThrow(/sous la main gauche/);
+  });
+
+  it("importe la pédale du MusicXML", () => {
+    const ped = (type: string) => `<direction><direction-type><pedal type="${type}" line="yes"/></direction-type><staff>2</staff></direction>`;
+    const xml = musicXml([
+      {
+        time: [3, 4],
+        notes: [
+          [{ midi: [C4], dur: 3 * q }],
+          [
+            { midi: [48], dur: q, staff: 2, before: ped("start") },
+            { midi: [52], dur: q, staff: 2 },
+            { midi: [55], dur: q, staff: 2, before: ped("change") },
+          ],
+        ],
+      },
+      { notes: [[{ midi: [C4], dur: 3 * q }], [{ midi: [48], dur: 3 * q, staff: 2, before: ped("stop") }]] },
+    ]);
+    const s = importMusicXml(xml);
+    expect(pk(s)).toBe("0-2 2-3");
+    expect(pk(parseYmn(writeYmn(s)))).toBe("0-2 2-3");
+  });
+});

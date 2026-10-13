@@ -17,6 +17,7 @@ export const G = {
   rulerH: 4.4,
   markH: 4, // une bande d'indications au-dessus du système (cases de reprise, textes)
   voiceH: 4.2, // bande des nuances et soufflets, sous les lignes d'une main
+  pedalH: 4, // bande de la pédale, sous le système
   rowH: 4.5,
   handGap: 1.4, // espace de part et d'autre du trait entre les mains
   systemGap: 6.5,
@@ -35,6 +36,8 @@ export type PlacedSystem = {
   textBand: number;
   /** Hauteur des bandes de nuances sous chaque main (0 si la main n'en a pas). */
   voiceBand: { D: number; G: number };
+  /** Hauteur de la bande de pédale sous le système (0 sans pédale). */
+  pedalBand: number;
   height: number;
   /** Abscisse de chaque colonne (case ou séparateur), depuis le bord gauche de la page. */
   xs: number[];
@@ -51,11 +54,12 @@ export const bands = (s: System) => ({
   endingBand: s.endings.length || s.marks.some((m) => m.kind === "times") ? G.markH : 0,
   textBand: s.marks.some((m) => m.kind === "text") ? G.markH : 0,
   voiceBand: { D: voiceH(s.voices.D), G: voiceH(s.voices.G) },
+  pedalBand: s.pedal.spans.length ? G.pedalH : 0,
 });
 
 export const systemHeight = (s: System) => {
   const b = bands(s);
-  return b.endingBand + b.textBand + G.rulerH + (s.right.length + s.left.length) * G.rowH + b.voiceBand.D + b.voiceBand.G + 2 * G.handGap + 1;
+  return b.endingBand + b.textBand + G.rulerH + (s.right.length + s.left.length) * G.rowH + b.voiceBand.D + b.voiceBand.G + b.pedalBand + 2 * G.handGap + 1;
 };
 
 /** Largeur d'une barre de mesure, selon ses signes de reprise (identique au calcul du moteur). */

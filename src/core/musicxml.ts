@@ -9,11 +9,11 @@
  *   sinon la numérotation du fichier est suivie, à partir du numéro de sa première mesure.
  * - Liaisons de tenue fusionnées. Petites notes ignorées.
  * - Nuances, soufflets et textes de chaque main ; les indications de tempo et de structure
- *   (rit., a tempo, D.C., Fine…) vont au-dessus du système.
+ *   (rit., a tempo, D.C., Fine…) vont au-dessus du système. Pédale de résonance.
  */
 import { XMLParser } from "fast-xml-parser";
 import { DYNAMICS, TICKS_PER_BEAT, sortNotes } from "./model.ts";
-import type { Beat, Division, Ending, Expression, Hairpin, Hand, Meta, Note, Repeat, Score, TextMark } from "./model.ts";
+import type { Beat, Division, Ending, Expression, Hairpin, Hand, Meta, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
 
 type XNode = Record<string, any>;
 const parser = new XMLParser({ preserveOrder: true, ignoreAttributes: false, attributeNamePrefix: "" });
@@ -41,7 +41,7 @@ export function pulse(beats: number, beatType: number): { count: number; quarter
 }
 
 /** Indication d'une direction MusicXML, positionnée en noires depuis le début de la mesure. */
-type RawDirection = { hand: Hand; at: number; kind: "dynamic" | "words" | "wedge"; text: string; number?: string };
+type RawDirection = { hand: Hand; at: number; kind: "dynamic" | "words" | "wedge" | "pedal"; text: string; number?: string };
 
 /** Textes qui concernent tout le système : tempo, structure du morceau. */
 const SYSTEM_WORDS =
@@ -112,6 +112,8 @@ function readMeasures(part: XNode): RawMeasure[] {
               }
             } else if (ct === "wedge") {
               directions.push({ hand, at, kind: "wedge", text: attr(c, "type") ?? "", number: String(attr(c, "number") ?? "1") });
+            } else if (ct === "pedal") {
+              directions.push({ hand, at, kind: "pedal", text: attr(c, "type") ?? "" });
             } else if (ct === "words") {
               const w = text(c).replace(/\s+/g, " ").trim();
               if (w) words.push(w);
@@ -339,9 +341,27 @@ function directionsOf(dirs: (RawDirection & { t: number })[], notes: Note[], bea
   const expressions: Expression[] = [];
   const hairpins: Hairpin[] = [];
   const open: (Hairpin & { number: string })[] = [];
+  const pedals: Pedal[] = [];
+  let pedal: Pedal | undefined;
+  const pedalUp = (t: number) => {
+    if (pedal && t > pedal.start) {
+      pedal.end = t;
+      pedals.push(pedal);
+    }
+    pedal = undefined;
+  };
   const seen = new Set<string>();
   for (const d of [...dirs].sort((a, b) => a.t - b.t)) {
     const t = Math.min(snap(d.t), end);
+    if (d.kind === "pedal") {
+      // start et resume enfoncent, stop et discontinue relâchent, change fait les deux
+      if (d.text === "stop" || d.text === "discontinue" || d.text === "change") pedalUp(t);
+      if (d.text === "start" || d.text === "resume" || d.text === "change") {
+        if (pedal) pedalUp(t); // déjà enfoncée : on la change
+        if (t < end) pedal = { start: t, end };
+      }
+      continue;
+    }
     if (d.kind === "wedge") {
       if (d.text === "crescendo" || d.text === "diminuendo") {
         open.push({ hand: d.hand, kind: d.text === "crescendo" ? "<" : ">", start: Math.min(t, end - 1), end, number: d.number! });
@@ -368,5 +388,6 @@ function directionsOf(dirs: (RawDirection & { t: number })[], notes: Note[], bea
   // soufflet jamais refermé : jusqu'à la fin du morceau
   for (const w of open) hairpins.push({ hand: w.hand, kind: w.kind, start: w.start, end: w.end });
   hairpins.sort((a, b) => a.start - b.start);
-  return { texts, expressions, hairpins };
+  if (pedal) pedalUp(end);
+  return { texts, expressions, hairpins, pedals };
 }
