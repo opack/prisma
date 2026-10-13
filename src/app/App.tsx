@@ -2,12 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_WIDTH, YmnError, importMusicXml, parseYmn, writeYmn } from "../core/index.ts";
 import type { Score } from "../core/index.ts";
 import { engrave } from "./engrave.ts";
+import { Menu } from "./Menu.tsx";
 import { NoticeView } from "./NoticeView.tsx";
 import { PageView } from "./PageView.tsx";
 import { SAMPLE } from "./sample.ts";
 import { DENSITIES, NOTE_POSITIONS, OCTAVE_POSITIONS, OCTAVE_STYLES, loadOptions, saveOptions } from "./options.ts";
 import type { RenderOptions } from "./options.ts";
-import { canWriteInPlace, download, pickFile, pickSaveTarget, writeFile } from "./files.ts";
+import { OPENABLE, canWriteInPlace, download, droppedFile, pickFile, pickSaveTarget, writeFile } from "./files.ts";
 
 /** Délai sans frappe avant la gravure automatique. */
 const AUTO_ENGRAVE_DELAY = 600;
@@ -31,6 +32,8 @@ const persist = (s: string) => {
 type Problem = { message: string; line?: number; column?: number };
 
 function tryParse(text: string): { score?: Score; problem?: Problem } {
+  // texte vide (nouvelle partition) : rien à graver, ce n'est pas une erreur
+  if (!text.trim()) return {};
   try {
     return { score: parseYmn(text) };
   } catch (e) {
@@ -70,9 +73,10 @@ export function App() {
     persist(source);
   }, [source]);
 
-  const saveFile = useCallback(async () => {
+  /** Enregistre ; « sous » : toujours dans un nouveau fichier, choisi par l'utilisateur. */
+  const saveFile = useCallback(async (as = false) => {
     try {
-      let target = handle;
+      let target = as ? null : handle;
       if (!target && canWriteInPlace) {
         target = await pickSaveTarget(fileName);
         if (!target) return; // annulé
@@ -101,7 +105,11 @@ export function App() {
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        saveFile();
+        saveFile(e.shiftKey);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "o") {
+        e.preventDefault();
+        openFileRef.current();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -160,13 +168,89 @@ export function App() {
     persist(ymn);
   };
 
+  /** Modifications perdues si l'on remplace le texte : on demande d'abord. */
+  // rien à perdre : le fichier tel qu'enregistré, ou, sans fichier, un texte vide ou l'exemple de départ
+  const pristine = savedText === null ? !source.trim() || source === SAMPLE : source === savedText;
+  const confirmDiscard = (question: string) => pristine || window.confirm(question);
+
   const openFile = async () => {
+    if (!confirmDiscard("Ouvrir un autre fichier ? Les modifications non enregistrées seront perdues.")) return;
     if (!canWriteInPlace) return fileInput.current?.click();
     try {
       const picked = await pickFile();
       if (picked) await open(picked.file, picked.handle);
     } catch (e) {
       setNotice(`Ouverture impossible : ${(e as Error).message}`);
+    }
+  };
+  const openFileRef = useRef(openFile);
+  openFileRef.current = openFile;
+
+  // glisser-déposer un fichier sur la fenêtre pour l'ouvrir ; le compteur suit les entrées et
+  // sorties successives au-dessus des éléments de la page
+  const [dragging, setDragging] = useState(false);
+  const dragDepth = useRef(0);
+  const hasFile = (e: React.DragEvent) => [...e.dataTransfer.types].includes("Files");
+  const onDragEnter = (e: React.DragEvent) => {
+    if (!hasFile(e)) return;
+    e.preventDefault();
+    dragDepth.current++;
+    setDragging(true);
+  };
+  const onDragLeave = (e: React.DragEvent) => {
+    if (!hasFile(e)) return;
+    if (--dragDepth.current <= 0) {
+      dragDepth.current = 0;
+      setDragging(false);
+    }
+  };
+  const onDragOver = (e: React.DragEvent) => {
+    if (!hasFile(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  };
+  const onDrop = async (e: React.DragEvent) => {
+    if (!hasFile(e)) return;
+    e.preventDefault();
+    dragDepth.current = 0;
+    setDragging(false);
+    const dropped = await droppedFile(e.dataTransfer);
+    if (!dropped) return;
+    if (!OPENABLE.test(dropped.file.name)) {
+      setNotice(`« ${dropped.file.name} » : format non pris en charge (.ymn ou .musicxml non compressé)`);
+      return;
+    }
+    if (!confirmDiscard(`Ouvrir ${dropped.file.name} ? Les modifications non enregistrées seront perdues.`)) return;
+    try {
+      await open(dropped.file, dropped.handle);
+      setShowGuide(false);
+    } catch (err) {
+      setNotice(`Ouverture impossible : ${(err as Error).message}`);
+    }
+  };
+
+  /** Nouvelle partition : tout est effacé. */
+  const newFile = () => {
+    if (!confirmDiscard("Effacer la partition en cours ? Les modifications non enregistrées seront perdues.")) return;
+    setSource("");
+    setEngraved({});
+    setEngravedSource("");
+    setHandle(null);
+    setSavedText(null);
+    setFileName("morceau.ymn");
+    persist("");
+    editor.current?.focus();
+  };
+
+  /** Relit depuis le disque le fichier ouvert (modifié ailleurs, ou pour annuler ses changements). */
+  const reloadFile = async () => {
+    if (!handle) return;
+    if (unsaved && !window.confirm(`Recharger ${handle.name} depuis le disque ? Les modifications non enregistrées seront perdues.`)) return;
+    try {
+      await open(await handle.getFile(), handle);
+      setNotice(`${handle.name} rechargé`);
+    } catch (e) {
+      setNotice(`Rechargement impossible : ${(e as Error).message}`);
     }
   };
 
@@ -187,10 +271,37 @@ export function App() {
   const { problem, score } = engraved;
 
   return (
-    <div className="app">
+    <div className="app" onDragEnter={onDragEnter} onDragLeave={onDragLeave} onDragOver={onDragOver} onDrop={onDrop}>
+      {dragging && (
+        <div className="drop" aria-hidden>
+          <p>Déposer pour ouvrir</p>
+          <span>.ymn ou .musicxml</span>
+        </div>
+      )}
       <header className="bar">
         <span className="brand">ymn</span>
-        <button onClick={openFile}>Ouvrir…</button>
+        <Menu
+          label="Fichier"
+          items={[
+            { label: "Nouveau", onSelect: newFile },
+            { label: "Ouvrir…", onSelect: openFile, shortcut: "Ctrl+O" },
+            "separator",
+            { label: "Enregistrer", onSelect: () => saveFile(), shortcut: "Ctrl+S" },
+            { label: "Enregistrer sous…", onSelect: () => saveFile(true), shortcut: "Ctrl+Maj+S" },
+            "separator",
+            { label: "Recharger", onSelect: reloadFile, disabled: !handle },
+          ]}
+        />
+        <Menu
+          label="Gravure"
+          items={[
+            { label: "Graver", onSelect: engraveNow, shortcut: "Ctrl+Entrée" },
+            { label: "Options", onSelect: () => setShowOptions((v) => !v), checked: showOptions },
+            "separator",
+            { label: "Imprimer…", onSelect: () => window.print(), shortcut: "Ctrl+P", disabled: !pages.length || showGuide },
+          ]}
+        />
+        <Menu label="Aide" items={[{ label: "Notice", onSelect: () => setShowGuide((v) => !v), checked: showGuide }]} />
         <input
           ref={fileInput}
           type="file"
@@ -202,9 +313,6 @@ export function App() {
             e.target.value = "";
           }}
         />
-        <button onClick={saveFile} title="Ctrl+S">
-          Enregistrer
-        </button>
         <span className="file" title={handle ? "Enregistrer réécrit ce fichier" : undefined}>
           {fileName}
           {unsaved || savedText === null ? <span className="unsaved"> · non enregistré</span> : null}
@@ -217,15 +325,6 @@ export function App() {
         <span className="spacer" />
         <button className="primary" onClick={engraveNow} title="Ctrl+Entrée">
           Graver{dirty ? " •" : ""}
-        </button>
-        <button onClick={() => setShowOptions((v) => !v)} aria-expanded={showOptions} aria-controls="options">
-          Options
-        </button>
-        <button onClick={() => window.print()} disabled={!pages.length || showGuide}>
-          Imprimer
-        </button>
-        <button onClick={() => setShowGuide((v) => !v)} aria-pressed={showGuide}>
-          {showGuide ? "Partition" : "Notice"}
         </button>
       </header>
 
@@ -321,6 +420,9 @@ export function App() {
 
       {showGuide && (
         <main className="guide-pane">
+          <button className="back" onClick={() => setShowGuide(false)}>
+            ← Retour à la partition
+          </button>
           <NoticeView options={options} />
         </main>
       )}

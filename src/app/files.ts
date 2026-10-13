@@ -40,6 +40,25 @@ export async function pickSaveTarget(suggestedName: string): Promise<FileSystemF
   }
 }
 
+/** Formats ouverts par l'application. */
+export const OPENABLE = /\.(ymn|txt|musicxml|xml)$/i;
+
+/**
+ * Fichier déposé sur la fenêtre, avec son accès en écriture quand le navigateur le donne
+ * (Chrome, Edge) : on peut alors l'enregistrer en place, comme un fichier ouvert.
+ */
+export async function droppedFile(data: DataTransfer): Promise<{ file: File; handle: FileSystemFileHandle | null } | null> {
+  const item = [...data.items].find((i) => i.kind === "file");
+  if (!item) return null;
+  const withHandle = item as DataTransferItem & { getAsFileSystemHandle?: () => Promise<FileSystemHandle | null> };
+  // à demander avant tout « await » : la liste des éléments déposés n'est valable qu'un instant
+  const pending = withHandle.getAsFileSystemHandle?.();
+  const file = item.getAsFile();
+  if (!file) return null;
+  const handle = await pending?.catch(() => null);
+  return { file, handle: handle?.kind === "file" ? (handle as FileSystemFileHandle) : null };
+}
+
 export async function writeFile(handle: FileSystemFileHandle, text: string) {
   const out = await handle.createWritable();
   await out.write(text);

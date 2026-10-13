@@ -44,6 +44,24 @@ textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16p
 .page { display: block; width: min(100%, 210mm); height: auto; aspect-ratio: 210 / 297; flex: none; box-shadow: 0 1px 3px rgba(0,0,0,.18), 0 6px 18px rgba(0,0,0,.08); background: #fff; }
 .empty { color: var(--muted); }
 
+/* glisser-déposer un fichier : un voile sur toute la fenêtre */
+.app { position: relative; }
+.drop { position: absolute; inset: 0; z-index: 20; display: grid; place-content: center; text-align: center; gap: 4px; background: rgba(43, 93, 110, .12); border: 3px dashed var(--accent); pointer-events: none; }
+.drop p { margin: 0; font-size: 22px; font-weight: 700; color: var(--accent); }
+.drop span { color: var(--muted); }
+
+/* menus de la barre d'outils */
+.menu { position: relative; }
+.menu-button { border-color: transparent; background: transparent; }
+.menu-button:hover, .menu-button[aria-expanded="true"] { background: #fff; border-color: var(--line); }
+.menu-list { position: absolute; top: calc(100% + 4px); left: 0; z-index: 10; min-width: 260px; padding: 4px; background: #fff; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.12); display: grid; }
+.menu-list button { display: grid; grid-template-columns: 1.2em 1fr auto; gap: 8px; align-items: center; text-align: left; border: 0; border-radius: 4px; padding: 6px 10px; background: transparent; white-space: nowrap; }
+.menu-list button:hover:not(:disabled), .menu-list button:focus-visible { background: var(--panel); outline: none; }
+.menu-list .shortcut { color: var(--muted); font-size: 12px; }
+.menu-list .check { color: var(--accent); }
+.menu-list hr { border: 0; border-top: 1px solid var(--line); margin: 4px 6px; }
+.guide-pane .back { position: sticky; top: 12px; margin: 12px 0 0 16px; z-index: 1; }
+
 /* notice du pianiste : le texte, et sous chaque exemple sa gravure */
 .split[hidden] { display: none; }
 .guide-pane { flex: 1; overflow: auto; background: #fff; }
