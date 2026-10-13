@@ -1,5 +1,6 @@
 /** Exemple affiché au premier lancement : une gamme de do et ses accords, écrite pour la démonstration. */
 export const SAMPLE = `---
+format: 1
 title: Exemple
 composer: Gamme de do majeur
 ---

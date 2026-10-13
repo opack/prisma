@@ -1,4 +1,4 @@
-# Format .ymn — version 0
+# Format .ymn — version 1
 
 Un fichier `.ymn` est un texte brut en UTF-8, à lire et à écrire dans une police à chasse fixe. Il contient un frontmatter facultatif, puis des **systèmes** séparés par des lignes vides.
 
@@ -8,6 +8,7 @@ Entre deux lignes `---`, une clé par ligne, sous la forme `clé: valeur`.
 
 | Clé | Rôle |
 |---|---|
+| `format` | Version du format ymn du fichier : `format: 1`. L'écriture la met toujours ; un fichier sans elle est lu comme la version courante. Le lecteur refuse un fichier d'une autre version en le disant (voir « Versions »). |
 | `title`, `subtitle`, `composer`, `tempo`, `source` | Informations affichées : le sous-titre (« Op. 9 n° 2 », « Suite bergamasque, 3ᵉ mouvement »…) sous le titre. |
 | `order` | Ordre de jeu des sections, par leur lettre : `order: A A B C B D A` (voir « Sections et ordre de jeu »). |
 | `cell` | Largeur de base d'une case en caractères, à l'écriture. Vaut 3 par défaut. |
@@ -93,7 +94,7 @@ Le doigt suit la note dans sa case, après `_` : `5_3`. Chaque note d'un accord 
 Un signe d'ornement classique ne dit pas quelles notes jouer : il faut l'armure, ou une petite altération dessinée sur le signe, pour connaître la note voisine. Ici, les notes sont écrites en clair.
 
 - **Trille** : la note, `~`, puis sa voisine, dans la case de la note : `5~7` alterne 5 et 7 pendant toute la durée de la note, prolongée par des `-` comme d'habitude. La voisine est la plus proche qui porte ce numéro : `12~1` alterne le si et le do juste au-dessus. La gravure écrit la voisine en petit après la note, puis un trait ondulé sur toute sa durée.
-- **Mordant et gruppetto** : écrits en petites notes, puisque leurs notes sont fixées par la convention. Mordant sur 5 avec la voisine du dessus : `5'7'5` ; avec celle du dessous : `5'4'5`. Gruppetto sur 5 : `7'5'4'5` (dessus, note, dessous, note). Un gruppetto placé après une note se joue juste avant la note suivante : ses petites notes vont dans la case de celle-ci.
+- **Mordant et gruppetto** : écrits en petites notes, puisque leurs notes sont fixées par la convention. En do majeur, mordant sur 5 (mi) avec la voisine du dessus : `5'6'5` ; avec celle du dessous : `5'3'5`. Gruppetto sur 5 : `6'5'3'5` (dessus, note, dessous, note). Un gruppetto placé après une note se joue juste avant la note suivante : ses petites notes vont dans la case de celle-ci.
 - **Arpège** : voir « Ligne d'indications `@` » et « Nuances et soufflets ». Le signe `/` (`\` de l'aigu au grave) se pose sur la case de l'accord ; les notes égrenées restent tenues.
 
 L'import calcule les voisines d'après l'armure, les altérations déjà posées dans la mesure et celles dessinées sur l'ornement.
@@ -239,6 +240,14 @@ m1 |1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||
 ## Hors format pour l'instant
 
 Articulations. Voir ROADMAP.md.
+
+## Versions
+
+La version change à chaque modification qui rend un ancien fichier illisible.
+
+| Version | Changement |
+|---|---|
+| 1 | Le premier découpage du temps s'écrit `*` (auparavant `:`, désormais réservé aux reprises). Ajout de la clé `format`. |
 
 ## Outil en ligne de commande
 

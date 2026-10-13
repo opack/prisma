@@ -44,6 +44,22 @@ textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16p
 .page { display: block; width: min(100%, 210mm); height: auto; aspect-ratio: 210 / 297; flex: none; box-shadow: 0 1px 3px rgba(0,0,0,.18), 0 6px 18px rgba(0,0,0,.08); background: #fff; }
 .empty { color: var(--muted); }
 
+/* notice du pianiste : le texte, et sous chaque exemple sa gravure */
+.split[hidden] { display: none; }
+.guide-pane { flex: 1; overflow: auto; background: #fff; }
+.guide { max-width: 860px; margin: 0 auto; padding: 24px 32px 64px; line-height: 1.55; font-size: 15px; }
+.guide h1 { font-size: 26px; margin: 8px 0 16px; }
+.guide h2 { font-size: 20px; margin: 36px 0 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.guide h3 { font-size: 16px; margin: 24px 0 6px; }
+.guide code { font-family: var(--mono); font-size: 13px; background: var(--panel); padding: 1px 4px; border-radius: 3px; }
+.guide table { border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+.guide th, .guide td { border: 1px solid var(--line); padding: 4px 10px; text-align: left; vertical-align: top; }
+.guide th { background: var(--panel); }
+.guide .example { margin: 14px 0 20px; display: grid; gap: 10px; justify-items: start; }
+.guide .example-text { margin: 0; padding: 10px 14px; background: var(--panel); border-radius: 4px; font-family: var(--mono); font-size: 13px; line-height: 1.45; font-variant-ligatures: none; overflow-x: auto; max-width: 100%; }
+.guide .excerpt { display: block; max-width: 100%; height: auto; }
+.guide .problem { border: 0; padding: 8px 12px; }
+
 @page { size: A4 portrait; margin: 0; }
 @media print {
   body { background: #fff; }

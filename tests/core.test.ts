@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { TICKS_PER_BEAT as T, importMusicXml, layout, parseYmn, writeYmn } from "../src/core/index.ts";
+import { FORMAT_VERSION, TICKS_PER_BEAT as T, importMusicXml, layout, parseYmn, writeYmn } from "../src/core/index.ts";
 import type { Score } from "../src/core/index.ts";
 import { playOrder, sectionsOf } from "../src/core/musicxml.ts";
 import { musicXml, q } from "./helpers.ts";
@@ -853,7 +853,7 @@ describe("sous-titre", () => {
   it("lit et écrit le sous-titre du frontmatter, juste après le titre", () => {
     const s = parseYmn("---\ncomposer: Chopin\nsubtitle: Op. 9 n° 2\ntitle: Nocturne\n---\nm1 |1  ||\n0  |1  ||\n---\n");
     expect(s.meta.subtitle).toBe("Op. 9 n° 2");
-    expect(writeYmn(s).split("\n").slice(0, 5)).toEqual(["---", "title: Nocturne", "subtitle: Op. 9 n° 2", "composer: Chopin", "---"]);
+    expect(writeYmn(s).split("\n").slice(0, 6)).toEqual(["---", "format: 1", "title: Nocturne", "subtitle: Op. 9 n° 2", "composer: Chopin", "---"]);
   });
 
   it("importe le sous-titre des textes de page, en recollant ses morceaux", () => {
@@ -895,5 +895,26 @@ describe("doigtés", () => {
     const fing = (f: string) => `<technical><fingering>${f}</fingering></technical>`;
     const xml = musicXml([{ notes: [[{ midi: [C4], dur: 2 * q, notations: fing("1") }, { midi: [C4 + 4], dur: 2 * q, notations: fing("4-3") }]] }]);
     expect(fk(importMusicXml(xml))).toBe("60_1 64_4");
+  });
+});
+
+describe("version du format", () => {
+  const body = "m1 |1  ||\n0  |1  ||\n---\n";
+  const withFormat = (v: string) => `---\nformat: ${v}\n---\n${body}`;
+
+  it("écrit toujours la version du format en tête, et relit le fichier", () => {
+    const text = writeYmn(parseYmn(body));
+    expect(text.split("\n").slice(0, 3)).toEqual(["---", `format: ${FORMAT_VERSION}`, "---"]);
+    expect(parseYmn(text).meta.format).toBeUndefined();
+  });
+
+  it("lit un fichier sans version comme la version courante", () => {
+    expect(parseYmn(body).notes).toHaveLength(1);
+  });
+
+  it("refuse une version plus récente ou plus ancienne, en le disant", () => {
+    expect(() => parseYmn(withFormat(String(FORMAT_VERSION + 1)))).toThrow(/plus récente/);
+    expect(() => parseYmn(withFormat(String(FORMAT_VERSION - 1)))).toThrow(/ancienne version/);
+    expect(() => parseYmn(withFormat("un"))).toThrow(/numéro de version/);
   });
 });

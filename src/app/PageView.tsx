@@ -363,9 +363,9 @@ function Marks({ ps }: { ps: PlacedSystem }) {
 }
 
 /** Ordre de jeu des sections, en tête de page : les mêmes lettres que sur la partition. */
-function OrderLine({ order, y }: { order: string[]; y: number }) {
+function OrderLine({ order, y, cx = PAGE.w / 2 }: { order: string[]; y: number; cx?: number }) {
   const step = 3.6 + 1.6;
-  const x0 = PAGE.w / 2 - (order.length * step - 1.6) / 2;
+  const x0 = cx - (order.length * step - 1.6) / 2;
   return (
     <g>
       {order.map((label, i) => (
@@ -583,6 +583,45 @@ function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions 
       {ps.pedalBand > 0 && <PedalBand ps={ps} top={bottom} />}
       <Marks ps={ps} />
     </g>
+  );
+}
+
+/**
+ * Extrait gravé, pour illustrer la notice : les systèmes seuls, sans page ni en-tête,
+ * recadrés au plus près, précédés de l'ordre de jeu s'il y en a un.
+ */
+export function Excerpt({ pages, options, scale = 1 }: { pages: Page[]; options: RenderOptions; scale?: number }) {
+  const systems = pages.flatMap((p) => p.systems);
+  if (!systems.length) return null;
+  const pad = 1.5;
+  const x0 = PAGE.marginX - pad;
+  const x1 = Math.max(...systems.map((ps) => ps.xs[ps.xs.length - 1] + ps.ws[ps.ws.length - 1])) + pad;
+  // un extrait tient sur une page ; s'il en déborde, les pages suivantes sont décalées à la suite
+  let offset = 0;
+  const placed = pages.flatMap((p, i) => {
+    if (i) offset += Math.max(...pages[i - 1].systems.map((ps) => ps.y + ps.height)) - Math.min(...p.systems.map((ps) => ps.y)) + G.systemGap;
+    return p.systems.map((ps) => ({ ...ps, y: ps.y + offset }));
+  });
+  const order = pages[0].order;
+  const top = Math.min(...placed.map((ps) => ps.y));
+  const orderY = top - G.orderH; // l'ordre de jeu, comme en tête de page
+  const y0 = (order.length ? orderY : top) - pad;
+  const y1 = Math.max(...placed.map((ps) => ps.y + ps.height)) + pad;
+  return (
+    <svg
+      className="excerpt"
+      viewBox={`${x0} ${y0} ${x1 - x0} ${y1 - y0}`}
+      width={`${(x1 - x0) * scale}mm`}
+      height={`${(y1 - y0) * scale}mm`}
+      fontFamily={FONT}
+      style={{ fontVariantNumeric: "tabular-nums" }}
+    >
+      <rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} fill="#fff" />
+      {order.length > 0 && <OrderLine order={order} y={orderY} cx={(x0 + x1) / 2} />}
+      {placed.map((ps, i) => (
+        <SystemView key={i} ps={ps} options={options} />
+      ))}
+    </svg>
   );
 }
 

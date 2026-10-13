@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_WIDTH, YmnError, importMusicXml, parseYmn, writeYmn } from "../core/index.ts";
 import type { Score } from "../core/index.ts";
 import { engrave } from "./engrave.ts";
+import { NoticeView } from "./NoticeView.tsx";
 import { PageView } from "./PageView.tsx";
 import { SAMPLE } from "./sample.ts";
 import { DENSITIES, NOTE_POSITIONS, OCTAVE_POSITIONS, OCTAVE_STYLES, loadOptions, saveOptions } from "./options.ts";
@@ -42,6 +43,8 @@ export function App() {
   const [source, setSource] = useState(load);
   const [options, setOptionsState] = useState<RenderOptions>(loadOptions);
   const [showOptions, setShowOptions] = useState(false);
+  /** Notice du pianiste, affichée à la place de l'éditeur et de l'aperçu. */
+  const [showGuide, setShowGuide] = useState(false);
   const setOptions = (patch: Partial<RenderOptions>) => {
     const next = { ...options, ...patch };
     setOptionsState(next);
@@ -218,8 +221,11 @@ export function App() {
         <button onClick={() => setShowOptions((v) => !v)} aria-expanded={showOptions} aria-controls="options">
           Options
         </button>
-        <button onClick={() => window.print()} disabled={!pages.length}>
+        <button onClick={() => window.print()} disabled={!pages.length || showGuide}>
           Imprimer
+        </button>
+        <button onClick={() => setShowGuide((v) => !v)} aria-pressed={showGuide}>
+          {showGuide ? "Partition" : "Notice"}
         </button>
       </header>
 
@@ -313,7 +319,12 @@ export function App() {
         </section>
       )}
 
-      <main className="split">
+      {showGuide && (
+        <main className="guide-pane">
+          <NoticeView options={options} />
+        </main>
+      )}
+      <main className="split" hidden={showGuide}>
         <section className="source">
           <textarea
             ref={editor}

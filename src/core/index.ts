@@ -1,6 +1,6 @@
 export * from "./model.ts";
 export * from "./pitch.ts";
-export { YmnError } from "./frontmatter.ts";
+export { FORMAT_VERSION, YmnError } from "./frontmatter.ts";
 export { importMusicXml } from "./musicxml.ts";
 export { layout, noteText } from "./layout.ts";
 export type { Column, HairpinSpan, Metrics, System, SystemRow, Voice, VoiceMark } from "./layout.ts";

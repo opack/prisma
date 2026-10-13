@@ -16,6 +16,13 @@ export class YmnError extends Error {
   }
 }
 
+/**
+ * Version du format .ymn. Elle change à chaque modification qui rend un ancien fichier
+ * illisible ; un fichier l'indique par « format: N » dans son frontmatter (sans elle, il est
+ * lu comme la version courante).
+ */
+export const FORMAT_VERSION = 1;
+
 const NUMERIC_KEYS = new Set(["cell", "division"]);
 
 export function parseFrontmatter(lines: string[]): FrontmatterResult {
@@ -33,6 +40,17 @@ export function parseFrontmatter(lines: string[]): FrontmatterResult {
     const key = m[1];
     let value = m[2].trim();
     if (/^(["']).*\1$/.test(value)) value = value.slice(1, -1);
+    if (key === "format") {
+      const n = Number(value);
+      if (!Number.isInteger(n) || n < 0) throw new YmnError("« format » est le numéro de version du format ymn : un entier, par exemple « format: 1 »", i + 1);
+      if (n > FORMAT_VERSION) {
+        throw new YmnError(`ce fichier utilise la version ${n} du format ymn, plus récente que celle de cette application (${FORMAT_VERSION}) : mets l'application à jour`, i + 1);
+      }
+      if (n < FORMAT_VERSION) {
+        throw new YmnError(`ce fichier utilise l'ancienne version ${n} du format ymn ; cette application lit la version ${FORMAT_VERSION} (voir FORMAT.md)`, i + 1);
+      }
+      continue; // la version n'est pas une information du morceau : l'écriture la remet toujours
+    }
     if (NUMERIC_KEYS.has(key)) {
       const n = Number(value);
       if (!Number.isInteger(n) || n < 2) throw new YmnError(`« ${key} » doit être un entier ≥ 2`, i + 1);
@@ -45,11 +63,12 @@ export function parseFrontmatter(lines: string[]): FrontmatterResult {
   throw new YmnError("frontmatter non fermé : il manque la ligne « --- » de fin", lines.length);
 }
 
-const ORDER = ["title", "subtitle", "composer", "tempo", "source", "order", "division", "cell"];
+const ORDER = ["format", "title", "subtitle", "composer", "tempo", "source", "order", "division", "cell"];
 
+/** Frontmatter d'un fichier écrit : toujours avec la version du format, en tête. */
 export function writeFrontmatter(meta: Meta): string[] {
+  meta = { ...meta, format: FORMAT_VERSION };
   const keys = Object.keys(meta).filter((k) => meta[k] !== undefined && meta[k] !== "");
-  if (!keys.length) return [];
   keys.sort((a, b) => {
     const ia = ORDER.indexOf(a), ib = ORDER.indexOf(b);
     return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
