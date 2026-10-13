@@ -520,8 +520,21 @@ export function importMusicXml(xml: string, fileName?: string): Score {
 
   const meta: Meta = {};
   const work = find(rootKids, "work");
-  const title = text(find(kids(work), "work-title")) || text(find(rootKids, "movement-title"));
+  const clean = (s: string) => s.replace(/\s+/g, " ").trim();
+  // texte de page d'un type donné (titre, sous-titre) : ses morceaux se suivent, et un
+  // suffixe d'ordinal (« 3 » puis « rd ») se colle au nombre
+  const creditText = (type: string) => {
+    const credit = findAll(rootKids, "credit").find((c) => text(find(kids(c), "credit-type")) === type);
+    const pieces = credit ? findAll(kids(credit), "credit-words").map((w) => clean(text(w))).filter(Boolean) : [];
+    return pieces.reduce((s, p) => (s && /\d$/.test(s) && /^(st|nd|rd|th|e|er|re|ème|eme)\b/i.test(p) ? s + p : s ? s + " " + p : p), "");
+  };
+  const title = clean(text(find(kids(work), "work-title")) || text(find(rootKids, "movement-title"))) || creditText("title");
   if (title) meta.title = title;
+  // sous-titre : le texte de page marqué comme tel, sinon le titre du mouvement s'il complète celui de l'œuvre
+  const fromCredit = creditText("subtitle");
+  const movement = clean(text(find(rootKids, "movement-title")));
+  const subtitle = fromCredit || (movement && movement !== title ? movement : "");
+  if (subtitle && subtitle !== title) meta.subtitle = subtitle;
   const ident = kids(find(rootKids, "identification"));
   const composer = findAll(ident, "creator").find((c) => attr(c, "type") === "composer");
   if (composer && text(composer)) meta.composer = text(composer);

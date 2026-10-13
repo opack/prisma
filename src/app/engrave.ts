@@ -24,6 +24,7 @@ export const G = {
   systemGap: 6.5,
   sectionGap: 5, // espace en plus avant une nouvelle section
   headerH: 17, // titre, en première page
+  subtitleH: 5, // place en plus pour un sous-titre
   orderH: 6, // ordre de jeu des sections, en tête de chaque page
   maxStretch: 1.7, // étirement maximal des cases pour remplir la ligne
   graceDigit: 1.25, // largeur d'un chiffre de petite note
@@ -49,6 +50,9 @@ const trillCell = (c: string, cellW: number) => {
 /** Place ajoutée par les trilles d'une case, sur la ligne qui en demande le plus. */
 export const trillExtra = (sys: System, a: number, cellW: number) =>
   Math.max(0, ...[...sys.right, ...sys.left].map((r) => trillCell(r.cells[a], cellW)));
+
+/** Hauteur de l'en-tête de la première page : titre, sous-titre éventuel, compositeur. */
+export const headerHeight = (meta: Score["meta"]) => G.headerH + (meta.subtitle ? G.subtitleH : 0);
 
 /** Largeur des rangs de petites notes d'une main, dans une case. */
 export const graceSlotW = (d: number) => d * G.graceDigit + G.graceGap;
@@ -147,7 +151,7 @@ export function engrave(score: Score, compact = false): Page[] {
   const order = score.order;
   const orderH = order.length ? G.orderH : 0;
   let page: Page = { index: 0, systems: [], header: true, order };
-  let y = PAGE.marginTop + G.headerH + orderH;
+  let y = PAGE.marginTop + headerHeight(score.meta) + orderH;
   const bottom = PAGE.h - PAGE.marginBottom;
   systems.forEach((sys, i) => {
     const h = systemHeight(sys);

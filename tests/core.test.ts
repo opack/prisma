@@ -845,3 +845,30 @@ describe("liaisons d'expression", () => {
     expect(sk(s)).toBe("D0-3 D1-2");
   });
 });
+
+describe("sous-titre", () => {
+  const one = [{ notes: [[{ midi: [C4], dur: 4 * q }]] }];
+  const withHead = (head: string) => musicXml(one).replace("<part-list>", head + "<part-list>");
+
+  it("lit et écrit le sous-titre du frontmatter, juste après le titre", () => {
+    const s = parseYmn("---\ncomposer: Chopin\nsubtitle: Op. 9 n° 2\ntitle: Nocturne\n---\nm1 |1  ||\n0  |1  ||\n---\n");
+    expect(s.meta.subtitle).toBe("Op. 9 n° 2");
+    expect(writeYmn(s).split("\n").slice(0, 5)).toEqual(["---", "title: Nocturne", "subtitle: Op. 9 n° 2", "composer: Chopin", "---"]);
+  });
+
+  it("importe le sous-titre des textes de page, en recollant ses morceaux", () => {
+    const credit = `<credit page="1"><credit-type>subtitle</credit-type><credit-words>from Suite L. 75\n</credit-words><credit-words>3</credit-words><credit-words>rd</credit-words><credit-words> Movement</credit-words></credit>`;
+    expect(importMusicXml(withHead(credit)).meta.subtitle).toBe("from Suite L. 75 3rd Movement");
+  });
+
+  it("prend le titre dans les textes de page quand l'œuvre n'en a pas", () => {
+    const xml = withHead(`<credit page="1"><credit-type>title</credit-type><credit-words>To Zanarkand</credit-words></credit>`).replace(/<work>.*?<\/work>/, "");
+    expect(importMusicXml(xml).meta.title).toBe("To Zanarkand");
+  });
+
+  it("prend sinon le titre du mouvement, s'il complète celui de l'œuvre", () => {
+    const xml = musicXml(one).replace("</work>", "</work><movement-title>Clair de lune</movement-title>");
+    expect(importMusicXml(xml).meta).toMatchObject({ title: "Test", subtitle: "Clair de lune" });
+    expect(importMusicXml(musicXml(one)).meta.subtitle).toBeUndefined();
+  });
+});

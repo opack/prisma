@@ -1,6 +1,6 @@
 import { TRILL_MARK, octaveOffset } from "../core/index.ts";
 import type { Meta, SystemRow, Voice } from "../core/index.ts";
-import { G, PAGE, graceExtra, graceSlotW, leadExtra } from "./engrave.ts";
+import { G, PAGE, graceExtra, graceSlotW, headerHeight, leadExtra } from "./engrave.ts";
 import type { Page, PlacedSystem } from "./engrave.ts";
 import type { OctavePosition, OctaveStyle, RenderOptions } from "./options.ts";
 
@@ -576,19 +576,24 @@ export function PageView({ page, total, meta, options }: { page: Page; total: nu
               {meta.title}
             </text>
           )}
+          {meta.subtitle && (
+            <text x={PAGE.w / 2} y={PAGE.marginTop + 12} fontSize={3.8} textAnchor="middle" fill={INK}>
+              {meta.subtitle}
+            </text>
+          )}
           {meta.composer && (
-            <text x={PAGE.w - PAGE.marginX} y={PAGE.marginTop + 12} fontSize={3.4} textAnchor="end" fill={INK}>
+            <text x={PAGE.w - PAGE.marginX} y={PAGE.marginTop + 12 + (meta.subtitle ? G.subtitleH : 0)} fontSize={3.4} textAnchor="end" fill={INK}>
               {meta.composer}
             </text>
           )}
           {meta.tempo && (
-            <text x={PAGE.marginX} y={PAGE.marginTop + 12} fontSize={3.2} fill={INK}>
+            <text x={PAGE.marginX} y={PAGE.marginTop + 12 + (meta.subtitle ? G.subtitleH : 0)} fontSize={3.2} fill={INK}>
               {meta.tempo}
             </text>
           )}
         </g>
       )}
-      {page.order.length > 0 && <OrderLine order={page.order} y={page.header ? PAGE.marginTop + G.headerH - 1 : PAGE.marginTop - 2} />}
+      {page.order.length > 0 && <OrderLine order={page.order} y={page.header ? PAGE.marginTop + headerHeight(meta) - 1 : PAGE.marginTop - 2} />}
       {page.systems.map((ps, i) => (
         <SystemView key={i} ps={ps} options={options} />
       ))}

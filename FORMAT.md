@@ -8,7 +8,7 @@ Entre deux lignes `---`, une clé par ligne, sous la forme `clé: valeur`.
 
 | Clé | Rôle |
 |---|---|
-| `title`, `composer`, `tempo`, `source` | Informations affichées. |
+| `title`, `subtitle`, `composer`, `tempo`, `source` | Informations affichées : le sous-titre (« Op. 9 n° 2 », « Suite bergamasque, 3ᵉ mouvement »…) sous le titre. |
 | `order` | Ordre de jeu des sections, par leur lettre : `order: A A B C B D A` (voir « Sections et ordre de jeu »). |
 | `cell` | Largeur de base d'une case en caractères, à l'écriture. Vaut 3 par défaut. |
 | `division` | Découpage par défaut d'un temps : `2` (binaire, par défaut) ou `3` (ternaire, pour le 6/8 par exemple). |

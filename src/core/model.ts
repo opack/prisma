@@ -69,6 +69,8 @@ export const GRACE_MARK = "'";
 
 export type Meta = {
   title?: string;
+  /** Sous-titre, gravé sous le titre : « Op. 9 n° 2 », « Suite bergamasque, 3ᵉ mouvement »… */
+  subtitle?: string;
   composer?: string;
   tempo?: string;
   source?: string;
