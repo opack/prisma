@@ -56,18 +56,14 @@ export type Repeat = {
   times?: number;
 };
 
-/**
- * Case de reprise (« 1. », « 2. », « 1.2. »…), de la mesure firstBar à lastBar incluses.
- * open : la case n'a pas de fin explicite (ni « ] » ni « :|| ») ; comme sur une partition,
- * son crochet n'est tracé qu'au-dessus de sa première mesure.
- */
-export type Ending = { numbers: number[]; firstBar: number; lastBar: number; open?: boolean };
-
 /** Indication de texte pour tout le système, placée sur une ancre (« rit. », « D.C. »…). */
 export type TextMark = { t: number; text: string };
 
 /** Nuances reconnues : écrites en gras italique, comme sur une partition. */
 export const DYNAMICS = ["ppp", "pp", "p", "mp", "mf", "f", "ff", "fff", "sf", "sfz", "sfp", "fp", "fz", "rfz"];
+
+/** Nuance, éventuellement entre parenthèses (nuance ajoutée par l'éditeur : « (mp) »). */
+export const isDynamic = (t: string) => DYNAMICS.includes(t.replace(/^\((.+)\)$/, "$1"));
 
 /**
  * Indication propre à une voix, placée sur une ancre : une nuance (« p », « mf »…) ou un
@@ -93,17 +89,40 @@ export const PEDAL_UP = "*";
 export const PEDAL_CHANGE = "*Ped.";
 export const isPedalSign = (t: string) => t === PEDAL_DOWN || t === PEDAL_UP || t === PEDAL_CHANGE;
 
+/**
+ * Début de section (« *A ») : une lettre posée au début d'une mesure. La section va
+ * jusqu'au début de la suivante. L'ordre de jeu (Score.order) enchaîne les sections :
+ * il remplace cases, D.C., D.S., segno, coda et Fine.
+ */
+export type Marker = { label: string; barIndex: number };
+
+/** Signe d'un début de section, sur la ligne @ du haut. */
+export const MARKER_SIGN = /^\*([A-Z])$/;
+export const isStructureSign = (t: string) => MARKER_SIGN.test(t);
+
+/** Signe toujours lu à part sur une ligne @ : soufflet, signe de pédale, début de section. */
+export const isSign = (t: string) => isHairpin(t) || isPedalSign(t) || isStructureSign(t);
+
+/**
+ * Deux mots d'une ligne @ séparés par une seule espace forment un seul texte (« a tempo »,
+ * « più f », « Ped. simile »), sauf si le second est un signe, ou si le premier est un
+ * soufflet ou un début de section.
+ */
+export const joinsText = (prev: string, next: string) => !isSign(next) && !isHairpin(prev) && !isStructureSign(prev);
+
 export type Score = {
   meta: Meta;
   /** Temps du morceau, dans l'ordre. Le temps i couvre [i·TICKS_PER_BEAT, (i+1)·TICKS_PER_BEAT[. */
   beats: Beat[];
   notes: Note[];
   repeats: Repeat[];
-  endings: Ending[];
   texts: TextMark[];
   expressions: Expression[];
   hairpins: Hairpin[];
   pedals: Pedal[];
+  markers: Marker[];
+  /** Ordre de jeu des sections, par leur lettre ; vide : le morceau se joue d'un bout à l'autre. */
+  order: string[];
 };
 
 /** Reprise portée par une mesure, s'il y en a une. */

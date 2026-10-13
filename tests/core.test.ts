@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { TICKS_PER_BEAT as T, importMusicXml, layout, parseYmn, writeYmn } from "../src/core/index.ts";
 import type { Score } from "../src/core/index.ts";
-import { unfold } from "../src/core/musicxml.ts";
+import { playOrder, sectionsOf } from "../src/core/musicxml.ts";
 import { musicXml, q } from "./helpers.ts";
 
 const C4 = 60;
@@ -150,36 +150,7 @@ describe("règles du format", () => {
 });
 
 describe("reprises", () => {
-  it("déroule une reprise simple", () => {
-    const m = { startRepeat: false, endRepeat: false, times: 2 };
-    expect(unfold([m, { ...m, startRepeat: true }, { ...m, endRepeat: true }, m])).toEqual([0, 1, 2, 1, 2, 3]);
-  });
-
-  it("déroule les cases 1 et 2", () => {
-    const m = { startRepeat: false, endRepeat: false, times: 2 };
-    const ms = [m, m, { ...m, endRepeat: true, endings: [1] }, { ...m, endings: [2] }, m];
-    expect(unfold(ms)).toEqual([0, 1, 2, 0, 1, 3, 4]);
-  });
-
   const n = (p: number) => ({ notes: [[{ midi: [p], dur: 4 * q }]] });
-
-  it("garde les reprises et les cases du MusicXML telles qu'écrites", () => {
-    const xml = musicXml([
-      n(60),
-      { ...n(62), barlineLeft: `<ending number="1" type="start"/>`, barline: `<ending number="1" type="stop"/><repeat direction="backward"/>` },
-      { ...n(64), barlineLeft: `<ending number="2" type="start"/>`, barline: `<ending number="2" type="stop"/>` },
-    ]);
-    const score = importMusicXml(xml);
-    expect(score.notes.map((x) => x.midi)).toEqual([60, 62, 64]);
-    expect(score.repeats).toEqual([{ barIndex: 1, end: true }]);
-    expect(score.endings).toEqual([
-      { numbers: [1], firstBar: 1, lastBar: 1 },
-      { numbers: [2], firstBar: 2, lastBar: 2 },
-    ]);
-    const { text } = roundTrip(score);
-    expect(text).toContain(":||");
-    expect(text).toMatch(/^@ +\[1\. +\[2\. +\]$/m);
-  });
 
   it("écrit ||: :|| et :||: sur la règle et sur chaque ligne de notes", () => {
     const xml = musicXml([
@@ -193,6 +164,7 @@ describe("reprises", () => {
       { barIndex: 1, start: true, end: true },
       { barIndex: 2, start: true, end: true },
     ]);
+    expect(score.markers).toEqual([]); // reprises simples : pas de section
     const { text } = roundTrip(score);
     const ruler = text.split("\n").find((l) => l.startsWith("m1"))!;
     expect(ruler).toMatch(/\|\|:1 .*:\|\|:1 .*:\|\|1 /);
@@ -214,125 +186,16 @@ describe("reprises", () => {
     expect(text).toContain("3×");
   });
 
-  it("garde une case de plusieurs mesures et une case groupée « 1.2. »", () => {
-    const xml = musicXml([
-      { ...n(60), barlineLeft: `<repeat direction="forward"/>` },
-      { ...n(62), barlineLeft: `<ending number="1, 2" type="start"/>` },
-      { ...n(64), barline: `<ending number="1, 2" type="stop"/><repeat direction="backward" times="3"/>` },
-      { ...n(65), barlineLeft: `<ending number="3" type="start"/>` },
-      { ...n(67), barline: `<ending number="3" type="stop"/>` },
-      n(69),
-    ]);
-    const score = importMusicXml(xml);
-    expect(score.endings).toEqual([
-      { numbers: [1, 2], firstBar: 1, lastBar: 2 },
-      { numbers: [3], firstBar: 3, lastBar: 4 },
-    ]);
-    const { text } = roundTrip(score);
-    expect(text).toContain("[1.2.");
-    expect(text).toContain("[3.");
-  });
-
   it("lit une reprise écrite à la main, sans les deux points sur les lignes de notes", () => {
-    const s = parseYmn(
-      "@   [1.        [2.\nm1 ||:1  |2  :||1  |2  ||\n0  ||:1  |-   ||5  |   ||\n---\n-1 || 1  |    ||1  |   ||\n",
-    );
+    const s = parseYmn("m1 ||:1  |2  :||1  |2  ||\n0  ||:1  |-   ||5  |   ||\n---\n-1 || 1  |    ||1  |   ||\n");
     expect(s.repeats).toEqual([{ barIndex: 0, start: true, end: true }]);
-    expect(s.endings).toEqual([
-      { numbers: [1], firstBar: 0, lastBar: 0 },
-      { numbers: [2], firstBar: 1, lastBar: 1, open: true },
-    ]);
-  });
-
-  // règle de 4 mesures d'un temps : barres aux colonnes 3, 7-8, 12-13, 17-18 et 22-23
-  const grid = (marks: string) =>
-    `@${marks}\nm1 |1  ||1  ||1  ||1  ||\n0  |1  ||1  ||1  ||1  ||\n---\n`;
-
-  it("prolonge une case sans « ] » jusqu'à la fin du morceau", () => {
-    const s = parseYmn(grid("       [2."));
-    expect(s.endings).toEqual([{ numbers: [2], firstBar: 1, lastBar: 3, open: true }]);
-  });
-
-  it("ferme une case sur le « ] » placé sur la barre de fin de mesure", () => {
-    const s = parseYmn(grid("       [2.      ]"));
-    expect(s.endings).toEqual([{ numbers: [2], firstBar: 1, lastBar: 2 }]);
-  });
-
-  it("arrête une case sans fin avant le « ||: » suivant", () => {
-    const s = parseYmn("@       [2.\nm1 |1  ||1  ||1  ||:1  ||\n0  |1  ||1  ||1  ||:1  ||\n---\n");
-    expect(s.endings).toEqual([{ numbers: [2], firstBar: 1, lastBar: 2, open: true }]);
-  });
-
-  it("enchaîne « ][2. » sur une même barre, à la lecture comme à l'écriture", () => {
-    // case 1 sur la mesure 2, fermée sur le premier « | » de la barre 12-13 ; case 2 ouverte sur le second
-    const s = parseYmn(grid("       [1. ][2."));
-    expect(s.endings).toEqual([
-      { numbers: [1], firstBar: 1, lastBar: 1 },
-      { numbers: [2], firstBar: 2, lastBar: 3, open: true },
-    ]);
-    const at = writeYmn(s).split("\n").filter((l) => l.startsWith("@"));
-    expect(at).toEqual(["@       [1. ][2."]);
-  });
-
-  it("refuse « [1. » sur le premier « | » d'une barre « || »", () => {
-    expect(() => parseYmn(grid("      [2."))).toThrow(/dernier « \| » de la barre/);
-  });
-
-  it("refuse « ] » sur le second « | » d'une barre « || »", () => {
-    expect(() => parseYmn(grid("       [2.       ]"))).toThrow(/premier « \| » de la barre/);
-  });
-
-  it("refuse « [1. » placé sur une case au lieu d'une barre", () => {
-    expect(() => parseYmn(grid("        [2."))).toThrow(/barre qui ouvre une mesure/);
-  });
-
-  it("refuse « ] » placé ailleurs que sur une barre de fin de mesure", () => {
-    expect(() => parseYmn(grid("       [2.    ]"))).toThrow(/barre qui ferme une mesure/);
-  });
-
-  it("écrit « [ » et « ] » sur les barres de mesure", () => {
-    const text = writeYmn(parseYmn(grid("       [2.      ]")));
-    const at = text.split("\n").find((l) => l.startsWith("@"))!;
-    const ruler = text.split("\n").find((l) => l.startsWith("m1"))!;
-    expect(ruler[at.indexOf("[")]).toBe("|");
-    expect(ruler[at.indexOf("]")]).toBe("|");
-  });
-
-  it("importe une case MusicXML sans crochet de fin comme une case ouverte", () => {
-    const xml = musicXml([
-      n(60),
-      { ...n(62), barlineLeft: `<ending number="1" type="start"/>`, barline: `<ending number="1" type="stop"/><repeat direction="backward"/>` },
-      { ...n(64), barlineLeft: `<ending number="2" type="start"/>` },
-      { ...n(65), barline: `<ending number="2" type="discontinue"/>` },
-    ]);
-    const score = importMusicXml(xml);
-    expect(score.endings[1]).toEqual({ numbers: [2], firstBar: 2, lastBar: 3, open: true });
-    const { text } = roundTrip(score);
-    expect(text).not.toContain("]"); // pas de fin explicite à écrire
-  });
-
-  it("ne trace le crochet d'une case ouverte qu'au-dessus de sa première mesure", () => {
-    const sys = layout(parseYmn(grid("       [2.")), { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 })[0];
-    const span = sys.endings[0];
-    expect(span.toAnchor).toBe(1); // ancre de la mesure 2 seulement
-    expect(span.hook).toBe(false);
-  });
-
-  it("ferme le crochet d'une case dont la mesure finit le morceau", () => {
-    const sys = layout(parseYmn(grid("                 [2.")), { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 })[0];
-    expect(sys.endings[0].hook).toBe(true);
   });
 
   it("marque la dernière barre du morceau comme barre de fin", () => {
-    const sys = layout(parseYmn(grid("")), { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 })[0];
+    const s = parseYmn("m1 |1  ||1  ||1  ||1  ||\n0  |1  ||1  ||1  ||1  ||\n---\n");
+    const sys = layout(s, { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 })[0];
     const bars = sys.columns.filter((c) => c.kind === "barSep");
     expect(bars.map((c) => !!(c as { final?: boolean }).final)).toEqual([false, false, false, true]);
-  });
-
-  it("ferme le crochet d'une case terminée par « ] »", () => {
-    const sys = layout(parseYmn(grid("       [2.      ]")), { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 })[0];
-    expect(sys.endings[0].hook).toBe(true);
-    expect(sys.endings[0].toAnchor).toBe(2);
   });
 
   it("garde les textes de la ligne @", () => {
@@ -350,6 +213,120 @@ describe("reprises", () => {
   });
 });
 
+describe("ordre de jeu du MusicXML", () => {
+  const m = { startRepeat: false, endRepeat: false, times: 2 };
+  const st = (kind: string, at = 1) => ({ structure: [{ kind, id: "", at } as never], length: 4 });
+
+  it("déroule une reprise simple", () => {
+    expect(playOrder([m, { ...m, startRepeat: true }, { ...m, endRepeat: true }, m])).toEqual([0, 1, 2, 1, 2, 3]);
+  });
+
+  it("déroule les cases 1 et 2", () => {
+    expect(playOrder([m, m, { ...m, endRepeat: true, endings: [1] }, { ...m, endings: [2] }, m])).toEqual([0, 1, 2, 0, 1, 3, 4]);
+  });
+
+  it("joue la case 2 placée après la mesure de la reprise, hors de la case 1", () => {
+    // case 1 (mesure 1), mesure 2 commune aux deux passages qui termine la reprise, case 2 (mesure 3)
+    const ms = [m, { ...m, endings: [1] }, { ...m, endRepeat: true }, { ...m, endings: [2] }, m];
+    expect(playOrder(ms)).toEqual([0, 1, 2, 0, 2, 3, 4]);
+  });
+
+  it("déroule un D.C. al Fine, sans refaire les reprises", () => {
+    const ms = [m, { ...m, endRepeat: true, ...st("fine") }, m, { ...m, ...st("dacapo") }];
+    expect(playOrder(ms)).toEqual([0, 1, 0, 1, 2, 3, 0, 1]);
+  });
+
+  it("déroule un D.S. al Coda", () => {
+    const ms = [m, { ...m, ...st("segno", 0) }, { ...m, ...st("tocoda") }, { ...m, ...st("dalsegno") }, { ...m, ...st("coda", 0) }];
+    expect(playOrder(ms)).toEqual([0, 1, 2, 3, 1, 2, 4]);
+  });
+
+  it("découpe en sections : un corps, puis deux fins", () => {
+    // reprise à cases : corps (0), case 1 (1), case 2 (2)
+    const s = sectionsOf([0, 1, 0, 2], 3);
+    expect(s.markers.map((x) => `${x.label}@${x.barIndex}`)).toEqual(["A@0", "B@1", "C@2"]);
+    expect(s.order).toEqual(["A", "B", "A", "C"]);
+    expect(s.repeats).toEqual([]);
+  });
+
+  it("garde en reprise simple une section toujours jouée deux fois de suite", () => {
+    // mesures 1 et 2 répétées au milieu d'un morceau joué d'un bout à l'autre
+    const s = sectionsOf([0, 1, 2, 1, 2, 3], 4);
+    expect(s.markers).toEqual([]);
+    expect(s.repeats).toEqual([{ barIndex: 1, start: true }, { barIndex: 2, end: true }]);
+  });
+
+  it("ne fait pas une reprise d'une section rejouée seule après un D.C.", () => {
+    const s = sectionsOf([0, 0, 1, 0], 2);
+    expect(s.order).toEqual(["A", "A", "B", "A"]);
+    expect(s.repeats).toEqual([]);
+  });
+
+  it("importe une structure avec reprises, cases et D.C. al Fine", () => {
+    const words = (w: string) => `<direction><direction-type><words>${w}</words></direction-type><staff>1</staff></direction>`;
+    const bar = (extra: object = {}, end?: string) => ({ notes: [[{ midi: [C4], dur: 2 * q }, { midi: [C4], dur: 2 * q, before: end }]], ...extra });
+    const xml = musicXml([
+      bar(),
+      bar({ barline: `<repeat direction="backward"/>` }, words("Fine")),
+      bar({ barlineLeft: `<repeat direction="forward"/>` }),
+      bar({ barlineLeft: `<ending number="1" type="start"/>`, barline: `<ending number="1" type="stop"/><repeat direction="backward"/>` }),
+      bar({ barlineLeft: `<ending number="2" type="start"/>`, barline: `<ending number="2" type="stop"/>` }, words("D.C. al Fine")),
+    ]);
+    const s = importMusicXml(xml);
+    expect(s.markers.map((x) => `${x.label}@${x.barIndex}`)).toEqual(["A@0", "B@2", "C@3", "D@4"]);
+    expect(s.order.join(" ")).toBe("A A B C B D A");
+    expect(s.texts).toEqual([]);
+    const { text } = roundTrip(s);
+    expect(text).toContain("order: A A B C B D A");
+    expect(parseYmn(text).order).toEqual(s.order);
+  });
+});
+
+describe("sections", () => {
+  const ruler = "m1 |1  ||1  ||1  ||1  ||";
+  const bar = [...ruler.matchAll(/\|\|/g)].map((m) => m.index!);
+  const at = (...signs: [number, string][]) => {
+    let l = "@";
+    for (const [col, text] of signs) l = l.padEnd(col) + text;
+    return l;
+  };
+  const piece = (order: string, top: string, r = ruler, notes = "0  |1  ||1  ||1  ||1  ||") =>
+    `${order ? `---\norder: ${order}\n---\n` : ""}${top}\n${r}\n${notes}\n---\n`;
+
+  it("lit les sections et l'ordre de jeu", () => {
+    const s = parseYmn(piece("A B A", at([3, "*A"], [bar[1] + 1, "*B"])));
+    expect(s.markers).toEqual([{ label: "A", barIndex: 0 }, { label: "B", barIndex: 2 }]);
+    expect(s.order).toEqual(["A", "B", "A"]);
+    expect(s.meta.order).toBeUndefined();
+  });
+
+  it("commence chaque section sur un nouveau système, et ferme la précédente d'une double barre", () => {
+    const s = parseYmn(piece("A B A", at([3, "*A"], [bar[1] + 1, "*B"])));
+    const systems = layout(s, { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 });
+    expect(systems.map((x) => x.section)).toEqual(["A", "B"]);
+    expect(systems.map((x) => x.endsSection)).toEqual([true, false]);
+    const bars = systems[0].columns.filter((c) => c.kind === "barSep") as { section?: boolean }[];
+    expect(bars.map((c) => !!c.section)).toEqual([false, true]);
+    // à l'écriture aussi : la section B ouvre le second système
+    expect(writeYmn(s)).toMatch(/\n\n@  \*B\nm3 \|/);
+  });
+
+  it("refuse un ordre de jeu qui nomme une section absente", () => {
+    expect(() => parseYmn(piece("A C", at([3, "*A"], [bar[1] + 1, "*B"])))).toThrow(/aucune section « \*C »/);
+  });
+
+  it("refuse un morceau qui commence avant sa première section", () => {
+    expect(() => parseYmn(piece("B", at([bar[1] + 1, "*B"])))).toThrow(/première mesure/);
+  });
+
+  it("refuse une reprise à cheval sur deux sections", () => {
+    const r = "m1 ||:1  ||1  ||1  :||1  ||";
+    const b = [...r.matchAll(/\|\|/g)].map((m) => m.index!);
+    const notes = "0  ||:1  ||1  ||1  :||1  ||";
+    expect(() => parseYmn(piece("A B", at([4, "*A"], [b[1] + 1, "*B"]), r, notes))).toThrow(/reprise passe le début de la section « \*B »/);
+  });
+});
+
 describe("erreurs de saisie", () => {
   const base = (body: string) => `m1 |1  |2  ||\n───┼───┼───┼┼\n${body}`;
   const err = (txt: string) => {
@@ -364,8 +341,8 @@ describe("erreurs de saisie", () => {
   it("exige le trait entre les mains", () => {
     expect(err("m1 |1  |2  ||\n0  |1  |-  ||")).toMatch(/trait qui sépare/);
   });
-  it("signale une largeur de temps incorrecte", () => {
-    expect(err("m1 |1   |2  ||\n───\n0  |1   |-  ||\n───")).toMatch(/ligne 1, col\. 5 : le temps fait 4 caractères/);
+  it("signale une étiquette de case inconnue", () => {
+    expect(err("m1 |1  x  |2  ||\n───\n0  |1     |-  ||\n───")).toMatch(/ligne 1, col\. 8 : étiquette de case « x » inconnue/);
   });
   it("refuse un « - » en début de système", () => {
     expect(err(base("0  |-  |   ||\n───┼───┼───┼┼"))).toMatch(/ligne 3.*écris le numéro de la note/);
@@ -548,5 +525,69 @@ describe("pédale", () => {
     const s = importMusicXml(xml);
     expect(pk(s)).toBe("0-2 2-3");
     expect(pk(parseYmn(writeYmn(s)))).toBe("0-2 2-3");
+  });
+});
+
+describe("cases de largeur libre", () => {
+  const expr = (s: Score) => s.expressions.map((e) => `${e.hand}:${e.kind}:${e.text}@${e.t / T}`).join(" ");
+
+  it("lit une case élargie : une case va d'une étiquette à la suivante", () => {
+    const s = parseYmn("m1 |1      :  |2  ||\n0  |1      3  |5  ||\n---\n");
+    expect(notesKey(s)).toBe(`D60@0-${T / 2} D62@${T / 2}-${T} D64@${T}-${2 * T}`);
+  });
+
+  it("nomme « , » les cases plus fines que « . »", () => {
+    const s = parseYmn("m1 |1  ,  .  ,  :  ,  .  ,  ||\n0  |1  2  3  4  5  6  7  8  ||\n---\n");
+    expect(s.notes.length).toBe(8);
+    expect(writeYmn(s)).toContain("|1  ,  .  ,  :  ,  .  ,  ||");
+  });
+
+  it("élargit la case d'une indication trop longue, plutôt que d'empiler les lignes @", () => {
+    const s = parseYmn("m1 |1  :  |2  :  ||\n0  |1  3  |5  7  ||\n@   (mp)\n---\n");
+    s.expressions.push({ hand: "D", t: T / 2, text: "dolce", kind: "text" }, { hand: "D", t: T, text: "cresc.", kind: "text" });
+    const text = writeYmn(s);
+    expect(text.split("\n").filter((l) => l.startsWith("@")).length).toBe(1);
+    expect(text).toMatch(/^@ +\(mp\) +dolce +cresc\.$/m);
+    expect(expr(parseYmn(text))).toBe("D:dynamic:(mp)@0 D:text:dolce@0.5 D:text:cresc.@1");
+  });
+
+  it("réunit une nuance et ses parenthèses écrites à part dans le MusicXML", () => {
+    const dyn = (inner: string) => `<direction><direction-type><dynamics>${inner}</dynamics></direction-type><staff>1</staff></direction>`;
+    const before = dyn("<other-dynamics>(</other-dynamics>") + dyn("<mp/>") + dyn("<other-dynamics>)</other-dynamics>");
+    const s = importMusicXml(musicXml([{ notes: [[{ midi: [C4], dur: 4 * q, before }]] }]));
+    expect(expr(s)).toBe("D:dynamic:(mp)@0");
+  });
+
+  it("garde « Ped. simile » comme un seul texte", () => {
+    const s = parseYmn("m1 |1  |2  ||\n0  |1  |   ||\n---\n-1 |1  |   ||\n@   Ped. simile\n");
+    expect(s.expressions.map((e) => e.text)).toEqual(["Ped. simile"]);
+    expect(s.pedals).toEqual([]);
+    expect(parseYmn(writeYmn(s)).expressions.map((e) => e.text)).toEqual(["Ped. simile"]);
+  });
+
+  it("cale un septolet sur 8 cases plutôt que sur 48", () => {
+    // 7 notes dans une noire : impossibles à écrire exactement
+    const notes = Array.from({ length: 7 }, (_, k) => ({ midi: [C4 + k], dur: 12 }));
+    const s = importMusicXml(musicXml([{ time: [1, 4], notes: [notes] }], 84));
+    expect(s.notes.map((n) => n.start / (T / 8))).toEqual([0, 1, 2, 3, 5, 6, 7]);
+    const { text } = roundTrip(s);
+    expect(text).toContain("|1  ,  .  ,  :  ,  .  ,  ||");
+  });
+
+  it("ignore les petites notes de réplique et les notes cachées, sans décaler le temps", () => {
+    // 2e voix : un sol caché, puis un la qui doit rester au 3e temps
+    const xml = musicXml([{ notes: [[{ midi: [C4], dur: 4 * q }], [{ midi: [67], dur: 2 * q }, { midi: [69], dur: 2 * q }]] }])
+      .replace(/<note>(<pitch><step>G<\/step>)/, '<note print-object="no">$1');
+    const s = importMusicXml(xml);
+    expect(s.notes.map((n) => `${n.midi}@${n.start / T}`)).toEqual(["60@0", "69@2"]);
+  });
+
+  it("écrit un soufflet juste après la nuance de la même case", () => {
+    const s = parseYmn("m1 |1  |2  |3  ||\n0  |1  |3  |5  ||\n@   p <-------\n---\n");
+    expect(s.hairpins).toEqual([{ hand: "D", kind: "<", start: 0, end: 3 * T }]);
+    const text = writeYmn(s);
+    expect(text.split("\n").filter((l) => l.startsWith("@")).length).toBe(1);
+    expect(text).toMatch(/^@ +p <-+$/m);
+    expect(parseYmn(text).hairpins).toEqual(s.hairpins);
   });
 });

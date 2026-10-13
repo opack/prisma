@@ -4,7 +4,7 @@ import type { Score } from "../core/index.ts";
 import { engrave } from "./engrave.ts";
 import { PageView } from "./PageView.tsx";
 import { SAMPLE } from "./sample.ts";
-import { NOTE_POSITIONS, OCTAVE_POSITIONS, OCTAVE_STYLES, loadOptions, saveOptions } from "./options.ts";
+import { DENSITIES, NOTE_POSITIONS, OCTAVE_POSITIONS, OCTAVE_STYLES, loadOptions, saveOptions } from "./options.ts";
 import type { RenderOptions } from "./options.ts";
 import { canWriteInPlace, download, pickFile, pickSaveTarget, writeFile } from "./files.ts";
 
@@ -126,7 +126,7 @@ export function App() {
     return () => clearTimeout(t);
   }, [notice]);
 
-  const pages = useMemo(() => (engraved.score ? engrave(engraved.score) : []), [engraved]);
+  const pages = useMemo(() => (engraved.score ? engrave(engraved.score, options.density === "compact") : []), [engraved, options.density]);
 
   const open = async (file: File, fileHandle: FileSystemFileHandle | null = null) => {
     const text = await file.text();
@@ -265,6 +265,21 @@ export function App() {
               </label>
             ))}
             <span className="sample">dans un couloir d'octave de plusieurs lignes</span>
+          </fieldset>
+          <fieldset>
+            <legend>Espacement</legend>
+            {DENSITIES.map((d) => (
+              <label key={d.value}>
+                <input
+                  type="radio"
+                  name="density"
+                  id={"density-" + d.value}
+                  checked={options.density === d.value}
+                  onChange={() => setOptions({ density: d.value })}
+                />
+                {d.label}
+              </label>
+            ))}
           </fieldset>
           <fieldset>
             <legend>Gravure</legend>

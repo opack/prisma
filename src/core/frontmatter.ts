@@ -45,7 +45,7 @@ export function parseFrontmatter(lines: string[]): FrontmatterResult {
   throw new YmnError("frontmatter non fermé : il manque la ligne « --- » de fin", lines.length);
 }
 
-const ORDER = ["title", "composer", "tempo", "source", "division", "cell"];
+const ORDER = ["title", "composer", "tempo", "source", "order", "division", "cell"];
 
 export function writeFrontmatter(meta: Meta): string[] {
   const keys = Object.keys(meta).filter((k) => meta[k] !== undefined && meta[k] !== "");

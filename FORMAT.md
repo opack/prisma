@@ -9,7 +9,8 @@ Entre deux lignes `---`, une clé par ligne, sous la forme `clé: valeur`.
 | Clé | Rôle |
 |---|---|
 | `title`, `composer`, `tempo`, `source` | Informations affichées. |
-| `cell` | Largeur d'une case en caractères. Vaut 3 par défaut. |
+| `order` | Ordre de jeu des sections, par leur lettre : `order: A A B C B D A` (voir « Sections et ordre de jeu »). |
+| `cell` | Largeur de base d'une case en caractères, à l'écriture. Vaut 3 par défaut. |
 | `division` | Découpage par défaut d'un temps : `2` (binaire, par défaut) ou `3` (ternaire, pour le 6/8 par exemple). |
 
 Les clés sont en anglais. Les autres clés sont conservées telles quelles.
@@ -36,16 +37,18 @@ Les traits s'écrivent avec `─`, `-`, `=`, `+` ou `┼`, sans espace.
 
 ### Les cases
 
-Un temps est une suite de cases de largeur fixe (`cell`, 3 par défaut). Un temps de 12 caractères contient donc 4 ancres.
+Un temps est une suite de cases, toutes de même durée. Sur la règle de comptage, **chaque case commence par son étiquette** et va jusqu'à l'étiquette suivante :
 
-Sur la règle de comptage :
-
-| Contenu | Sens |
+| Étiquette | Sens |
 |---|---|
-| chiffre | Début du temps, avec son numéro. Il est obligatoire dans la première case de chaque temps. |
+| chiffre | Début du temps, avec son numéro, collé à la barre qui le précède. |
 | `:` | Premier découpage du temps : un `:` coupe en 2, deux `:` coupent en 3. |
 | `.` | Second découpage : chaque morceau recoupé en 2. |
-| vide | Découpage plus fin. |
+| `,` | Découpage plus fin. |
+
+Un temps de 4 cases s'écrit `1  .  :  .  `, un temps de 8 cases `1  ,  .  ,  :  ,  .  ,  `.
+
+La largeur d'une case est libre : seul son nombre compte pour le temps. L'écriture leur donne la largeur `cell`, et élargit une case quand une indication posée dessus ne tient pas (`(mp)`, `cresc.`…) : `1      :  ` est un temps de deux cases dont la première est élargie. À la main, on ajoute simplement des espaces là où il faut de la place. La gravure, elle, garde des temps de largeur égale, et marque chaque case comme les graduations d'une règle, posées sur son trait du bas : deux petits traits superposés pour `:`, un seul pour `.` et un point pour `,`.
 
 Sur les lignes de notes :
 
@@ -80,34 +83,65 @@ Les signes de reprise remplacent une barre de mesure, sur la règle de comptage 
 | Signe | Sens |
 |---|---|
 | `||:` | Un passage répété commence à la mesure suivante. En tête de système, il s'écrit directement après la colonne de gauche : `m5 ||:1 …`. |
-| `:||` | Le passage répété se termine ici : on revient au dernier `||:`, ou au début du morceau. |
+| `:||` | Le passage répété se termine ici : on revient au dernier `||:`, ou au début de la section. |
 | `:||:` | Une reprise se termine et la suivante commence. |
 
 Sur les lignes de notes, les deux points peuvent être remplacés par une espace, mais la colonne doit être conservée : les barres restent alignées sur la règle.
 
+Une reprise reste simple et locale : elle ne passe jamais le début d'une section. Les cases 1. et 2., les D.C., D.S., segno, coda et Fine n'existent pas dans le format : on les écrit avec des sections et un ordre de jeu.
+
 ## Ligne d'indications `@`
 
-Une ou plusieurs lignes facultatives, **au-dessus** de la règle de comptage, qui commencent par `@`. Chaque indication est alignée sur une colonne de la règle (le lecteur signale une erreur sinon), et peut déborder sur les colonnes suivantes. Deux indications sont séparées par au moins deux espaces. Les `|` et `:` recopiés pour se repérer sont ignorés.
+Une ou plusieurs lignes facultatives, **au-dessus** de la règle de comptage, qui commencent par `@`. Chaque indication est alignée sur une colonne de la règle (le lecteur signale une erreur sinon), et peut déborder sur les colonnes suivantes. Deux mots séparés par une seule espace forment un seul texte (`a tempo`, `più f`, `Ped. simile`) : deux indications distinctes sont séparées par au moins deux espaces. Seuls les signes restent à part même à une espace de leur voisin : un soufflet, un signe de pédale placé après un texte, un début de section `*A`. Les `|` et `:` recopiés pour se repérer sont ignorés.
 
 | Indication | Placée sur | Sens |
 |---|---|---|
-| `[1.` `[2.` `[1.2.` | le **dernier** `|` de la barre qui ouvre la mesure | Ouvre une case de reprise (« 1.2. » : jouée aux passages 1 et 2). |
-| `]` | le **premier** `|` de la barre qui ferme la mesure | Ferme la case en cours à cette barre. |
 | `3×` (ou `3x`) | une case de la mesure qui se termine par `:||` | Le passage se joue 3 fois. |
-| autre texte | une case | Indication pour tout le système : `rit.`, `a tempo`, `D.C.`, `Fine`… (les nuances d'une main vont sous ses lignes, voir plus bas) |
+| `*A` | le **dernier** `|` de la barre qui ouvre la mesure | Début de la section A (voir « Sections et ordre de jeu »). |
+| autre texte | une case | Indication pour tout le système : `rit.`, `a tempo`… (les nuances d'une main vont sous ses lignes, voir plus bas) |
 
-Sur une barre `||`, une case qui se ferme et la suivante qui s'ouvre s'écrivent donc à la suite : `][2.`. Pour la première mesure d'un système, `[` se place sur le `|` de la colonne de gauche (ou sur celui de `|:` quand le système commence par une reprise).
+Pour la première mesure d'un système, `*A` se place sur le `|` de la colonne de gauche (ou sur celui de `|:` quand le système commence par une reprise).
 
-Une case se poursuit jusqu'à son `]`, ou jusqu'à la fin de reprise `:||` qu'elle contient. Sans l'une ni l'autre, elle va jusqu'à la case suivante, jusqu'au `||:` suivant, ou jusqu'à la fin du morceau. Dans ce dernier cas, comme sur une partition, son crochet n'est tracé qu'au-dessus de sa première mesure, ouvert à droite (il est fermé si cette mesure termine le morceau).
+## Sections et ordre de jeu
+
+Un morceau qui ne se joue pas d'un bout à l'autre se découpe en **sections**, et un **ordre de jeu** les enchaîne, comme les couplets et le refrain d'une chanson. Ce mécanisme unique remplace les cases 1. et 2., D.C., D.S., segno, coda, To Coda et Fine : on joue les sections dans l'ordre de la liste, et le morceau s'arrête quand la liste est finie. Il n'y a rien à retenir en jouant.
+
+- `*A` sur la ligne `@` du haut marque le début de la section A. Une section va jusqu'au début de la suivante (ou jusqu'à la fin du morceau). La première section commence à la première mesure.
+- `order: A B A C` dans le frontmatter donne l'ordre de jeu. Sans `order`, les sections se jouent l'une après l'autre.
+- Le lecteur signale une section posée deux fois, un ordre qui nomme une section absente, un morceau qui commence avant sa première section, et une reprise à cheval sur deux sections.
+
+Chaque section commence un nouveau système, dans le texte comme à la gravure, à la manière des couplets et du refrain d'une chanson ; la précédente se termine par une double barre. À la gravure, la section porte sa lettre en blanc sur fond noir, un peu d'espace la sépare de la précédente, et l'ordre de jeu est gravé avec les mêmes lettres en tête de chaque page.
+
+Un morceau en quatre mesures, A (mesures 1 et 2), B (3) et C (4), joué A, B, A puis C : l'équivalent d'une reprise à deux cases.
 
 ```
-@                                      [1.               [2.             ]
-m1 ||:1  |2  |3  |4  ||1  |2  |3  |4  ||1  |2  |3  |4  :||1  |2  |3  |4  ||1  |2  |3  |4  ||
-───┼┼────┼───┼───┼───┼┼───┼───┼───┼───┼┼───┼───┼───┼────┼┼───┼───┼───┼───┼┼───┼───┼───┼───┼┼
-0  ||:1  |3  |5  |8  ||5  |3  |1  |   ||3  |-  |-  |-  :||1  |-  |-  |-  ||5  |-  |-  |-  ||
-───┼┼────┼───┼───┼───┼┼───┼───┼───┼───┼┼───┼───┼───┼────┼┼───┼───┼───┼───┼┼───┼───┼───┼───┼┼
--1 ||:1  |-  |-  |-  ||8  |-  |-  |-  ||8  |-  |-  |-  :||1  |-  |-  |-  ||1  |-  |-  |-  ||
+---
+order: A B A C
+---
+
+@  *A
+m1 |1  |2  ||1  |2  ||
+───┼───┼───┼┼───┼───┼┼
+0  |1  |3  ||5  |3  ||
+───┼───┼───┼┼───┼───┼┼
+-1 |1  |   ||8  |   ||
+
+@  *B
+m3 |1  |2  ||
+───┼───┼───┼┼
+0  |8  |   ||
+───┼───┼───┼┼
+-1 |5  |   ||
+
+@  *C
+m4 |1  |2  ||
+───┼───┼───┼┼
+0  |1  |   ||
+───┼───┼───┼┼
+-1 |1  |   ||
 ```
+
+À l'import MusicXML, le morceau est déroulé (reprises, cases, D.C., D.S., To Coda, Fine ; après un D.C. ou un D.S., sans refaire les reprises et en prenant la dernière case), puis découpé en sections partout où l'ordre de jeu saute. Une section toujours jouée deux fois de suite redevient une reprise simple, et deux sections toujours jouées l'une après l'autre sont réunies : un morceau qui n'a que des reprises simples n'a pas de section.
 
 ## Nuances et soufflets : lignes `@` sous chaque main
 
@@ -115,12 +149,12 @@ Une ou plusieurs lignes `@` placées **sous les lignes d'une main** portent ses 
 
 | Indication | Sens |
 |---|---|
-| `ppp` `pp` `p` `mp` `mf` `f` `ff` `fff` `sf` `sfz` `sfp` `fp` `fz` `rfz` | Nuance, gravée en gras italique. |
+| `ppp` `pp` `p` `mp` `mf` `f` `ff` `fff` `sf` `sfz` `sfp` `fp` `fz` `rfz` | Nuance, gravée en gras italique. Entre parenthèses (`(mp)`), c'est une nuance ajoutée par l'éditeur. |
 | `<----` | Crescendo, de sa première case à la case qui contient son dernier caractère. |
 | `>----` | Decrescendo, de même. |
 | autre texte | Indication pour cette main : `cresc.`, `dim.`, `dolce`, `sempre legato`, `più f`… |
 
-Un soufflet est toujours lu à part : une seule espace suffit entre lui et sa voisine. Il peut traverser les barres (avec des `-` ou des `|`). Coupé par un changement de système, il se réécrit au début du système suivant et se lit comme un seul soufflet ; la gravure le laisse ouvert au point de coupure.
+Un soufflet est toujours lu à part : une seule espace suffit entre lui et sa voisine. Il peut commencer dans la case d'une nuance, juste après elle : `p <----` part de la case du `p`. Il peut traverser les barres (avec des `-` ou des `|`). Coupé par un changement de système, il se réécrit au début du système suivant et se lit comme un seul soufflet ; la gravure le laisse ouvert au point de coupure.
 
 ```
 m1 |1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||
@@ -132,7 +166,7 @@ m1 |1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||
 @   pp           sempre legato
 ```
 
-À l'import MusicXML, nuances, soufflets et textes suivent leur portée ; les indications de tempo et de structure (`rit.`, `a tempo`, `D.C.`, `Fine`, `Coda`, `Andante`…) vont sur la ligne `@` au-dessus de la règle. Chaque indication est calée sur l'attaque ou le début de temps le plus proche.
+À l'import MusicXML, nuances, soufflets et textes suivent leur portée ; les indications de tempo et de structure (`rit.`, `a tempo`, `Andante`…) vont sur la ligne `@` au-dessus de la règle. Chaque indication est calée sur l'attaque ou le début de temps le plus proche. Les notes sont calées sur une grille de 48 cases par temps (doubles croches et triolets de doubles croches) : une durée plus fine, comme un quintolet, prend la case la plus proche.
 
 ## Pédale
 
@@ -159,7 +193,7 @@ m1 |1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||
 
 ## Hors format pour l'instant
 
-Repères et sauts, point d'orgue, petites notes, ornements, liaisons d'expression, doigtés, articulations. Voir ROADMAP.md.
+Point d'orgue, petites notes, ornements, liaisons d'expression, doigtés, articulations. Voir ROADMAP.md.
 
 ## Outil en ligne de commande
 

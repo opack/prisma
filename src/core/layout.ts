@@ -6,7 +6,7 @@
  * des millimètres pour le rendu graphique. Seules les mesures changent.
  */
 import { PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, beatStart, repeatOf } from "./model.ts";
-import type { Beat, Division, Ending, Hairpin, Hand, Note, Score } from "./model.ts";
+import type { Beat, Division, Hairpin, Hand, Note, Score } from "./model.ts";
 import { numberOf, octaveOf } from "./pitch.ts";
 
 export type Metrics = {
@@ -15,6 +15,11 @@ export type Metrics = {
   /** Largeur de la colonne de gauche (numéro de mesure ou d'octave), séparateur compris. */
   prefix: number;
   cell: number;
+  /**
+   * Largeur de la case qui commence à l'instant t, si elle doit être plus large que cell
+   * (texte .ymn : une indication trop longue élargit sa case). Par défaut : cell.
+   */
+  cellAt?: (t: number) => number;
   beatSep: number;
   barSep: number;
   /** Largeur ajoutée par les deux points d'un signe de reprise, de chaque côté. */
@@ -29,8 +34,9 @@ export type Column =
    * startRepeat : « ||: » (la mesure suivante en commence une). lead : barre de début de
    * système, présente seulement quand le système commence par « ||: ».
    */
-  | { kind: "barSep"; endRepeat?: boolean; startRepeat?: boolean; lead?: boolean; final?: boolean };
-// final : dernière barre du morceau (double barre de fin, trait fin puis trait épais)
+  | { kind: "barSep"; endRepeat?: boolean; startRepeat?: boolean; lead?: boolean; final?: boolean; section?: boolean };
+// final : dernière barre du morceau (double barre de fin, trait fin puis trait épais) ;
+// section : barre qui termine une section (double barre)
 
 export type SystemRow = {
   hand: Hand;
@@ -46,43 +52,22 @@ export type SystemRow = {
   center: number[];
 };
 
-/** Indication de la ligne @ placée sur une ancre (index dans anchors). */
 /**
- * Indication de la ligne @. Les cases de reprise (« [1. », « ] ») sont placées sur une
- * barre de mesure (column : index dans columns, -1 pour la barre de gauche du système) ;
- * les autres indications sur une ancre (anchor : index dans anchors).
+ * Indication de la ligne @. Les débuts de section (« *A ») sont placés sur une barre de
+ * mesure (column : index dans columns, -1 pour la barre de gauche du système) ; les autres
+ * indications sur une ancre (anchor : index dans anchors).
  */
 export type Mark = {
   anchor?: number;
   column?: number;
   text: string;
-  kind: "ending" | "endingClose" | "times" | "text";
+  kind: "times" | "text" | "marker";
+  /** Début de section : sa lettre. */
+  label?: string;
 };
 
 /** Position d'une indication dans l'ordre des colonnes du système, pour les trier. */
 export const markColumn = (sys: { anchors: number[] }, m: Mark) => (m.anchor !== undefined ? sys.anchors[m.anchor] : m.column!);
-
-/** Portion d'une case de reprise visible dans un système. */
-export type EndingSpan = {
-  ending: Ending;
-  /** Première et dernière ancres couvertes. */
-  fromAnchor: number;
-  toAnchor: number;
-  /**
-   * Barres de mesure où commence et finit le crochet (index dans columns).
-   * -1 : bord gauche du système (fromColumn) ou bord droit (toColumn, case qui continue).
-   */
-  fromColumn: number;
-  toColumn: number;
-  /** La case commence dans ce système (on y écrit son numéro). */
-  opens: boolean;
-  /** La case se termine dans ce système. */
-  closes: boolean;
-  /** Elle se termine sur une barre de reprise « :|| ». */
-  closedByRepeat: boolean;
-  /** Crochet descendant à droite : case fermée par « :|| », par « ] » ou par la fin du morceau. */
-  hook: boolean;
-};
 
 /** Indication d'une voix (nuance ou texte), sur une ancre. */
 export type VoiceMark = { anchor: number; text: string; kind: "dynamic" | "text" };
@@ -122,23 +107,26 @@ export type System = {
   right: SystemRow[];
   left: SystemRow[];
   marks: Mark[];
-  endings: EndingSpan[];
+  /** Lettre de la section que ce système ouvre (chaque section commence un système). */
+  section?: string;
+  /** Le système termine une section. */
+  endsSection: boolean;
   voices: Record<Hand, Voice>;
   pedal: PedalLine;
   /** Largeur naturelle du système, en unités. */
   width: number;
 };
 
-const MAX_RESOLUTION = 48;
-
-/** Plus petit nombre d'ancres qui place tous les événements du temps sur une ancre. */
+/**
+ * Plus petit nombre d'ancres qui place tous les événements du temps sur une ancre. Il
+ * existe toujours : au pire, une ancre par tick.
+ */
 function resolution(offsets: number[]): number {
-  for (let n = 1; n <= MAX_RESOLUTION; n++) {
+  for (let n = 1; ; n++) {
     if (TICKS_PER_BEAT % n) continue;
     const step = TICKS_PER_BEAT / n;
     if (offsets.every((o) => o % step === 0)) return n;
   }
-  return MAX_RESOLUTION;
 }
 
 /** Découpage effectif d'un temps, pour nommer ses ancres. */
@@ -157,12 +145,12 @@ function baseDivision(n: number, def: Division, attacks: number[]): Division {
   return def;
 }
 
-/** Nom d'une ancre : chiffre du temps, « : » premier découpage, « . » second, rien au-delà. */
+/** Nom d'une ancre : chiffre du temps, « : » premier découpage, « . » second, « , » au-delà. */
 export function anchorLabel(k: number, n: number, base: Division, beatLabel: number): string {
   if (k === 0) return String(beatLabel);
   if ((k * base) % n === 0) return ":";
   if ((k * base * 2) % n === 0) return ".";
-  return "";
+  return ",";
 }
 
 type BeatGrid = { n: number; labels: string[] };
@@ -199,6 +187,14 @@ function beatGrids(score: Score): BeatGrid[] {
   });
 }
 
+/** Largeur des cases d'un temps. */
+function cellsWidth(beat: number, n: number, m: Metrics): number {
+  if (!m.cellAt) return n * m.cell;
+  let w = 0;
+  for (let k = 0; k < n; k++) w += m.cellAt(beatStart(beat) + (k * TICKS_PER_BEAT) / n);
+  return w;
+}
+
 /** Regroupe les temps par mesure (rang dans le morceau). */
 function barsOf(beats: Beat[]): number[][] {
   const bars: number[][] = [];
@@ -220,7 +216,7 @@ function breakSystems(score: Score, grids: BeatGrid[], m: Metrics): number[][] {
     return m.barSep + (r?.end ? m.repeatDots : 0) + (next?.start ? m.repeatDots : 0);
   };
   const beatW = (i: number, last: boolean) =>
-    grids[i].n * m.cell + (last ? barEndW(score.beats[i].barIndex) : m.beatSep);
+    cellsWidth(i, grids[i].n, m) + (last ? barEndW(score.beats[i].barIndex) : m.beatSep);
   const barW = (bar: number[]) => bar.reduce((s, i, j) => s + beatW(i, j === bar.length - 1), 0);
   // une reprise en début de système ajoute « |: » après la barre de gauche
   const leadW = (bar: number[]) => (repeatOf(score, score.beats[bar[0]].barIndex)?.start ? m.repeatDots + m.beatSep : 0);
@@ -233,7 +229,10 @@ function breakSystems(score: Score, grids: BeatGrid[], m: Metrics): number[][] {
     cur = [];
     used = 0;
   };
+  // chaque section commence un nouveau système, comme les couplets d'une chanson
+  const sectionStarts = new Set(score.markers.map((mk) => mk.barIndex));
   for (const bar of bars) {
+    if (sectionStarts.has(score.beats[bar[0]].barIndex)) flush();
     const w = barW(bar);
     if (cur.length && used + w <= avail) {
       cur.push(...bar);
@@ -329,8 +328,6 @@ function cell(lane: Lane, t: number, t0: number): string {
   return t === t0 ? "-" + numberOf(held.midi) : "-";
 }
 
-export const endingLabel = (e: Ending) => "[" + e.numbers.map((n) => n + ".").join("");
-
 export function layout(score: Score, m: Metrics): System[] {
   const grids = beatGrids(score);
   const T = TICKS_PER_BEAT;
@@ -350,8 +347,9 @@ export function layout(score: Score, m: Metrics): System[] {
       const g = grids[bi];
       for (let k = 0; k < g.n; k++) {
         anchors.push(columns.length);
-        columns.push({ kind: "anchor", t: beatStart(bi) + (k * T) / g.n, label: g.labels[k], beatIndex: bi, k, n: g.n });
-        width += m.cell;
+        const t = beatStart(bi) + (k * T) / g.n;
+        columns.push({ kind: "anchor", t, label: g.labels[k], beatIndex: bi, k, n: g.n });
+        width += m.cellAt ? m.cellAt(t) : m.cell;
       }
       const barIndex = score.beats[bi].barIndex;
       const barEnd = score.beats[bi + 1]?.barIndex !== barIndex;
@@ -368,6 +366,8 @@ export function layout(score: Score, m: Metrics): System[] {
       if (endRepeat) col.endRepeat = true;
       if (startRepeat) col.startRepeat = true;
       if (bi === score.beats.length - 1) col.final = true;
+      // fin de section : double barre
+      else if (!endRepeat && !startRepeat && score.markers.some((mk) => mk.barIndex === barIndex + 1)) col.section = true;
       columns.push(col);
       width += m.barSep + (endRepeat ? m.repeatDots : 0) + (startRepeat ? m.repeatDots : 0);
     });
@@ -416,34 +416,14 @@ export function layout(score: Score, m: Metrics): System[] {
     };
 
     const marks: Mark[] = [];
-    const endings: EndingSpan[] = [];
-    for (const e of score.endings) {
-      // une case sans fin explicite n'a de crochet qu'au-dessus de sa première mesure
-      const drawnLast = e.open ? e.firstBar : e.lastBar;
-      const bars = [...barAnchors.keys()].filter((b) => b >= e.firstBar && b <= drawnLast);
-      if (!bars.length) continue;
-      const fromBar = bars[0], toBar = bars[bars.length - 1];
-      const list = barAnchors.get(toBar)!;
-      const opens = firstAnchorOfBar(e.firstBar) !== undefined;
-      const closes = toBar === drawnLast && lastAnchorOfBar(drawnLast) !== undefined;
-      const closedByRepeat = closes && !e.open && !!repeatOf(score, e.lastBar)?.end;
-      const fromAnchor = barAnchors.get(fromBar)![0];
-      const toAnchor = list[list.length - 1];
-      // barre qui ouvre la mesure : -1 si c'est la barre de gauche du système
-      const before = anchors[fromAnchor] - 1;
-      const fromColumn = opens && before >= 0 && columns[before].kind === "barSep" && !(columns[before] as { lead?: boolean }).lead ? before : -1;
-      const toColumn = closes ? anchors[toAnchor] + 1 : -1;
-      // une case dont la mesure finit le morceau est fermée, comme sur « :|| »
-      const endsPiece = drawnLast === score.beats[score.beats.length - 1].barIndex;
-      endings.push({ ending: e, fromAnchor, toAnchor, fromColumn, toColumn, opens, closes, closedByRepeat, hook: closes && (!e.open || endsPiece) });
-      if (opens) marks.push({ column: fromColumn, text: endingLabel(e), kind: "ending" });
-      if (closes && !e.open && !closedByRepeat) marks.push({ column: toColumn, text: "]", kind: "endingClose" });
-    }
     for (const r of score.repeats) {
       if (!r.end || !r.times || r.times === 2) continue;
       const a = lastAnchorOfBar(r.barIndex);
       if (a !== undefined) marks.push({ anchor: a, text: `${r.times}×`, kind: "times" });
     }
+    // début de section : sa lettre en tête du système
+    const section = score.markers.find((mk) => firstAnchorOfBar(mk.barIndex) === 0);
+    if (section) marks.push({ column: -1, text: "*" + section.label, kind: "marker", label: section.label });
     for (const tm of score.texts) {
       const a = anchors.findIndex((ci) => (columns[ci] as { t: number }).t === tm.t);
       if (a >= 0) marks.push({ anchor: a, text: tm.text, kind: "text" });
@@ -514,7 +494,8 @@ export function layout(score: Score, m: Metrics): System[] {
       right: toRows("D"),
       left: toRows("G"),
       marks,
-      endings,
+      section: section?.label,
+      endsSection: score.markers.some((mk) => mk.barIndex > 0 && lastAnchorOfBar(mk.barIndex - 1) === anchors.length - 1),
       voices: { D: voice("D"), G: voice("G") },
       pedal: { signs, spans },
       width,

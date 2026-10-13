@@ -2,6 +2,7 @@
 export type OctaveStyle = "arrow" | "sign" | "triangle";
 export type OctavePosition = "top" | "center";
 export type NotePosition = "top" | "center";
+export type Density = "normal" | "compact";
 
 export type RenderOptions = {
   /** Marque des octaves : flèche (↑1), signe (+1) ou triangle (▲1). */
@@ -12,9 +13,11 @@ export type RenderOptions = {
   autoEngrave: boolean;
   /** Place des notes dans un couloir d'octave : en haut, ou chaque bloc centré verticalement. */
   notePosition: NotePosition;
+  /** Espacement des cases : normal, ou compact pour gagner de la place sur les partitions chargées. */
+  density: Density;
 };
 
-export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top" };
+export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal" };
 
 export const OCTAVE_STYLES: { value: OctaveStyle; label: string; sample: string }[] = [
   { value: "arrow", label: "Flèches", sample: "↑1  0  ↓1" },
@@ -32,6 +35,11 @@ export const NOTE_POSITIONS: { value: NotePosition; label: string }[] = [
   { value: "center", label: "Centrées" },
 ];
 
+export const DENSITIES: { value: Density; label: string }[] = [
+  { value: "normal", label: "Normal" },
+  { value: "compact", label: "Compact" },
+];
+
 const KEY = "ymn:options";
 
 export function loadOptions(): RenderOptions {
@@ -43,7 +51,8 @@ export function loadOptions(): RenderOptions {
       : DEFAULT_OPTIONS.octavePosition;
     const autoEngrave = typeof raw.autoEngrave === "boolean" ? raw.autoEngrave : DEFAULT_OPTIONS.autoEngrave;
     const notePosition = NOTE_POSITIONS.some((p) => p.value === raw.notePosition) ? raw.notePosition : DEFAULT_OPTIONS.notePosition;
-    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition };
+    const density = DENSITIES.some((d) => d.value === raw.density) ? raw.density : DEFAULT_OPTIONS.density;
+    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density };
   } catch {
     return DEFAULT_OPTIONS;
   }

@@ -171,6 +171,12 @@ function BarLine({ x, w, col, top, bottom, sections }: { x: number; w: number; c
   if (!col.endRepeat && !col.startRepeat) {
     // fin du morceau : double barre, trait fin puis trait épais
     if (col.final) return <g>{thin(x + w - 1.25, "t")}{thick(x + w - 0.45, "T")}</g>;
+    // début de section : double barre
+    if (col.section) {
+      // aussi marquée qu'une barre de mesure : deux traits de même épaisseur
+      const bar = (lx: number, k: string) => <line key={k} x1={lx} x2={lx} y1={top} y2={bottom} stroke={INK} strokeWidth={0.4} />;
+      return <g>{bar(x + w / 2 - 0.45, "t1")}{bar(x + w / 2 + 0.45, "t2")}</g>;
+    }
     return <line x1={x + w / 2} x2={x + w / 2} y1={top} y2={bottom} stroke={INK} strokeWidth={0.45} />;
   }
   if (col.endRepeat && col.startRepeat) {
@@ -181,17 +187,26 @@ function BarLine({ x, w, col, top, bottom, sections }: { x: number; w: number; c
   return <g>{thick(x + 0.45, "T")}{thin(x + 1.25, "t")}{dots(x + w - d, "b")}</g>;
 }
 
-/** Bandes au-dessus de la règle : textes (rit., D.C.…), puis crochets des cases et « 3× ». */
+/** Lettre de section, en blanc sur fond noir : sur la partition et dans l'ordre de jeu. */
+function SectionBox({ x, y, label }: { x: number; y: number; label: string }) {
+  return (
+    <g>
+      <rect x={x} y={y} width={3.6} height={3.3} rx={0.4} fill={INK} />
+      <text x={x + 1.8} y={y + 2.55} fontSize={2.8} fontWeight={700} textAnchor="middle" fill="#fff">
+        {label}
+      </text>
+    </g>
+  );
+}
+
+/** Bandes au-dessus de la règle, de haut en bas : textes (rit., a tempo…), puis débuts de section et « 3× ». */
 function Marks({ ps }: { ps: PlacedSystem }) {
   const { sys, xs, ws } = ps;
   const left = PAGE.marginX + G.prefix;
-  const right = xs[xs.length - 1] + ws[ws.length - 1];
   const ax = (a: number) => xs[sys.anchors[a]];
   const aEnd = (a: number) => xs[sys.anchors[a]] + ws[sys.anchors[a]];
   const textY = ps.y + G.markH * 0.72;
-  const by = ps.y + ps.textBand + 0.9; // trait horizontal des crochets
-  // les crochets verticaux s'arrêtent un peu au-dessus de la règle, sans toucher la barre de mesure
-  const hookBottom = ps.y + ps.textBand + ps.endingBand - 0.9;
+  const top = ps.y + ps.textBand + 0.35; // haut de la bande de structure
   return (
     <g>
       {sys.marks
@@ -201,37 +216,33 @@ function Marks({ ps }: { ps: PlacedSystem }) {
             {m.text}
           </text>
         ))}
-      {sys.endings.map((e, i) => {
-        // le crochet va d'une barre de mesure à l'autre, comme sur une partition
-        const barX = (c: number) => xs[c] + ws[c] / 2;
-        // un peu d'espace de part et d'autre de la barre : deux cases consécutives ne se touchent pas
-        const gap = 0.6;
-        const x1 = (e.fromColumn >= 0 ? barX(e.fromColumn) : left) + gap;
-        const x2 = (e.toColumn >= 0 ? barX(e.toColumn) : right) - gap;
-        const label = e.ending.numbers.map((n) => n + ".").join(" ");
-        return (
-          <g key={"e" + i}>
-            <path
-              d={`${e.opens ? `M ${x1} ${hookBottom} L ${x1} ${by}` : `M ${x1} ${by}`} L ${x2} ${by}${e.hook ? ` L ${x2} ${hookBottom}` : ""}`}
-              fill="none"
-              stroke={INK}
-              strokeWidth={0.3}
-            />
-            {e.opens && (
-              <text x={x1 + 0.8} y={by + 2.6} fontSize={2.6} fontWeight={700} fill={INK}>
-                {label}
-              </text>
-            )}
-          </g>
-        );
-      })}
+      {/* début de section : sa lettre contre la barre qui l'ouvre */}
+      {sys.marks
+        .filter((m) => m.kind === "marker")
+        .map((m, i) => {
+          const bar = m.column! >= 0 ? xs[m.column!] + ws[m.column!] / 2 : left;
+          return <SectionBox key={"r" + i} x={bar + 0.6} y={top} label={m.label!} />;
+        })}
       {sys.marks
         .filter((m) => m.kind === "times")
         .map((m, i) => (
-          <text key={"x" + i} x={aEnd(m.anchor!) - 0.4} y={by + 2.6} fontSize={2.6} fontWeight={700} textAnchor="end" fill={INK}>
+          <text key={"x" + i} x={aEnd(m.anchor!) - 0.4} y={top + 2.55} fontSize={2.6} fontWeight={700} textAnchor="end" fill={INK}>
             {m.text}
           </text>
         ))}
+    </g>
+  );
+}
+
+/** Ordre de jeu des sections, en tête de page : les mêmes lettres que sur la partition. */
+function OrderLine({ order, y }: { order: string[]; y: number }) {
+  const step = 3.6 + 1.6;
+  const x0 = PAGE.w / 2 - (order.length * step - 1.6) / 2;
+  return (
+    <g>
+      {order.map((label, i) => (
+        <SectionBox key={i} x={x0 + i * step} y={y} label={label} />
+      ))}
     </g>
   );
 }
@@ -321,7 +332,7 @@ function PedalBand({ ps, top }: { ps: PlacedSystem; top: number }) {
 
 function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions }) {
   const { sys, xs, ws } = ps;
-  const y = ps.y + ps.textBand + ps.endingBand; // haut de la règle de comptage
+  const y = ps.y + ps.textBand + ps.structBand; // haut de la règle de comptage
   const x0 = PAGE.marginX;
   const left = x0 + G.prefix;
   const right = xs[xs.length - 1] + ws[ws.length - 1];
@@ -355,18 +366,31 @@ function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions 
       {sys.anchors.map((ci, a) => {
         const col = sys.columns[ci];
         if (col.kind !== "anchor" || !col.label) return null;
-        const beat = col.k === 0;
+        if (col.k === 0) {
+          return (
+            <text key={a} x={xs[ci] + 0.5} y={rulerBase} fontSize={2.6} fontStyle="italic" fill={GREY}>
+              {col.label}
+            </text>
+          );
+        }
+        // découpages du temps, gravés comme les graduations d'une règle, posés sur le trait
+        // du bas de la règle de comptage : le « : » devient deux petits traits superposés, le
+        // « . » un seul, le « , » un point
+        const x = xs[ci] + 0.9;
+        // juste au-dessus du trait horizontal (épais de 0,25 mm), sans empiéter dessus
+        const foot = rhTop - 0.125;
+        // même épaisseur partout (0,4 mm), dans le gris clair des anciens « : » et « . » :
+        // les graduations restent moins visibles que les numéros des temps
+        if (col.label === ",") return <circle key={a} cx={x} cy={foot - 0.2} r={0.2} fill={LIGHT_TEXT} />;
+        // un petit trait de 1 mm, assez long pour ne pas ressembler au point ; deux superposés
+        // tiennent sur 2,7 mm, avec 0,7 mm entre eux
+        const tick = (bottom: number) => <line x1={x} x2={x} y1={bottom - 1} y2={bottom} stroke={LIGHT_TEXT} strokeWidth={0.4} />;
+        if (col.label === ".") return <g key={a}>{tick(foot)}</g>;
         return (
-          <text
-            key={a}
-            x={xs[ci] + 0.5}
-            y={rulerBase}
-            fontSize={beat ? 2.6 : 2.4}
-            fontStyle={beat ? "italic" : "normal"}
-            fill={beat ? GREY : LIGHT_TEXT}
-          >
-            {col.label}
-          </text>
+          <g key={a}>
+            {tick(foot)}
+            {tick(foot - 1.7)}
+          </g>
         );
       })}
       <line x1={left} x2={right} y1={rhTop} y2={rhTop} stroke={LIGHT} strokeWidth={0.25} />
@@ -437,6 +461,7 @@ export function PageView({ page, total, meta, options }: { page: Page; total: nu
           )}
         </g>
       )}
+      {page.order.length > 0 && <OrderLine order={page.order} y={page.header ? PAGE.marginTop + G.headerH - 1 : PAGE.marginTop - 2} />}
       {page.systems.map((ps, i) => (
         <SystemView key={i} ps={ps} options={options} />
       ))}

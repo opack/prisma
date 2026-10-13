@@ -2,18 +2,19 @@
  * Import MusicXML (format « score-partwise ») vers le modèle.
  *
  * - Première partie uniquement. Portée 1 = main droite, portées 2 et suivantes = main gauche.
- * - Reprises et cases 1/2 conservées telles qu'écrites (barres de reprise, cases, nombre de passages).
+ * - Structure : le morceau est déroulé (reprises, cases, D.C., D.S., To Coda, Fine), puis
+ *   découpé en sections et en ordre de jeu ; seules restent des reprises simples.
  * - Mesures composées (6/8, 9/8, 12/8) comptées en noires pointées, découpage ternaire.
  * - Anacrouse : la première mesure incomplète commence au temps voulu (ex. temps 3 en 3/4).
  *   Elle est numérotée 0 seulement si le fichier l'exclut du décompte (implicit="yes") ;
  *   sinon la numérotation du fichier est suivie, à partir du numéro de sa première mesure.
  * - Liaisons de tenue fusionnées. Petites notes ignorées.
  * - Nuances, soufflets et textes de chaque main ; les indications de tempo et de structure
- *   (rit., a tempo, D.C., Fine…) vont au-dessus du système. Pédale de résonance.
+ *   (rit., a tempo…) vont au-dessus du système. Pédale de résonance.
  */
 import { XMLParser } from "fast-xml-parser";
-import { DYNAMICS, TICKS_PER_BEAT, sortNotes } from "./model.ts";
-import type { Beat, Division, Ending, Expression, Hairpin, Hand, Meta, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
+import { TICKS_PER_BEAT, isDynamic, sortNotes } from "./model.ts";
+import type { Beat, Division, Expression, Hairpin, Hand, Marker, Meta, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
 
 type XNode = Record<string, any>;
 const parser = new XMLParser({ preserveOrder: true, ignoreAttributes: false, attributeNamePrefix: "" });
@@ -43,9 +44,37 @@ export function pulse(beats: number, beatType: number): { count: number; quarter
 /** Indication d'une direction MusicXML, positionnée en noires depuis le début de la mesure. */
 type RawDirection = { hand: Hand; at: number; kind: "dynamic" | "words" | "wedge" | "pedal"; text: string; number?: string };
 
-/** Textes qui concernent tout le système : tempo, structure du morceau. */
+/** Textes qui concernent tout le système : le tempo (la structure devient repères et sauts). */
 const SYSTEM_WORDS =
-  /^(rit|ritard|ritardando|rall|rallentando|accel|accelerando|a tempo|tempo|tempo primo|tempo i|rubato|meno mosso|più mosso|piu mosso|poco rit|molto rit|allarg|allargando|fermata|d\.\s*c\.?|d\.\s*s\.?|da capo|dal segno|fine|coda|to coda|segno|grave|largo|larghetto|lento|adagio|andante|andantino|moderato|allegretto|allegro|vivace|presto|prestissimo|lent|très lent|modéré|vif|animé|cédez|retenu|en retenant|en serrant)(?![a-zà-ÿ])/i;
+  /^(rit|ritard|ritardando|rall|rallentando|accel|accelerando|a tempo|tempo|tempo primo|tempo i|rubato|meno mosso|più mosso|piu mosso|poco rit|molto rit|allarg|allargando|fermata|grave|largo|larghetto|lento|adagio|andante|andantino|moderato|allegretto|allegro|vivace|presto|prestissimo|lent|très lent|modéré|vif|animé|cédez|retenu|en retenant|en serrant)(?![a-zà-ÿ])/i;
+
+/** Indication de structure : repère (segno, coda) ou saut (D.C., D.S., To Coda, Fine). */
+type RawStructure = { kind: "segno" | "coda" | "codaSign" | "tocoda" | "dalsegno" | "dacapo" | "fine"; id: string; at: number };
+
+const SOUND_STRUCTURE = ["segno", "coda", "tocoda", "dalsegno", "dacapo", "fine"] as const;
+
+/** Indications de structure d'une direction : d'après <sound> si présent, sinon d'après les signes et les mots. */
+function structureOf(d: XNode[], words: string[], at: number): RawStructure[] {
+  const out: RawStructure[] = [];
+  const sounds = findAll(d, "sound");
+  for (const snd of sounds) {
+    for (const k of SOUND_STRUCTURE) {
+      const v = attr(snd, k);
+      if (v !== undefined) out.push({ kind: k, id: k === "dacapo" || k === "fine" ? "" : String(v), at });
+    }
+  }
+  if (out.length) return out;
+  const glyphs = findAll(d, "direction-type").flatMap((dt) => kids(dt).map(tag));
+  const w = words.join(" ").trim();
+  if (glyphs.includes("segno")) out.push({ kind: "segno", id: "", at });
+  if (/to\s*coda/i.test(w)) out.push({ kind: "tocoda", id: "", at });
+  else if (glyphs.includes("coda")) out.push({ kind: "codaSign", id: "", at });
+  else if (/^coda$/i.test(w)) out.push({ kind: "coda", id: "", at });
+  if (/^d\.\s*c\./i.test(w) || /^da capo/i.test(w)) out.push({ kind: "dacapo", id: "", at });
+  if (/^d\.\s*s\./i.test(w) || /^dal segno/i.test(w)) out.push({ kind: "dalsegno", id: "", at });
+  if (/^fine$/i.test(w)) out.push({ kind: "fine", id: "", at });
+  return out;
+}
 
 type RawNote = { hand: Hand; midi: number; on: number; off: number; tieStart: boolean; tieStop: boolean };
 type RawMeasure = {
@@ -58,12 +87,11 @@ type RawMeasure = {
   implicit: boolean;
   notes: RawNote[]; // positions en noires depuis le début de la mesure
   directions: RawDirection[];
+  structure: RawStructure[];
   startRepeat: boolean;
   endRepeat: boolean;
   times: number;
   endings?: number[];
-  /** La case se termine sans crochet de fin (« discontinue » en MusicXML). */
-  endingOpen?: boolean;
 };
 
 function readMeasures(part: XNode): RawMeasure[] {
@@ -76,10 +104,10 @@ function readMeasures(part: XNode): RawMeasure[] {
     let cursor = 0, lastStart = 0, maxCursor = 0;
     const notes: RawNote[] = [];
     const directions: RawDirection[] = [];
+    const structure: RawStructure[] = [];
     let startRepeat = false, endRepeat = false, times = 2;
     let endings = openEnding;
     let closeEndingAfter = false;
-    let endingOpen = false;
 
     for (const item of items) {
       const t = tag(item);
@@ -115,12 +143,18 @@ function readMeasures(part: XNode): RawMeasure[] {
             } else if (ct === "pedal") {
               directions.push({ hand, at, kind: "pedal", text: attr(c, "type") ?? "" });
             } else if (ct === "words") {
-              const w = text(c).replace(/\s+/g, " ").trim();
+              // certains logiciels laissent des balises de mise en forme dans le texte (« <font …> »)
+              const w = text(c).replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
               if (w) words.push(w);
             }
           }
         }
-        if (words.length) directions.push({ hand, at, kind: "words", text: words.join(" ") });
+        const st = structureOf(d, words, at);
+        structure.push(...st);
+        // les mots d'une indication de structure (« D.S. al Coda »…) deviennent un saut, pas un texte
+        if (words.length && !st.length) directions.push({ hand, at, kind: "words", text: words.join(" ") });
+      } else if (t === "sound") {
+        structure.push(...structureOf([item], [], cursor));
       } else if (t === "barline") {
         const b = kids(item);
         const rep = find(b, "repeat");
@@ -139,12 +173,11 @@ function readMeasures(part: XNode): RawMeasure[] {
           } else if (type === "stop" || type === "discontinue") {
             endings = endings ?? nums;
             closeEndingAfter = true;
-            if (type === "discontinue") endingOpen = true;
           }
         }
       } else if (t === "note") {
         const n = kids(item);
-        if (find(n, "grace") || find(n, "cue")) continue;
+        if (find(n, "grace")) continue; // sans durée : ne fait pas avancer le temps
         const isChord = !!find(n, "chord");
         const dur = num(find(n, "duration")) / divisions;
         const on = isChord ? lastStart : cursor;
@@ -152,8 +185,11 @@ function readMeasures(part: XNode): RawMeasure[] {
           lastStart = cursor;
           cursor += dur;
         }
+        // notes à ne pas lire : réplique en petites notes (cue), note cachée (réalisation
+        // d'un arpège ou d'un ornement pour la lecture audio) ; elles occupent quand même leur temps
+        const hidden = !!find(n, "cue") || attr(find(n, "type"), "size") === "cue" || attr(item, "print-object") === "no";
         const pitch = find(n, "pitch");
-        if (pitch) {
+        if (pitch && !hidden) {
           const p = kids(pitch);
           const midi = 12 * (num(find(p, "octave")) + 1) + STEP[text(find(p, "step"))] + num(find(p, "alter"));
           const ties = findAll(n, "tie").map((x) => attr(x, "type"));
@@ -175,50 +211,208 @@ function readMeasures(part: XNode): RawMeasure[] {
       divisions, beats, beatType,
       length: maxCursor,
       implicit: attr(measure, "implicit") === "yes",
-      notes, directions, startRepeat, endRepeat, times, endings, endingOpen,
+      notes, directions, structure, startRepeat, endRepeat, times, endings,
     });
   }
   return out;
 }
 
-/** Ordre de lecture des mesures, reprises et cases déroulées. */
-export function unfold(ms: Pick<RawMeasure, "startRepeat" | "endRepeat" | "times" | "endings">[]): number[] {
+type PlayMeasure = Pick<RawMeasure, "startRepeat" | "endRepeat" | "times" | "endings"> & { structure?: RawStructure[]; length?: number };
+
+/**
+ * Ordre de jeu des mesures, tout déroulé : reprises, cases, D.C., D.S., To Coda et Fine.
+ * Comme le veut l'usage, après un D.C. ou un D.S. on ne refait pas les reprises, et l'on
+ * prend directement la dernière case.
+ * Un segno ou une coda se place au début de sa mesure (de la suivante s'il est écrit sur la
+ * barre de fin) ; un saut à la fin de sa mesure (de la précédente s'il est écrit tout au début).
+ */
+export function playOrder(ms: PlayMeasure[]): number[] {
+  const EPS = 1e-6;
+  const n = ms.length;
+  const items = ms.flatMap((m, barIndex) => (m.structure ?? []).map((x) => ({ ...x, barIndex, length: m.length ?? 0 })));
+  // signe coda sans <sound> : le dernier marque la coda, les précédents l'endroit d'où l'on y saute
+  const signs = items.filter((x) => x.kind === "codaSign");
+  signs.forEach((x, i) => (x.kind = i === signs.length - 1 ? "coda" : "tocoda"));
+  const place = new Map<string, number>(); // « segno:id », « coda:id » → mesure
+  const atEnd: { kind: string; id: string }[][] = ms.map(() => []);
+  for (const x of items) {
+    if (x.kind === "segno" || x.kind === "coda") {
+      const onEnd = x.at > EPS && x.at >= x.length - EPS;
+      place.set(`${x.kind}:${x.id}`, Math.min(onEnd ? x.barIndex + 1 : x.barIndex, n - 1));
+    } else atEnd[Math.max(x.at <= EPS ? x.barIndex - 1 : x.barIndex, 0)].push({ kind: x.kind, id: x.id });
+  }
+  // un identifiant inconnu désigne le seul repère de son espèce, s'il n'y en a qu'un
+  const placeOf = (kind: string, id: string) => {
+    if (place.has(`${kind}:${id}`)) return place.get(`${kind}:${id}`);
+    const same = [...place.entries()].filter(([k]) => k.startsWith(kind + ":"));
+    return same.length === 1 ? same[0][1] : undefined;
+  };
+  // plus grand numéro de chaque bloc de cases consécutives (pour « la dernière case »)
+  const lastEnding: number[] = ms.map(() => 0);
+  for (let i = 0; i < n; i++) {
+    if (!ms[i].endings) continue;
+    let j = i;
+    while (j < n && ms[j].endings) j++;
+    const max = Math.max(...ms.slice(i, j).flatMap((m) => m.endings!));
+    for (let k = i; k < j; k++) lastEnding[k] = max;
+    i = j - 1;
+  }
+
   const order: number[] = [];
-  let i = 0, sectionStart = 0, pass = 1, lastEnding = -1;
-  let guard = 0;
-  while (i < ms.length && guard++ < 100000) {
+  let i = 0, repeatStart = 0, pass = 1, back = false, jumped = false;
+  // une reprise terminée garde son dernier passage pour les cases qui la suivent
+  let passDone = false;
+  for (let guard = 0; i < n; guard++) {
+    if (guard > 100000) throw new Error("Reprises ou renvois incohérents dans le MusicXML : impossible de dérouler le morceau.");
     const m = ms[i];
-    if (m.startRepeat && i !== sectionStart) {
-      sectionStart = i;
+    if (m.startRepeat && !back) {
+      repeatStart = i;
       pass = 1;
     }
-    if (!m.endings && lastEnding >= 0 && i > lastEnding) {
-      // on a dépassé le dernier bloc de cases : la section suivante repart de zéro
-      lastEnding = -1;
+    back = false;
+    if (passDone && !m.endings) {
       pass = 1;
-      sectionStart = i;
+      passDone = false;
     }
-    if (m.endings) {
-      lastEnding = Math.max(lastEnding, i);
-      if (!m.endings.includes(pass)) {
-        i++;
-        continue;
-      }
-    }
-    order.push(i);
-    if (m.endRepeat && pass < m.times) {
-      pass++;
-      i = sectionStart;
+    if (m.endings && !m.endings.includes(jumped ? lastEnding[i] : pass)) {
+      i++;
       continue;
     }
-    if (m.endRepeat && !m.endings) {
-      pass = 1;
-      sectionStart = i + 1;
+    order.push(i);
+    const signsHere = atEnd[i];
+    if (jumped && signsHere.some((x) => x.kind === "fine")) break;
+    const toCoda = jumped ? signsHere.find((x) => x.kind === "tocoda") : undefined;
+    const coda = toCoda && placeOf("coda", toCoda.id);
+    if (coda !== undefined) {
+      i = coda;
+      continue;
+    }
+    const jump = jumped ? undefined : signsHere.find((x) => x.kind === "dacapo" || x.kind === "dalsegno");
+    const target = jump && (jump.kind === "dacapo" ? 0 : placeOf("segno", jump.id));
+    if (target !== undefined) {
+      jumped = true;
+      i = target;
+      continue;
+    }
+    if (m.endRepeat && !jumped && pass < m.times) {
+      pass++;
+      i = repeatStart;
+      back = true;
+      continue;
+    }
+    if (m.endRepeat) {
+      repeatStart = i + 1;
+      passDone = true;
     }
     i++;
   }
-  if (i < ms.length) throw new Error("Reprises incohérentes dans le MusicXML : impossible de dérouler le morceau.");
   return order;
+}
+
+/**
+ * Sections et ordre de jeu, à partir de l'ordre de jeu des mesures. Une section commence
+ * partout où l'on arrive autrement qu'en venant de la mesure précédente, et partout où l'on
+ * repart ailleurs. Une section toujours jouée plusieurs fois de suite devient une reprise
+ * simple ; deux sections toujours jouées l'une après l'autre sont réunies.
+ * Un morceau qui se joue d'un bout à l'autre n'a pas de section.
+ */
+export function sectionsOf(seq: number[], n: number): { repeats: Repeat[]; markers: Marker[]; order: string[] } {
+  const starts = new Set([0]);
+  for (let k = 0; k + 1 < seq.length; k++) {
+    if (seq[k + 1] === seq[k] + 1) continue;
+    starts.add(seq[k + 1]);
+    if (seq[k] + 1 < n) starts.add(seq[k] + 1);
+  }
+  type Section = { from: number; to: number; times: number };
+  let sections: Section[] = [...starts].sort((a, b) => a - b).map((from, i, all) => ({ from, to: (all[i + 1] ?? n) - 1, times: 1 }));
+  // ordre : une entrée à chaque début de section
+  let order: Section[] = seq.filter((b) => starts.has(b)).map((b) => sections.find((s) => s.from === b)!);
+
+  // une section toujours jouée r fois de suite : reprise simple, jouée r fois
+  for (const s of sections) {
+    const runs: number[] = [];
+    for (let k = 0; k < order.length; k++) {
+      if (order[k] !== s) continue;
+      let r = 1;
+      while (order[k + r] === s) r++;
+      runs.push(r);
+      k += r - 1;
+    }
+    if (runs.length && runs[0] > 1 && runs.every((r) => r === runs[0])) {
+      s.times = runs[0];
+      order = order.filter((x, k) => x !== s || order[k - 1] !== s);
+    }
+  }
+  // deux sections voisines toujours jouées l'une après l'autre : une seule section
+  const parts = new Map<Section, Section[]>(sections.map((s) => [s, [s]]));
+  for (let merged = true; merged; ) {
+    merged = false;
+    for (let k = 0; k + 1 < sections.length; k++) {
+      const x = sections[k], y = sections[k + 1];
+      const together = order.every((s, i) => (s === x ? order[i + 1] === y : true) && (s === y ? order[i - 1] === x : true));
+      if (!together || !order.includes(x)) continue;
+      x.to = y.to;
+      parts.get(x)!.push(...parts.get(y)!);
+      sections.splice(k + 1, 1);
+      order = order.filter((s) => s !== y);
+      merged = true;
+      break;
+    }
+  }
+  const repeats: Repeat[] = [];
+  for (const p of sections.flatMap((x) => parts.get(x)!)) {
+    if (p.times < 2) continue;
+    const end: Repeat = { barIndex: p.to, end: true, ...(p.times !== 2 ? { times: p.times } : {}) };
+    if (p.from === p.to) repeats.push({ ...end, start: true });
+    else repeats.push({ barIndex: p.from, start: true }, end);
+  }
+  repeats.sort((a, b) => a.barIndex - b.barIndex);
+  // une seule section jouée une fois : pas de section du tout
+  if (sections.length === 1 && order.length === 1) return { repeats, markers: [], order: [] };
+  if (sections.length > 26) throw new Error("Structure trop complexe : plus de 26 sections.");
+  const letter = (s: Section) => String.fromCharCode(65 + sections.indexOf(s));
+  return {
+    repeats,
+    markers: sections.map((s) => ({ label: letter(s), barIndex: s.from })),
+    order: order.map(letter),
+  };
+}
+
+/** Découpages possibles d'un temps à l'import : jusqu'à 48 cases (doubles croches, triolets de doubles croches). */
+const DIVISIONS = Array.from({ length: 48 }, (_, i) => i + 1).filter((n) => TICKS_PER_BEAT % n === 0);
+
+/**
+ * Cale les instants des notes, temps par temps, sur le plus petit découpage qui garde tous
+ * les instants distincts et dans l'ordre. Un septolet, impossible à écrire exactement,
+ * prend ainsi 8 cases plutôt que 48 : une valeur irrégulière ne fait pas exploser la
+ * largeur de son temps.
+ */
+function quantizer(times: number[]): (t: number) => number {
+  const byBeat = new Map<number, Set<number>>();
+  for (const t of times) {
+    const b = Math.floor(t / TICKS_PER_BEAT);
+    if (!byBeat.has(b)) byBeat.set(b, new Set());
+    byBeat.get(b)!.add(t - b * TICKS_PER_BEAT);
+  }
+  const step = new Map<number, number>();
+  const NOISE = 2; // écart d'arrondi, en ticks, toléré pour un découpage exact
+  for (const [b, set] of byBeat) {
+    const offsets = [...set].sort((x, y) => x - y);
+    const snap = (s: number) => offsets.map((o) => Math.round(o / s) * s);
+    // d'abord le plus petit découpage exact ; à défaut (septolet…), le plus petit qui
+    // garde tous les instants distincts et dans l'ordre, en les déplaçant de peu
+    const exact = DIVISIONS.find((n) => offsets.every((o) => Math.abs(o - Math.round(o / (TICKS_PER_BEAT / n)) * (TICKS_PER_BEAT / n)) <= NOISE));
+    const readable = DIVISIONS.find((n) => {
+      const v = snap(TICKS_PER_BEAT / n);
+      return v.every((x, i) => Math.abs(x - offsets[i]) <= TICKS_PER_BEAT / 16 && (i === 0 || x > v[i - 1]));
+    });
+    step.set(b, TICKS_PER_BEAT / (exact ?? readable ?? 48));
+  }
+  return (t) => {
+    const b = Math.floor(t / TICKS_PER_BEAT);
+    const s = step.get(b) ?? TICKS_PER_BEAT;
+    return b * TICKS_PER_BEAT + Math.round((t - b * TICKS_PER_BEAT) / s) * s;
+  };
 }
 
 export function importMusicXml(xml: string, fileName?: string): Score {
@@ -250,25 +444,7 @@ export function importMusicXml(xml: string, fileName?: string): Score {
   const firstNumber = Number(first?.number);
   const uncounted = !!first?.implicit;
   let barNumber = uncounted || !Number.isInteger(firstNumber) ? 0 : firstNumber - 1;
-  const repeats: Repeat[] = [];
-  const endings: Ending[] = [];
   measures.forEach((m, barIndex) => {
-    if (m.startRepeat || m.endRepeat) {
-      const r: Repeat = { barIndex };
-      if (m.startRepeat) r.start = true;
-      if (m.endRepeat) {
-        r.end = true;
-        if (m.times !== 2) r.times = m.times;
-      }
-      repeats.push(r);
-    }
-    // les mesures d'une même case partagent le même tableau de numéros
-    if (m.endings) {
-      const prev = endings[endings.length - 1];
-      if (prev && prev.lastBar === barIndex - 1 && measures[barIndex - 1].endings === m.endings) prev.lastBar = barIndex;
-      else endings.push({ numbers: [...m.endings], firstBar: barIndex, lastBar: barIndex });
-      if (m.endingOpen) endings[endings.length - 1].open = true;
-    }
     const p = pulse(m.beats, m.beatType);
     const nominal = p.count * p.quarters;
     const length = m.length > EPS ? Math.min(m.length, nominal) : nominal;
@@ -299,11 +475,18 @@ export function importMusicXml(xml: string, fileName?: string): Score {
     }
   });
 
+  // instants calés sur un découpage lisible de chaque temps
+  const q = quantizer(raw.flatMap((n) => [n.start, n.end]));
+  for (const n of raw) {
+    const start = q(n.start), end = q(n.end);
+    // une note écrasée par le calage (rare : à cheval sur une fin de temps) garde une durée
+    n.start = start;
+    n.end = Math.max(end, start + TICKS_PER_BEAT / 48);
+  }
   // fusion des liaisons de tenue
   raw.sort((a, b) => a.start - b.start || b.midi - a.midi);
   const merged: typeof raw = [];
   for (const n of raw) {
-    if (n.end <= n.start) continue;
     if (n.tieStop) {
       const prev = merged.find((m) => m.hand === n.hand && m.midi === n.midi && m.end === n.start && m.tieStart);
       if (prev) {
@@ -326,7 +509,7 @@ export function importMusicXml(xml: string, fileName?: string): Score {
     notes.push({ hand: n.hand, midi: n.midi, start: n.start, end: n.end });
   }
   const sorted = sortNotes(notes);
-  return { meta, beats, notes: sorted, repeats, endings, ...directionsOf(rawDirections, sorted, beats.length) };
+  return { meta, beats, notes: sorted, ...directionsOf(rawDirections, sorted, beats.length), ...sectionsOf(playOrder(measures), measures.length) };
 }
 
 /**
@@ -382,7 +565,14 @@ function directionsOf(dirs: (RawDirection & { t: number })[], notes: Note[], bea
     if (d.kind === "words" && SYSTEM_WORDS.test(d.text)) {
       if (!texts.some((x) => x.t === t && x.text === d.text)) texts.push({ t, text: d.text });
     } else {
-      expressions.push({ hand: d.hand, t, text: d.text, kind: d.kind === "dynamic" && DYNAMICS.includes(d.text) ? "dynamic" : "text" });
+      const prev = expressions[expressions.length - 1];
+      // parenthèses écrites à part autour d'une nuance (« ( », « mp », « ) ») : une seule nuance « (mp) »
+      if (d.kind === "dynamic" && prev && prev.hand === d.hand && prev.t === t && (prev.text.endsWith("(") || d.text === ")")) {
+        prev.text += d.text;
+        prev.kind = isDynamic(prev.text) ? "dynamic" : "text";
+      } else {
+        expressions.push({ hand: d.hand, t, text: d.text, kind: d.kind === "dynamic" && isDynamic(d.text) ? "dynamic" : "text" });
+      }
     }
   }
   // soufflet jamais refermé : jusqu'à la fin du morceau
