@@ -790,3 +790,58 @@ describe("ornements", () => {
     expect(importMusicXml(xml).arpeggios).toEqual([{ t: 0 }, { t: 2 * T, hand: "D" }, { t: 2 * T, hand: "G" }]);
   });
 });
+
+describe("liaisons d'expression", () => {
+  const sk = (s: Score) => s.slurs.map((x) => `${x.hand}${x.start / T}-${x.end / T}`).join(" ");
+  const ruler = "m1 |1  |2  |3  |4  ||1  |2  |3  |4  ||";
+  const rh = "0  |5  |7  |8  |10 ||8  |7  |5  |3  ||";
+  const piece = (slurLine: string) => [ruler, rh, slurLine, "---", ""].join("\n");
+
+  it("lit une liaison de la case de sa première note à celle de sa dernière", () => {
+    const s = parseYmn(piece("@   (-------)   (-------------)"));
+    expect(sk(s)).toBe("D0-2 D3-6");
+    expect(s.expressions).toEqual([]);
+  });
+
+  it("garde les liaisons imbriquées, coupées et reprises à l'aller-retour", () => {
+    const s = parseYmn(piece("@   (-------------------------)\n@       (---)        (---)"));
+    expect(sk(s)).toBe("D0-6 D1-2 D4-5");
+    // un système par mesure : la grande liaison est coupée puis reprise
+    const text = writeYmn(s, { width: 24 });
+    expect(text).toMatch(/^@ +\(-+$/m);
+    expect(text).toMatch(/^@ +-+\)/m);
+    expect(sk(parseYmn(text))).toBe(sk(s));
+  });
+
+  it("range les liaisons imbriquées par étages, la plus courte au plus près des notes", () => {
+    const s = parseYmn(piece("@   (-------------------------)\n@       (---)        (---)"));
+    const v = layout(s, { width: 999, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 })[0].voices.D;
+    expect(v.slurs.map((x) => `${x.fromAnchor}-${x.toAnchor}:${x.level}`).sort()).toEqual(["0-6:1", "1-2:0", "4-5:0"]);
+  });
+
+  it("refuse une liaison jamais refermée, ou reprise sans avoir été ouverte", () => {
+    expect(() => parseYmn(piece("@   (-----"))).toThrow(/jamais refermée/);
+    expect(() => parseYmn(piece("@   ------)"))).toThrow(/sans liaison ouverte/);
+  });
+
+  it("importe les liaisons du MusicXML par numéro, même d'une voix à l'autre, sans les prolongations", () => {
+    const slur = (type: string, n = "1") => `<slur type="${type}" number="${n}"/>`;
+    const xml = musicXml([
+      {
+        notes: [
+          [
+            { midi: [C4], dur: q, notations: slur("start") },
+            { midi: [C4 + 2], dur: q, notations: slur("start", "2") },
+            { midi: [C4 + 4], dur: q, notations: slur("stop", "2"), tie: ["start"] },
+            { midi: [C4 + 4], dur: q, tie: ["stop"] },
+          ],
+          [{ dur: 3 * q, voice: 2 }, { midi: [55], dur: q, voice: 2, notations: slur("stop") }],
+        ],
+      },
+      { notes: [[{ midi: [C4 + 5], dur: 4 * q }]] },
+    ]);
+    const s = importMusicXml(xml);
+    // la liaison 1 part de la voix 1 et se termine sur la voix 2 : elle reste à la main où elle commence
+    expect(sk(s)).toBe("D0-3 D1-2");
+  });
+});

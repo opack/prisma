@@ -111,6 +111,21 @@ export type Hairpin = { hand: Hand; kind: "<" | ">"; start: number; end: number 
 export const isHairpin = (t: string) => /^[<>][-|]*$/.test(t);
 
 /**
+ * Liaison d'expression d'une voix : les notes de start à end se jouent liées. end est
+ * l'attaque de la dernière note liée (comprise).
+ */
+export type Slur = { hand: Hand; start: number; end: number };
+
+/**
+ * Liaison écrite sur une ligne @ de voix : « (-----) », de la case de la première note à
+ * celle de la dernière. Coupée par un changement de système : « (----- » puis « ----) »
+ * (« ------ » pour un système qu'elle traverse tout entier).
+ */
+export const isSlur = (t: string) => /^\([-|]*\)?$/.test(t) || /^-[-|]*\)?$/.test(t);
+// plusieurs liaisons d'une main qui continuent : leurs suites se lisent de haut en bas, dans
+// l'ordre où les liaisons ont commencé
+
+/**
  * Pédale de résonance enfoncée de start à end (fin exclue). Deux pédales qui se touchent
  * (end de l'une = start de la suivante) forment un changement de pédale.
  */
@@ -139,7 +154,7 @@ export const MARKER_SIGN = /^\*([A-Z])$/;
 export const isStructureSign = (t: string) => MARKER_SIGN.test(t);
 
 /** Signe toujours lu à part sur une ligne @ : soufflet, signe de pédale, début de section. */
-export const isSign = (t: string) => isHairpin(t) || isPedalSign(t) || isStructureSign(t) || t === FERMATA || isArpeggioSign(t);
+export const isSign = (t: string) => isHairpin(t) || isSlur(t) || isPedalSign(t) || isStructureSign(t) || t === FERMATA || isArpeggioSign(t);
 
 /**
  * Deux mots d'une ligne @ séparés par une seule espace forment un seul texte (« a tempo »,
@@ -147,7 +162,7 @@ export const isSign = (t: string) => isHairpin(t) || isPedalSign(t) || isStructu
  * soufflet ou un début de section.
  */
 export const joinsText = (prev: string, next: string) =>
-  !isSign(next) && !isHairpin(prev) && !isStructureSign(prev) && prev !== FERMATA && !isArpeggioSign(prev);
+  !isSign(next) && !isHairpin(prev) && !isSlur(prev) && !isStructureSign(prev) && prev !== FERMATA && !isArpeggioSign(prev);
 
 export type Score = {
   meta: Meta;
@@ -160,6 +175,7 @@ export type Score = {
   texts: TextMark[];
   expressions: Expression[];
   hairpins: Hairpin[];
+  slurs: Slur[];
   pedals: Pedal[];
   /** Consignes de pédale (« Ped. simile »…), sur la ligne de pédale. */
   pedalTexts: TextMark[];

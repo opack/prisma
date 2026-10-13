@@ -90,8 +90,15 @@ export type HairpinSpan = {
   to: number;
 };
 
+/**
+ * Portion d'une liaison visible dans un système : de la case de sa première note à celle
+ * de sa dernière. opens / closes : la liaison commence / se termine dans ce système.
+ * level : étage, pour les liaisons imbriquées ou qui se chevauchent (0 au plus près des notes).
+ */
+export type SlurSpan = { fromAnchor: number; toAnchor: number; opens: boolean; closes: boolean; level: number };
+
 /** Ligne @ d'une voix : sous les lignes de sa main. */
-export type Voice = { marks: VoiceMark[]; hairpins: HairpinSpan[] };
+export type Voice = { marks: VoiceMark[]; hairpins: HairpinSpan[]; slurs: SlurSpan[] };
 
 /**
  * Pédale dans un système : ses signes (pour le texte .ymn) et ses traits (pour la gravure).
@@ -187,6 +194,10 @@ function beatGrids(score: Score): BeatGrid[] {
   for (const t of score.fermatas) add(t, false);
   for (const g of score.graces) add(g.t, false);
   for (const x of score.arpeggios) add(x.t, false);
+  for (const s of score.slurs) {
+    add(s.start, false);
+    add(s.end, false);
+  }
   for (const e of score.expressions) add(e.t, false);
   for (const h of score.hairpins) {
     add(h.start, false);
@@ -494,6 +505,26 @@ export function layout(score: Score, m: Metrics): System[] {
       });
       return a;
     };
+    // liaisons : les plus courtes d'abord, chacune au premier étage où elle ne touche aucune autre
+    const slurSpans = (hand: Hand): SlurSpan[] => {
+      const spans = score.slurs
+        .filter((s) => s.hand === hand && s.start < t1 && s.end >= t0)
+        .map((s) => ({
+          fromAnchor: anchorAt(Math.max(s.start, t0)),
+          toAnchor: s.end < t1 ? anchorAt(s.end) : anchors.length - 1,
+          opens: s.start >= t0,
+          closes: s.end < t1,
+          level: 0,
+        }))
+        .filter((s) => s.fromAnchor >= 0 && s.toAnchor >= s.fromAnchor);
+      const placed: SlurSpan[] = [];
+      for (const s of [...spans].sort((a, b) => a.toAnchor - a.fromAnchor - (b.toAnchor - b.fromAnchor))) {
+        // deux liaisons qui se touchent seulement (l'une finit sur la note où l'autre commence) restent au même étage
+        while (placed.some((p) => p.level === s.level && p.fromAnchor < s.toAnchor && s.fromAnchor < p.toAnchor)) s.level++;
+        placed.push(s);
+      }
+      return spans;
+    };
     const voice = (hand: Hand): Voice => ({
       marks: score.expressions
         .filter((e) => e.hand === hand)
@@ -518,6 +549,7 @@ export function layout(score: Score, m: Metrics): System[] {
           };
         })
         .filter((h) => h.fromAnchor >= 0 && h.toAnchor >= h.fromAnchor),
+      slurs: slurSpans(hand),
     });
 
     const signs: PedalLine["signs"] = [];

@@ -184,8 +184,11 @@ Une ou plusieurs lignes `@` placées **sous les lignes d'une main** portent ses 
 | `ppp` `pp` `p` `mp` `mf` `f` `ff` `fff` `sf` `sfz` `sfp` `fp` `fz` `rfz` | Nuance, gravée en gras italique. Entre parenthèses (`(mp)`), c'est une nuance ajoutée par l'éditeur. |
 | `<----` | Crescendo, de sa première case à la case qui contient son dernier caractère. |
 | `>----` | Decrescendo, de même. |
+| `(-----)` | Liaison d'expression : de la note de la case du `(` à celle de la case du `)`, jouées liées. |
 | `/` | Arpège de l'accord de cette main, du grave à l'aigu (`\` : de l'aigu au grave). |
 | autre texte | Indication pour cette main : `cresc.`, `dim.`, `dolce`, `sempre legato`, `più f`… |
+
+Une liaison relie des notes différentes, à jouer liées (legato), et dessine les phrases. Ce n'est pas la liaison de prolongation entre deux notes identiques : celle-là n'existe pas ici, la note se tient avec `-`. Comme un soufflet, une liaison coupée par un changement de système s'écrit `(-----` en fin de système et `-----)` au début du suivant (`------` pour un système qu'elle traverse tout entier). Les liaisons imbriquées ou qui se chevauchent vont chacune sur sa ligne `@` ; quand plusieurs liaisons d'une main continuent au système suivant, leurs suites s'écrivent de haut en bas dans l'ordre où elles ont commencé. La gravure les trace comme des arcs fins dans une bande juste sous les lignes de la main, la plus courte au plus près des notes.
 
 Un soufflet est toujours lu à part : une seule espace suffit entre lui et sa voisine. Il peut commencer dans la case d'une nuance, juste après elle : `p <----` part de la case du `p`. Il peut traverser les barres (avec des `-` ou des `|`). Coupé par un changement de système, il se réécrit au début du système suivant et se lit comme un seul soufflet ; la gravure le laisse ouvert au point de coupure.
 
@@ -228,7 +231,7 @@ m1 |1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||
 
 ## Hors format pour l'instant
 
-Liaisons d'expression, doigtés, articulations. Voir ROADMAP.md.
+Doigtés, articulations. Voir ROADMAP.md.
 
 ## Outil en ligne de commande
 

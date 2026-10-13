@@ -211,6 +211,29 @@ function vwave(x: number, y1: number, y2: number, down: boolean): string {
 
 const WAVE = { fill: "none", stroke: INK, strokeWidth: 0.3, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
 
+/**
+ * Liaisons d'une main : un arc fin, creux vers le haut comme une liaison sous les notes, de
+ * la première note à la dernière. Une liaison coupée reste ouverte au bord du système.
+ */
+function SlurBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: number }) {
+  const { sys, xs, ws } = ps;
+  const left = PAGE.marginX + G.prefix;
+  const right = xs[xs.length - 1] + ws[ws.length - 1];
+  const noteX = (a: number) => xs[sys.anchors[a]] + leadExtra(sys, a) + 1.4;
+  return (
+    <g>
+      {voice.slurs.map((s, i) => {
+        const x1 = s.opens ? noteX(s.fromAnchor) : left;
+        const x2 = s.closes ? noteX(s.toAnchor) : right;
+        const y = top + 0.5 + s.level * G.slurLevel;
+        const d = Math.min(1.1, 0.45 + (x2 - x1) * 0.02); // creux, un peu plus marqué pour une longue liaison
+        const mx = (x1 + x2) / 2;
+        return <path key={i} d={`M ${x1} ${y} Q ${mx} ${y + 2 * d} ${x2} ${y} Q ${mx} ${y + 2 * d - 0.7} ${x1} ${y} Z`} fill={INK} />;
+      })}
+    </g>
+  );
+}
+
 type BarCol = Extract<PlacedSystem["sys"]["columns"][number], { kind: "barSep" }>;
 
 /**
@@ -429,10 +452,12 @@ function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions 
   const top = y;
   const rhTop = y + G.rulerH;
   const rhVoice = rhTop + sys.right.length * G.rowH; // bande des nuances de la main droite
-  const handY = rhVoice + ps.voiceBand.D + G.handGap;
+  const rhSlurs = rhVoice; // bande des liaisons de la main droite, juste sous ses lignes
+  const handY = rhVoice + ps.slurBand.D + ps.voiceBand.D + G.handGap;
   const lhTop = handY + G.handGap;
   const lhVoice = lhTop + sys.left.length * G.rowH;
-  const bottom = lhVoice + ps.voiceBand.G;
+  const lhSlurs = lhVoice;
+  const bottom = lhVoice + ps.slurBand.G + ps.voiceBand.G;
 
   // bandes alternées par groupe d'octave, dans chaque main
   const bands = (rows: SystemRow[]) => {
@@ -523,8 +548,10 @@ function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions 
         return <BarLine key={ci} x={xs[ci]} w={ws[ci]} col={c} top={top} bottom={bottom} sections={sections} />;
       })}
 
-      {ps.voiceBand.D > 0 && <VoiceBand ps={ps} voice={sys.voices.D} top={rhVoice} />}
-      {ps.voiceBand.G > 0 && <VoiceBand ps={ps} voice={sys.voices.G} top={lhVoice} />}
+      {ps.slurBand.D > 0 && <SlurBand ps={ps} voice={sys.voices.D} top={rhSlurs} />}
+      {ps.slurBand.G > 0 && <SlurBand ps={ps} voice={sys.voices.G} top={lhSlurs} />}
+      {ps.voiceBand.D > 0 && <VoiceBand ps={ps} voice={sys.voices.D} top={rhVoice + ps.slurBand.D} />}
+      {ps.voiceBand.G > 0 && <VoiceBand ps={ps} voice={sys.voices.G} top={lhVoice + ps.slurBand.G} />}
       {ps.pedalBand > 0 && <PedalBand ps={ps} top={bottom} />}
       <Marks ps={ps} />
     </g>

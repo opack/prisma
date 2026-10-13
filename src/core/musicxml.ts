@@ -14,7 +14,7 @@
  */
 import { XMLParser } from "fast-xml-parser";
 import { TICKS_PER_BEAT, isDynamic, isPedalText, sortGraces, sortNotes } from "./model.ts";
-import type { Arpeggio, Beat, Division, Expression, Grace, Hairpin, Hand, Marker, Meta, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
+import type { Arpeggio, Beat, Division, Expression, Grace, Hairpin, Slur, Hand, Marker, Meta, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
 
 type XNode = Record<string, any>;
 const parser = new XMLParser({ preserveOrder: true, ignoreAttributes: false, attributeNamePrefix: "" });
@@ -63,7 +63,7 @@ export function pulse(beats: number, beatType: number): { count: number; quarter
 }
 
 /** Indication d'une direction MusicXML, positionnée en noires depuis le début de la mesure. */
-type RawDirection = { hand: Hand; at: number; kind: "dynamic" | "words" | "wedge" | "pedal" | "fermata"; text: string; number?: string };
+type RawDirection = { hand: Hand; at: number; kind: "dynamic" | "words" | "wedge" | "pedal" | "fermata" | "slur"; text: string; number?: string };
 
 /** Textes qui concernent tout le système : le tempo (la structure devient repères et sauts). */
 const SYSTEM_WORDS =
@@ -282,6 +282,12 @@ function readMeasures(part: XNode): RawMeasure[] {
               const base = list.length ? list[list.length - 1].slot + 1 : 0;
               DELAYED_TURNS[name].forEach((dir, k) => list.push({ hand, midi: neighbor(dir), slot: base + k }));
             }
+          }
+          // liaisons d'expression : appariées par numéro, propre à la partie (une liaison peut
+          // passer d'une voix à l'autre) ; une prolongation <tie> n'en est pas une
+          for (const sl of notations.filter((x) => tag(x) === "slur")) {
+            const type = String(attr(sl, "type") ?? "");
+            if (type === "start" || type === "stop") directions.push({ hand, at: on, kind: "slur", text: type, number: String(attr(sl, "number") ?? "1") });
           }
           const arp = notations.find((x) => tag(x) === "arpeggiate");
           if (arp && !arpeggios.some((x) => x.hand === hand && x.on === on)) {
@@ -640,6 +646,8 @@ function directionsOf(dirs: (RawDirection & { t: number })[], notes: Note[], bea
   const expressions: Expression[] = [];
   const hairpins: Hairpin[] = [];
   const open: (Hairpin & { number: string })[] = [];
+  const slurs: Slur[] = [];
+  const openSlurs: (Slur & { number: string })[] = [];
   const pedals: Pedal[] = [];
   let pedal: Pedal | undefined;
   const pedalUp = (t: number) => {
@@ -652,8 +660,21 @@ function directionsOf(dirs: (RawDirection & { t: number })[], notes: Note[], bea
   const fermatas: number[] = [];
   const pedalTexts: TextMark[] = [];
   const seen = new Set<string>();
-  for (const d of [...dirs].sort((a, b) => a.t - b.t)) {
+  // à un même instant, une liaison se referme avant qu'une autre ne commence sur la même note
+  const rank = (d: RawDirection) => (d.kind === "slur" && d.text === "start" ? 1 : 0);
+  for (const d of [...dirs].sort((a, b) => a.t - b.t || rank(a) - rank(b))) {
     const t = Math.min(snap(d.t), end);
+    if (d.kind === "slur") {
+      if (d.text === "start") {
+        if (t < end) openSlurs.push({ hand: d.hand, start: t, end: -1, number: d.number! });
+      } else {
+        const i = openSlurs.findIndex((s) => s.number === d.number);
+        if (i < 0) continue;
+        const [s] = openSlurs.splice(i, 1);
+        if (t > s.start && !slurs.some((x) => x.hand === s.hand && x.start === s.start && x.end === t)) slurs.push({ hand: s.hand, start: s.start, end: t });
+      }
+      continue;
+    }
     if (d.kind === "fermata") {
       if (t < end && !fermatas.includes(t)) fermatas.push(t);
       continue;
@@ -704,5 +725,6 @@ function directionsOf(dirs: (RawDirection & { t: number })[], notes: Note[], bea
   for (const w of open) hairpins.push({ hand: w.hand, kind: w.kind, start: w.start, end: w.end });
   hairpins.sort((a, b) => a.start - b.start);
   if (pedal) pedalUp(end);
-  return { texts, expressions, hairpins, pedals, pedalTexts, fermatas };
+  slurs.sort((a, b) => a.start - b.start || (a.hand === b.hand ? a.end - b.end : a.hand === "D" ? -1 : 1));
+  return { texts, expressions, hairpins, slurs, pedals, pedalTexts, fermatas };
 }

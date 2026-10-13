@@ -11,11 +11,12 @@
 - Petites notes (`3'5`, dans la case de la note principale), d'une seule sorte.
 - Ornements : trille (`5~7`, voisine écrite en clair), mordant et gruppetto écrits en petites notes, arpège (`/` sur la ligne `@` d'une main, ou du haut pour les deux mains).
 - Consignes de pédale (`Ped. simile`) sur la ligne de pédale.
+- Liaisons d'expression (`(-----)` sur la ligne `@` de la main), gravées en arcs sous ses lignes ; les liaisons de prolongation restent des tenues `-`.
 - Import : les indications d'octave (`8va`, `8vb`, `loco`…) sont ignorées, chaque note portant déjà son octave.
 
 ## À faire
 
-1. **Liaisons d'expression** : l'arc qui relie des notes différentes, à jouer lié (legato) ; il découpe les phrases. À ne pas confondre avec la liaison de prolongation entre deux notes identiques, déjà gérée : les deux notes n'en font qu'une, tenue avec `-`. Le MusicXML les fournit (`<slur>`, aujourd'hui ignoré). Piste : un intervalle sur la ligne `@` de la main, comme un soufflet (`(------)`), gravé comme un arc fin au-dessus des lignes de la main.
+1. **Sous-titre** : clé `subtitle` dans le frontmatter (« Op. 9 n° 2 », « Suite bergamasque, 3ᵉ mouvement »…), gravée sous le titre. À l'import : le titre du mouvement ou le sous-titre du MusicXML (`<movement-title>` quand il complète `<work-title>`, `<credit-type>subtitle</credit-type>`).
 2. **Doigtés** (dernier ajout au format : pas encore de solution) : souvent indiqués sur les partitions, et bien pratiques. Le MusicXML les fournit (`<fingering>`). Reste à concevoir :
    - **Écriture `.ymn`** : une case fait 3 caractères et une note en prend déjà jusqu'à 2 (`12`), donc pas de place pour un doigt dans la case. Un doigt collé au numéro serait ambigu (`11` : note 11, ou note 1 avec le doigt 1 ?).
    - **Gravure** : les doigts (1 à 5) sont des chiffres comme les notes (1 à 12). Il faut une forme qu'on ne puisse pas confondre avec un numéro de note.

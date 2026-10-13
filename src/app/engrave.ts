@@ -30,7 +30,11 @@ export const G = {
   graceGap: 0.75, // espace après chaque rang de petites notes
   arpeggioW: 1.5, // place de la vaguelette d'un arpège, devant l'accord
   noteDigit: 1.85, // largeur d'un chiffre de note
+  slurLevel: 1.3, // hauteur d'un étage de liaisons
 };
+
+/** Bande des liaisons d'une main, juste sous ses lignes : un étage par niveau d'imbrication. */
+const slurH = (v: System["voices"]["D"]) => (v.slurs.length ? 1 + (Math.max(...v.slurs.map((s) => s.level)) + 1) * G.slurLevel : 0);
 
 /**
  * Largeur ajoutée à une case par une trille trop longue pour elle : la note, sa voisine en
@@ -66,6 +70,8 @@ export type PlacedSystem = {
   structBand: number;
   /** Hauteur des bandes de nuances sous chaque main (0 si la main n'en a pas). */
   voiceBand: { D: number; G: number };
+  /** Hauteur des bandes de liaisons sous chaque main (0 si la main n'en a pas). */
+  slurBand: { D: number; G: number };
   /** Hauteur de la bande de pédale sous le système (0 sans pédale). */
   pedalBand: number;
   height: number;
@@ -86,12 +92,13 @@ export const bands = (s: System) => ({
   textBand: s.marks.some((m) => m.kind === "text") ? G.markH : 0,
   structBand: s.marks.some((m) => m.kind === "times" || m.kind === "marker" || m.kind === "fermata") ? G.markH : 0,
   voiceBand: { D: voiceH(s.voices.D), G: voiceH(s.voices.G) },
+  slurBand: { D: slurH(s.voices.D), G: slurH(s.voices.G) },
   pedalBand: s.pedal.spans.length || s.pedal.texts.length ? G.pedalH : 0,
 });
 
 export const systemHeight = (s: System) => {
   const b = bands(s);
-  return b.textBand + b.structBand + G.rulerH + (s.right.length + s.left.length) * G.rowH + b.voiceBand.D + b.voiceBand.G + b.pedalBand + 2 * G.handGap + 1;
+  return b.textBand + b.structBand + G.rulerH + (s.right.length + s.left.length) * G.rowH + b.voiceBand.D + b.voiceBand.G + b.slurBand.D + b.slurBand.G + b.pedalBand + 2 * G.handGap + 1;
 };
 
 /** Largeur d'une barre de mesure, selon ses signes de reprise (identique au calcul du moteur). */

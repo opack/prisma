@@ -102,6 +102,16 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
         const last = Math.max(col, anchorCol[h.toAnchor] + widths[h.toAnchor] - 2);
         return { col, text: h.kind + "-".repeat(last - col) };
       }),
+      // liaison : « ( » sur la case de la première note (après une nuance de la même case),
+      // « ) » dans celle de la dernière ; coupée, elle va jusqu'au bout du système. Les suites
+      // de liaisons commencées plus tôt s'écrivent de haut en bas dans l'ordre de leur début
+      // (v.slurs est trié ainsi), comme le relit le lecteur
+      ...v.slurs.map((s) => {
+        const before = s.opens ? Math.max(0, ...v.marks.filter((m) => m.anchor === s.fromAnchor).map((m) => m.text.length + 1)) : 0;
+        const col = anchorCol[s.fromAnchor] + before;
+        const last = s.closes ? Math.max(col + 1, anchorCol[s.toAnchor] + 1) : anchorCol[s.toAnchor] + widths[s.toAnchor] - 2;
+        return { col, text: (s.opens ? "(" : "-") + "-".repeat(Math.max(0, last - col - 1)) + (s.closes ? ")" : "-") };
+      }),
     ]);
   return [
     ...stackLines(sys.marks.map((m) => ({ col: colOf(m), text: m.text }))),
@@ -132,7 +142,7 @@ function cellWidths(score: Score, cell: number): (t: number) => number {
   const need = new Map<number, number>();
   const want = (t: number, w: number) => need.set(t, Math.max(need.get(t) ?? cell, w));
   for (const e of score.expressions) {
-    const pin = score.hairpins.some((h) => h.hand === e.hand && h.start === e.t);
+    const pin = score.hairpins.some((h) => h.hand === e.hand && h.start === e.t) || score.slurs.some((s) => s.hand === e.hand && s.start === e.t);
     want(e.t, e.text.length + (pin ? 3 : 2));
   }
   for (const tm of score.texts) want(tm.t, tm.text.length + 2);

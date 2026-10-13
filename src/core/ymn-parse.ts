@@ -5,8 +5,8 @@
  * de comptage. Voir FORMAT.md pour la grammaire complète.
  */
 import { YmnError, parseFrontmatter } from "./frontmatter.ts";
-import { ARPEGGIO_DOWN, FERMATA, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isPedalText, joinsText, sortGraces, sortNotes } from "./model.ts";
-import type { Arpeggio, Beat, Division, Expression, Grace, Hairpin, Hand, Marker, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
+import { ARPEGGIO_DOWN, FERMATA, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isSlur, isPedalText, joinsText, sortGraces, sortNotes } from "./model.ts";
+import type { Arpeggio, Beat, Division, Expression, Grace, Hairpin, Slur, Hand, Marker, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
 import { midiOf, parseOctaveLabel } from "./pitch.ts";
 
 /** Un temps de la règle de comptage, et la barre qui le termine. */
@@ -148,6 +148,11 @@ export function parseYmn(text: string): Score {
   const expressions: Expression[] = [];
   const hairpins: Hairpin[] = [];
   const pedals: Pedal[] = [];
+  const slurs: Slur[] = [];
+  type OpenSlur = { slur: Slur; line: number; col: number };
+  let openSlurs: OpenSlur[] = []; // liaisons ouvertes dans ce système, qui continuent au suivant
+  let pendingSlurs: OpenSlur[] = [];
+  const slurAt = new Map<Slur, { line: number; col: number }>(); // position du « ( », pour les erreurs // liaisons du système précédent, à reprendre en tête de celui-ci
   const pedalTexts: TextMark[] = [];
   let pedalDown: Pedal | undefined; // pédale enfoncée, peut-être depuis un système précédent
   const timesMarks: { bar: number; times: number; line: number; col: number }[] = [];
@@ -159,6 +164,8 @@ export function parseYmn(text: string): Score {
   let pending: Note[] = []; // notes encore tenues à la fin du bloc précédent
 
   for (const block of blocks) {
+    pendingSlurs = openSlurs;
+    openSlurs = [];
     const rulerLine = lines[block.ruler];
     const L = block.ruler + 1;
     const pipe = rulerLine.indexOf("|");
@@ -263,7 +270,7 @@ export function parseYmn(text: string): Score {
       for (const tok of markTokens(row)) {
         // un soufflet peut commencer dans la case, juste après une nuance (« p <--- ») ;
         // toute autre indication commence exactement sur une case
-        const ai = isHairpin(tok.text)
+        const ai = isHairpin(tok.text) || isSlur(tok.text)
           ? anchors.findIndex((x) => tok.col >= x.from && tok.col < x.to)
           : anchors.findIndex((x) => x.from === tok.col);
         if (ai < 0) throw new YmnError(`« ${tok.text} » doit commencer exactement sur une case de la règle de comptage`, R, tok.col + 1);
@@ -274,6 +281,26 @@ export function parseYmn(text: string): Score {
           if (hand === "D") throw new YmnError(`« ${tok.text} » : la pédale se note sur une ligne @ sous la main gauche`, R, tok.col + 1);
           if (isPedalText(tok.text)) pedalTexts.push({ t: a.t, text: tok.text });
           else pedalSigns.push({ t: a.t, text: tok.text, line: R, col: tok.col + 1 });
+        } else if (isSlur(tok.text)) {
+          // suite d'une liaison du système précédent : elle reprend sur la première case
+          // plusieurs suites : de haut en bas, dans l'ordre où les liaisons ont commencé
+          const cont = tok.text.startsWith("(")
+            ? undefined
+            : pendingSlurs.filter((o) => o.slur.hand === hand).sort((x, y) => x.slur.start - y.slur.start)[0];
+          if (!tok.text.startsWith("(") && (!cont || ai !== 0)) {
+            throw new YmnError("« ---) » sans liaison ouverte : une liaison commence par « ( »", R, tok.col + 1);
+          }
+          const slur = cont ? cont.slur : { hand, start: a.t, end: -1 };
+          if (cont) pendingSlurs = pendingSlurs.filter((o) => o !== cont);
+          else {
+            slurs.push(slur);
+            slurAt.set(slur, { line: R, col: tok.col + 1 });
+          }
+          if (tok.text.endsWith(")")) {
+            const last = tok.col + tok.text.length - 1;
+            const end = anchors.filter((x) => x.from <= last).pop()!;
+            slur.end = end.t;
+          } else openSlurs.push({ slur, line: R, col: tok.col + 1 });
         } else if (isHairpin(tok.text)) {
           // le soufflet finit avec la case qui contient son dernier caractère
           const last = tok.col + tok.text.length - 1;
@@ -424,6 +451,16 @@ export function parseYmn(text: string): Score {
         pedals.push(pedalDown);
       }
     }
+    if (pendingSlurs.length) {
+      const o = pendingSlurs[0];
+      throw new YmnError("liaison coupée en fin de système : reprends-la au début du suivant par « ---) »", o.line, o.col);
+    }
+  }
+  if (openSlurs.length) throw new YmnError("liaison jamais refermée : termine-la par « ) »", openSlurs[0].line, openSlurs[0].col);
+  for (const s of slurs) {
+    if (s.end <= s.start) {
+      throw new YmnError("une liaison relie au moins deux notes : « ( » et « ) » dans deux cases différentes", slurAt.get(s)!.line, slurAt.get(s)!.col);
+    }
   }
   // une pédale jamais relâchée tient jusqu'à la fin du morceau
   if (pedalDown) pedalDown.end = beats.length * TICKS_PER_BEAT;
@@ -471,6 +508,7 @@ export function parseYmn(text: string): Score {
     texts,
     expressions: expressions.sort((a, b) => a.t - b.t || (a.hand === b.hand ? 0 : a.hand === "D" ? -1 : 1)),
     hairpins: hairpins.sort((a, b) => a.start - b.start || (a.hand === b.hand ? 0 : a.hand === "D" ? -1 : 1)),
+    slurs: slurs.sort((a, b) => a.start - b.start || (a.hand === b.hand ? a.end - b.end : a.hand === "D" ? -1 : 1)),
     pedals: pedals.filter((p) => p.end > p.start),
     pedalTexts: pedalTexts.sort((a, b) => a.t - b.t),
     markers: markers.map(({ label, barIndex }) => ({ label, barIndex })),
