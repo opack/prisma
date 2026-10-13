@@ -61,7 +61,7 @@ export type Mark = {
   anchor?: number;
   column?: number;
   text: string;
-  kind: "times" | "text" | "marker";
+  kind: "times" | "text" | "marker" | "fermata";
   /** Début de section : sa lettre. */
   label?: string;
 };
@@ -171,6 +171,7 @@ function beatGrids(score: Score): BeatGrid[] {
     add(n.end, false);
   }
   for (const m of score.texts) add(m.t, false);
+  for (const t of score.fermatas) add(t, false);
   for (const e of score.expressions) add(e.t, false);
   for (const h of score.hairpins) {
     add(h.start, false);
@@ -424,6 +425,10 @@ export function layout(score: Score, m: Metrics): System[] {
     // début de section : sa lettre en tête du système
     const section = score.markers.find((mk) => firstAnchorOfBar(mk.barIndex) === 0);
     if (section) marks.push({ column: -1, text: "*" + section.label, kind: "marker", label: section.label });
+    for (const t of score.fermatas) {
+      const a = anchors.findIndex((ci) => (columns[ci] as { t: number }).t === t);
+      if (a >= 0) marks.push({ anchor: a, text: "^", kind: "fermata" });
+    }
     for (const tm of score.texts) {
       const a = anchors.findIndex((ci) => (columns[ci] as { t: number }).t === tm.t);
       if (a >= 0) marks.push({ anchor: a, text: tm.text, kind: "text" });

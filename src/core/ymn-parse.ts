@@ -5,7 +5,7 @@
  * de comptage. Voir FORMAT.md pour la grammaire complète.
  */
 import { YmnError, parseFrontmatter } from "./frontmatter.ts";
-import { MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, joinsText, sortNotes } from "./model.ts";
+import { FERMATA, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, joinsText, sortNotes } from "./model.ts";
 import type { Beat, Division, Expression, Hairpin, Hand, Marker, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
 import { midiOf, parseOctaveLabel } from "./pitch.ts";
 
@@ -136,6 +136,7 @@ export function parseYmn(text: string): Score {
     return repeats.get(barIndex)!;
   };
   const texts: TextMark[] = [];
+  const fermatas: number[] = [];
   const expressions: Expression[] = [];
   const hairpins: Hairpin[] = [];
   const pedals: Pedal[] = [];
@@ -228,7 +229,9 @@ export function parseYmn(text: string): Score {
         if (!a) throw new YmnError(`« ${tok.text} » doit commencer exactement sur une case de la règle de comptage`, li + 1, tok.col + 1);
         const times = tok.text.match(/^(\d+)\s*[×xX]$/);
         if (times) timesMarks.push({ bar: a.barIndex, times: Number(times[1]), line: li + 1, col: tok.col + 1 });
-        else texts.push({ t: a.t, text: tok.text });
+        else if (tok.text === FERMATA) {
+          if (!fermatas.includes(a.t)) fermatas.push(a.t);
+        } else texts.push({ t: a.t, text: tok.text });
       }
     }
 
@@ -427,6 +430,7 @@ export function parseYmn(text: string): Score {
     hairpins: hairpins.sort((a, b) => a.start - b.start || (a.hand === b.hand ? 0 : a.hand === "D" ? -1 : 1)),
     pedals: pedals.filter((p) => p.end > p.start),
     markers: markers.map(({ label, barIndex }) => ({ label, barIndex })),
+    fermatas: fermatas.sort((a, b) => a - b),
     order,
   };
 }

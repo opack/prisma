@@ -10,6 +10,8 @@ export type XNote = {
   tie?: ("start" | "stop")[];
   /** XML brut placé juste avant la note (directions : nuances, soufflets, textes). */
   before?: string;
+  /** XML brut placé dans <notations> de la note (point d'orgue…). */
+  notations?: string;
 };
 export type XMeasure = {
   notes: XNote[][]; // une liste d'événements par voix, jouées en parallèle
@@ -31,7 +33,8 @@ export function musicXml(measures: XMeasure[], divisions = 12): string {
       if (vi) body += `<backup><duration>${m.notes[vi - 1].reduce((s, n) => s + n.dur, 0)}</duration></backup>`;
       for (const n of voice) {
         if (n.before) body += n.before;
-        const staff = `<staff>${n.staff ?? 1}</staff><voice>${n.voice ?? vi + 1}</voice>`;
+        const staff =
+          `<staff>${n.staff ?? 1}</staff><voice>${n.voice ?? vi + 1}</voice>` + (n.notations ? `<notations>${n.notations}</notations>` : "");
         if (!n.midi?.length) {
           body += `<note><rest/><duration>${n.dur}</duration>${staff}</note>`;
           continue;

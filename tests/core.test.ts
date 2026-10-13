@@ -591,3 +591,46 @@ describe("cases de largeur libre", () => {
     expect(parseYmn(text).hairpins).toEqual(s.hairpins);
   });
 });
+
+describe("point d'orgue", () => {
+  it("lit « ^ » sur la ligne @ du haut, sans le coller à un texte voisin", () => {
+    const s = parseYmn("@   dolce ^\nm1 |1    |2    |3    |4    ||\n0  |1    |     |     |5    ||\n---\n");
+    expect(s.fermatas).toEqual([T]);
+    expect(s.texts).toEqual([{ t: 0, text: "dolce" }]);
+  });
+
+  it("importe le point d'orgue d'une note et d'un silence, une seule fois par instant", () => {
+    const f = "<fermata/>";
+    const xml = musicXml([
+      {
+        notes: [
+          [
+            { midi: [C4], dur: 2 * q, notations: f },
+            { dur: 2 * q, notations: f },
+          ],
+          [{ midi: [48], dur: 2 * q, staff: 2, notations: f }, { midi: [43], dur: 2 * q, staff: 2 }],
+        ],
+      },
+    ]);
+    const s = importMusicXml(xml);
+    expect(s.fermatas).toEqual([0, 2 * T]);
+    const { text, back } = roundTrip(s);
+    expect(text).toMatch(/^@ +\^ +\^$/m);
+    expect(back.fermatas).toEqual(s.fermatas);
+  });
+
+  it("ignore les indications d'octave, déjà portées par les notes", () => {
+    const dir = (inner: string) => `<direction><direction-type>${inner}</direction-type><staff>1</staff></direction>`;
+    const xml = musicXml([
+      {
+        notes: [
+          [
+            { midi: [C4], dur: 2 * q, before: dir("<words>(sol 8vb)</words>") + dir("<words>dolce</words>") },
+            { midi: [C4], dur: 2 * q, before: dir("<words>loco</words>") + dir("<words>8va</words>") },
+          ],
+        ],
+      },
+    ]);
+    expect(importMusicXml(xml).expressions.map((e) => e.text)).toEqual(["dolce"]);
+  });
+});

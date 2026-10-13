@@ -92,12 +92,13 @@ Une reprise reste simple et locale : elle ne passe jamais le début d'une sectio
 
 ## Ligne d'indications `@`
 
-Une ou plusieurs lignes facultatives, **au-dessus** de la règle de comptage, qui commencent par `@`. Chaque indication est alignée sur une colonne de la règle (le lecteur signale une erreur sinon), et peut déborder sur les colonnes suivantes. Deux mots séparés par une seule espace forment un seul texte (`a tempo`, `più f`, `Ped. simile`) : deux indications distinctes sont séparées par au moins deux espaces. Seuls les signes restent à part même à une espace de leur voisin : un soufflet, un signe de pédale placé après un texte, un début de section `*A`. Les `|` et `:` recopiés pour se repérer sont ignorés.
+Une ou plusieurs lignes facultatives, **au-dessus** de la règle de comptage, qui commencent par `@`. Chaque indication est alignée sur une colonne de la règle (le lecteur signale une erreur sinon), et peut déborder sur les colonnes suivantes. Deux mots séparés par une seule espace forment un seul texte (`a tempo`, `più f`, `Ped. simile`) : deux indications distinctes sont séparées par au moins deux espaces. Seuls les signes restent à part même à une espace de leur voisin : un soufflet, un signe de pédale placé après un texte, un début de section `*A`, un point d'orgue `^`. Les `|` et `:` recopiés pour se repérer sont ignorés.
 
 | Indication | Placée sur | Sens |
 |---|---|---|
 | `3×` (ou `3x`) | une case de la mesure qui se termine par `:||` | Le passage se joue 3 fois. |
 | `*A` | le **dernier** `|` de la barre qui ouvre la mesure | Début de la section A (voir « Sections et ordre de jeu »). |
+| `^` | une case | Point d'orgue : la note, l'accord ou le silence qui commence là se tient plus longtemps que sa valeur, à l'appréciation du pianiste. Gravé 𝄐 au-dessus de la case. |
 | autre texte | une case | Indication pour tout le système : `rit.`, `a tempo`… (les nuances d'une main vont sous ses lignes, voir plus bas) |
 
 Pour la première mesure d'un système, `*A` se place sur le `|` de la colonne de gauche (ou sur celui de `|:` quand le système commence par une reprise).
@@ -193,7 +194,7 @@ m1 |1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||
 
 ## Hors format pour l'instant
 
-Point d'orgue, petites notes, ornements, liaisons d'expression, doigtés, articulations. Voir ROADMAP.md.
+Petites notes, ornements, liaisons d'expression, doigtés, articulations. Voir ROADMAP.md.
 
 ## Outil en ligne de commande
 

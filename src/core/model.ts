@@ -96,19 +96,22 @@ export const isPedalSign = (t: string) => t === PEDAL_DOWN || t === PEDAL_UP || 
  */
 export type Marker = { label: string; barIndex: number };
 
+/** Point d'orgue, sur la ligne @ du haut : « ^ », l'arc du signe 𝄐. */
+export const FERMATA = "^";
+
 /** Signe d'un début de section, sur la ligne @ du haut. */
 export const MARKER_SIGN = /^\*([A-Z])$/;
 export const isStructureSign = (t: string) => MARKER_SIGN.test(t);
 
 /** Signe toujours lu à part sur une ligne @ : soufflet, signe de pédale, début de section. */
-export const isSign = (t: string) => isHairpin(t) || isPedalSign(t) || isStructureSign(t);
+export const isSign = (t: string) => isHairpin(t) || isPedalSign(t) || isStructureSign(t) || t === FERMATA;
 
 /**
  * Deux mots d'une ligne @ séparés par une seule espace forment un seul texte (« a tempo »,
  * « più f », « Ped. simile »), sauf si le second est un signe, ou si le premier est un
  * soufflet ou un début de section.
  */
-export const joinsText = (prev: string, next: string) => !isSign(next) && !isHairpin(prev) && !isStructureSign(prev);
+export const joinsText = (prev: string, next: string) => !isSign(next) && !isHairpin(prev) && !isStructureSign(prev) && prev !== FERMATA;
 
 export type Score = {
   meta: Meta;
@@ -121,6 +124,8 @@ export type Score = {
   hairpins: Hairpin[];
   pedals: Pedal[];
   markers: Marker[];
+  /** Points d'orgue : instants où l'on tient la note, l'accord ou le silence plus longtemps. */
+  fermatas: number[];
   /** Ordre de jeu des sections, par leur lettre ; vide : le morceau se joue d'un bout à l'autre. */
   order: string[];
 };

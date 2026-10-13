@@ -54,10 +54,10 @@ export type Page = { index: number; systems: PlacedSystem[]; header: boolean; or
 
 const voiceH = (v: System["voices"]["D"]) => (v.marks.length || v.hairpins.length ? G.voiceH : 0);
 
-/** Bandes au-dessus de la règle, de haut en bas : textes, puis débuts de section et « 3× ». */
+/** Bandes au-dessus de la règle, de haut en bas : textes, puis débuts de section, points d'orgue et « 3× ». */
 export const bands = (s: System) => ({
   textBand: s.marks.some((m) => m.kind === "text") ? G.markH : 0,
-  structBand: s.marks.some((m) => m.kind === "times" || m.kind === "marker") ? G.markH : 0,
+  structBand: s.marks.some((m) => m.kind === "times" || m.kind === "marker" || m.kind === "fermata") ? G.markH : 0,
   voiceBand: { D: voiceH(s.voices.D), G: voiceH(s.voices.G) },
   pedalBand: s.pedal.spans.length ? G.pedalH : 0,
 });

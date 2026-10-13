@@ -42,11 +42,14 @@ export function pulse(beats: number, beatType: number): { count: number; quarter
 }
 
 /** Indication d'une direction MusicXML, positionnée en noires depuis le début de la mesure. */
-type RawDirection = { hand: Hand; at: number; kind: "dynamic" | "words" | "wedge" | "pedal"; text: string; number?: string };
+type RawDirection = { hand: Hand; at: number; kind: "dynamic" | "words" | "wedge" | "pedal" | "fermata"; text: string; number?: string };
 
 /** Textes qui concernent tout le système : le tempo (la structure devient repères et sauts). */
 const SYSTEM_WORDS =
   /^(rit|ritard|ritardando|rall|rallentando|accel|accelerando|a tempo|tempo|tempo primo|tempo i|rubato|meno mosso|più mosso|piu mosso|poco rit|molto rit|allarg|allargando|fermata|grave|largo|larghetto|lento|adagio|andante|andantino|moderato|allegretto|allegro|vivace|presto|prestissimo|lent|très lent|modéré|vif|animé|cédez|retenu|en retenant|en serrant)(?![a-zà-ÿ])/i;
+
+/** Indications d'octave (« 8va », « (sol 8vb) », « loco »…) : inutiles, chaque note porte déjà son octave. */
+const OCTAVE_WORDS = /(^|[^0-9a-z])(8|15|22)\s*(va|vb|ma|mb|ve|a|b)(?![a-z])|\b(loco|ottava|bassa)\b/i;
 
 /** Indication de structure : repère (segno, coda) ou saut (D.C., D.S., To Coda, Fine). */
 type RawStructure = { kind: "segno" | "coda" | "codaSign" | "tocoda" | "dalsegno" | "dacapo" | "fine"; id: string; at: number };
@@ -145,7 +148,7 @@ function readMeasures(part: XNode): RawMeasure[] {
             } else if (ct === "words") {
               // certains logiciels laissent des balises de mise en forme dans le texte (« <font …> »)
               const w = text(c).replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
-              if (w) words.push(w);
+              if (w && !OCTAVE_WORDS.test(w)) words.push(w);
             }
           }
         }
@@ -188,6 +191,10 @@ function readMeasures(part: XNode): RawMeasure[] {
         // notes à ne pas lire : réplique en petites notes (cue), note cachée (réalisation
         // d'un arpège ou d'un ornement pour la lecture audio) ; elles occupent quand même leur temps
         const hidden = !!find(n, "cue") || attr(find(n, "type"), "size") === "cue" || attr(item, "print-object") === "no";
+        // point d'orgue sur une note ou un silence : une fois par instant (pas sur chaque note d'un accord)
+        if (!hidden && !isChord && findAll(n, "notations").some((x) => find(kids(x), "fermata"))) {
+          directions.push({ hand: num(find(n, "staff"), 1) === 1 ? "D" : "G", at: on, kind: "fermata", text: "" });
+        }
         const pitch = find(n, "pitch");
         if (pitch && !hidden) {
           const p = kids(pitch);
@@ -533,9 +540,14 @@ function directionsOf(dirs: (RawDirection & { t: number })[], notes: Note[], bea
     }
     pedal = undefined;
   };
+  const fermatas: number[] = [];
   const seen = new Set<string>();
   for (const d of [...dirs].sort((a, b) => a.t - b.t)) {
     const t = Math.min(snap(d.t), end);
+    if (d.kind === "fermata") {
+      if (t < end && !fermatas.includes(t)) fermatas.push(t);
+      continue;
+    }
     if (d.kind === "pedal") {
       // start et resume enfoncent, stop et discontinue relâchent, change fait les deux
       if (d.text === "stop" || d.text === "discontinue" || d.text === "change") pedalUp(t);
@@ -579,5 +591,5 @@ function directionsOf(dirs: (RawDirection & { t: number })[], notes: Note[], bea
   for (const w of open) hairpins.push({ hand: w.hand, kind: w.kind, start: w.start, end: w.end });
   hairpins.sort((a, b) => a.start - b.start);
   if (pedal) pedalUp(end);
-  return { texts, expressions, hairpins, pedals };
+  return { texts, expressions, hairpins, pedals, fermatas };
 }

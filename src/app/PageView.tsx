@@ -199,7 +199,19 @@ function SectionBox({ x, y, label }: { x: number; y: number; label: string }) {
   );
 }
 
-/** Bandes au-dessus de la règle, de haut en bas : textes (rit., a tempo…), puis débuts de section et « 3× ». */
+/** Point d'orgue : un arc aplati ouvert vers le bas, son point dessous, au-dessus de la note. */
+function Fermata({ cx, y }: { cx: number; y: number }) {
+  const rx = 1.8;
+  const base = y + 2.5;
+  return (
+    <g>
+      <path d={`M ${cx - rx} ${base} A ${rx} 1.25 0 0 1 ${cx + rx} ${base}`} fill="none" stroke={INK} strokeWidth={0.4} />
+      <circle cx={cx} cy={base - 0.35} r={0.38} fill={INK} />
+    </g>
+  );
+}
+
+/** Bandes au-dessus de la règle, de haut en bas : textes (rit., a tempo…), puis débuts de section, points d'orgue et « 3× ». */
 function Marks({ ps }: { ps: PlacedSystem }) {
   const { sys, xs, ws } = ps;
   const left = PAGE.marginX + G.prefix;
@@ -223,6 +235,11 @@ function Marks({ ps }: { ps: PlacedSystem }) {
           const bar = m.column! >= 0 ? xs[m.column!] + ws[m.column!] / 2 : left;
           return <SectionBox key={"r" + i} x={bar + 0.6} y={top} label={m.label!} />;
         })}
+      {sys.marks
+        .filter((m) => m.kind === "fermata")
+        .map((m, i) => (
+          <Fermata key={"f" + i} cx={ax(m.anchor!) + 1.4} y={top} />
+        ))}
       {sys.marks
         .filter((m) => m.kind === "times")
         .map((m, i) => (
