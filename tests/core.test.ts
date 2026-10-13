@@ -716,3 +716,77 @@ describe("consignes de pédale", () => {
     expect(s.expressions).toEqual([]);
   });
 });
+
+describe("ornements", () => {
+  const gk = (s: Score) => s.graces.map((g) => `${g.hand}${g.midi}@${g.t / T}#${g.slot}`).join(" ");
+  const tk = (s: Score) => s.notes.filter((n) => n.trill !== undefined).map((n) => `${n.midi}~${n.trill}`).join(" ");
+  const ruler = "m1 |1    |2    |3    |4    ||";
+
+  it("lit une trille « 5~7 » : la note et sa voisine la plus proche", () => {
+    const s = parseYmn([ruler, "0  |5~7  |-    |12~1 |-    ||", "---", ""].join("\n"));
+    expect(tk(s)).toBe("64~66 71~72");
+    expect(notesKey(s)).toBe(`D64@0-${2 * T} D71@${2 * T}-${4 * T}`);
+    const { text, back } = roundTrip(s);
+    expect(tk(back)).toBe(tk(s));
+    expect(text).toContain("|5~7 ");
+  });
+
+  it("refuse une trille sur une tenue ou sans voisine", () => {
+    expect(() => parseYmn([ruler, "0  |5    |-5~7 |     |     ||", "---", ""].join("\n"))).toThrow(/case invalide/);
+    expect(() => parseYmn([ruler, "0  |5~5  |     |     |     ||", "---", ""].join("\n"))).toThrow(/autre note/);
+  });
+
+  it("lit les arpèges : d'une main sur sa ligne @, des deux mains sur celle du haut", () => {
+    const s = parseYmn(
+      ["@         \\", ruler, "0  |5    |5    |     |     ||", "   |1    |1    |     |     ||", "@   /", "---", "-1 |1    |1    |     |     ||", ""].join("\n"),
+    );
+    expect(s.arpeggios).toEqual([{ t: 0, hand: "D" }, { t: T, down: true }]);
+    expect(s.expressions).toEqual([]);
+    const { back } = roundTrip(s);
+    expect(back.arpeggios).toEqual(s.arpeggios);
+  });
+
+  it("refuse deux arpèges sur un même accord", () => {
+    expect(() => parseYmn(["@   /", ruler, "0  |5    |     |     |     ||", "@   /", "---", ""].join("\n"))).toThrow(/un seul arpège/);
+  });
+
+  it("importe trilles, mordants et gruppettos avec les voisines de la gamme", () => {
+    const orn = (inner: string) => `<ornaments>${inner}</ornaments>`;
+    const xml = musicXml([
+      {
+        key: -3, // mi bémol majeur : si, mi et la bémols
+        notes: [
+          [
+            { midi: [65], dur: q, notations: orn("<trill-mark/>") }, // fa : trille avec sol
+            { midi: [62], dur: q, notations: orn("<inverted-mordent/>") }, // ré : note, mi bémol (armure), note
+            { midi: [72], dur: q, notations: orn('<turn/><accidental-mark placement="above">natural</accidental-mark>') }, // do : ré, do, si bémol
+            { midi: [67], dur: q, notations: orn("<mordent/>") }, // sol : note, fa, note
+          ],
+        ],
+      },
+    ]);
+    const s = importMusicXml(xml);
+    expect(tk(s)).toBe("65~67");
+    expect(gk(s)).toBe(`D62@1#0 D63@1#1 D74@2#0 D72@2#1 D70@2#2 D67@3#0 D65@3#1`);
+    expect(gk(roundTrip(s).back)).toBe(gk(s));
+  });
+
+  it("joue un gruppetto placé après la note juste avant la note suivante", () => {
+    const orn = `<ornaments><delayed-turn/></ornaments>`;
+    const s = importMusicXml(musicXml([{ notes: [[{ midi: [64], dur: 2 * q, notations: orn }, { midi: [65], dur: 2 * q }]] }]));
+    expect(gk(s)).toBe("D65@2#0 D64@2#1 D62@2#2 D64@2#3");
+  });
+
+  it("importe les arpèges : par main, ou d'un seul geste quand les deux portées partagent leur numéro", () => {
+    const arp = (n: string) => `<arpeggiate number="${n}"/>`;
+    const xml = musicXml([
+      {
+        notes: [
+          [{ midi: [64, 67], dur: 2 * q, notations: arp("1") }, { midi: [64, 67], dur: 2 * q, notations: arp("2") }],
+          [{ midi: [48, 55], dur: 2 * q, staff: 2, notations: arp("1") }, { midi: [48, 55], dur: 2 * q, staff: 2, notations: arp("3") }],
+        ],
+      },
+    ]);
+    expect(importMusicXml(xml).arpeggios).toEqual([{ t: 0 }, { t: 2 * T, hand: "D" }, { t: 2 * T, hand: "G" }]);
+  });
+});

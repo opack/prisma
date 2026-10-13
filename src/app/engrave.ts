@@ -28,13 +28,31 @@ export const G = {
   maxStretch: 1.7, // étirement maximal des cases pour remplir la ligne
   graceDigit: 1.25, // largeur d'un chiffre de petite note
   graceGap: 0.75, // espace après chaque rang de petites notes
+  arpeggioW: 1.5, // place de la vaguelette d'un arpège, devant l'accord
+  noteDigit: 1.85, // largeur d'un chiffre de note
 };
+
+/**
+ * Largeur ajoutée à une case par une trille trop longue pour elle : la note, sa voisine en
+ * petit, puis un peu de trait ondulé (« 12~10 » ne tient pas dans une case normale).
+ */
+export const trillW = (main: number, aux: number, cellW: number) =>
+  Math.max(0, 0.5 + main * G.noteDigit + 0.35 + aux * G.graceDigit + 1 - cellW);
+const trillCell = (c: string, cellW: number) => {
+  const [main, aux] = c.split("~");
+  return aux === undefined ? 0 : trillW(main.length, aux.length, cellW);
+};
+/** Place ajoutée par les trilles d'une case, sur la ligne qui en demande le plus. */
+export const trillExtra = (sys: System, a: number, cellW: number) =>
+  Math.max(0, ...[...sys.right, ...sys.left].map((r) => trillCell(r.cells[a], cellW)));
 
 /** Largeur des rangs de petites notes d'une main, dans une case. */
 export const graceSlotW = (d: number) => d * G.graceDigit + G.graceGap;
 const graceW = (digits: number[]) => digits.reduce((w, d) => w + graceSlotW(d), 0);
 /** Place ajoutée en tête d'une case par ses petites notes (la main qui en a le plus). */
 export const graceExtra = (sys: System, a: number) => Math.max(graceW(sys.graceDigits.D[a]), graceW(sys.graceDigits.G[a]));
+/** Place ajoutée en tête d'une case : ses petites notes, puis la vaguelette d'un arpège. */
+export const leadExtra = (sys: System, a: number) => graceExtra(sys, a) + (sys.arpeggios.some((x) => x.anchor === a) ? G.arpeggioW : 0);
 
 export type PlacedSystem = {
   sys: System;
@@ -60,7 +78,8 @@ export type PlacedSystem = {
 /** order : ordre de jeu des sections, gravé en tête de chaque page (vide s'il n'y a pas de section). */
 export type Page = { index: number; systems: PlacedSystem[]; header: boolean; order: string[] };
 
-const voiceH = (v: System["voices"]["D"]) => (v.marks.length || v.hairpins.length ? G.voiceH : 0);
+// l'arpège se dessine devant l'accord, pas dans la bande des nuances
+const voiceH = (v: System["voices"]["D"]) => (v.marks.some((m) => m.kind !== "arpeggio") || v.hairpins.length ? G.voiceH : 0);
 
 /** Bandes au-dessus de la règle, de haut en bas : textes, puis débuts de section, points d'orgue et « 3× ». */
 export const bands = (s: System) => ({
@@ -80,6 +99,7 @@ const barSepWidth = (c: Extract<System["columns"][number], { kind: "barSep" }>) 
   c.lead ? G.repeatDots + G.beatSep : G.barSep + (c.endRepeat ? G.repeatDots : 0) + (c.startRepeat ? G.repeatDots : 0);
 
 function place(sys: System, isLast: boolean, y: number, cellW: number): PlacedSystem {
+  const anchorOf = (ci: number) => sys.anchors.indexOf(ci);
   const cells = sys.anchors.length;
   const fixed = sys.width - cells * cellW;
   let stretch = (CONTENT_W - fixed) / (cells * cellW);
@@ -91,7 +111,8 @@ function place(sys: System, isLast: boolean, y: number, cellW: number): PlacedSy
   let x = PAGE.marginX + G.prefix;
   for (const c of sys.columns) {
     // les petites notes s'ajoutent en tête de case, sans étirement
-    const w = c.kind === "anchor" ? cellW * stretch + graceExtra(sys, sys.anchors.indexOf(xs.length)) : c.kind === "barSep" ? barSepWidth(c) : G.beatSep;
+    const a = anchorOf(xs.length);
+    const w = c.kind === "anchor" ? cellW * stretch + leadExtra(sys, a) + trillExtra(sys, a, cellW) : c.kind === "barSep" ? barSepWidth(c) : G.beatSep;
     xs.push(x);
     ws.push(w);
     x += w;
@@ -106,7 +127,11 @@ export function engrave(score: Score, compact = false): Page[] {
     width: CONTENT_W,
     prefix: G.prefix,
     cell: cellW,
-    cellAt: (t) => cellW + Math.max(graceW(graceDigits(score.graces, "D", t)), graceW(graceDigits(score.graces, "G", t))),
+    cellAt: (t) =>
+      cellW +
+      Math.max(graceW(graceDigits(score.graces, "D", t)), graceW(graceDigits(score.graces, "G", t))) +
+      (score.arpeggios.some((x) => x.t === t) ? G.arpeggioW : 0) +
+      Math.max(0, ...score.notes.filter((n) => n.start === t && n.trill !== undefined).map((n) => trillW(String((n.midi % 12) + 1).length, String((n.trill! % 12) + 1).length, cellW))),
     beatSep: G.beatSep,
     barSep: G.barSep,
     repeatDots: G.repeatDots,

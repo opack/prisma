@@ -14,7 +14,7 @@
  */
 import { XMLParser } from "fast-xml-parser";
 import { TICKS_PER_BEAT, isDynamic, isPedalText, sortGraces, sortNotes } from "./model.ts";
-import type { Beat, Division, Expression, Grace, Hairpin, Hand, Marker, Meta, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
+import type { Arpeggio, Beat, Division, Expression, Grace, Hairpin, Hand, Marker, Meta, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
 
 type XNode = Record<string, any>;
 const parser = new XMLParser({ preserveOrder: true, ignoreAttributes: false, attributeNamePrefix: "" });
@@ -34,6 +34,27 @@ const num = (node: XNode | undefined, def = 0) => {
 };
 
 const STEP: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const LETTERS = "CDEFGAB";
+const SHARP_ORDER = "FCGDAEB"; // ordre des dièses à la clé ; les bémols dans l'ordre inverse
+
+/** Altération d'une lettre d'après l'armure : fifths > 0 dièses, < 0 bémols. */
+const keyAlter = (fifths: number, letter: string) => {
+  const i = SHARP_ORDER.indexOf(letter);
+  return fifths > 0 && i < fifths ? 1 : fifths < 0 && i >= 7 + fifths ? -1 : 0;
+};
+
+/** Altération dessinée sur un ornement (<accidental-mark>). */
+const ACCIDENTAL: Record<string, number> = { sharp: 1, natural: 0, flat: -1, "double-sharp": 2, "sharp-sharp": 2, "flat-flat": -2, "double-flat": -2 };
+
+/** Ornements réalisés en petites notes : la suite des notes jouées avant la note (0 : elle-même, 1 : voisine du dessus, -1 : du dessous). */
+const ORNAMENT_GRACES: Record<string, number[]> = {
+  "inverted-mordent": [0, 1], // note, dessus, puis la note
+  mordent: [0, -1], // note, dessous, puis la note
+  turn: [1, 0, -1], // dessus, note, dessous, puis la note
+  "inverted-turn": [-1, 0, 1],
+};
+/** Gruppetto après la note : joué juste avant la note suivante. */
+const DELAYED_TURNS: Record<string, number[]> = { "delayed-turn": [1, 0, -1, 0], "delayed-inverted-turn": [-1, 0, 1, 0] };
 
 /** Pulsation déduite d'une métrique. */
 export function pulse(beats: number, beatType: number): { count: number; quarters: number; division: Division } {
@@ -79,12 +100,15 @@ function structureOf(d: XNode[], words: string[], at: number): RawStructure[] {
   return out;
 }
 
-type RawNote = { hand: Hand; midi: number; on: number; off: number; tieStart: boolean; tieStop: boolean };
+type RawNote = { hand: Hand; midi: number; on: number; off: number; tieStart: boolean; tieStop: boolean; trill?: number };
+/** Arpège : number regroupe les notes d'un même arpège, d'une portée à l'autre. */
+type RawArpeggio = { hand: Hand; on: number; number?: string; down: boolean };
 /** Petite note, jouée juste avant l'instant on (en noires depuis le début de la mesure). */
 type RawGrace = { hand: Hand; midi: number; on: number; slot: number };
 type RawMeasure = {
   number: string;
   graces: RawGrace[];
+  arpeggios: RawArpeggio[];
   divisions: number;
   beats: number;
   beatType: number;
@@ -102,7 +126,7 @@ type RawMeasure = {
 
 function readMeasures(part: XNode): RawMeasure[] {
   const out: RawMeasure[] = [];
-  let divisions = 1, beats = 4, beatType = 4;
+  let divisions = 1, beats = 4, beatType = 4, fifths = 0;
   let openEnding: number[] | undefined;
 
   for (const measure of findAll(kids(part), "measure")) {
@@ -110,6 +134,8 @@ function readMeasures(part: XNode): RawMeasure[] {
     let cursor = 0, lastStart = 0, maxCursor = 0;
     const notes: RawNote[] = [];
     const graces: RawGrace[] = [];
+    const arpeggios: RawArpeggio[] = [];
+    const measureAlter = new Map<string, number>(); // altérations déjà posées dans la mesure, par lettre et octave
     // petites notes en attente de leur note principale, par voix
     const waiting = new Map<string, Omit<RawGrace, "on">[]>();
     const directions: RawDirection[] = [];
@@ -123,6 +149,8 @@ function readMeasures(part: XNode): RawMeasure[] {
       if (t === "attributes") {
         const a = kids(item);
         if (find(a, "divisions")) divisions = num(find(a, "divisions"), divisions);
+        const key = find(a, "key");
+        if (key && find(kids(key), "fifths")) fifths = num(find(kids(key), "fifths"));
         const time = find(a, "time");
         if (time) {
           beats = num(find(kids(time), "beats"), beats);
@@ -220,16 +248,46 @@ function readMeasures(part: XNode): RawMeasure[] {
         const pitch = find(n, "pitch");
         if (pitch && !hidden) {
           const p = kids(pitch);
-          const midi = 12 * (num(find(p, "octave")) + 1) + STEP[text(find(p, "step"))] + num(find(p, "alter"));
+          const step = text(find(p, "step"));
+          const octave = num(find(p, "octave"));
+          const midi = Math.round(12 * (octave + 1) + STEP[step] + num(find(p, "alter")));
+          if (find(p, "alter")) measureAlter.set(step + octave, num(find(p, "alter")));
           const ties = findAll(n, "tie").map((x) => attr(x, "type"));
-          notes.push({
-            hand: num(find(n, "staff"), 1) === 1 ? "D" : "G",
-            midi: Math.round(midi),
-            on,
-            off: on + dur,
-            tieStart: ties.includes("start"),
-            tieStop: ties.includes("stop"),
-          });
+          const raw: RawNote = { hand, midi, on, off: on + dur, tieStart: ties.includes("start"), tieStop: ties.includes("stop") };
+          const notations = findAll(n, "notations").flatMap((x) => kids(x));
+          // voisine dans la gamme : armure, altération déjà posée dans la mesure, ou altération dessinée sur l'ornement
+          const ornaments = notations.filter((x) => tag(x) === "ornaments").flatMap((x) => kids(x));
+          const marks = ornaments.filter((x) => tag(x) === "accidental-mark");
+          const markFor = (dir: number) => {
+            const m = marks.find((x) => attr(x, "placement") === (dir > 0 ? "above" : "below")) ?? (marks.length === 1 && !attr(marks[0], "placement") ? marks[0] : undefined);
+            return m ? ACCIDENTAL[text(m)] : undefined;
+          };
+          const neighbor = (dir: number) => {
+            if (!dir) return midi;
+            const i = LETTERS.indexOf(step) + dir;
+            const oct = octave + (i > 6 ? 1 : i < 0 ? -1 : 0);
+            const letter = LETTERS[(i + 7) % 7];
+            const alter = markFor(dir) ?? measureAlter.get(letter + oct) ?? keyAlter(fifths, letter);
+            return 12 * (oct + 1) + STEP[letter] + alter;
+          };
+          for (const o of ornaments) {
+            const name = tag(o);
+            if (name === "trill-mark") raw.trill = neighbor(1);
+            else if (ORNAMENT_GRACES[name]) {
+              const base = Math.max(-1, ...graces.filter((g) => g.hand === hand && g.on === on).map((g) => g.slot)) + 1;
+              ORNAMENT_GRACES[name].forEach((dir, k) => graces.push({ hand, midi: neighbor(dir), on, slot: base + k }));
+            } else if (DELAYED_TURNS[name]) {
+              if (!waiting.has(voice)) waiting.set(voice, []);
+              const list = waiting.get(voice)!;
+              const base = list.length ? list[list.length - 1].slot + 1 : 0;
+              DELAYED_TURNS[name].forEach((dir, k) => list.push({ hand, midi: neighbor(dir), slot: base + k }));
+            }
+          }
+          const arp = notations.find((x) => tag(x) === "arpeggiate");
+          if (arp && !arpeggios.some((x) => x.hand === hand && x.on === on)) {
+            arpeggios.push({ hand, on, number: attr(arp, "number") as string | undefined, down: attr(arp, "direction") === "down" });
+          }
+          notes.push(raw);
         }
       }
       maxCursor = Math.max(maxCursor, cursor);
@@ -242,7 +300,7 @@ function readMeasures(part: XNode): RawMeasure[] {
       divisions, beats, beatType,
       length: maxCursor,
       implicit: attr(measure, "implicit") === "yes",
-      notes, graces, directions, structure, startRepeat, endRepeat, times, endings,
+      notes, graces, arpeggios, directions, structure, startRepeat, endRepeat, times, endings,
     });
   }
   return out;
@@ -467,6 +525,7 @@ export function importMusicXml(xml: string, fileName?: string): Score {
   const beats: Beat[] = [];
   const raw: (Note & { tieStart: boolean; tieStop: boolean })[] = [];
   const rawGraces: Grace[] = [];
+  const rawArpeggios: (RawArpeggio & { t: number })[] = [];
   const rawDirections: (RawDirection & { t: number })[] = [];
   const EPS = 1e-6;
 
@@ -495,6 +554,7 @@ export function importMusicXml(xml: string, fileName?: string): Score {
     const ticksPerQuarter = TICKS_PER_BEAT / p.quarters;
     const base = firstBeat * TICKS_PER_BEAT;
     for (const d of m.directions) rawDirections.push({ ...d, t: base + Math.round((d.at + shift) * ticksPerQuarter) });
+    for (const x of m.arpeggios) rawArpeggios.push({ ...x, t: base + Math.round((x.on + shift) * ticksPerQuarter) });
     for (const g of m.graces) rawGraces.push({ hand: g.hand, midi: g.midi, t: base + Math.round((g.on + shift) * ticksPerQuarter), slot: g.slot });
     for (const n of m.notes) {
       raw.push({
@@ -504,6 +564,7 @@ export function importMusicXml(xml: string, fileName?: string): Score {
         end: base + Math.round((n.off + shift) * ticksPerQuarter),
         tieStart: n.tieStart,
         tieStop: n.tieStop,
+        ...(n.trill !== undefined ? { trill: n.trill } : {}),
       });
     }
   });
@@ -537,9 +598,10 @@ export function importMusicXml(xml: string, fileName?: string): Score {
     if (dup) {
       dup.start = Math.min(dup.start, n.start);
       dup.end = Math.max(dup.end, n.end);
+      if (n.trill !== undefined) dup.trill = n.trill;
       continue;
     }
-    notes.push({ hand: n.hand, midi: n.midi, start: n.start, end: n.end });
+    notes.push({ hand: n.hand, midi: n.midi, start: n.start, end: n.end, ...(n.trill !== undefined ? { trill: n.trill } : {}) });
   }
   const sorted = sortNotes(notes);
   // petites notes : calées comme les notes, une seule par main, instant, rang et hauteur
@@ -550,7 +612,20 @@ export function importMusicXml(xml: string, fileName?: string): Score {
     if (t >= end) continue;
     if (!graces.some((x) => x.hand === g.hand && x.t === t && x.slot === g.slot && x.midi === g.midi)) graces.push({ ...g, t });
   }
-  return { meta, beats, notes: sorted, graces: sortGraces(graces), ...directionsOf(rawDirections, sorted, beats.length), ...sectionsOf(playOrder(measures), measures.length) };
+  // arpèges : un même numéro sur les deux portées au même instant égrène les deux mains d'un seul geste
+  const arpeggios: Arpeggio[] = [];
+  for (const x of rawArpeggios) {
+    const t = q(x.t);
+    if (t >= end || arpeggios.some((y) => y.t === t && (!y.hand || y.hand === x.hand))) continue;
+    const other = x.number !== undefined && rawArpeggios.find((y) => y.hand !== x.hand && q(y.t) === t && y.number === x.number);
+    const down = x.down ? { down: true } : {};
+    if (other) {
+      for (let i = arpeggios.length - 1; i >= 0; i--) if (arpeggios[i].t === t) arpeggios.splice(i, 1);
+      arpeggios.push({ t, ...down });
+    } else arpeggios.push({ t, hand: x.hand, ...down });
+  }
+  arpeggios.sort((a, b) => a.t - b.t || (a.hand ?? "").localeCompare(b.hand ?? ""));
+  return { meta, beats, notes: sorted, graces: sortGraces(graces), arpeggios, ...directionsOf(rawDirections, sorted, beats.length), ...sectionsOf(playOrder(measures), measures.length) };
 }
 
 /**

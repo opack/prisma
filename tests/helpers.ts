@@ -18,6 +18,8 @@ export type XNote = {
 export type XMeasure = {
   notes: XNote[][]; // une liste d'événements par voix, jouées en parallèle
   time?: [number, number];
+  /** Armure : nombre de dièses (> 0) ou de bémols (< 0). */
+  key?: number;
   implicit?: boolean;
   barline?: string; // XML brut à insérer (reprises, cases)
   barlineLeft?: string;
@@ -29,7 +31,8 @@ export function musicXml(measures: XMeasure[], divisions = 12): string {
     if (m.barlineLeft) body += `<barline location="left">${m.barlineLeft}</barline>`;
     if (i === 0 || m.time) {
       const [b, t] = m.time ?? [4, 4];
-      body += `<attributes>${i === 0 ? `<divisions>${divisions}</divisions><staves>2</staves>` : ""}<time><beats>${b}</beats><beat-type>${t}</beat-type></time></attributes>`;
+      const key = m.key !== undefined ? `<key><fifths>${m.key}</fifths></key>` : "";
+      body += `<attributes>${i === 0 ? `<divisions>${divisions}</divisions><staves>2</staves>` : ""}${key}<time><beats>${b}</beats><beat-type>${t}</beat-type></time></attributes>`;
     }
     m.notes.forEach((voice, vi) => {
       if (vi) body += `<backup><duration>${m.notes[vi - 1].reduce((s, n) => s + n.dur, 0)}</duration></backup>`;

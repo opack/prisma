@@ -136,7 +136,18 @@ function cellWidths(score: Score, cell: number): (t: number) => number {
     want(e.t, e.text.length + (pin ? 3 : 2));
   }
   for (const tm of score.texts) want(tm.t, tm.text.length + 2);
-  for (const g of score.graces) want(g.t, Math.max(graceWidth(graceDigits(score.graces, "D", g.t)), graceWidth(graceDigits(score.graces, "G", g.t))) + cell);
+  // une trille (« 12~10 ») élargit sa case, suivie d'une espace
+  const trillNeed = new Map<number, number>();
+  for (const n of score.notes) {
+    if (n.trill === undefined) continue;
+    const len = `${(n.midi % 12) + 1}~${(n.trill % 12) + 1}`.length + 1;
+    trillNeed.set(n.start, Math.max(trillNeed.get(n.start) ?? cell, len));
+    want(n.start, len);
+  }
+  for (const g of score.graces) {
+    const graces = Math.max(graceWidth(graceDigits(score.graces, "D", g.t)), graceWidth(graceDigits(score.graces, "G", g.t)));
+    want(g.t, graces + (trillNeed.get(g.t) ?? cell));
+  }
   for (const p of score.pedalTexts) want(p.t, p.text.length + 2);
   for (const p of score.pedals) {
     const change = score.pedals.some((q) => q.end === p.start);

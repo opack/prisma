@@ -5,7 +5,7 @@
  * Le moteur ne connaît que des « unités » de largeur : des caractères pour le texte,
  * des millimètres pour le rendu graphique. Seules les mesures changent.
  */
-import { PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, beatStart, graceDigits, repeatOf } from "./model.ts";
+import { ARPEGGIO_DOWN, ARPEGGIO_UP, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, TRILL_MARK, beatStart, graceDigits, repeatOf } from "./model.ts";
 import type { Beat, Division, Hairpin, Hand, Note, Score } from "./model.ts";
 import { numberOf, octaveOf } from "./pitch.ts";
 
@@ -43,8 +43,10 @@ export type SystemRow = {
   octave: number;
   /** Faux pour les lignes suivantes d'un même groupe d'octave : on n'écrit le numéro qu'une fois. */
   showOctave: boolean;
-  /** Contenu de chaque ancre : "", "-", "-N" (rappel en début de système) ou "N". */
+  /** Contenu de chaque ancre : "", "-", "-N" (rappel en début de système), "N" ou "N~N" (trille). */
   cells: string[];
+  /** Pour chaque ancre, vrai si la note qui y sonne est une trille (attaque ou tenue). */
+  trill: boolean[];
   /**
    * Petites notes de chaque ancre, jouées avant son contenu : un numéro par rang (voir
    * System.graceDigits), "" pour un rang joué sur une autre ligne. Vide sans petite note.
@@ -66,7 +68,7 @@ export type Mark = {
   anchor?: number;
   column?: number;
   text: string;
-  kind: "times" | "text" | "marker" | "fermata";
+  kind: "times" | "text" | "marker" | "fermata" | "arpeggio";
   /** Début de section : sa lettre. */
   label?: string;
 };
@@ -75,7 +77,7 @@ export type Mark = {
 export const markColumn = (sys: { anchors: number[] }, m: Mark) => (m.anchor !== undefined ? sys.anchors[m.anchor] : m.column!);
 
 /** Indication d'une voix (nuance ou texte), sur une ancre. */
-export type VoiceMark = { anchor: number; text: string; kind: "dynamic" | "text" };
+export type VoiceMark = { anchor: number; text: string; kind: "dynamic" | "text" | "arpeggio" };
 
 /** Portion d'un soufflet visible dans un système. */
 export type HairpinSpan = {
@@ -120,6 +122,8 @@ export type System = {
   endsSection: boolean;
   voices: Record<Hand, Voice>;
   pedal: PedalLine;
+  /** Arpèges du système, sur leur ancre ; hand absente : les deux mains. */
+  arpeggios: { anchor: number; hand?: Hand; down: boolean }[];
   /** Pour chaque main et chaque ancre, le nombre de chiffres de chaque rang de petites notes. */
   graceDigits: Record<Hand, number[][]>;
   /** Largeur naturelle du système, en unités. */
@@ -182,6 +186,7 @@ function beatGrids(score: Score): BeatGrid[] {
   for (const m of score.texts) add(m.t, false);
   for (const t of score.fermatas) add(t, false);
   for (const g of score.graces) add(g.t, false);
+  for (const x of score.arpeggios) add(x.t, false);
   for (const e of score.expressions) add(e.t, false);
   for (const h of score.hairpins) {
     add(h.start, false);
@@ -333,7 +338,7 @@ function groups(notes: Note[], t0: number): Group[] {
 
 function cell(lane: Lane, t: number, t0: number): string {
   const attack = lane.notes.find((n) => n.start === t);
-  if (attack) return String(numberOf(attack.midi));
+  if (attack) return String(numberOf(attack.midi)) + (attack.trill !== undefined ? TRILL_MARK + numberOf(attack.trill) : "");
   const held = lane.notes.find((n) => n.start < t && n.end > t);
   if (!held) return "";
   return t === t0 ? "-" + numberOf(held.midi) : "-";
@@ -417,6 +422,7 @@ export function layout(score: Score, m: Metrics): System[] {
           octave: g.octave,
           showOctave: i === 0,
           cells: anchorT.map((t) => cell(lane, t, t0)),
+          trill: anchorT.map((t) => lane.notes.some((n) => n.trill !== undefined && n.start <= t && n.end > t)),
           graces: placed.get(lane) ?? anchorT.map(() => []),
           // décalage pour centrer chaque bloc dans son couloir (rendu graphique, option)
           center: anchors.map((ci) => {
@@ -467,6 +473,13 @@ export function layout(score: Score, m: Metrics): System[] {
       const a = anchors.findIndex((ci) => (columns[ci] as { t: number }).t === t);
       if (a >= 0) marks.push({ anchor: a, text: "^", kind: "fermata" });
     }
+    const arpeggios: System["arpeggios"] = [];
+    for (const x of score.arpeggios) {
+      const a = anchorT.indexOf(x.t);
+      if (a < 0) continue;
+      arpeggios.push({ anchor: a, ...(x.hand ? { hand: x.hand } : {}), down: !!x.down });
+      if (!x.hand) marks.push({ anchor: a, text: x.down ? ARPEGGIO_DOWN : ARPEGGIO_UP, kind: "arpeggio" });
+    }
     for (const tm of score.texts) {
       const a = anchors.findIndex((ci) => (columns[ci] as { t: number }).t === tm.t);
       if (a >= 0) marks.push({ anchor: a, text: tm.text, kind: "text" });
@@ -484,8 +497,14 @@ export function layout(score: Score, m: Metrics): System[] {
     const voice = (hand: Hand): Voice => ({
       marks: score.expressions
         .filter((e) => e.hand === hand)
-        .map((e) => ({ anchor: anchorAt(e.t), text: e.text, kind: e.kind }))
-        .filter((m) => m.anchor >= 0),
+        .map((e): VoiceMark => ({ anchor: anchorAt(e.t), text: e.text, kind: e.kind }))
+        .concat(
+          score.arpeggios
+            .filter((x) => x.hand === hand)
+            .map((x) => ({ anchor: anchorAt(x.t), text: x.down ? ARPEGGIO_DOWN : ARPEGGIO_UP, kind: "arpeggio" as const })),
+        )
+        .filter((m) => m.anchor >= 0)
+        .sort((x, y) => x.anchor - y.anchor),
       hairpins: score.hairpins
         .filter((h) => h.hand === hand && h.start < t1 && h.end > t0 && h.end > h.start)
         .map((h) => {
@@ -542,6 +561,7 @@ export function layout(score: Score, m: Metrics): System[] {
       endsSection: score.markers.some((mk) => mk.barIndex > 0 && lastAnchorOfBar(mk.barIndex - 1) === anchors.length - 1),
       voices: { D: voice("D"), G: voice("G") },
       pedal: { signs, spans, texts: pedalTexts },
+      arpeggios,
       graceDigits: { D: digits("D"), G: digits("G") },
       width,
     };

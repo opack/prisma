@@ -5,8 +5,8 @@
  * de comptage. Voir FORMAT.md pour la grammaire complète.
  */
 import { YmnError, parseFrontmatter } from "./frontmatter.ts";
-import { FERMATA, GRACE_MARK, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isPedalText, joinsText, sortGraces, sortNotes } from "./model.ts";
-import type { Beat, Division, Expression, Grace, Hairpin, Hand, Marker, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
+import { ARPEGGIO_DOWN, FERMATA, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isPedalText, joinsText, sortGraces, sortNotes } from "./model.ts";
+import type { Arpeggio, Beat, Division, Expression, Grace, Hairpin, Hand, Marker, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
 import { midiOf, parseOctaveLabel } from "./pitch.ts";
 
 /** Un temps de la règle de comptage, et la barre qui le termine. */
@@ -138,6 +138,13 @@ export function parseYmn(text: string): Score {
   };
   const texts: TextMark[] = [];
   const fermatas: number[] = [];
+  const arpeggios: Arpeggio[] = [];
+  /** Arpège posé une seule fois par instant et par main (ou pour les deux mains). */
+  const addArpeggio = (x: Arpeggio, line: number, col: number) => {
+    const clash = arpeggios.find((y) => y.t === x.t && (!y.hand || !x.hand || y.hand === x.hand));
+    if (clash) throw new YmnError("un seul arpège par accord : sur la ligne @ d'une main, ou sur celle du haut pour les deux mains", line, col);
+    arpeggios.push(x);
+  };
   const expressions: Expression[] = [];
   const hairpins: Hairpin[] = [];
   const pedals: Pedal[] = [];
@@ -233,6 +240,8 @@ export function parseYmn(text: string): Score {
         if (times) timesMarks.push({ bar: a.barIndex, times: Number(times[1]), line: li + 1, col: tok.col + 1 });
         else if (tok.text === FERMATA) {
           if (!fermatas.includes(a.t)) fermatas.push(a.t);
+        } else if (isArpeggioSign(tok.text)) {
+          addArpeggio({ t: a.t, ...(tok.text === ARPEGGIO_DOWN ? { down: true } : {}) }, li + 1, tok.col + 1);
         } else texts.push({ t: a.t, text: tok.text });
       }
     }
@@ -259,7 +268,9 @@ export function parseYmn(text: string): Score {
           : anchors.findIndex((x) => x.from === tok.col);
         if (ai < 0) throw new YmnError(`« ${tok.text} » doit commencer exactement sur une case de la règle de comptage`, R, tok.col + 1);
         const a = anchors[ai];
-        if (isPedalSign(tok.text) || isPedalText(tok.text)) {
+        if (isArpeggioSign(tok.text)) {
+          addArpeggio({ t: a.t, hand, ...(tok.text === ARPEGGIO_DOWN ? { down: true } : {}) }, R, tok.col + 1);
+        } else if (isPedalSign(tok.text) || isPedalText(tok.text)) {
           if (hand === "D") throw new YmnError(`« ${tok.text} » : la pédale se note sur une ligne @ sous la main gauche`, R, tok.col + 1);
           if (isPedalText(tok.text)) pedalTexts.push({ t: a.t, text: tok.text });
           else pedalSigns.push({ t: a.t, text: tok.text, line: R, col: tok.col + 1 });
@@ -344,15 +355,21 @@ export function parseYmn(text: string): Score {
         }
         const c = raw.trim();
         const col = a.from + 1 + (raw.length - raw.trimStart().length);
-        const m = c.match(/^(-?)(\d{0,2})$/);
-        if (!m || (m[2] && (Number(m[2]) < 1 || Number(m[2]) > 12)) || (!m[1] && !m[2] && c)) {
-          throw new YmnError(`case invalide « ${c} » : attendu un numéro de 1 à 12, « - », « -N », des petites notes « N' » ou une case vide`, R, col);
+        const m = c.match(/^(-?)(\d{0,2})(?:~(\d{1,2}))?$/);
+        const bad = (k?: string) => !!k && (Number(k) < 1 || Number(k) > 12);
+        if (!m || bad(m[2]) || bad(m[3]) || (!m[1] && !m[2] && c) || (m[3] && (m[1] || !m[2]))) {
+          throw new YmnError(
+            `case invalide « ${c} » : attendu un numéro de 1 à 12, « - », « -N », une trille « N${TRILL_MARK}N », des petites notes « N' » ou une case vide`,
+            R, col,
+          );
         }
-        const [, dash, digits] = m;
+        const [, dash, digits, aux] = m;
         if (!c) return close(a.t);
         if (!dash) {
           close(a.t);
-          open = { hand, midi: midiOf(octave, Number(digits)), start: a.t, end: t1 };
+          const midi = midiOf(octave, Number(digits));
+          if (aux && Number(aux) === Number(digits)) throw new YmnError("une trille alterne avec une autre note", R, col);
+          open = { hand, midi, start: a.t, end: t1, ...(aux ? { trill: trillAux(midi, Number(aux)) } : {}) };
           notes.push(open);
           return;
         }
@@ -457,6 +474,7 @@ export function parseYmn(text: string): Score {
     pedals: pedals.filter((p) => p.end > p.start),
     pedalTexts: pedalTexts.sort((a, b) => a.t - b.t),
     markers: markers.map(({ label, barIndex }) => ({ label, barIndex })),
+    arpeggios: arpeggios.sort((a, b) => a.t - b.t || (a.hand ?? "").localeCompare(b.hand ?? "")),
     fermatas: fermatas.sort((a, b) => a - b),
     order,
   };

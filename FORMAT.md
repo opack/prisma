@@ -58,6 +58,7 @@ Sur les lignes de notes :
 | `-` | La note continue. |
 | `-7` | En début de système : le 7 commencé plus tôt continue. |
 | vide | Rien ne sonne sur cette ligne. |
+| `5~7` | Trille : le 5 alterne avec le 7 pendant toute sa durée (voir « Ornements »). |
 | `3'` | Petite note, devant le contenu de la case (voir « Petites notes »). |
 
 Une note s'arrête au premier ancrage vide de sa ligne. Une note répétée se réécrit.
@@ -79,6 +80,16 @@ m1 |1        |2  |
 - La gravure les dessine en petit, en exposant et en gris foncé, en tête de case.
 
 Une seule sorte de petite note : barrée ou non, c'est au pianiste de la placer, comme sur une partition classique.
+
+### Ornements
+
+Un signe d'ornement classique ne dit pas quelles notes jouer : il faut l'armure, ou une petite altération dessinée sur le signe, pour connaître la note voisine. Ici, les notes sont écrites en clair.
+
+- **Trille** : la note, `~`, puis sa voisine, dans la case de la note : `5~7` alterne 5 et 7 pendant toute la durée de la note, prolongée par des `-` comme d'habitude. La voisine est la plus proche qui porte ce numéro : `12~1` alterne le si et le do juste au-dessus. La gravure écrit la voisine en petit après la note, puis un trait ondulé sur toute sa durée.
+- **Mordant et gruppetto** : écrits en petites notes, puisque leurs notes sont fixées par la convention. Mordant sur 5 avec la voisine du dessus : `5'7'5` ; avec celle du dessous : `5'4'5`. Gruppetto sur 5 : `7'5'4'5` (dessus, note, dessous, note). Un gruppetto placé après une note se joue juste avant la note suivante : ses petites notes vont dans la case de celle-ci.
+- **Arpège** : voir « Ligne d'indications `@` » et « Nuances et soufflets ». Le signe `/` (`\` de l'aigu au grave) se pose sur la case de l'accord ; les notes égrenées restent tenues.
+
+L'import calcule les voisines d'après l'armure, les altérations déjà posées dans la mesure et celles dessinées sur l'ornement.
 
 ### Les lignes
 
@@ -111,13 +122,14 @@ Une reprise reste simple et locale : elle ne passe jamais le début d'une sectio
 
 ## Ligne d'indications `@`
 
-Une ou plusieurs lignes facultatives, **au-dessus** de la règle de comptage, qui commencent par `@`. Chaque indication est alignée sur une colonne de la règle (le lecteur signale une erreur sinon), et peut déborder sur les colonnes suivantes. Deux mots séparés par une seule espace forment un seul texte (`a tempo`, `più f`, `Ped. simile`) : deux indications distinctes sont séparées par au moins deux espaces. Seuls les signes restent à part même à une espace de leur voisin : un soufflet, un signe de pédale placé après un texte, un début de section `*A`, un point d'orgue `^`. Les `|` et `:` recopiés pour se repérer sont ignorés.
+Une ou plusieurs lignes facultatives, **au-dessus** de la règle de comptage, qui commencent par `@`. Chaque indication est alignée sur une colonne de la règle (le lecteur signale une erreur sinon), et peut déborder sur les colonnes suivantes. Deux mots séparés par une seule espace forment un seul texte (`a tempo`, `più f`, `Ped. simile`) : deux indications distinctes sont séparées par au moins deux espaces. Seuls les signes restent à part même à une espace de leur voisin : un soufflet, un signe de pédale placé après un texte, un début de section `*A`, un point d'orgue `^`, un arpège `/`. Les `|` et `:` recopiés pour se repérer sont ignorés.
 
 | Indication | Placée sur | Sens |
 |---|---|---|
 | `3×` (ou `3x`) | une case de la mesure qui se termine par `:||` | Le passage se joue 3 fois. |
 | `*A` | le **dernier** `|` de la barre qui ouvre la mesure | Début de la section A (voir « Sections et ordre de jeu »). |
 | `^` | une case | Point d'orgue : la note, l'accord ou le silence qui commence là se tient plus longtemps que sa valeur, à l'appréciation du pianiste. Gravé 𝄐 au-dessus de la case. |
+| `/` | une case | Arpège des deux mains, d'un seul geste : de la note la plus grave de la main gauche à la plus aiguë de la main droite. `\` : de l'aigu au grave. Gravé comme une vaguelette verticale devant l'accord. |
 | autre texte | une case | Indication pour tout le système : `rit.`, `a tempo`… (les nuances d'une main vont sous ses lignes, voir plus bas) |
 
 Pour la première mesure d'un système, `*A` se place sur le `|` de la colonne de gauche (ou sur celui de `|:` quand le système commence par une reprise).
@@ -172,6 +184,7 @@ Une ou plusieurs lignes `@` placées **sous les lignes d'une main** portent ses 
 | `ppp` `pp` `p` `mp` `mf` `f` `ff` `fff` `sf` `sfz` `sfp` `fp` `fz` `rfz` | Nuance, gravée en gras italique. Entre parenthèses (`(mp)`), c'est une nuance ajoutée par l'éditeur. |
 | `<----` | Crescendo, de sa première case à la case qui contient son dernier caractère. |
 | `>----` | Decrescendo, de même. |
+| `/` | Arpège de l'accord de cette main, du grave à l'aigu (`\` : de l'aigu au grave). |
 | autre texte | Indication pour cette main : `cresc.`, `dim.`, `dolce`, `sempre legato`, `più f`… |
 
 Un soufflet est toujours lu à part : une seule espace suffit entre lui et sa voisine. Il peut commencer dans la case d'une nuance, juste après elle : `p <----` part de la case du `p`. Il peut traverser les barres (avec des `-` ou des `|`). Coupé par un changement de système, il se réécrit au début du système suivant et se lit comme un seul soufflet ; la gravure le laisse ouvert au point de coupure.
@@ -215,7 +228,7 @@ m1 |1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||
 
 ## Hors format pour l'instant
 
-Ornements, liaisons d'expression, doigtés, articulations. Voir ROADMAP.md.
+Liaisons d'expression, doigtés, articulations. Voir ROADMAP.md.
 
 ## Outil en ligne de commande
 

@@ -32,7 +32,30 @@ export type Note = {
   /** Début et fin en ticks, fin exclue. */
   start: number;
   end: number;
+  /** Trille : hauteur MIDI de la note voisine (celle du dessus), alternée pendant toute la note. */
+  trill?: number;
 };
+
+/** Trille dans une case : la note, « ~ », puis sa voisine (« 5~7 »). */
+export const TRILL_MARK = "~";
+
+/** Voisine d'une trille notée par son numéro : la plus proche qui le porte, au-dessus ou au-dessous. */
+export function trillAux(midi: number, number: number): number {
+  const up = ((number - 1 - (midi % 12) + 12) % 12) || 12;
+  return up <= 6 ? midi + up : midi + up - 12;
+}
+
+/**
+ * Arpège : l'accord qui commence à l'instant t s'égrène, du grave à l'aigu (down : de
+ * l'aigu au grave). hand : la main dont l'accord s'égrène ; absente, les deux mains, de
+ * la basse de la main gauche au sommet de la main droite.
+ */
+export type Arpeggio = { t: number; hand?: Hand; down?: boolean };
+
+/** Arpège sur une ligne @ : « / » du grave à l'aigu, « \ » de l'aigu au grave. */
+export const ARPEGGIO_UP = "/";
+export const ARPEGGIO_DOWN = "\\";
+export const isArpeggioSign = (t: string) => t === ARPEGGIO_UP || t === ARPEGGIO_DOWN;
 
 /**
  * Petite note : jouée très vite juste avant l'instant t, sans compter dans le temps.
@@ -116,14 +139,15 @@ export const MARKER_SIGN = /^\*([A-Z])$/;
 export const isStructureSign = (t: string) => MARKER_SIGN.test(t);
 
 /** Signe toujours lu à part sur une ligne @ : soufflet, signe de pédale, début de section. */
-export const isSign = (t: string) => isHairpin(t) || isPedalSign(t) || isStructureSign(t) || t === FERMATA;
+export const isSign = (t: string) => isHairpin(t) || isPedalSign(t) || isStructureSign(t) || t === FERMATA || isArpeggioSign(t);
 
 /**
  * Deux mots d'une ligne @ séparés par une seule espace forment un seul texte (« a tempo »,
  * « più f », « Ped. simile »), sauf si le second est un signe, ou si le premier est un
  * soufflet ou un début de section.
  */
-export const joinsText = (prev: string, next: string) => !isSign(next) && !isHairpin(prev) && !isStructureSign(prev) && prev !== FERMATA;
+export const joinsText = (prev: string, next: string) =>
+  !isSign(next) && !isHairpin(prev) && !isStructureSign(prev) && prev !== FERMATA && !isArpeggioSign(prev);
 
 export type Score = {
   meta: Meta;
@@ -140,6 +164,8 @@ export type Score = {
   /** Consignes de pédale (« Ped. simile »…), sur la ligne de pédale. */
   pedalTexts: TextMark[];
   markers: Marker[];
+  /** Arpèges, par instant. */
+  arpeggios: Arpeggio[];
   /** Points d'orgue : instants où l'on tient la note, l'accord ou le silence plus longtemps. */
   fermatas: number[];
   /** Ordre de jeu des sections, par leur lettre ; vide : le morceau se joue d'un bout à l'autre. */

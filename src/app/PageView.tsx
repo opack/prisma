@@ -1,6 +1,6 @@
-import { octaveOffset } from "../core/index.ts";
+import { TRILL_MARK, octaveOffset } from "../core/index.ts";
 import type { Meta, SystemRow, Voice } from "../core/index.ts";
-import { G, PAGE, graceExtra, graceSlotW } from "./engrave.ts";
+import { G, PAGE, graceExtra, graceSlotW, leadExtra } from "./engrave.ts";
 import type { Page, PlacedSystem } from "./engrave.ts";
 import type { OctavePosition, OctaveStyle, RenderOptions } from "./options.ts";
 
@@ -140,10 +140,32 @@ function Row({ ps, row, y, centered }: { ps: PlacedSystem; row: SystemRow; y: nu
         // option « notes centrées » : le bloc de notes est centré dans son couloir
         const dy = centered ? row.center[a] * G.rowH : 0;
         const ci = sys.anchors[a];
-        // la note vient après les petites notes de sa case
-        const extra = graceExtra(sys, a);
+        // la note vient après les petites notes et l'arpège de sa case
+        const extra = leadExtra(sys, a);
         const x = xs[ci] + extra;
         const w = ws[ci] - extra;
+        const mid = y + dy + G.rowH / 2;
+        // trille : la note, sa voisine en petit, puis un trait ondulé sur toute sa durée
+        if (row.trill[a]) {
+          if (c === "-") return <path key={a} d={wave(xs[ci], x + w, mid)} {...WAVE} />;
+          const [main, aux] = c.startsWith("-") ? ["–" + c.slice(1), ""] : c.split(TRILL_MARK);
+          const mw = main.length * G.noteDigit;
+          const auxX = x + 0.5 + mw + 0.35;
+          const end = auxX + (aux ? aux.length * 1.25 + 0.3 : 0);
+          return (
+            <g key={a}>
+              <text x={x + 0.5} y={base + dy} fontSize={c.startsWith("-") ? 3.1 : 3.3} fontWeight={c.startsWith("-") ? 400 : 600} fill={c.startsWith("-") ? GREY : INK}>
+                {main}
+              </text>
+              {aux && (
+                <text x={auxX} y={base + dy - 1.05} fontSize={2.3} fontWeight={600} fill={GRACE}>
+                  {aux}
+                </text>
+              )}
+              {end < x + w && <path d={wave(end, x + w, mid)} {...WAVE} />}
+            </g>
+          );
+        }
         if (c === "-") {
           return <line key={a} x1={x + w * 0.22} x2={x + w * 0.62} y1={y + dy + G.rowH / 2} y2={y + dy + G.rowH / 2} stroke={INK} strokeWidth={0.32} />;
         }
@@ -163,6 +185,31 @@ function Row({ ps, row, y, centered }: { ps: PlacedSystem; row: SystemRow; y: nu
     </g>
   );
 }
+
+/** Trait ondulé horizontal (trille) de x1 à x2, centré sur y. */
+function wave(x1: number, x2: number, y: number): string {
+  const p = 1.3, amp = 0.35;
+  let d = `M ${x1} ${y}`;
+  for (let x = x1, k = 0; x < x2 - 0.01; x += p / 2, k++) {
+    const nx = Math.min(x + p / 2, x2);
+    d += ` Q ${(x + nx) / 2} ${y + (k % 2 ? amp : -amp) * 2} ${nx} ${y}`;
+  }
+  return d;
+}
+
+/** Vaguelette verticale (arpège) de y1 à y2, centrée sur x ; down : flèche vers le bas. */
+function vwave(x: number, y1: number, y2: number, down: boolean): string {
+  const p = 1.3, amp = 0.35;
+  let d = `M ${x} ${y1}`;
+  for (let y = y1, k = 0; y < y2 - 0.01; y += p / 2, k++) {
+    const ny = Math.min(y + p / 2, y2);
+    d += ` Q ${x + (k % 2 ? amp : -amp) * 2} ${(y + ny) / 2} ${x} ${ny}`;
+  }
+  if (down) d += ` M ${x - 0.7} ${y2 - 0.9} L ${x} ${y2} L ${x + 0.7} ${y2 - 0.9}`;
+  return d;
+}
+
+const WAVE = { fill: "none", stroke: INK, strokeWidth: 0.3, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
 
 type BarCol = Extract<PlacedSystem["sys"]["columns"][number], { kind: "barSep" }>;
 
@@ -256,7 +303,7 @@ function Marks({ ps }: { ps: PlacedSystem }) {
       {sys.marks
         .filter((m) => m.kind === "fermata")
         .map((m, i) => (
-          <Fermata key={"f" + i} cx={ax(m.anchor!) + graceExtra(sys, m.anchor!) + 1.4} y={top} />
+          <Fermata key={"f" + i} cx={ax(m.anchor!) + leadExtra(sys, m.anchor!) + 1.4} y={top} />
         ))}
       {sys.marks
         .filter((m) => m.kind === "times")
@@ -314,7 +361,8 @@ function VoiceBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: nu
         );
       })}
       {voice.marks.map((m, i) =>
-        m.kind === "dynamic" ? (
+        // l'arpège se dessine devant l'accord (voir SystemView), pas dans cette bande
+        m.kind === "arpeggio" ? null : m.kind === "dynamic" ? (
           <text key={"m" + i} x={ax(m.anchor) + 0.9} y={base} fontFamily={DYNAMIC_FONT} fontSize={3.6} fontWeight={700} fontStyle="italic" fill={INK} {...halo}>
             {m.text}
           </text>
@@ -448,6 +496,17 @@ function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions 
       {sys.left.map((r, i) => (
         <Row key={"g" + i} ps={ps} row={r} y={lhTop + i * G.rowH} centered={options.notePosition === "center"} />
       ))}
+      {/* arpèges : une vaguelette devant l'accord, de sa note la plus grave à la plus aiguë */}
+      {sys.arpeggios.map((arp, i) => {
+        const attack = (r: SystemRow) => !!r.cells[arp.anchor] && !r.cells[arp.anchor].startsWith("-");
+        const ys = [
+          ...(arp.hand !== "G" ? sys.right.flatMap((r, k) => (attack(r) ? [rhTop + k * G.rowH] : [])) : []),
+          ...(arp.hand !== "D" ? sys.left.flatMap((r, k) => (attack(r) ? [lhTop + k * G.rowH] : [])) : []),
+        ];
+        if (!ys.length) return null;
+        const x = xs[sys.anchors[arp.anchor]] + graceExtra(sys, arp.anchor) + G.arpeggioW / 2 + 0.2;
+        return <path key={"arp" + i} d={vwave(x, Math.min(...ys) + 0.5, Math.max(...ys) + G.rowH - 0.5, arp.down)} {...WAVE} />;
+      })}
 
       {/* séparations verticales : temps fins, mesures épaisses, reprises */}
       <line x1={left} x2={left} y1={top} y2={bottom} stroke={INK} strokeWidth={0.45} />
