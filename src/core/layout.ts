@@ -98,6 +98,8 @@ export type Voice = { marks: VoiceMark[]; hairpins: HairpinSpan[] };
  */
 export type PedalLine = {
   signs: { anchor: number; text: string }[];
+  /** Consignes de pédale (« Ped. simile »…). */
+  texts: { anchor: number; text: string }[];
   spans: { fromAnchor: number; toAnchor: number; opens: boolean; closes: boolean; changeStart: boolean; changeEnd: boolean }[];
 };
 
@@ -525,6 +527,7 @@ export function layout(score: Score, m: Metrics): System[] {
       }
     }
     signs.sort((a, b) => a.anchor - b.anchor);
+    const pedalTexts = score.pedalTexts.map((p) => ({ anchor: anchorAt(p.t), text: p.text })).filter((p) => p.anchor >= 0);
 
     return {
       bar: firstBeat.bar,
@@ -538,7 +541,7 @@ export function layout(score: Score, m: Metrics): System[] {
       section: section?.label,
       endsSection: score.markers.some((mk) => mk.barIndex > 0 && lastAnchorOfBar(mk.barIndex - 1) === anchors.length - 1),
       voices: { D: voice("D"), G: voice("G") },
-      pedal: { signs, spans },
+      pedal: { signs, spans, texts: pedalTexts },
       graceDigits: { D: digits("D"), G: digits("G") },
       width,
     };

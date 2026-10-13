@@ -560,9 +560,9 @@ describe("cases de largeur libre", () => {
 
   it("garde « Ped. simile » comme un seul texte", () => {
     const s = parseYmn("m1 |1  |2  ||\n0  |1  |   ||\n---\n-1 |1  |   ||\n@   Ped. simile\n");
-    expect(s.expressions.map((e) => e.text)).toEqual(["Ped. simile"]);
+    expect(s.pedalTexts.map((e) => e.text)).toEqual(["Ped. simile"]);
     expect(s.pedals).toEqual([]);
-    expect(parseYmn(writeYmn(s)).expressions.map((e) => e.text)).toEqual(["Ped. simile"]);
+    expect(parseYmn(writeYmn(s)).pedalTexts.map((e) => e.text)).toEqual(["Ped. simile"]);
   });
 
   it("cale un septolet sur 8 cases plutôt que sur 48", () => {
@@ -689,5 +689,30 @@ describe("petites notes", () => {
     expect(gk(s)).toBe("D62@0#0 D64@0#1 D71@2#0 D67@2#0");
     expect(notesKey(s)).toBe("D60@0-5760 G48@0-11520 D72@5760-11520");
     expect(gk(roundTrip(s).back)).toBe(gk(s));
+  });
+});
+
+describe("consignes de pédale", () => {
+  const ruler = "m1 |1  |2  |3  ||1  |2  |3  ||";
+  const piece = (rh: string, lh: string) => [ruler, "0  |1  |   |   ||3  |   |   ||", rh, "---", "-1 |1  |-  |-  ||8  |-  |-  ||", lh, ""].join("\n");
+
+  it("lit « Ped. simile » comme une consigne de pédale, et l'écrit sur la ligne de pédale", () => {
+    const s = parseYmn(piece("", "@   Ped.         *   Ped. simile").replace("\n\n---", "\n---"));
+    expect(s.pedalTexts).toEqual([{ t: 4 * T, text: "Ped. simile" }]);
+    expect(s.expressions).toEqual([]);
+    const text = writeYmn(s);
+    expect(text.trimEnd().split("\n").pop()).toMatch(/^@ +Ped\. +\* +Ped\. simile$/);
+    expect(parseYmn(text).pedalTexts).toEqual(s.pedalTexts);
+  });
+
+  it("refuse une consigne de pédale sous la main droite", () => {
+    expect(() => parseYmn(piece("@   Ped. simile", ""))).toThrow(/sous la main gauche/);
+  });
+
+  it("importe « Ped. simile » du MusicXML sur la ligne de pédale, même écrit sur la portée du haut", () => {
+    const dir = `<direction><direction-type><words>Ped. simile</words></direction-type><staff>1</staff></direction>`;
+    const s = importMusicXml(musicXml([{ notes: [[{ midi: [C4], dur: 4 * q, before: dir }]] }]));
+    expect(s.pedalTexts).toEqual([{ t: 0, text: "Ped. simile" }]);
+    expect(s.expressions).toEqual([]);
   });
 });

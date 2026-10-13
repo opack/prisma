@@ -98,6 +98,8 @@ export const PEDAL_DOWN = "Ped.";
 export const PEDAL_UP = "*";
 export const PEDAL_CHANGE = "*Ped.";
 export const isPedalSign = (t: string) => t === PEDAL_DOWN || t === PEDAL_UP || t === PEDAL_CHANGE;
+/** Consigne de pédale (« Ped. simile », « Ped. sempre ») : un texte, écrit sur la ligne de pédale. */
+export const isPedalText = (t: string) => /^Ped\.\s+\S/.test(t);
 
 /**
  * Début de section (« *A ») : une lettre posée au début d'une mesure. La section va
@@ -135,6 +137,8 @@ export type Score = {
   expressions: Expression[];
   hairpins: Hairpin[];
   pedals: Pedal[];
+  /** Consignes de pédale (« Ped. simile »…), sur la ligne de pédale. */
+  pedalTexts: TextMark[];
   markers: Marker[];
   /** Points d'orgue : instants où l'on tient la note, l'accord ou le silence plus longtemps. */
   fermatas: number[];

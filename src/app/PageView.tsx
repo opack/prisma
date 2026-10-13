@@ -361,6 +361,12 @@ function PedalBand({ ps, top }: { ps: PlacedSystem; top: number }) {
         Ped.
       </text>
       <path d={parts.join(" ")} fill="none" stroke={INK} strokeWidth={0.3} strokeLinejoin="round" />
+      {/* consignes (« Ped. simile ») : sur la ligne de pédale, après un éventuel crochet */}
+      {sys.pedal.texts.map((p, i) => (
+        <text key={i} x={px(p.anchor) + 0.8} y={y} fontSize={2.8} fontStyle="italic" fill={INK}>
+          {p.text}
+        </text>
+      ))}
     </g>
   );
 }

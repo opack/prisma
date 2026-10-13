@@ -198,6 +198,8 @@ La pédale de résonance se note sur une ligne `@` **sous la main gauche**, avec
 | `*` | La relâcher. |
 | `*Ped.` | La changer : relâcher et enfoncer au même instant. |
 
+Une consigne qui commence par `Ped.` (`Ped. simile` : « continue à pédaler de même », `Ped. sempre`…) se place sur la même ligne : c'est un texte, pas un signe, qui se lit dans la continuité du trait de pédale.
+
 Une pédale enfoncée le reste d'un système au suivant sans rien réécrire. Sans `*`, elle tient jusqu'à la fin du morceau. La remise en page écrit la pédale sur sa propre ligne, tout en bas du système ; la gravure la trace comme un trait sous le système, dont la longueur montre exactement ce qui est tenu, avec une pointe à chaque changement.
 
 ```

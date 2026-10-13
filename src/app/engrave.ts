@@ -67,7 +67,7 @@ export const bands = (s: System) => ({
   textBand: s.marks.some((m) => m.kind === "text") ? G.markH : 0,
   structBand: s.marks.some((m) => m.kind === "times" || m.kind === "marker" || m.kind === "fermata") ? G.markH : 0,
   voiceBand: { D: voiceH(s.voices.D), G: voiceH(s.voices.G) },
-  pedalBand: s.pedal.spans.length ? G.pedalH : 0,
+  pedalBand: s.pedal.spans.length || s.pedal.texts.length ? G.pedalH : 0,
 });
 
 export const systemHeight = (s: System) => {

@@ -113,7 +113,7 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
     ...rows(sys.left),
     ...voiceLines(sys.voices.G),
     // la pédale sur sa propre ligne @, tout en bas
-    ...stackLines(sys.pedal.signs.map((p) => ({ col: anchorCol[p.anchor], text: p.text }))),
+    ...stackLines([...sys.pedal.signs, ...sys.pedal.texts].map((p) => ({ col: anchorCol[p.anchor], text: p.text }))),
   ];
 }
 
@@ -137,6 +137,7 @@ function cellWidths(score: Score, cell: number): (t: number) => number {
   }
   for (const tm of score.texts) want(tm.t, tm.text.length + 2);
   for (const g of score.graces) want(g.t, Math.max(graceWidth(graceDigits(score.graces, "D", g.t)), graceWidth(graceDigits(score.graces, "G", g.t))) + cell);
+  for (const p of score.pedalTexts) want(p.t, p.text.length + 2);
   for (const p of score.pedals) {
     const change = score.pedals.some((q) => q.end === p.start);
     want(p.start, (change ? "*Ped." : "Ped.").length + 1);

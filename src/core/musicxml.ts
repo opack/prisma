@@ -13,7 +13,7 @@
  *   (rit., a tempo…) vont au-dessus du système. Pédale de résonance.
  */
 import { XMLParser } from "fast-xml-parser";
-import { TICKS_PER_BEAT, isDynamic, sortGraces, sortNotes } from "./model.ts";
+import { TICKS_PER_BEAT, isDynamic, isPedalText, sortGraces, sortNotes } from "./model.ts";
 import type { Beat, Division, Expression, Grace, Hairpin, Hand, Marker, Meta, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
 
 type XNode = Record<string, any>;
@@ -575,6 +575,7 @@ function directionsOf(dirs: (RawDirection & { t: number })[], notes: Note[], bea
     pedal = undefined;
   };
   const fermatas: number[] = [];
+  const pedalTexts: TextMark[] = [];
   const seen = new Set<string>();
   for (const d of [...dirs].sort((a, b) => a.t - b.t)) {
     const t = Math.min(snap(d.t), end);
@@ -610,6 +611,9 @@ function directionsOf(dirs: (RawDirection & { t: number })[], notes: Note[], bea
     seen.add(key);
     if (d.kind === "words" && SYSTEM_WORDS.test(d.text)) {
       if (!texts.some((x) => x.t === t && x.text === d.text)) texts.push({ t, text: d.text });
+    } else if (d.kind === "words" && isPedalText(d.text)) {
+      // consigne de pédale : sur la ligne de pédale, quelle que soit la portée qui la porte
+      if (!pedalTexts.some((x) => x.t === t && x.text === d.text)) pedalTexts.push({ t, text: d.text });
     } else {
       const prev = expressions[expressions.length - 1];
       // parenthèses écrites à part autour d'une nuance (« ( », « mp », « ) ») : une seule nuance « (mp) »
@@ -625,5 +629,5 @@ function directionsOf(dirs: (RawDirection & { t: number })[], notes: Note[], bea
   for (const w of open) hairpins.push({ hand: w.hand, kind: w.kind, start: w.start, end: w.end });
   hairpins.sort((a, b) => a.start - b.start);
   if (pedal) pedalUp(end);
-  return { texts, expressions, hairpins, pedals, fermatas };
+  return { texts, expressions, hairpins, pedals, pedalTexts, fermatas };
 }

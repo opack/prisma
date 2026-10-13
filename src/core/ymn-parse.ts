@@ -5,7 +5,7 @@
  * de comptage. Voir FORMAT.md pour la grammaire complète.
  */
 import { YmnError, parseFrontmatter } from "./frontmatter.ts";
-import { FERMATA, GRACE_MARK, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, joinsText, sortGraces, sortNotes } from "./model.ts";
+import { FERMATA, GRACE_MARK, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isPedalText, joinsText, sortGraces, sortNotes } from "./model.ts";
 import type { Beat, Division, Expression, Grace, Hairpin, Hand, Marker, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
 import { midiOf, parseOctaveLabel } from "./pitch.ts";
 
@@ -141,6 +141,7 @@ export function parseYmn(text: string): Score {
   const expressions: Expression[] = [];
   const hairpins: Hairpin[] = [];
   const pedals: Pedal[] = [];
+  const pedalTexts: TextMark[] = [];
   let pedalDown: Pedal | undefined; // pédale enfoncée, peut-être depuis un système précédent
   const timesMarks: { bar: number; times: number; line: number; col: number }[] = [];
   const markers: (Marker & { line: number; col: number })[] = [];
@@ -258,9 +259,10 @@ export function parseYmn(text: string): Score {
           : anchors.findIndex((x) => x.from === tok.col);
         if (ai < 0) throw new YmnError(`« ${tok.text} » doit commencer exactement sur une case de la règle de comptage`, R, tok.col + 1);
         const a = anchors[ai];
-        if (isPedalSign(tok.text)) {
+        if (isPedalSign(tok.text) || isPedalText(tok.text)) {
           if (hand === "D") throw new YmnError(`« ${tok.text} » : la pédale se note sur une ligne @ sous la main gauche`, R, tok.col + 1);
-          pedalSigns.push({ t: a.t, text: tok.text, line: R, col: tok.col + 1 });
+          if (isPedalText(tok.text)) pedalTexts.push({ t: a.t, text: tok.text });
+          else pedalSigns.push({ t: a.t, text: tok.text, line: R, col: tok.col + 1 });
         } else if (isHairpin(tok.text)) {
           // le soufflet finit avec la case qui contient son dernier caractère
           const last = tok.col + tok.text.length - 1;
@@ -453,6 +455,7 @@ export function parseYmn(text: string): Score {
     expressions: expressions.sort((a, b) => a.t - b.t || (a.hand === b.hand ? 0 : a.hand === "D" ? -1 : 1)),
     hairpins: hairpins.sort((a, b) => a.start - b.start || (a.hand === b.hand ? 0 : a.hand === "D" ? -1 : 1)),
     pedals: pedals.filter((p) => p.end > p.start),
+    pedalTexts: pedalTexts.sort((a, b) => a.t - b.t),
     markers: markers.map(({ label, barIndex }) => ({ label, barIndex })),
     fermatas: fermatas.sort((a, b) => a - b),
     order,
