@@ -7,7 +7,7 @@ import { chordName, chordNameNotes, chordNotes } from "../src/core/chords.ts";
 import { musicXml, q } from "./helpers.ts";
 
 const C4 = 60;
-const notesKey = (s: Score) => s.notes.map((n) => `${n.hand}${n.midi}@${n.start}-${n.end}`).join(" ");
+const notesKey = (s: Score) => s.notes.map((n) => `${n.part}:${n.midi}@${n.start}-${n.end}`).join(" ");
 const beatsKey = (s: Score) => s.beats.map((b) => `${b.bar}.${b.label}`).join(" ");
 
 /** L'aller-retour .ymn doit retrouver exactement les mêmes notes et les mêmes temps. */
@@ -28,7 +28,7 @@ describe("Gymnopédie n°1", () => {
   });
 
   it("fusionne la tenue du fa♯ des mesures 9 à 12", () => {
-    const fa = score.notes.find((n) => n.hand === "D" && n.midi === 66 && n.start === 8 * 3 * T);
+    const fa = score.notes.find((n) => n.part === 0 && n.midi === 66 && n.start === 8 * 3 * T);
     expect(fa?.end).toBe(12 * 3 * T);
   });
 
@@ -105,7 +105,7 @@ describe("règles du format", () => {
     expect(text).toContain("|1  |2  *  *  |3  |4  ||");
   });
 
-  it("garde l'alignement d'un 2 contre 3 entre les mains", () => {
+  it("garde l'alignement d'un 2 contre 3 entre les parties", () => {
     const xml = musicXml([
       {
         notes: [
@@ -138,8 +138,8 @@ describe("règles du format", () => {
     const xml = musicXml([{ notes: [[{ midi: [72], dur: 4 * q }]] }, { notes: [[{ midi: [72, 76, 79], dur: 4 * q }]] }]);
     const [sys] = layout(importMusicXml(xml), { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 });
     // couloir de 3 lignes : la note seule (mesure 1) descend d'une ligne, l'accord (mesure 2) ne bouge pas
-    expect(sys.right[0].center[0]).toBe(1);
-    expect(sys.right[0].center[4]).toBe(0);
+    expect(sys.parts[0].rows[0].center[0]).toBe(1);
+    expect(sys.parts[0].rows[0].center[4]).toBe(0);
   });
 
   it("place les accords d'une même octave sur plusieurs lignes", () => {
@@ -339,8 +339,10 @@ describe("erreurs de saisie", () => {
     return "aucune erreur";
   };
 
-  it("exige le trait entre les mains", () => {
-    expect(err("m1 |1  |2  ||\n0  |1  |-  ||")).toMatch(/trait qui sépare/);
+  it("accepte une seule partie, sans aucun trait", () => {
+    const s = parseYmn("m1 |1  |2  ||\n0  |1  |-  ||\n");
+    expect(s.instruments).toEqual([{ parts: 1 }]);
+    expect(s.notes).toEqual([{ part: 0, midi: 60, start: 0, end: 2 * T }]);
   });
   it("signale une étiquette de case inconnue", () => {
     expect(err("m1 |1  x  |2  ||\n───\n0  |1     |-  ||\n───")).toMatch(/ligne 1, col\. 8 : étiquette de case « x » inconnue/);
@@ -351,7 +353,7 @@ describe("erreurs de saisie", () => {
   it("refuse un numéro hors de 1 à 12", () => {
     expect(err(base("0  |13 |   ||\n───┼───┼───┼┼"))).toMatch(/ligne 3, col\. 5 : case invalide « 13 »/);
   });
-  it("demande l'octave sur la première ligne d'une main", () => {
+  it("demande l'octave sur la première ligne d'une partie", () => {
     expect(err(base("   |1  |   ||\n───┼───┼───┼┼"))).toMatch(/indiquer son octave/);
   });
   it("lit les octaves relatives au do central", () => {
@@ -378,13 +380,13 @@ describe("erreurs de saisie", () => {
   });
   it("accepte une saisie minimale à la main", () => {
     const s = parseYmn("m1 |1  |2  ||\n0  |5  |-  ||\n---\n-1 |1  |   ||\n");
-    expect(notesKey(s)).toBe(`D64@0-${2 * T} G48@0-${T}`);
+    expect(notesKey(s)).toBe(`0:64@0-${2 * T} 1:48@0-${T}`);
   });
 });
 
 describe("nuances et soufflets", () => {
-  const expr = (s: Score) => s.expressions.map((e) => `${e.hand}:${e.kind}:${e.text}@${e.t / T}`).join(" ");
-  const pins = (s: Score) => s.hairpins.map((h) => `${h.hand}${h.kind}${h.start / T}-${h.end / T}`).join(" ");
+  const expr = (s: Score) => s.expressions.map((e) => `${e.part}:${e.kind}:${e.text}@${e.t / T}`).join(" ");
+  const pins = (s: Score) => s.hairpins.map((h) => `${h.part}:${h.kind}${h.start / T}-${h.end / T}`).join(" ");
   const piece = [
     "m1 |1  |2  |3  |4  ||",
     "0  |1  |3  |5  |-  ||",
@@ -395,14 +397,14 @@ describe("nuances et soufflets", () => {
     "",
   ].join("\n");
 
-  it("lit les lignes @ sous chaque main", () => {
+  it("lit les lignes @ sous chaque partie", () => {
     const s = parseYmn(piece);
-    expect(expr(s)).toBe("D:dynamic:p@0 G:dynamic:mf@0");
+    expect(expr(s)).toBe("0:dynamic:p@0 1:dynamic:mf@0");
     // le soufflet finit avec la case qui contient son dernier caractère
-    expect(pins(s)).toBe("D<1-3 G>2-3");
+    expect(pins(s)).toBe("0:<1-3 1:>2-3");
   });
 
-  it("écrit nuances et soufflets sous leur main, et les relit à l'identique", () => {
+  it("écrit nuances et soufflets sous leur partie, et les relit à l'identique", () => {
     const s = parseYmn(piece);
     const text = writeYmn(s);
     const lines = text.split("\n");
@@ -422,9 +424,9 @@ describe("nuances et soufflets", () => {
     const text = writeYmn(s, { width: 40 });
     expect(text.split("\n").filter((l) => /^@ +<-*$/.test(l)).length).toBeGreaterThan(1);
     const back = parseYmn(text);
-    expect(pins(back)).toBe("D<0-20");
+    expect(pins(back)).toBe("0:<0-20");
     // un soufflet coupé reste ouvert au point de coupure
-    const spans = layout(back, { width: 40, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 }).flatMap((x) => x.voices.D.hairpins);
+    const spans = layout(back, { width: 40, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 }).flatMap((x) => x.parts[0].voice.hairpins);
     expect(spans[0].from).toBe(0);
     expect(spans[0].to).toBeGreaterThan(0);
     expect(spans[spans.length - 1].to).toBe(1);
@@ -432,10 +434,10 @@ describe("nuances et soufflets", () => {
 
   it("garde « più f » comme un seul texte", () => {
     const s = parseYmn("m1 |1  |2  ||\n0  |1  |   ||\n@   più f\n---\n");
-    expect(expr(s)).toBe("D:text:più f@0");
+    expect(expr(s)).toBe("0:text:più f@0");
   });
 
-  it("refuse une ligne de notes sous la ligne @ de sa main", () => {
+  it("refuse une ligne de notes sous la ligne @ de sa partie", () => {
     expect(() => parseYmn("m1 |1  ||\n0  |1  ||\n@   p\n   |3  ||\n---\n")).toThrow(/sous une ligne @/);
   });
 
@@ -460,10 +462,10 @@ describe("nuances et soufflets", () => {
     ]);
     const s = importMusicXml(xml);
     expect(s.texts).toEqual([{ t: 0, text: "rit." }]);
-    expect(expr(s)).toBe("D:dynamic:p@0 G:text:dolce@0 D:dynamic:f@3");
-    expect(pins(s)).toBe("D<1-3");
+    expect(expr(s)).toBe("0:dynamic:p@0 1:text:dolce@0 0:dynamic:f@3");
+    expect(pins(s)).toBe("0:<1-3");
     roundTrip(s);
-    expect(expr(parseYmn(writeYmn(s)))).toBe("D:dynamic:p@0 G:text:dolce@0 D:dynamic:f@3");
+    expect(expr(parseYmn(writeYmn(s)))).toBe("0:dynamic:p@0 1:text:dolce@0 0:dynamic:f@3");
   });
 });
 
@@ -504,7 +506,7 @@ describe("pédale", () => {
     expect(() => parseYmn(body(at([4, "*"])))).toThrow(/sans pédale enfoncée/);
     expect(() => parseYmn(body(at([4, "Ped."], [12, "Ped."])))).toThrow(/déjà enfoncée/);
     const rh = [ruler, "0  |1  |   |   ||3  |   |   ||", at([4, "Ped."]), "---", "-1 |1  |   |   ||8  |   |   ||", ""].join("\n");
-    expect(() => parseYmn(rh)).toThrow(/sous la main gauche/);
+    expect(() => parseYmn(rh)).toThrow(/sous la dernière partie de son instrument/);
   });
 
   it("importe la pédale du MusicXML", () => {
@@ -530,11 +532,11 @@ describe("pédale", () => {
 });
 
 describe("cases de largeur libre", () => {
-  const expr = (s: Score) => s.expressions.map((e) => `${e.hand}:${e.kind}:${e.text}@${e.t / T}`).join(" ");
+  const expr = (s: Score) => s.expressions.map((e) => `${e.part}:${e.kind}:${e.text}@${e.t / T}`).join(" ");
 
   it("lit une case élargie : une case va d'une étiquette à la suivante", () => {
     const s = parseYmn("m1 |1      *  |2  ||\n0  |1      3  |5  ||\n---\n");
-    expect(notesKey(s)).toBe(`D60@0-${T / 2} D62@${T / 2}-${T} D64@${T}-${2 * T}`);
+    expect(notesKey(s)).toBe(`0:60@0-${T / 2} 0:62@${T / 2}-${T} 0:64@${T}-${2 * T}`);
   });
 
   it("nomme « , » les cases plus fines que « . »", () => {
@@ -545,18 +547,18 @@ describe("cases de largeur libre", () => {
 
   it("élargit la case d'une indication trop longue, plutôt que d'empiler les lignes @", () => {
     const s = parseYmn("m1 |1  *  |2  *  ||\n0  |1  3  |5  7  ||\n@   (mp)\n---\n");
-    s.expressions.push({ hand: "D", t: T / 2, text: "dolce", kind: "text" }, { hand: "D", t: T, text: "cresc.", kind: "text" });
+    s.expressions.push({ part: 0, t: T / 2, text: "dolce", kind: "text" }, { part: 0, t: T, text: "cresc.", kind: "text" });
     const text = writeYmn(s);
     expect(text.split("\n").filter((l) => l.startsWith("@")).length).toBe(1);
     expect(text).toMatch(/^@ +\(mp\) +dolce +cresc\.$/m);
-    expect(expr(parseYmn(text))).toBe("D:dynamic:(mp)@0 D:text:dolce@0.5 D:text:cresc.@1");
+    expect(expr(parseYmn(text))).toBe("0:dynamic:(mp)@0 0:text:dolce@0.5 0:text:cresc.@1");
   });
 
   it("réunit une nuance et ses parenthèses écrites à part dans le MusicXML", () => {
     const dyn = (inner: string) => `<direction><direction-type><dynamics>${inner}</dynamics></direction-type><staff>1</staff></direction>`;
     const before = dyn("<other-dynamics>(</other-dynamics>") + dyn("<mp/>") + dyn("<other-dynamics>)</other-dynamics>");
     const s = importMusicXml(musicXml([{ notes: [[{ midi: [C4], dur: 4 * q, before }]] }]));
-    expect(expr(s)).toBe("D:dynamic:(mp)@0");
+    expect(expr(s)).toBe("0:dynamic:(mp)@0");
   });
 
   it("garde « Ped. simile » comme un seul texte", () => {
@@ -585,7 +587,7 @@ describe("cases de largeur libre", () => {
 
   it("écrit un soufflet juste après la nuance de la même case", () => {
     const s = parseYmn("m1 |1  |2  |3  ||\n0  |1  |3  |5  ||\n@   p <-------\n---\n");
-    expect(s.hairpins).toEqual([{ hand: "D", kind: "<", start: 0, end: 3 * T }]);
+    expect(s.hairpins).toEqual([{ part: 0, kind: "<", start: 0, end: 3 * T }]);
     const text = writeYmn(s);
     expect(text.split("\n").filter((l) => l.startsWith("@")).length).toBe(1);
     expect(text).toMatch(/^@ +p <-+$/m);
@@ -637,7 +639,7 @@ describe("point d'orgue", () => {
 });
 
 describe("petites notes", () => {
-  const gk = (s: Score) => s.graces.map((g) => `${g.hand}${g.midi}@${g.t / T}#${g.slot}`).join(" ");
+  const gk = (s: Score) => s.graces.map((g) => `${g.part}:${g.midi}@${g.t / T}#${g.slot}`).join(" ");
   const piece = [
     "m1 |1        |2  |3        |4  ||",
     "+1 |3'       |   |         |   ||",
@@ -649,14 +651,14 @@ describe("petites notes", () => {
 
   it("lit les petites notes de gauche à droite dans la case, chacune dans son octave", () => {
     const s = parseYmn(piece);
-    expect(gk(s)).toBe("D74@0#0 D66@0#1 D68@0#2 D69@2#0 D71@2#1 G52@2#0 G52@2#1");
+    expect(gk(s)).toBe("0:74@0#0 0:66@0#1 0:68@0#2 0:69@2#0 0:71@2#1 1:52@2#0 1:52@2#1");
     // les petites notes ne comptent pas dans le temps
-    expect(notesKey(s)).toBe("D64@0-5760 G48@0-2880 G55@2880-5760 D66@5760-8640 G52@5760-8640 D60@8640-11520 G48@8640-11520");
+    expect(notesKey(s)).toBe("0:64@0-5760 1:48@0-2880 1:55@2880-5760 0:66@5760-8640 1:52@5760-8640 0:60@8640-11520 1:48@8640-11520");
   });
 
   it("joue ensemble deux petites notes alignées", () => {
     const s = parseYmn("m1 |1     |2  ||\n+1 |3'    |   ||\n0  |7'5   |   ||\n---\n");
-    expect(gk(s)).toBe("D74@0#0 D66@0#0");
+    expect(gk(s)).toBe("0:74@0#0 0:66@0#0");
   });
 
   it("refuse une petite note placée après la note de sa case", () => {
@@ -687,8 +689,8 @@ describe("petites notes", () => {
       },
     ]);
     const s = importMusicXml(xml);
-    expect(gk(s)).toBe("D62@0#0 D64@0#1 D71@2#0 D67@2#0");
-    expect(notesKey(s)).toBe("D60@0-5760 G48@0-11520 D72@5760-11520");
+    expect(gk(s)).toBe("0:62@0#0 0:64@0#1 0:71@2#0 0:67@2#0");
+    expect(notesKey(s)).toBe("0:60@0-5760 1:48@0-11520 0:72@5760-11520");
     expect(gk(roundTrip(s).back)).toBe(gk(s));
   });
 });
@@ -699,7 +701,7 @@ describe("consignes de pédale", () => {
 
   it("lit « Ped. simile » comme une consigne de pédale, et l'écrit sur la ligne de pédale", () => {
     const s = parseYmn(piece("", "@   Ped.         *   Ped. simile").replace("\n\n---", "\n---"));
-    expect(s.pedalTexts).toEqual([{ t: 4 * T, text: "Ped. simile" }]);
+    expect(s.pedalTexts).toEqual([{ part: 1, t: 4 * T, text: "Ped. simile" }]);
     expect(s.expressions).toEqual([]);
     const text = writeYmn(s);
     expect(text.trimEnd().split("\n").pop()).toMatch(/^@ +Ped\. +\* +Ped\. simile$/);
@@ -707,26 +709,26 @@ describe("consignes de pédale", () => {
   });
 
   it("refuse une consigne de pédale sous la main droite", () => {
-    expect(() => parseYmn(piece("@   Ped. simile", ""))).toThrow(/sous la main gauche/);
+    expect(() => parseYmn(piece("@   Ped. simile", ""))).toThrow(/sous la dernière partie de son instrument/);
   });
 
   it("importe « Ped. simile » du MusicXML sur la ligne de pédale, même écrit sur la portée du haut", () => {
     const dir = `<direction><direction-type><words>Ped. simile</words></direction-type><staff>1</staff></direction>`;
     const s = importMusicXml(musicXml([{ notes: [[{ midi: [C4], dur: 4 * q, before: dir }]] }]));
-    expect(s.pedalTexts).toEqual([{ t: 0, text: "Ped. simile" }]);
+    expect(s.pedalTexts).toEqual([{ part: 1, t: 0, text: "Ped. simile" }]);
     expect(s.expressions).toEqual([]);
   });
 });
 
 describe("ornements", () => {
-  const gk = (s: Score) => s.graces.map((g) => `${g.hand}${g.midi}@${g.t / T}#${g.slot}`).join(" ");
+  const gk = (s: Score) => s.graces.map((g) => `${g.part}:${g.midi}@${g.t / T}#${g.slot}`).join(" ");
   const tk = (s: Score) => s.notes.filter((n) => n.trill !== undefined).map((n) => `${n.midi}~${n.trill}`).join(" ");
   const ruler = "m1 |1    |2    |3    |4    ||";
 
   it("lit une trille « 5~7 » : la note et sa voisine la plus proche", () => {
     const s = parseYmn([ruler, "0  |5~7  |-    |12~1 |-    ||", "---", ""].join("\n"));
     expect(tk(s)).toBe("64~66 71~72");
-    expect(notesKey(s)).toBe(`D64@0-${2 * T} D71@${2 * T}-${4 * T}`);
+    expect(notesKey(s)).toBe(`0:64@0-${2 * T} 0:71@${2 * T}-${4 * T}`);
     const { text, back } = roundTrip(s);
     expect(tk(back)).toBe(tk(s));
     expect(text).toContain("|5~7 ");
@@ -737,11 +739,11 @@ describe("ornements", () => {
     expect(() => parseYmn([ruler, "0  |5~5  |     |     |     ||", "---", ""].join("\n"))).toThrow(/autre note/);
   });
 
-  it("lit les arpèges : d'une main sur sa ligne @, des deux mains sur celle du haut", () => {
+  it("lit les arpèges : d'une partie sur sa ligne @, de toutes sur celle du haut", () => {
     const s = parseYmn(
       ["@         \\", ruler, "0  |5    |5    |     |     ||", "   |1    |1    |     |     ||", "@   /", "---", "-1 |1    |1    |     |     ||", ""].join("\n"),
     );
-    expect(s.arpeggios).toEqual([{ t: 0, hand: "D" }, { t: T, down: true }]);
+    expect(s.arpeggios).toEqual([{ t: 0, part: 0 }, { t: T, down: true }]);
     expect(s.expressions).toEqual([]);
     const { back } = roundTrip(s);
     expect(back.arpeggios).toEqual(s.arpeggios);
@@ -768,17 +770,17 @@ describe("ornements", () => {
     ]);
     const s = importMusicXml(xml);
     expect(tk(s)).toBe("65~67");
-    expect(gk(s)).toBe(`D62@1#0 D63@1#1 D74@2#0 D72@2#1 D70@2#2 D67@3#0 D65@3#1`);
+    expect(gk(s)).toBe(`0:62@1#0 0:63@1#1 0:74@2#0 0:72@2#1 0:70@2#2 0:67@3#0 0:65@3#1`);
     expect(gk(roundTrip(s).back)).toBe(gk(s));
   });
 
   it("joue un gruppetto placé après la note juste avant la note suivante", () => {
     const orn = `<ornaments><delayed-turn/></ornaments>`;
     const s = importMusicXml(musicXml([{ notes: [[{ midi: [64], dur: 2 * q, notations: orn }, { midi: [65], dur: 2 * q }]] }]));
-    expect(gk(s)).toBe("D65@2#0 D64@2#1 D62@2#2 D64@2#3");
+    expect(gk(s)).toBe("0:65@2#0 0:64@2#1 0:62@2#2 0:64@2#3");
   });
 
-  it("importe les arpèges : par main, ou d'un seul geste quand les deux portées partagent leur numéro", () => {
+  it("importe les arpèges : par partie, ou d'un seul geste quand les deux portées partagent leur numéro", () => {
     const arp = (n: string) => `<arpeggiate number="${n}"/>`;
     const xml = musicXml([
       {
@@ -788,25 +790,25 @@ describe("ornements", () => {
         ],
       },
     ]);
-    expect(importMusicXml(xml).arpeggios).toEqual([{ t: 0 }, { t: 2 * T, hand: "D" }, { t: 2 * T, hand: "G" }]);
+    expect(importMusicXml(xml).arpeggios).toEqual([{ t: 0 }, { t: 2 * T, part: 0 }, { t: 2 * T, part: 1 }]);
   });
 });
 
 describe("liaisons d'expression", () => {
-  const sk = (s: Score) => s.slurs.map((x) => `${x.hand}${x.start / T}-${x.end / T}`).join(" ");
+  const sk = (s: Score) => s.slurs.map((x) => `${x.part}:${x.start / T}-${x.end / T}`).join(" ");
   const ruler = "m1 |1  |2  |3  |4  ||1  |2  |3  |4  ||";
   const rh = "0  |5  |7  |8  |10 ||8  |7  |5  |3  ||";
   const piece = (slurLine: string) => [ruler, rh, slurLine, "---", ""].join("\n");
 
   it("lit une liaison de la case de sa première note à celle de sa dernière", () => {
     const s = parseYmn(piece("@   (-------)   (-------------)"));
-    expect(sk(s)).toBe("D0-2 D3-6");
+    expect(sk(s)).toBe("0:0-2 0:3-6");
     expect(s.expressions).toEqual([]);
   });
 
   it("garde les liaisons imbriquées, coupées et reprises à l'aller-retour", () => {
     const s = parseYmn(piece("@   (-------------------------)\n@       (---)        (---)"));
-    expect(sk(s)).toBe("D0-6 D1-2 D4-5");
+    expect(sk(s)).toBe("0:0-6 0:1-2 0:4-5");
     // un système par mesure : la grande liaison est coupée puis reprise
     const text = writeYmn(s, { width: 24 });
     expect(text).toMatch(/^@ +\(-+$/m);
@@ -816,7 +818,7 @@ describe("liaisons d'expression", () => {
 
   it("range les liaisons imbriquées par étages, la plus courte au plus près des notes", () => {
     const s = parseYmn(piece("@   (-------------------------)\n@       (---)        (---)"));
-    const v = layout(s, { width: 999, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 })[0].voices.D;
+    const v = layout(s, { width: 999, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 })[0].parts[0].voice;
     expect(v.slurs.map((x) => `${x.fromAnchor}-${x.toAnchor}:${x.level}`).sort()).toEqual(["0-6:1", "1-2:0", "4-5:0"]);
   });
 
@@ -843,7 +845,7 @@ describe("liaisons d'expression", () => {
     ]);
     const s = importMusicXml(xml);
     // la liaison 1 part de la voix 1 et se termine sur la voix 2 : elle reste à la main où elle commence
-    expect(sk(s)).toBe("D0-3 D1-2");
+    expect(sk(s)).toBe("0:0-3 0:1-2");
   });
 });
 
@@ -1015,10 +1017,10 @@ describe("paroles", () => {
   it("lit une syllabe par case, le trait d'union, la prolongation et les couplets", () => {
     const s = parseYmn(piece);
     expect(s.lyrics.filter((l) => l.verse === 1)).toEqual([
-      { hand: "D", verse: 1, t: 0, text: "A", hyphen: true },
-      { hand: "D", verse: 1, t: T, text: "men", extend: 4 * T },
-      { hand: "D", verse: 1, t: 4 * T, text: "A", hyphen: true },
-      { hand: "D", verse: 1, t: 5 * T, text: "men", extend: 8 * T },
+      { part: 0, verse: 1, t: 0, text: "A", hyphen: true },
+      { part: 0, verse: 1, t: T, text: "men", extend: 4 * T },
+      { part: 0, verse: 1, t: 4 * T, text: "A", hyphen: true },
+      { part: 0, verse: 1, t: 5 * T, text: "men", extend: 8 * T },
     ]);
     expect(s.lyrics.filter((l) => l.verse === 2).map((l) => l.text)).toEqual(["oh", "la", "la", "di"]);
   });
@@ -1035,13 +1037,13 @@ describe("paroles", () => {
     expect(parseYmn(text).lyrics).toEqual(s.lyrics);
     // une syllabe tenue jusque dans le système suivant y reprend par « --- » en tête
     const long = parseYmn(["m1 |1  |2  ||1  |2  ||", "0  |1  |3  ||5  |-  ||", "@l  oh ------------", "---", "-1 |   |   ||   |   ||", ""].join("\n"));
-    expect(long.lyrics).toEqual([{ hand: "D", verse: 1, t: 0, text: "oh", extend: 4 * T }]);
+    expect(long.lyrics).toEqual([{ part: 0, verse: 1, t: 0, text: "oh", extend: 4 * T }]);
     const split = writeYmn(long, { width: 14 });
     expect(split).toMatch(/^@l  ---/m);
     expect(parseYmn(split).lyrics).toEqual(long.lyrics);
     // syllabe sur la dernière case d'un système, prolongée au suivant
     const late = parseYmn(["m1 |1  |2  ||1  |2  ||", "0  |1  |3  ||5  |-  ||", "@l      oh --------", "---", "-1 |   |   ||   |   ||", ""].join("\n"));
-    expect(late.lyrics).toEqual([{ hand: "D", verse: 1, t: T, text: "oh", extend: 4 * T }]);
+    expect(late.lyrics).toEqual([{ part: 0, verse: 1, t: T, text: "oh", extend: 4 * T }]);
     expect(parseYmn(writeYmn(late, { width: 14 })).lyrics).toEqual(late.lyrics);
   });
 
@@ -1051,7 +1053,7 @@ describe("paroles", () => {
     expect(() => parseYmn(one("@l  ---"))).toThrow(/écris d'abord la syllabe/);
     expect(() => parseYmn(one("@l  la- --"))).toThrow(/ne se prolonge pas/);
     expect(() => parseYmn(one("@l  la -"))).toThrow(/dépasser la case/);
-    expect(() => parseYmn(["@l  la", "m1 |1  ||", "0  |1  ||", "---", ""].join("\n"))).toThrow(/sous les lignes de leur main/);
+    expect(() => parseYmn(["@l  la", "m1 |1  ||", "0  |1  ||", "---", ""].join("\n"))).toThrow(/sous les lignes de leur partie/);
   });
 
   it("importe les paroles du MusicXML : syllabes, couplets, mélismes", () => {
@@ -1072,11 +1074,11 @@ describe("paroles", () => {
     ]);
     const s = importMusicXml(xml);
     expect(s.lyrics).toEqual([
-      { hand: "D", verse: 1, t: 0, text: "A", hyphen: true },
-      { hand: "D", verse: 2, t: 0, text: "Oh\u00A0!" },
-      { hand: "D", verse: 1, t: T, text: "men", extend: 5 * T },
-      { hand: "D", verse: 2, t: T, text: "la" },
-      { hand: "D", verse: 1, t: 5 * T, text: "oui" },
+      { part: 0, verse: 1, t: 0, text: "A", hyphen: true },
+      { part: 0, verse: 2, t: 0, text: "Oh\u00A0!" },
+      { part: 0, verse: 1, t: T, text: "men", extend: 5 * T },
+      { part: 0, verse: 2, t: T, text: "la" },
+      { part: 0, verse: 1, t: 5 * T, text: "oui" },
     ]);
     expect(parseYmn(writeYmn(s)).lyrics).toEqual(s.lyrics);
   });
@@ -1084,7 +1086,7 @@ describe("paroles", () => {
 
 describe("notes alignées", () => {
   const metrics = { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 };
-  const rows = (text: string, align: boolean) => layout(parseYmn(text), { ...metrics, align })[0].right.map((r) => r.cells);
+  const rows = (text: string, align: boolean) => layout(parseYmn(text), { ...metrics, align })[0].parts[0].rows.map((r) => r.cells);
   const piece = ["m1 |1  |2  |3  |4  ||", "0  |8  |   |8  |10 ||", "   |5  |5  |5  |5  ||", "   |1  |1  |   |   ||", "---", "-1 |1  |-  |-  |-  ||", ""].join("\n");
 
   it("range par défaut chaque accord depuis le haut du couloir", () => {
@@ -1136,6 +1138,77 @@ describe("bpm", () => {
     expect(importMusicXml(four).meta.bpm).toBe(120);
     const six = musicXml([{ time: [6, 8], notes: [[{ midi: [C4], dur: 6 * (q / 2), before: sound }]] }]);
     expect(importMusicXml(six).meta.bpm).toBe(80);
+  });
+});
+
+describe("parties et instruments", () => {
+  const song = [
+    "---",
+    "parts: Chant, Piano",
+    "---",
+    "m1 |1    |2  |3  |4   ||",
+    "───┼─ Chant ─┼───┼────┼┼",
+    "0  |8    |-  |10 |8   ||",
+    "@l  Ah ---------  oui",
+    "═══╪═ Piano ═╪═══╪════╪╪",
+    "0  |5    |   |5  |    ||",
+    "───┼─────┼───┼───┼────┼┼",
+    "-1 |1    |-  |8  |-   ||",
+    "@   Ped.          *",
+    "",
+  ].join("\n");
+  const swap = (from: string, to: string) => song.replace(from, to);
+
+  it("lit les parties de chaque instrument, nommés sur leur trait", () => {
+    const s = parseYmn(song);
+    expect(s.instruments).toEqual([{ name: "Chant", parts: 1 }, { name: "Piano", parts: 2 }]);
+    expect(s.meta.parts).toBeUndefined();
+    expect(s.notes.filter((n) => n.start === 0).map((n) => n.part)).toEqual([0, 1, 2]);
+    expect(s.lyrics.map((l) => l.part)).toEqual([0, 0]);
+    expect(s.pedals).toEqual([{ part: 2, start: 0, end: 3 * T }]);
+  });
+
+  it("réécrit le texte tel quel", () => {
+    expect(writeYmn(parseYmn(song))).toBe("---\nformat: 1\n" + song.slice(4).replace("---\nm1", "---\n\nm1"));
+  });
+
+  it("lit le nom n'importe où sur son trait, entre des espaces", () => {
+    expect(parseYmn(swap("═══╪═ Piano ═╪═══╪════╪╪", "═══╪═════╪═══╪═  Piano  ═╪╪")).instruments[1].name).toBe("Piano");
+  });
+
+  it("refuse un nom d'instrument non déclaré, déplacé ou manquant", () => {
+    expect(() => parseYmn(swap("═ Piano ═", "═ Pno. ══"))).toThrow(/« Pno\. » non déclaré/);
+    expect(() => parseYmn(swap("─ Chant ─", "─ Piano ─"))).toThrow(/à la place de « Chant »/);
+    expect(() => parseYmn(swap("───┼─ Chant ─┼", "───┼───────┼"))).toThrow(/il manque le nom de l'instrument « Chant »/);
+    expect(() => parseYmn(swap("parts: Chant, Piano\n", ""))).toThrow(/non déclaré : nomme les instruments/);
+    expect(() => parseYmn(swap("parts: Chant, Piano", "parts: Chant, Piano, Flûte"))).toThrow(/il manque des instruments/);
+    expect(() => parseYmn(swap("───┼─────┼───┼───┼────┼┼", "───┼─ Main ┼───┼───┼────┼┼"))).toThrow(/trait double/);
+  });
+
+  it("refuse un système qui n'a pas les mêmes parties que le premier", () => {
+    const two = ["m1 |1  ||", "0  |1  ||", "───┼───┼┼", "0  |1  ||", "", "m2 |1  ||", "0  |1  ||", ""].join("\n");
+    expect(() => parseYmn(two)).toThrow(/pas les mêmes parties que le premier \(1 au lieu de 2\)/);
+  });
+
+  it("met la pédale sous la dernière partie d'un instrument seulement", () => {
+    expect(() => parseYmn(swap("0  |5    |   |5  |    ||", "0  |5    |   |5  |    ||\n@   Ped."))).toThrow(/sous la dernière partie de son instrument/);
+  });
+
+  it("importe chaque <part> comme un instrument, et chaque portée comme une partie", () => {
+    const note = (step: string, octave: number, staff: number, extra = "") =>
+      `<note><pitch><step>${step}</step><octave>${octave}</octave></pitch><duration>4</duration><staff>${staff}</staff>${extra}</note>`;
+    const attributes = (staves: number) => `<attributes><divisions>1</divisions><staves>${staves}</staves><time><beats>4</beats><beat-type>4</beat-type></time></attributes>`;
+    const twoParts = `<?xml version="1.0"?><score-partwise version="3.1"><part-list>
+      <score-part id="P1"><part-name>Chant</part-name></score-part><score-part id="P2"><part-name>Piano</part-name></score-part></part-list>
+      <part id="P1"><measure number="1">${attributes(1)}${note("C", 5, 1, "<lyric><syllabic>single</syllabic><text>Ah</text></lyric>")}</measure></part>
+      <part id="P2"><measure number="1">${attributes(2)}<direction><direction-type><pedal type="start"/></direction-type><staff>1</staff></direction>${note("E", 4, 1)}<backup><duration>4</duration></backup>${note("C", 3, 2)}</measure></part>
+      </score-partwise>`;
+    const s = importMusicXml(twoParts);
+    expect(s.instruments).toEqual([{ name: "Chant", parts: 1 }, { name: "Piano", parts: 2 }]);
+    expect(s.notes.map((n) => `${n.part}:${n.midi}`)).toEqual(["0:72", "1:64", "2:48"]);
+    expect(s.lyrics).toEqual([{ part: 0, verse: 1, t: 0, text: "Ah" }]);
+    expect(s.pedals).toEqual([{ part: 2, start: 0, end: 4 * T }]);
+    expect(parseYmn(writeYmn(s)).instruments).toEqual(s.instruments);
   });
 });
 

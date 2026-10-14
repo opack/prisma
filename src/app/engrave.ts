@@ -2,8 +2,8 @@
  * Gravure : place les systèmes calculés par le moteur de mise en page sur des pages A4.
  * Toutes les dimensions sont en millimètres.
  */
-import { FINGER_MARK, TRILL_MARK, chordName, chordNotes, graceDigits, layout, noteText } from "../core/index.ts";
-import type { Score, System } from "../core/index.ts";
+import { FINGER_MARK, firstParts, partCount, TRILL_MARK, chordName, chordNotes, graceDigits, layout, noteText } from "../core/index.ts";
+import type { Score, System, Voice } from "../core/index.ts";
 
 export const PAGE = { w: 210, h: 297, marginX: 15, marginTop: 14, marginBottom: 16 };
 export const CONTENT_W = PAGE.w - 2 * PAGE.marginX;
@@ -17,10 +17,11 @@ export const G = {
   repeatDots: 1.8, // place des deux points d'une barre de reprise, de chaque côté (points centrés dedans)
   rulerH: 4.4,
   markH: 4, // une bande d'indications au-dessus du système (cases de reprise, textes)
-  voiceH: 4.2, // bande des nuances et soufflets, sous les lignes d'une main
+  voiceH: 4.2, // bande des nuances et soufflets, sous les lignes d'une partie
   pedalH: 4, // bande de la pédale, sous le système
   rowH: 4.5,
-  handGap: 1.4, // espace de part et d'autre du trait entre les mains
+  partGap: 1.4, // espace de part et d'autre du trait épais entre deux parties d'un instrument
+  instrumentGap: 5, // espace entre deux instruments
   systemGap: 6.5,
   sectionGap: 5, // espace en plus avant une nouvelle section
   headerH: 17, // titre, en première page
@@ -46,7 +47,7 @@ export const lyricTextW = (text: string) => [...text].length * G.lyricChar;
 const lyricW = (text: string, hyphen: boolean) => 0.5 + lyricTextW(text) + (hyphen ? G.hyphenW : 0.9);
 /** Place ajoutée à une case par une syllabe trop longue pour elle (le couplet qui en demande le plus). */
 const lyricExtra = (sys: System, a: number, cellW: number) =>
-  Math.max(0, ...[sys.voices.D, sys.voices.G].flatMap((v) => v.lyrics.flatMap((l) => l.syllables.filter((x) => x.anchor === a).map((x) => lyricW(x.text, x.hyphen) - cellW))));
+  Math.max(0, ...sys.parts.flatMap((p) => p.voice.lyrics.flatMap((l) => l.syllables.filter((x) => x.anchor === a).map((x) => lyricW(x.text, x.hyphen) - cellW))));
 
 /** Affichage des accords : nom anglais, notes ymn empilées, ou les deux. */
 export type ChordStyle = "name" | "notes" | "both";
@@ -75,11 +76,11 @@ const chordW = (text: string, style: ChordStyle) => {
   return showName(style, p.name) ? 0.5 + p.name!.length * G.chordChar + 0.6 : 0;
 };
 
-/** Bande des paroles d'une main : une ligne par couplet, un peu d'air au-dessus. */
-const lyricH = (v: System["voices"]["D"]) => (v.lyrics.length ? 0.4 + v.lyrics.length * G.lyricH : 0);
+/** Bande des paroles d'une partie : une ligne par couplet, un peu d'air au-dessus. */
+const lyricH = (v: Voice) => (v.lyrics.length ? 0.4 + v.lyrics.length * G.lyricH : 0);
 
-/** Bande des liaisons d'une main, juste sous ses lignes : un étage par niveau d'imbrication. */
-const slurH = (v: System["voices"]["D"]) => (v.slurs.length ? 1 + (Math.max(...v.slurs.map((s) => s.level)) + 1) * G.slurLevel : 0);
+/** Bande des liaisons d'une partie, juste sous ses lignes : un étage par niveau d'imbrication. */
+const slurH = (v: Voice) => (v.slurs.length ? 1 + (Math.max(...v.slurs.map((s) => s.level)) + 1) * G.slurLevel : 0);
 
 /**
  * Doigté gravé : un chiffre blanc sur une pastille sombre, en bas à droite de la note. Le
@@ -106,16 +107,16 @@ function noteW(c: string, cellW: number) {
   return Math.max(0, w - cellW);
 }
 /** Place ajoutée par les notes annotées d'une case, sur la ligne qui en demande le plus. */
-export const noteExtra = (sys: System, a: number, cellW: number) => Math.max(0, ...[...sys.right, ...sys.left].map((r) => noteW(r.cells[a], cellW)));
+export const noteExtra = (sys: System, a: number, cellW: number) => Math.max(0, ...sys.parts.flatMap((p) => p.rows.map((r) => noteW(r.cells[a], cellW))));
 
 /** Hauteur de l'en-tête de la première page : titre, sous-titre éventuel, compositeur. */
 export const headerHeight = (meta: Score["meta"]) => G.headerH + (meta.subtitle ? G.subtitleH : 0);
 
-/** Largeur des rangs de petites notes d'une main, dans une case. */
+/** Largeur des rangs de petites notes d'une partie, dans une case. */
 export const graceSlotW = (d: number) => d * G.graceDigit + G.graceGap;
 const graceW = (digits: number[]) => digits.reduce((w, d) => w + graceSlotW(d), 0);
-/** Place ajoutée en tête d'une case par ses petites notes (la main qui en a le plus). */
-export const graceExtra = (sys: System, a: number) => Math.max(graceW(sys.graceDigits.D[a]), graceW(sys.graceDigits.G[a]));
+/** Place ajoutée en tête d'une case par ses petites notes (la partie qui en a le plus). */
+export const graceExtra = (sys: System, a: number) => Math.max(0, ...sys.parts.map((p) => graceW(p.graceDigits[a])));
 /** Place ajoutée en tête d'une case : ses petites notes, puis la vaguelette d'un arpège. */
 export const leadExtra = (sys: System, a: number) => graceExtra(sys, a) + (sys.arpeggios.some((x) => x.anchor === a) ? G.arpeggioW : 0);
 
@@ -129,14 +130,12 @@ export type PlacedSystem = {
   textBand: number;
   /** Bande de structure : débuts de section et « 3× ». */
   structBand: number;
-  /** Hauteur des bandes de nuances sous chaque main (0 si la main n'en a pas). */
-  voiceBand: { D: number; G: number };
-  /** Hauteur des bandes de liaisons sous chaque main (0 si la main n'en a pas). */
-  slurBand: { D: number; G: number };
-  /** Hauteur des bandes de paroles sous chaque main : une ligne par couplet. */
-  lyricBand: { D: number; G: number };
-  /** Hauteur de la bande de pédale sous le système (0 sans pédale). */
-  pedalBand: number;
+  /** Haut de la règle de comptage, depuis le haut du système (comme les places des parties). */
+  rulerTop: number;
+  /** Place de chaque partie, de haut en bas. */
+  parts: PartPlace[];
+  /** Place de chaque instrument : du haut de ses lignes au bas de sa dernière partie (pédale exclue). */
+  instruments: { top: number; bottom: number; first: number; last: number; name?: string }[];
   height: number;
   /** Abscisse de chaque colonne (case ou séparateur), depuis le bord gauche de la page. */
   xs: number[];
@@ -146,27 +145,69 @@ export type PlacedSystem = {
   chordBand: number;
 };
 
+/**
+ * Place d'une partie dans un système, de haut en bas : le trait épais qui la sépare de la
+ * partie du dessus (separator, dans un même instrument), ses lignes de notes, puis ses
+ * bandes de liaisons, de paroles, de nuances et de pédale. Ordonnées depuis le haut du système.
+ */
+export type PartPlace = {
+  separator?: number;
+  rowsTop: number;
+  slurTop: number;
+  lyricTop: number;
+  voiceTop: number;
+  pedalTop: number;
+  bottom: number;
+  slurBand: number;
+  lyricBand: number;
+  voiceBand: number;
+  pedalBand: number;
+};
+
 /** order : ordre de jeu des sections, gravé en tête de chaque page (vide s'il n'y a pas de section). */
 export type Page = { index: number; systems: PlacedSystem[]; header: boolean; order: string[] };
 
 // l'arpège se dessine devant l'accord, pas dans la bande des nuances
-const voiceH = (v: System["voices"]["D"]) => (v.marks.some((m) => m.kind !== "arpeggio") || v.hairpins.length ? G.voiceH : 0);
+const voiceH = (v: Voice) => (v.marks.some((m) => m.kind !== "arpeggio") || v.hairpins.length ? G.voiceH : 0);
 
-/** Bandes au-dessus de la règle, de haut en bas : textes, puis débuts de section, points d'orgue et « 3× ». */
-export const bands = (s: System, chords: ChordStyle = "both") => ({
-  chordBand: chordH(s, chords),
-  textBand: s.marks.some((m) => m.kind === "text") ? G.markH : 0,
-  structBand: s.marks.some((m) => m.kind === "times" || m.kind === "marker" || m.kind === "fermata") ? G.markH : 0,
-  voiceBand: { D: voiceH(s.voices.D), G: voiceH(s.voices.G) },
-  slurBand: { D: slurH(s.voices.D), G: slurH(s.voices.G) },
-  lyricBand: { D: lyricH(s.voices.D), G: lyricH(s.voices.G) },
-  pedalBand: s.pedal.spans.length || s.pedal.texts.length ? G.pedalH : 0,
-});
+/**
+ * Disposition verticale d'un système dont le haut est à y : au-dessus de la règle, les bandes
+ * de textes, de structure (débuts de section, points d'orgue, « 3× ») et d'accords ; puis
+ * chaque partie. Deux parties d'un instrument sont séparées par un trait épais, deux
+ * instruments par un espace ; la pédale d'un instrument passe sous sa dernière partie.
+ */
+export function geometry(s: System, chords: ChordStyle, y: number) {
+  const textBand = s.marks.some((m) => m.kind === "text") ? G.markH : 0;
+  const structBand = s.marks.some((m) => m.kind === "times" || m.kind === "marker" || m.kind === "fermata") ? G.markH : 0;
+  const chordBand = chordH(s, chords);
+  const rulerTop = y + textBand + structBand + chordBand;
+  const firsts = firstParts(s.instruments);
+  let cur = rulerTop + G.rulerH;
+  const parts: PartPlace[] = s.parts.map((p, k) => {
+    let separator: number | undefined;
+    if (k > 0 && firsts.includes(k)) cur += G.instrumentGap;
+    else if (k > 0) {
+      separator = cur + G.partGap;
+      cur = separator + G.partGap;
+    }
+    const slurBand = slurH(p.voice), lyricBand = lyricH(p.voice), voiceBand = voiceH(p.voice);
+    const pedalBand = p.pedal.spans.length || p.pedal.texts.length ? G.pedalH : 0;
+    const rowsTop = cur;
+    const slurTop = rowsTop + p.rows.length * G.rowH;
+    const lyricTop = slurTop + slurBand;
+    const voiceTop = lyricTop + lyricBand;
+    const pedalTop = voiceTop + voiceBand;
+    cur = pedalTop + pedalBand;
+    return { separator, rowsTop, slurTop, lyricTop, voiceTop, pedalTop, bottom: pedalTop, slurBand, lyricBand, voiceBand, pedalBand };
+  });
+  const instruments = s.instruments.map((x, i) => {
+    const first = firsts[i], last = first + x.parts - 1;
+    return { top: i === 0 ? rulerTop : parts[first].rowsTop, bottom: parts[last].bottom, first, last, ...(x.name ? { name: x.name } : {}) };
+  });
+  return { textBand, structBand, chordBand, rulerTop, parts, instruments, height: cur - y + 1 };
+}
 
-export const systemHeight = (s: System, chords: ChordStyle = "both") => {
-  const b = bands(s, chords);
-  return b.textBand + b.structBand + b.chordBand + G.rulerH + (s.right.length + s.left.length) * G.rowH + b.voiceBand.D + b.voiceBand.G + b.slurBand.D + b.slurBand.G + b.lyricBand.D + b.lyricBand.G + b.pedalBand + 2 * G.handGap + 1;
-};
+export const systemHeight = (s: System, chords: ChordStyle = "both") => geometry(s, chords, 0).height;
 
 /** Largeur d'une barre de mesure, selon ses signes de reprise (identique au calcul du moteur). */
 const barSepWidth = (c: Extract<System["columns"][number], { kind: "barSep" }>) =>
@@ -192,7 +233,7 @@ function place(sys: System, isLast: boolean, y: number, cellW: number, chords: C
     ws.push(w);
     x += w;
   }
-  return { sys, stretch, y, height: systemHeight(sys, chords), xs, ws, ...bands(sys, chords) };
+  return { sys, stretch, y, xs, ws, ...geometry(sys, chords, 0) };
 }
 
 /**
@@ -207,7 +248,7 @@ export function engrave(score: Score, { compact = false, chords = "both" as Chor
     cell: cellW,
     cellAt: (t) =>
       cellW +
-      Math.max(graceW(graceDigits(score.graces, "D", t)), graceW(graceDigits(score.graces, "G", t))) +
+      Math.max(...Array.from({ length: partCount(score.instruments) }, (_, k) => graceW(graceDigits(score.graces, k, t)))) +
       (score.arpeggios.some((x) => x.t === t) ? G.arpeggioW : 0) +
       // une note annotée ou une syllabe trop longue élargit sa case (l'une sous l'autre : la plus large compte)
       Math.max(0, ...score.notes.filter((n) => n.start === t).map((n) => noteW(noteText(n), cellW)), ...score.lyrics.filter((l) => l.t === t).map((l) => lyricW(l.text, !!l.hyphen) - cellW)) +

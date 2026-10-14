@@ -9,7 +9,33 @@
  */
 export const TICKS_PER_BEAT = 2880;
 
-export type Hand = "D" | "G";
+/**
+ * Partie : un groupe de lignes entre deux traits (une main au piano, une voix, une flûte),
+ * repérée par son rang, de haut en bas (0 pour la première).
+ */
+export type Part = number;
+
+/**
+ * Instrument : une ou plusieurs parties qui se suivent (le piano en a deux). name : son nom,
+ * déclaré dans le frontmatter (`parts:`) et écrit sur le trait au-dessus de sa première partie.
+ */
+export type Instrument = { name?: string; parts: number };
+
+/** Instrument de chaque partie : son rang dans la liste des instruments. */
+export function instrumentOf(instruments: Instrument[], part: Part): number {
+  let first = 0;
+  for (let i = 0; i < instruments.length; i++) {
+    first += instruments[i].parts;
+    if (part < first) return i;
+  }
+  return instruments.length - 1;
+}
+
+/** Première partie de chaque instrument. */
+export const firstParts = (instruments: Instrument[]) => instruments.map((_, i) => instruments.slice(0, i).reduce((n, x) => n + x.parts, 0));
+
+/** Nombre total de parties. */
+export const partCount = (instruments: Instrument[]) => instruments.reduce((n, x) => n + x.parts, 0);
 
 /** Découpage de premier niveau d'un temps : en 2 (binaire) ou en 3 (ternaire). */
 export type Division = 2 | 3;
@@ -26,7 +52,7 @@ export type Beat = {
 };
 
 export type Note = {
-  hand: Hand;
+  part: Part;
   /** Hauteur MIDI : 60 = do central (do 4). */
   midi: number;
   /** Début et fin en ticks, fin exclue. */
@@ -52,10 +78,10 @@ export function trillAux(midi: number, number: number): number {
 
 /**
  * Arpège : l'accord qui commence à l'instant t s'égrène, du grave à l'aigu (down : de
- * l'aigu au grave). hand : la main dont l'accord s'égrène ; absente, les deux mains, de
- * la basse de la main gauche au sommet de la main droite.
+ * l'aigu au grave). part : la partie dont l'accord s'égrène ; absente, toutes les parties
+ * d'un seul geste, de la note la plus grave du système à la plus aiguë.
  */
-export type Arpeggio = { t: number; hand?: Hand; down?: boolean };
+export type Arpeggio = { t: number; part?: Part; down?: boolean };
 
 /** Arpège sur une ligne @ : « / » du grave à l'aigu, « \ » de l'aigu au grave. */
 export const ARPEGGIO_UP = "/";
@@ -64,10 +90,10 @@ export const isArpeggioSign = (t: string) => t === ARPEGGIO_UP || t === ARPEGGIO
 
 /**
  * Petite note : jouée très vite juste avant l'instant t, sans compter dans le temps.
- * slot : rang dans la suite des petites notes de cette main à cet instant (0 en premier) ;
+ * slot : rang dans la suite des petites notes de cette partie à cet instant (0 en premier) ;
  * deux petites notes de même rang se jouent ensemble.
  */
-export type Grace = { hand: Hand; midi: number; t: number; slot: number };
+export type Grace = { part: Part; midi: number; t: number; slot: number };
 
 /** Marque d'une petite note dans une case : son numéro suivi d'une apostrophe (« 3'5 »). */
 export const GRACE_MARK = "'";
@@ -110,10 +136,10 @@ export const isDynamic = (t: string) => DYNAMICS.includes(t.replace(/^\((.+)\)$/
  * Indication propre à une voix, placée sur une ancre : une nuance (« p », « mf »…) ou un
  * texte (« cresc. », « dolce »…).
  */
-export type Expression = { hand: Hand; t: number; text: string; kind: "dynamic" | "text" };
+export type Expression = { part: Part; t: number; text: string; kind: "dynamic" | "text" };
 
 /** Soufflet d'une voix : crescendo (« < ») ou decrescendo (« > »), de start à end (fin exclue). */
-export type Hairpin = { hand: Hand; kind: "<" | ">"; start: number; end: number };
+export type Hairpin = { part: Part; kind: "<" | ">"; start: number; end: number };
 
 /** Soufflet écrit sur une ligne @ de voix : « <---- » (crescendo) ou « >---- » (decrescendo). */
 export const isHairpin = (t: string) => /^[<>][-|]*$/.test(t);
@@ -122,7 +148,7 @@ export const isHairpin = (t: string) => /^[<>][-|]*$/.test(t);
  * Liaison d'expression d'une voix : les notes de start à end se jouent liées. end est
  * l'attaque de la dernière note liée (comprise).
  */
-export type Slur = { hand: Hand; start: number; end: number };
+export type Slur = { part: Part; start: number; end: number };
 
 /**
  * Liaison écrite sur une ligne @ de voix : « (-----) », de la case de la première note à
@@ -130,16 +156,20 @@ export type Slur = { hand: Hand; start: number; end: number };
  * (« ------ » pour un système qu'elle traverse tout entier).
  */
 export const isSlur = (t: string) => /^\([-|]*\)?$/.test(t) || /^-[-|]*\)?$/.test(t);
-// plusieurs liaisons d'une main qui continuent : leurs suites se lisent de haut en bas, dans
+// plusieurs liaisons d'une partie qui continuent : leurs suites se lisent de haut en bas, dans
 // l'ordre où les liaisons ont commencé
 
 /**
  * Pédale de résonance enfoncée de start à end (fin exclue). Deux pédales qui se touchent
- * (end de l'une = start de la suivante) forment un changement de pédale.
+ * (end de l'une = start de la suivante) forment un changement de pédale. part : la partie
+ * sous laquelle elle s'écrit, la dernière de son instrument.
  */
-export type Pedal = { start: number; end: number };
+export type Pedal = { part: Part; start: number; end: number };
 
-/** Signes de pédale d'une ligne @ sous la main gauche : enfoncer, relâcher, changer. */
+/** Consigne de pédale (« Ped. simile »…), sur la ligne de pédale d'une partie. */
+export type PedalText = TextMark & { part: Part };
+
+/** Signes de pédale d'une ligne @ sous la dernière partie d'un instrument : enfoncer, relâcher, changer. */
 export const PEDAL_DOWN = "Ped.";
 export const PEDAL_UP = "*";
 export const PEDAL_CHANGE = "*Ped.";
@@ -173,13 +203,13 @@ export const joinsText = (prev: string, next: string) =>
   !isSign(next) && !isHairpin(prev) && !isSlur(prev) && !isStructureSign(prev) && prev !== FERMATA && !isArpeggioSign(prev);
 
 /**
- * Syllabe de paroles, chantée sur la note de sa main qui commence à t. verse : couplet (1, 2…).
+ * Syllabe de paroles, chantée sur la note de sa partie qui commence à t. verse : couplet (1, 2…).
  * hyphen : le mot continue sur la syllabe suivante (« lu- ne »). extend : le mot se prolonge
  * sur plusieurs notes (mélisme), jusqu'à cet instant (fin exclue).
  */
-export type Lyric = { hand: Hand; verse: number; t: number; text: string; hyphen?: boolean; extend?: number };
+export type Lyric = { part: Part; verse: number; t: number; text: string; hyphen?: boolean; extend?: number };
 
-/** Ligne des paroles d'un couplet, sous les lignes d'une main : « @l », puis chaque syllabe sur sa case. */
+/** Ligne des paroles d'un couplet, sous les lignes d'une partie : « @l », puis chaque syllabe sur sa case. */
 export const LYRIC_LINE = "@l";
 /** Fin de syllabe : le mot continue sur la syllabe suivante (« lu- »). */
 export const HYPHEN = "-";
@@ -188,10 +218,12 @@ export const isExtender = (t: string) => /^-[-|]*$/.test(t);
 
 export type Score = {
   meta: Meta;
+  /** Instruments, de haut en bas ; leurs parties se suivent dans cet ordre. */
+  instruments: Instrument[];
   /** Temps du morceau, dans l'ordre. Le temps i couvre [i·TICKS_PER_BEAT, (i+1)·TICKS_PER_BEAT[. */
   beats: Beat[];
   notes: Note[];
-  /** Petites notes, rangées par instant, main, rang, de l'aigu au grave. */
+  /** Petites notes, rangées par instant, partie, rang, de l'aigu au grave. */
   graces: Grace[];
   repeats: Repeat[];
   texts: TextMark[];
@@ -200,11 +232,11 @@ export type Score = {
   slurs: Slur[];
   pedals: Pedal[];
   /** Consignes de pédale (« Ped. simile »…), sur la ligne de pédale. */
-  pedalTexts: TextMark[];
+  pedalTexts: PedalText[];
   markers: Marker[];
   /** Accords d'accompagnement (ligne `@c`), tels qu'écrits : nom anglais ou notes ymn. */
   chords: TextMark[];
-  /** Paroles, par instant, main et couplet. */
+  /** Paroles, par instant, partie et couplet. */
   lyrics: Lyric[];
   /** Arpèges, par instant. */
   arpeggios: Arpeggio[];
@@ -219,33 +251,33 @@ export const repeatOf = (score: Score, barIndex: number) => score.repeats.find((
 
 export const beatStart = (i: number) => i * TICKS_PER_BEAT;
 
-/** Trie les notes de façon stable : par début, main droite d'abord, de l'aigu au grave. */
+/** Trie les notes de façon stable : par début, partie du haut d'abord, de l'aigu au grave. */
 export function sortNotes(notes: Note[]): Note[] {
   return [...notes].sort(
-    (a, b) => a.start - b.start || (a.hand === b.hand ? 0 : a.hand === "D" ? -1 : 1) || b.midi - a.midi || a.end - b.end,
+    (a, b) => a.start - b.start || a.part - b.part || b.midi - a.midi || a.end - b.end,
   );
 }
 
-/** Trie les petites notes : par instant, main droite d'abord, par rang, de l'aigu au grave. */
-/** Trie les paroles : par instant, main droite d'abord, par couplet. */
+/** Trie les petites notes : par instant, partie du haut d'abord, par rang, de l'aigu au grave. */
+/** Trie les paroles : par instant, partie du haut d'abord, par couplet. */
 export function sortLyrics(lyrics: Lyric[]): Lyric[] {
-  return [...lyrics].sort((a, b) => a.t - b.t || (a.hand === b.hand ? 0 : a.hand === "D" ? -1 : 1) || a.verse - b.verse);
+  return [...lyrics].sort((a, b) => a.t - b.t || a.part - b.part || a.verse - b.verse);
 }
 
 export function sortGraces(graces: Grace[]): Grace[] {
   return [...graces].sort(
-    (a, b) => a.t - b.t || (a.hand === b.hand ? 0 : a.hand === "D" ? -1 : 1) || a.slot - b.slot || b.midi - a.midi,
+    (a, b) => a.t - b.t || a.part - b.part || a.slot - b.slot || b.midi - a.midi,
   );
 }
 
 /**
- * Rangs des petites notes d'une main à un instant : pour chaque rang, le nombre de
+ * Rangs des petites notes d'une partie à un instant : pour chaque rang, le nombre de
  * chiffres le plus grand (1 ou 2), qui fixe sa largeur. Vide s'il n'y en a pas.
  */
-export function graceDigits(graces: Grace[], hand: Hand, t: number): number[] {
+export function graceDigits(graces: Grace[], part: Part, t: number): number[] {
   const out: number[] = [];
   for (const g of graces) {
-    if (g.hand !== hand || g.t !== t) continue;
+    if (g.part !== part || g.t !== t) continue;
     out[g.slot] = Math.max(out[g.slot] ?? 1, String((g.midi % 12) + 1).length);
   }
   return Array.from(out, (d) => d ?? 1);

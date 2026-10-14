@@ -2,7 +2,7 @@
 import { writeFrontmatter } from "./frontmatter.ts";
 import { layout, noteText } from "./layout.ts";
 import type { Column, Mark, System, SystemRow, Voice } from "./layout.ts";
-import { GRACE_MARK, HYPHEN, LYRIC_LINE, graceDigits, joinsText } from "./model.ts";
+import { GRACE_MARK, HYPHEN, LYRIC_LINE, firstParts, graceDigits, joinsText, partCount } from "./model.ts";
 import type { Score } from "./model.ts";
 import { octaveLabel } from "./pitch.ts";
 
@@ -11,8 +11,20 @@ export const DEFAULT_CELL = 3;
 
 export type WriteOptions = { width?: number };
 
-/** Trait horizontal calqué sur la règle : les barres deviennent des croisements. */
-const rule = (model: string) => [...model].map((c) => (c === "|" ? "┼" : "─")).join("");
+/**
+ * Trait horizontal calqué sur la règle : les barres deviennent des croisements. Double (═)
+ * entre deux instruments ; name : le nom de l'instrument qui commence sous ce trait, écrit
+ * juste après la colonne de gauche.
+ */
+function rule(model: string, prefix: number, double = false, name?: string): string {
+  const line: string[] = [...model].map((c) => (c === "|" ? (double ? "╪" : "┼") : double ? "═" : "─"));
+  if (name) {
+    const label = [..." " + name + " "];
+    while (line.length < prefix + 1 + label.length + 1) line.push(double ? "═" : "─");
+    line.splice(prefix + 1, label.length, ...label);
+  }
+  return line.join("");
+}
 
 /** Texte d'un séparateur : « | », « || », « :|| », « ||: », « :||: » ou, en tête, « |: ». */
 export function separatorText(c: Exclude<Column, { kind: "anchor" }>): string {
@@ -74,12 +86,12 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
   const ruler = head + line((a) => (sys.columns[sys.anchors[a]] as { label: string }).label, true);
   // petites notes en tête de case, rang par rang ; le contenu de la case vient après, sur
   // toutes les lignes, pour que les notes jouées ensemble restent alignées
-  const graceW = sys.anchors.map((_, a) => Math.max(graceWidth(sys.graceDigits.D[a]), graceWidth(sys.graceDigits.G[a])));
+  const graceW = sys.anchors.map((_, a) => Math.max(...sys.parts.map((p) => graceWidth(p.graceDigits[a]))));
   const cellText = (r: SystemRow, a: number) => {
-    const g = sys.graceDigits[r.hand][a].map((d, k) => (r.graces[a][k] ? r.graces[a][k] + GRACE_MARK : "").padEnd(d + GRACE_MARK.length)).join("");
+    const g = sys.parts[r.part].graceDigits[a].map((d, k) => (r.graces[a][k] ? r.graces[a][k] + GRACE_MARK : "").padEnd(d + GRACE_MARK.length)).join("");
     return g.trim() || r.cells[a] ? g.padEnd(graceW[a]) + r.cells[a] : "";
   };
-  const rows = (list: System["right"]) =>
+  const rows = (list: SystemRow[]) =>
     list.map((r) => ((r.showOctave ? octaveLabel(r.octave) : "").padEnd(prefix - 1) + "|" + line((a) => cellText(r, a))).trimEnd());
   // « ] » sur le premier « | » de sa barre, « [ » sur le dernier ; -1 : barre de gauche du
   // système (le « | » de la colonne de gauche, ou celui de « |: » si le système commence par une reprise)
@@ -129,6 +141,7 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
       ].sort((a, b) => a.col - b.col);
       return items.reduce((s, x) => s.padEnd(x.col) + x.text, LYRIC_LINE).trimEnd();
     });
+  const firsts = firstParts(sys.instruments);
   // accords : une ligne à part, juste au-dessus de la règle, chaque accord sur sa case
   const chordLine = sys.chords.length
     ? [sys.chords.reduce((l, c) => l.padEnd(anchorCol[c.anchor]) + c.text, CHORD_LINE).trimEnd()]
@@ -137,16 +150,18 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
     ...stackLines(sys.marks.map((m) => ({ col: colOf(m), text: m.text }))),
     ...chordLine,
     ruler,
-    rule(ruler),
-    ...rows(sys.right),
-    ...lyricLines(sys.voices.D),
-    ...voiceLines(sys.voices.D),
-    rule(ruler),
-    ...rows(sys.left),
-    ...lyricLines(sys.voices.G),
-    ...voiceLines(sys.voices.G),
-    // la pédale sur sa propre ligne @, tout en bas
-    ...stackLines([...sys.pedal.signs, ...sys.pedal.texts].map((p) => ({ col: anchorCol[p.anchor], text: p.text }))),
+    // chaque partie sous son trait : double au début d'un instrument (avec son nom), simple sinon ;
+    // ses lignes de notes, ses paroles, ses nuances, puis sa pédale sur sa propre ligne @
+    ...sys.parts.flatMap((p, k) => {
+      const first = firsts.indexOf(k);
+      return [
+        rule(ruler, prefix, first > 0, first >= 0 ? sys.instruments[first].name : undefined),
+        ...rows(p.rows),
+        ...lyricLines(p.voice),
+        ...voiceLines(p.voice),
+        ...stackLines([...p.pedal.signs, ...p.pedal.texts].map((x) => ({ col: anchorCol[x.anchor], text: x.text }))),
+      ];
+    }),
   ];
 }
 
@@ -169,7 +184,7 @@ function cellWidths(score: Score, cell: number): (t: number) => number {
   const need = new Map<number, number>();
   const want = (t: number, w: number) => need.set(t, Math.max(need.get(t) ?? cell, w));
   for (const e of score.expressions) {
-    const pin = score.hairpins.some((h) => h.hand === e.hand && h.start === e.t) || score.slurs.some((s) => s.hand === e.hand && s.start === e.t);
+    const pin = score.hairpins.some((h) => h.part === e.part && h.start === e.t) || score.slurs.some((s) => s.part === e.part && s.start === e.t);
     want(e.t, e.text.length + (pin ? 3 : 2));
   }
   for (const tm of score.texts) want(tm.t, tm.text.length + 2);
@@ -185,14 +200,14 @@ function cellWidths(score: Score, cell: number): (t: number) => number {
     want(n.start, len);
   }
   for (const g of score.graces) {
-    const graces = Math.max(graceWidth(graceDigits(score.graces, "D", g.t)), graceWidth(graceDigits(score.graces, "G", g.t)));
+    const graces = Math.max(...Array.from({ length: partCount(score.instruments) }, (_, k) => graceWidth(graceDigits(score.graces, k, g.t))));
     want(g.t, graces + (trillNeed.get(g.t) ?? cell));
   }
   for (const p of score.pedalTexts) want(p.t, p.text.length + 2);
   for (const p of score.pedals) {
-    const change = score.pedals.some((q) => q.end === p.start);
+    const change = score.pedals.some((q) => q.part === p.part && q.end === p.start);
     want(p.start, (change ? "*Ped." : "Ped.").length + 1);
-    if (!score.pedals.some((q) => q.start === p.end)) want(p.end, 2);
+    if (!score.pedals.some((q) => q.part === p.part && q.start === p.end)) want(p.end, 2);
   }
   return (t) => need.get(t) ?? cell;
 }
@@ -215,6 +230,8 @@ export function writeYmn(score: Score, opts: WriteOptions = {}): string {
   if (ternary * 2 > score.beats.length) meta.division = 3;
   else delete meta.division;
   if (score.order.length) meta.order = score.order.join(" ");
+  // noms des instruments : déclarés ici, écrits sur le trait de chacun
+  if (score.instruments.some((x) => x.name)) meta.parts = score.instruments.map((x) => x.name).join(", ");
   const out = writeFrontmatter(meta);
   systems.forEach((s, i) => {
     if (i) out.push("");

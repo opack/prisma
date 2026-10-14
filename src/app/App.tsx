@@ -363,6 +363,21 @@ export function App() {
                 </label>
               </div>
             </fieldset>
+            <fieldset>
+              <legend>Instruments</legend>
+              <div className="choices">
+                <label>
+                  <input
+                    type="checkbox"
+                    id="names-every-system"
+                    checked={options.namesEverySystem}
+                    onChange={(e) => setOptions({ namesEverySystem: e.target.checked })}
+                  />
+                  Répéter les noms à chaque système
+                </label>
+                <span className="sample">sinon, au premier système seulement</span>
+              </div>
+            </fieldset>
           </div>
           <div className="group">
             <h2>Octaves</h2>

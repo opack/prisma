@@ -11,6 +11,7 @@ Entre deux lignes `---`, une clé par ligne, sous la forme `clé: valeur`.
 | `format` | Version du format ymn du fichier : `format: 1`. L'écriture la met toujours ; un fichier sans elle est lu comme la version courante. Le lecteur refuse un fichier d'une autre version en le disant (voir « Versions »). |
 | `title`, `subtitle`, `composer`, `source` | Informations affichées : le sous-titre (« Op. 9 n° 2 », « Suite bergamasque, 3ᵉ mouvement »…) sous le titre. |
 | `bpm` | Tempo de départ, en temps (*beats*) par minute : `bpm: 78`, gravé « 78 bpm ». Le temps est celui de la règle de comptage, donc la noire pointée d'un 6/8 : le nombre se lit sans ambiguïté, comme sur un métronome. Les indications en mots (`Andante`, `rit.`) vont sur la ligne `@` au-dessus de la règle. À l'import MusicXML, il vient du premier `<sound tempo>`, converti des noires en temps. |
+| `parts` | Noms des instruments, de haut en bas, séparés par des virgules : `parts: Chant, Piano` (voir « Parties et instruments »). |
 | `order` | Ordre de jeu des sections, par leur lettre : `order: A A B C B D A` (voir « Sections et ordre de jeu »). |
 | `cell` | Largeur de base d'une case en caractères, à l'écriture. Vaut 3 par défaut. |
 | `division` | Découpage par défaut d'un temps : `2` (binaire, par défaut) ou `3` (ternaire, pour le 6/8 par exemple). |
@@ -30,12 +31,39 @@ m12|1  *  |2  |3  *  *  ||1  |2  |
 ```
 
 1. **La règle de comptage** commence par `m` suivi du numéro de la première mesure. Chaque temps est encadré par des `|`, et une fin de mesure s'écrit `||`.
-2. **Un trait sous la règle**, facultatif.
-3. **Les lignes de la main droite**, suivies si besoin de ses lignes `@l` de paroles et `@` de nuances.
-4. **Le trait entre les mains**, obligatoire, même quand une main ne joue pas.
-5. **Les lignes de la main gauche**, suivies si besoin de ses lignes `@l` de paroles, `@` de nuances et de pédale.
+2. **Un trait sous la règle**, facultatif (obligatoire quand les instruments sont nommés, voir plus bas).
+3. **Les parties**, de haut en bas, séparées par des traits. Chacune a ses lignes de notes, suivies si besoin de ses lignes `@l` de paroles, `@` de nuances et, sous la dernière partie d'un instrument, de pédale. Ici deux parties : au piano, la main droite et la main gauche.
 
-Les traits s'écrivent avec `─`, `-`, `=`, `+` ou `┼`, sans espace.
+Les traits s'écrivent avec `─`, `-`, `+` ou `┼` (simple), ou avec `═`, `=` et `╪` (double), sans espace.
+
+### Parties et instruments
+
+Une **partie** est un groupe de lignes entre deux traits : une main au piano, une voix, une flûte. Un **instrument** réunit une ou plusieurs parties qui se suivent : le piano en a deux, le chant une. Il peut y avoir autant de parties et d'instruments que voulu, à partir d'une seule partie (sans aucun trait).
+
+- Un trait **simple** (`───┼───`) sépare deux parties d'un même instrument ; un trait **double** (`═══╪═══`) sépare deux instruments. La gravure trace un trait épais entre les parties d'un instrument, réunies par une accolade, et laisse un espace entre deux instruments.
+- Tous les systèmes ont les mêmes parties, dans le même ordre, même quand une partie ne joue pas.
+- Toutes les parties partagent la règle de comptage et ses cases : ce qui est aligné verticalement sonne ensemble.
+
+Les instruments peuvent être nommés. Leurs noms se déclarent dans le frontmatter, dans l'ordre (`parts: Chant, Piano`), et chacun s'écrit sur le trait au-dessus de sa première partie : le trait sous la règle pour le premier, le trait double qui le commence pour les suivants. Le nom se place n'importe où sur le trait, entre des espaces, avec au moins un morceau de trait de chaque côté ; l'écriture le met juste après la colonne de gauche.
+
+```
+---
+parts: Chant, Piano
+---
+m1 |1    |2  |3  |4   ||
+───┼─ Chant ─┼───┼────┼┼
+0  |8    |-  |10 |8   ||
+@l  Ah ---------  oui
+═══╪═ Piano ═╪═══╪════╪╪
+0  |5    |   |5  |    ||
+───┼─────┼───┼───┼────┼┼
+-1 |1    |-  |8  |-   ||
+@   Ped.          *
+```
+
+Le nom doit être celui que `parts` annonce à cette place : un nom non déclaré (`Pno.`), absent ou à la mauvaise place est une erreur. Sans `parts`, aucun nom ne s'écrit. La gravure écrit les noms à gauche du premier système (ou de chacun, en option).
+
+À l'import MusicXML, chaque `<part>` devient un instrument et chacune de ses portées une partie ; les instruments sont nommés d'après `<part-name>` quand il y en a plusieurs. Un arpège qui traverse les portées s'égrène d'un seul geste (`/` sur la ligne du haut) quand le morceau n'a qu'un instrument, et sinon partie par partie.
 
 ### Les cases
 
@@ -138,8 +166,8 @@ Une ou plusieurs lignes facultatives, **au-dessus** de la règle de comptage, qu
 | `3×` (ou `3x`) | une case de la mesure qui se termine par `:||` | Le passage se joue 3 fois. |
 | `*A` | le **dernier** `|` de la barre qui ouvre la mesure | Début de la section A (voir « Sections et ordre de jeu »). |
 | `^` | une case | Point d'orgue : la note, l'accord ou le silence qui commence là se tient plus longtemps que sa valeur, à l'appréciation du pianiste. Gravé 𝄐 au-dessus de la case. |
-| `/` | une case | Arpège des deux mains, d'un seul geste : de la note la plus grave de la main gauche à la plus aiguë de la main droite. `\` : de l'aigu au grave. Gravé comme une vaguelette verticale devant l'accord. |
-| autre texte | une case | Indication pour tout le système : `rit.`, `a tempo`… (les nuances d'une main vont sous ses lignes, voir plus bas) |
+| `/` | une case | Arpège de toutes les parties, d'un seul geste : de la note la plus grave du système à la plus aiguë. `\` : de l'aigu au grave. Gravé comme une vaguelette verticale devant l'accord. |
+| autre texte | une case | Indication pour tout le système : `rit.`, `a tempo`… (les nuances d'une partie vont sous ses lignes, voir plus bas) |
 
 Pour la première mesure d'un système, `*A` se place sur le `|` de la colonne de gauche (ou sur celui de `|:` quand le système commence par une reprise).
 
@@ -199,9 +227,9 @@ m4 |1  |2  ||
 
 À l'import MusicXML, le morceau est déroulé (reprises, cases, D.C., D.S., To Coda, Fine ; après un D.C. ou un D.S., sans refaire les reprises et en prenant la dernière case), puis découpé en sections partout où l'ordre de jeu saute. Une section toujours jouée deux fois de suite redevient une reprise simple, et deux sections toujours jouées l'une après l'autre sont réunies : un morceau qui n'a que des reprises simples n'a pas de section.
 
-## Nuances et soufflets : lignes `@` sous chaque main
+## Nuances et soufflets : lignes `@` sous chaque partie
 
-Une ou plusieurs lignes `@` placées **sous les lignes d'une main** portent ses nuances : juste au-dessus du trait entre les mains pour la main droite, à la fin du système pour la main gauche. Aucune ligne de notes de cette main ne peut les suivre. Comme au-dessus de la règle, chaque indication commence exactement sur une case, et deux indications sont séparées par au moins deux espaces.
+Une ou plusieurs lignes `@` placées **sous les lignes d'une partie** portent ses nuances, juste avant le trait qui la sépare de la suivante (ou à la fin du système pour la dernière). Aucune ligne de notes de cette partie ne peut les suivre. Comme au-dessus de la règle, chaque indication commence exactement sur une case, et deux indications sont séparées par au moins deux espaces.
 
 | Indication | Sens |
 |---|---|
@@ -209,10 +237,10 @@ Une ou plusieurs lignes `@` placées **sous les lignes d'une main** portent ses 
 | `<----` | Crescendo, de sa première case à la case qui contient son dernier caractère. |
 | `>----` | Decrescendo, de même. |
 | `(-----)` | Liaison d'expression : de la note de la case du `(` à celle de la case du `)`, jouées liées. |
-| `/` | Arpège de l'accord de cette main, du grave à l'aigu (`\` : de l'aigu au grave). |
-| autre texte | Indication pour cette main : `cresc.`, `dim.`, `dolce`, `sempre legato`, `più f`… |
+| `/` | Arpège de l'accord de cette partie, du grave à l'aigu (`\` : de l'aigu au grave). |
+| autre texte | Indication pour cette partie : `cresc.`, `dim.`, `dolce`, `sempre legato`, `più f`… |
 
-Une liaison relie des notes différentes, à jouer liées (legato), et dessine les phrases. Ce n'est pas la liaison de prolongation entre deux notes identiques : celle-là n'existe pas ici, la note se tient avec `-`. Comme un soufflet, une liaison coupée par un changement de système s'écrit `(-----` en fin de système et `-----)` au début du suivant (`------` pour un système qu'elle traverse tout entier). Les liaisons imbriquées ou qui se chevauchent vont chacune sur sa ligne `@` ; quand plusieurs liaisons d'une main continuent au système suivant, leurs suites s'écrivent de haut en bas dans l'ordre où elles ont commencé. La gravure les trace comme des arcs fins dans une bande juste sous les lignes de la main, la plus courte au plus près des notes.
+Une liaison relie des notes différentes, à jouer liées (legato), et dessine les phrases. Ce n'est pas la liaison de prolongation entre deux notes identiques : celle-là n'existe pas ici, la note se tient avec `-`. Comme un soufflet, une liaison coupée par un changement de système s'écrit `(-----` en fin de système et `-----)` au début du suivant (`------` pour un système qu'elle traverse tout entier). Les liaisons imbriquées ou qui se chevauchent vont chacune sur sa ligne `@` ; quand plusieurs liaisons d'une partie continuent au système suivant, leurs suites s'écrivent de haut en bas dans l'ordre où elles ont commencé. La gravure les trace comme des arcs fins dans une bande juste sous les lignes de la partie, la plus courte au plus près des notes.
 
 Un soufflet est toujours lu à part : une seule espace suffit entre lui et sa voisine. Il peut commencer dans la case d'une nuance, juste après elle : `p <----` part de la case du `p`. Il peut traverser les barres (avec des `-` ou des `|`). Coupé par un changement de système, il se réécrit au début du système suivant et se lit comme un seul soufflet ; la gravure le laisse ouvert au point de coupure.
 
@@ -228,9 +256,9 @@ m1 |1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||
 
 À l'import MusicXML, nuances, soufflets et textes suivent leur portée ; les indications de tempo et de structure (`rit.`, `a tempo`, `Andante`…) vont sur la ligne `@` au-dessus de la règle. Chaque indication est calée sur l'attaque ou le début de temps le plus proche. Les notes sont calées sur une grille de 48 cases par temps (doubles croches et triolets de doubles croches) : une durée plus fine, comme un quintolet, prend la case la plus proche.
 
-## Paroles : lignes `@l` sous une main
+## Paroles : lignes `@l` sous une partie
 
-Une ligne qui commence par `@l` (*lyrics*), **sous les lignes d'une main** avec ses autres lignes `@`, porte un couplet de paroles. Plusieurs lignes `@l` sous une même main sont les couplets 1, 2… de haut en bas ; une ligne `@l` vide garde la place d'un couplet absent de ce système. L'écriture place les paroles juste sous les notes, avant les nuances.
+Une ligne qui commence par `@l` (*lyrics*), **sous les lignes d'une partie** avec ses autres lignes `@`, porte un couplet de paroles. Plusieurs lignes `@l` sous une même partie sont les couplets 1, 2… de haut en bas ; une ligne `@l` vide garde la place d'un couplet absent de ce système. L'écriture place les paroles juste sous les notes, avant les nuances.
 
 Comme sur la ligne `@c`, chaque mot est à part : une seule espace sépare deux syllabes. Chaque syllabe commence exactement sur une case, normalement celle de sa note. Une espace insécable reste dans la syllabe (`Oh !`), et deux syllabes chantées sur une même note s'écrivent liées par `‿` (`qu'on‿a`).
 
@@ -244,11 +272,11 @@ La prolongation suit sa syllabe, après au moins une espace, et doit dépasser l
 
 La gravure écrit les paroles en caractères droits à empattements, pour ne pas les confondre avec les chiffres des notes, sous le début de chaque note ; le trait d'union se place entre les deux syllabes, la prolongation est un trait bas jusqu'à la fin de la dernière note. Une syllabe trop longue élargit sa case.
 
-À l'import MusicXML, chaque `<lyric>` donne une syllabe, sous la main de sa portée ; les couplets suivent l'ordre de leur numéro (`number`). `<syllabic>` `begin` ou `middle` donne le trait d'union ; `<extend>` une prolongation jusqu'à la fin de la dernière note de la voix avant la syllabe suivante du couplet, si elle couvre plusieurs notes.
+À l'import MusicXML, chaque `<lyric>` donne une syllabe, sous la partie de sa portée ; les couplets suivent l'ordre de leur numéro (`number`). `<syllabic>` `begin` ou `middle` donne le trait d'union ; `<extend>` une prolongation jusqu'à la fin de la dernière note de la voix avant la syllabe suivante du couplet, si elle couvre plusieurs notes.
 
 ## Pédale
 
-La pédale de résonance se note sur une ligne `@` **sous la main gauche**, avec trois signes posés sur les cases :
+La pédale de résonance se note sur une ligne `@` **sous la dernière partie de son instrument** (au piano, la main gauche), avec trois signes posés sur les cases :
 
 | Signe | Sens |
 |---|---|
@@ -258,7 +286,7 @@ La pédale de résonance se note sur une ligne `@` **sous la main gauche**, avec
 
 Une consigne qui commence par `Ped.` (`Ped. simile` : « continue à pédaler de même », `Ped. sempre`…) se place sur la même ligne : c'est un texte, pas un signe, qui se lit dans la continuité du trait de pédale.
 
-Une pédale enfoncée le reste d'un système au suivant sans rien réécrire. Sans `*`, elle tient jusqu'à la fin du morceau. La remise en page écrit la pédale sur sa propre ligne, tout en bas du système ; la gravure la trace comme un trait sous le système, dont la longueur montre exactement ce qui est tenu, avec une pointe à chaque changement.
+Une pédale enfoncée le reste d'un système au suivant sans rien réécrire. Sans `*`, elle tient jusqu'à la fin du morceau. La remise en page écrit la pédale sur sa propre ligne, sous les autres lignes de sa partie ; la gravure la trace comme un trait sous l'instrument, dont la longueur montre exactement ce qui est tenu, avec une pointe à chaque changement.
 
 ```
 m1 |1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||

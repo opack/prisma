@@ -4,7 +4,7 @@ Cette notice s'adresse au musicien. Elle explique comment lire une partition ymn
 
 Si vous ne lisez pas la partition classique, ignorez simplement les comparaisons : tout ce qu'il faut savoir pour jouer est dit ici.
 
-La notation n'est pas propre à un instrument : elle note des hauteurs et des durées. Les exemples sont pris au piano, son premier usage, et quelques indications ne concernent que lui (les deux mains, la pédale, les doigtés).
+La notation n'est pas propre à un instrument : elle note des hauteurs et des durées. Les exemples sont pris au piano, son premier usage, et quelques indications ne concernent que lui (la pédale, les doigtés).
 
 ## 1. Le principe
 
@@ -53,7 +53,27 @@ Ce système remplace les clés (sol, fa, ut), les portées, les lignes suppléme
 
 ### Les parties
 
-Une partition ymn a deux **parties**, séparées par un trait épais : celle du haut et celle du bas, par exemple une mélodie et son accompagnement. Au piano, ce sont la main droite et la main gauche. Une partie n'est liée à aucune clé ni aucune hauteur : chacune peut aller de l'extrême grave à l'extrême aigu. Les deux parties partagent la règle de comptage, ce qui les garde alignées.
+Une **partie** est un groupe de lignes de notes : au piano, chaque main est une partie ; une voix, une flûte en sont une. Une partie n'est liée à aucune clé ni aucune hauteur : chacune peut aller de l'extrême grave à l'extrême aigu. Toutes les parties partagent la règle de comptage : ce qui est aligné verticalement sonne ensemble.
+
+Un trait simple sépare les parties d'un même **instrument** (les deux mains du piano), un trait double deux instruments. Leurs noms sont annoncés en tête du fichier (`parts:`) et écrits sur le trait qui ouvre chacun :
+
+```ymn
+---
+parts: Chant, Piano
+---
+
+m1 |1    |2  |3  |4   ||
+───┼─ Chant ─┼───┼────┼┼
+0  |8    |-  |10 |8   ||
+@l  Ah ---------  oui
+═══╪═ Piano ═╪═══╪════╪╪
+0  |5    |   |5  |    ||
+───┼─────┼───┼───┼────┼┼
+-1 |1    |-  |8  |-   ||
+@   Ped.          *
+```
+
+La gravure réunit les parties d'un instrument par une accolade et écrit les noms à gauche du premier système.
 
 ### Les accords
 
@@ -175,7 +195,7 @@ m1 |1        |2  |3     |4   ||
 Deux signes se posent sur une ligne `@`, au-dessus ou sous les notes :
 
 - `^` sur la ligne `@` du haut : **point d'orgue**. On tient la note, l'accord ou le silence plus longtemps que prévu. Il n'y en a qu'un pour toutes les parties, puisqu'il suspend le temps lui-même (la partition classique le répète sur chaque portée).
-- `/` : **arpège**. On égrène l'accord du grave à l'aigu (`\` : de l'aigu au grave). Sur la ligne `@` d'une partie, il ne concerne qu'elle ; sur celle du haut, les deux parties d'un seul geste (au piano, les deux mains).
+- `/` : **arpège**. On égrène l'accord du grave à l'aigu (`\` : de l'aigu au grave). Sur la ligne `@` d'une partie, il ne concerne qu'elle ; sur celle du haut, toutes les parties d'un seul geste (au piano, les deux mains).
 
 ## 5. La structure
 
@@ -290,7 +310,7 @@ Les indications de caractère et de tempo (`dolce`, `rit.`, `a tempo`…) garden
 |---|---|
 | noms de notes, dièses, bémols, bécarres | numéros de 1 à 12, un par hauteur |
 | armure | rien : chaque numéro est la note jouée |
-| clés, portées | deux parties (au piano, les deux mains), de part et d'autre d'un trait épais |
+| clés, portées | des parties (au piano, les deux mains) séparées par un trait ; un trait double entre deux instruments |
 | lignes supplémentaires, 8va, 15ma, loco | numéro d'octave sur chaque ligne (`0`, `+1`, `-1`…) |
 | ronde, blanche, noire, croche… et points | la longueur de la note sur la règle (`-`) |
 | silences | case vide |

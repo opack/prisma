@@ -1,5 +1,5 @@
 import { FINGER_MARK, TRILL_MARK, octaveOffset } from "../core/index.ts";
-import type { Meta, SystemRow, Voice } from "../core/index.ts";
+import type { Meta, PedalLine, SystemRow, Voice } from "../core/index.ts";
 import { FINGER, G, PAGE, chordParts, graceExtra, graceSlotW, headerHeight, leadExtra, lyricTextW, noteParts } from "./engrave.ts";
 import type { Page, PlacedSystem } from "./engrave.ts";
 import type { OctavePosition, OctaveStyle, RenderOptions } from "./options.ts";
@@ -125,7 +125,7 @@ function Row({ ps, row, y, centered }: { ps: PlacedSystem; row: SystemRow; y: nu
   const graces = row.graces.flatMap((list, a) => {
     let x = xs[sys.anchors[a]] + 0.4;
     const dy = centered ? row.center[a] * G.rowH : 0;
-    return sys.graceDigits[row.hand][a].map((d, k) => {
+    return sys.parts[row.part].graceDigits[a].map((d, k) => {
       const gx = x;
       x += graceSlotW(d);
       return list[k] ? (
@@ -238,7 +238,7 @@ function vwave(x: number, y1: number, y2: number, down: boolean): string {
 const WAVE = { fill: "none", stroke: INK, strokeWidth: 0.3, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
 
 /**
- * Liaisons d'une main : un arc fin, creux vers le haut comme une liaison sous les notes, de
+ * Liaisons d'une partie : un arc fin, creux vers le haut comme une liaison sous les notes, de
  * la première note à la dernière. Une liaison coupée reste ouverte au bord du système.
  */
 function SlurBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: number }) {
@@ -264,7 +264,7 @@ type BarCol = Extract<PlacedSystem["sys"]["columns"][number], { kind: "barSep" }
 
 /**
  * Barre de mesure, avec ses signes de reprise : « :|| » (points, trait fin, trait épais),
- * « ||: » (trait épais, trait fin, points). Les points sont placés au milieu de chaque main.
+ * « ||: » (trait épais, trait fin, points). Les points sont placés au milieu de chaque partie.
  */
 function BarLine({ x, w, col, top, bottom, sections }: { x: number; w: number; col: BarCol; top: number; bottom: number; sections: number[][] }) {
   const thin = (lx: number, k: string) => <line key={k} x1={lx} x2={lx} y1={top} y2={bottom} stroke={INK} strokeWidth={0.22} />;
@@ -379,7 +379,7 @@ function OrderLine({ order, y, cx = PAGE.w / 2 }: { order: string[]; y: number; 
 }
 
 /**
- * Paroles d'une main : un couplet par ligne, chaque syllabe sous le début de sa note. Un
+ * Paroles d'une partie : un couplet par ligne, chaque syllabe sous le début de sa note. Un
  * trait d'union relie les syllabes d'un mot ; un trait bas prolonge une syllabe chantée sur
  * plusieurs notes (mélisme), jusqu'à la fin de la dernière.
  */
@@ -426,7 +426,7 @@ function LyricBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: nu
 }
 
 /**
- * Bande des nuances d'une main : nuances (p, mf…), textes (cresc., dolce…) et soufflets.
+ * Bande des nuances d'une partie : nuances (p, mf…), textes (cresc., dolce…) et soufflets.
  * Un soufflet coupé par un changement de système garde son ouverture au point de coupure.
  */
 function VoiceBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: number }) {
@@ -477,7 +477,7 @@ function VoiceBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: nu
  * crochet là où la pédale s'enfonce, finit par un crochet là où elle se relâche, et
  * marque d'une pointe chaque changement. Sa longueur montre exactement ce qui est tenu.
  */
-function PedalBand({ ps, top }: { ps: PlacedSystem; top: number }) {
+function PedalBand({ ps, pedal, top }: { ps: PlacedSystem; pedal: PedalLine; top: number }) {
   const { sys, xs, ws } = ps;
   const left = PAGE.marginX + G.prefix;
   const right = xs[xs.length - 1] + ws[ws.length - 1];
@@ -486,7 +486,7 @@ function PedalBand({ ps, top }: { ps: PlacedSystem; top: number }) {
   const notch = 0.8; // demi-largeur d'une pointe de changement
   const px = (a: number) => xs[sys.anchors[a]] + 0.3;
   const parts: string[] = [];
-  for (const s of sys.pedal.spans) {
+  for (const s of pedal.spans) {
     let x1 = s.fromAnchor >= 0 ? px(s.fromAnchor) : left;
     let x2 = s.toAnchor >= 0 ? px(s.toAnchor) : right;
     if (s.changeStart) {
@@ -506,7 +506,7 @@ function PedalBand({ ps, top }: { ps: PlacedSystem; top: number }) {
       </text>
       <path d={parts.join(" ")} fill="none" stroke={INK} strokeWidth={0.3} strokeLinejoin="round" />
       {/* consignes (« Ped. simile ») : sur la ligne de pédale, après un éventuel crochet */}
-      {sys.pedal.texts.map((p, i) => (
+      {pedal.texts.map((p, i) => (
         <text key={i} x={px(p.anchor) + 0.8} y={y} fontSize={2.8} fontStyle="italic" fill={INK}>
           {p.text}
         </text>
@@ -515,38 +515,63 @@ function PedalBand({ ps, top }: { ps: PlacedSystem; top: number }) {
   );
 }
 
-function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions }) {
+/**
+ * Accolade fine à gauche d'un instrument à plusieurs parties (le piano), de top à bottom.
+ * Une accolade classique : deux courbes qui se rejoignent en pointe au milieu.
+ */
+function Brace({ x, top, bottom }: { x: number; top: number; bottom: number }) {
+  const mid = (top + bottom) / 2, w = 1.3;
+  const d = [
+    `M ${x} ${top}`,
+    `C ${x - w} ${top + 1}, ${x} ${mid - 1.5}, ${x - w} ${mid}`,
+    `C ${x} ${mid + 1.5}, ${x - w} ${bottom - 1}, ${x} ${bottom}`,
+    `C ${x - w * 0.6} ${bottom - 1}, ${x + 0.25} ${mid + 1.5}, ${x - w} ${mid}`,
+    `C ${x + 0.25} ${mid - 1.5}, ${x - w * 0.6} ${top + 1}, ${x} ${top}`,
+  ].join(" ");
+  return <path d={d} fill={INK} stroke={INK} strokeWidth={0.1} />;
+}
+
+function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; options: RenderOptions; names: boolean }) {
+  // la disposition verticale est calculée depuis le haut du système : on la place sur la page
+  const Y = placed.y;
+  const ps = {
+    ...placed,
+    rulerTop: Y + placed.rulerTop,
+    parts: placed.parts.map((p) => ({
+      ...p,
+      separator: p.separator === undefined ? undefined : Y + p.separator,
+      rowsTop: Y + p.rowsTop,
+      slurTop: Y + p.slurTop,
+      lyricTop: Y + p.lyricTop,
+      voiceTop: Y + p.voiceTop,
+      pedalTop: Y + p.pedalTop,
+      bottom: Y + p.bottom,
+    })),
+    instruments: placed.instruments.map((x) => ({ ...x, top: Y + x.top, bottom: Y + x.bottom })),
+  };
   const { sys, xs, ws } = ps;
   const chordTop = ps.y + ps.textBand + ps.structBand; // bande des accords, juste au-dessus de la règle
-  const y = chordTop + ps.chordBand; // haut de la règle de comptage
+  const y = ps.rulerTop; // haut de la règle de comptage
   const x0 = PAGE.marginX;
   const left = x0 + G.prefix;
   const right = xs[xs.length - 1] + ws[ws.length - 1];
   const rulerBase = y + G.rulerH * 0.72;
-  const top = y;
-  const rhTop = y + G.rulerH;
-  const rhVoice = rhTop + sys.right.length * G.rowH; // bande des nuances de la main droite
-  const rhSlurs = rhVoice; // bande des liaisons de la main droite, juste sous ses lignes
-  const handY = rhVoice + ps.slurBand.D + ps.lyricBand.D + ps.voiceBand.D + G.handGap;
-  const lhTop = handY + G.handGap;
-  const lhVoice = lhTop + sys.left.length * G.rowH;
-  const lhSlurs = lhVoice;
-  const bottom = lhVoice + ps.slurBand.G + ps.lyricBand.G + ps.voiceBand.G;
+  const rowsOf = (k: number) => sys.parts[k].rows;
+  const rowY = (k: number, i: number) => ps.parts[k].rowsTop + i * G.rowH;
 
-  // bandes alternées par groupe d'octave, dans chaque main
-  const bands = (rows: SystemRow[]) => {
+  // bandes alternées par groupe d'octave, dans chaque partie
+  const alternate = (rows: SystemRow[]) => {
     let group = -1;
     return rows.map((r) => {
       if (r.showOctave) group++;
       return group % 2 === 1;
     });
   };
-  const rb = bands(sys.right);
-  const lb = bands(sys.left);
   // couleur par octave (option) ; sans palette, une bande grise un couloir sur deux
   const tint = (octave: number) => octaveTint(options.octavePalette, options.octaveMixed, octaveOffset(octave));
-  const bandFill = (octave: number, alternate: boolean) => tint(octave)?.band ?? (alternate ? BAND : undefined);
+  const bandFill = (octave: number, alt: boolean) => tint(octave)?.band ?? (alt ? BAND : undefined);
   const tabFill = (octave: number) => tint(octave)?.tab ?? TAB;
+  const centered = options.notePosition === "center";
 
   return (
     <g>
@@ -590,7 +615,7 @@ function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions 
         });
         return <path key={a} d={arms.join(" ")} stroke={LIGHT_TEXT} strokeWidth={0.28} strokeLinecap="round" />;
       })}
-      <line x1={left} x2={right} y1={rhTop} y2={rhTop} stroke={LIGHT} strokeWidth={0.25} />
+      <line x1={left} x2={right} y1={y + G.rulerH} y2={y + G.rulerH} stroke={LIGHT} strokeWidth={0.25} />
       {/* accords : le nom en haut, les notes ymn empilées dessous, la basse en bas */}
       {sys.chords.map((c, i) => {
         const { notes, name } = chordParts(c.text);
@@ -614,58 +639,79 @@ function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions 
         );
       })}
 
-      <OctaveTabs rows={sys.right} top={rhTop} style={options.octaveStyle} position={options.octavePosition} tabFill={tabFill} />
-      <OctaveTabs rows={sys.left} top={lhTop} style={options.octaveStyle} position={options.octavePosition} tabFill={tabFill} />
+      {/* instruments : une accolade pour plusieurs parties, le nom au premier système */}
+      {ps.instruments.map((inst, i) => {
+        const multi = inst.last > inst.first;
+        const top = ps.parts[inst.first].rowsTop, bottom = ps.parts[inst.last].voiceTop + ps.parts[inst.last].voiceBand;
+        return (
+          <g key={"in" + i}>
+            {multi && bottom > top && <Brace x={x0 - 0.3} top={top} bottom={bottom} />}
+            {names && inst.name && (
+              <text x={x0 - (multi ? 2.2 : 0.8)} y={(top + bottom) / 2 + 1} fontSize={2.8} fontStyle="italic" textAnchor="end" fill={INK}>
+                {inst.name}
+              </text>
+            )}
+          </g>
+        );
+      })}
+
+      {sys.parts.map((p, k) => (
+        <OctaveTabs key={"ot" + k} rows={p.rows} top={ps.parts[k].rowsTop} style={options.octaveStyle} position={options.octavePosition} tabFill={tabFill} />
+      ))}
       {/* fonds des couloirs d'abord : les notes, dessinées ensuite, ne sont jamais recouvertes */}
-      {sys.right.map((r, i) => {
-        const fill = bandFill(r.octave, rb[i]);
-        return fill && <rect key={"bd" + i} x={left} y={rhTop + i * G.rowH} width={right - left} height={G.rowH} fill={fill} />;
+      {sys.parts.map((p, k) => {
+        const alt = alternate(p.rows);
+        return p.rows.map((r, i) => {
+          const fill = bandFill(r.octave, alt[i]);
+          return fill && <rect key={`bd${k}-${i}`} x={left} y={rowY(k, i)} width={right - left} height={G.rowH} fill={fill} />;
+        });
       })}
-      {sys.left.map((r, i) => {
-        const fill = bandFill(r.octave, lb[i]);
-        return fill && <rect key={"bg" + i} x={left} y={lhTop + i * G.rowH} width={right - left} height={G.rowH} fill={fill} />;
-      })}
-      {sys.right.map((r, i) => (
-        <Row key={"d" + i} ps={ps} row={r} y={rhTop + i * G.rowH} centered={options.notePosition === "center"} />
-      ))}
-      <line x1={left} x2={right} y1={handY} y2={handY} stroke={INK} strokeWidth={0.5} />
-      {sys.left.map((r, i) => (
-        <Row key={"g" + i} ps={ps} row={r} y={lhTop + i * G.rowH} centered={options.notePosition === "center"} />
-      ))}
+      {sys.parts.map((p, k) => p.rows.map((r, i) => <Row key={`r${k}-${i}`} ps={ps} row={r} y={rowY(k, i)} centered={centered} />))}
+      {/* trait épais entre deux parties d'un même instrument */}
+      {ps.parts.map((pp, k) => pp.separator !== undefined && <line key={"sep" + k} x1={left} x2={right} y1={pp.separator} y2={pp.separator} stroke={INK} strokeWidth={0.5} />)}
       {/* arpèges : une vaguelette devant l'accord, de sa note la plus grave à la plus aiguë */}
       {sys.arpeggios.map((arp, i) => {
         const attack = (r: SystemRow) => !!r.cells[arp.anchor] && !r.cells[arp.anchor].startsWith("-");
-        const ys = [
-          ...(arp.hand !== "G" ? sys.right.flatMap((r, k) => (attack(r) ? [rhTop + k * G.rowH] : [])) : []),
-          ...(arp.hand !== "D" ? sys.left.flatMap((r, k) => (attack(r) ? [lhTop + k * G.rowH] : [])) : []),
-        ];
+        const ys = sys.parts.flatMap((p, k) => (arp.part === undefined || arp.part === k ? p.rows.flatMap((r, j) => (attack(r) ? [rowY(k, j)] : [])) : []));
         if (!ys.length) return null;
         const x = xs[sys.anchors[arp.anchor]] + graceExtra(sys, arp.anchor) + G.arpeggioW / 2 + 0.2;
         return <path key={"arp" + i} d={vwave(x, Math.min(...ys) + 0.5, Math.max(...ys) + G.rowH - 0.5, arp.down)} {...WAVE} />;
       })}
 
-      {/* séparations verticales : temps fins, mesures épaisses, reprises */}
-      <line x1={left} x2={left} y1={top} y2={bottom} stroke={INK} strokeWidth={0.45} />
-      {sys.columns.map((c, ci) => {
-        if (c.kind === "anchor") return null;
-        if (c.kind === "beatSep") {
-          const x = xs[ci] + ws[ci] / 2;
-          return <line key={ci} x1={x} x2={x} y1={top} y2={bottom} stroke={LIGHT} strokeWidth={0.22} />;
-        }
-        const sections = [
-          sys.right.length ? [rhTop, rhTop + sys.right.length * G.rowH] : null,
-          sys.left.length ? [lhTop, lhTop + sys.left.length * G.rowH] : null,
-        ].filter(Boolean) as number[][];
-        return <BarLine key={ci} x={xs[ci]} w={ws[ci]} col={c} top={top} bottom={bottom} sections={sections} />;
+      {/* séparations verticales, instrument par instrument : temps fins, mesures épaisses, reprises */}
+      {ps.instruments.map((inst, i) => {
+        const top = inst.top;
+        const last = ps.parts[inst.last];
+        const bottom = last.voiceTop + last.voiceBand;
+        const sections = sys.parts
+          .map((p, k) => (k >= inst.first && k <= inst.last && p.rows.length ? [rowY(k, 0), rowY(k, p.rows.length)] : null))
+          .filter(Boolean) as number[][];
+        return (
+          <g key={"bars" + i}>
+            <line x1={left} x2={left} y1={top} y2={bottom} stroke={INK} strokeWidth={0.45} />
+            {sys.columns.map((c, ci) => {
+              if (c.kind === "anchor") return null;
+              if (c.kind === "beatSep") {
+                const x = xs[ci] + ws[ci] / 2;
+                return <line key={ci} x1={x} x2={x} y1={top} y2={bottom} stroke={LIGHT} strokeWidth={0.22} />;
+              }
+              return <BarLine key={ci} x={xs[ci]} w={ws[ci]} col={c} top={top} bottom={bottom} sections={sections} />;
+            })}
+          </g>
+        );
       })}
 
-      {ps.slurBand.D > 0 && <SlurBand ps={ps} voice={sys.voices.D} top={rhSlurs} />}
-      {ps.slurBand.G > 0 && <SlurBand ps={ps} voice={sys.voices.G} top={lhSlurs} />}
-      {ps.lyricBand.D > 0 && <LyricBand ps={ps} voice={sys.voices.D} top={rhVoice + ps.slurBand.D} />}
-      {ps.lyricBand.G > 0 && <LyricBand ps={ps} voice={sys.voices.G} top={lhVoice + ps.slurBand.G} />}
-      {ps.voiceBand.D > 0 && <VoiceBand ps={ps} voice={sys.voices.D} top={rhVoice + ps.slurBand.D + ps.lyricBand.D} />}
-      {ps.voiceBand.G > 0 && <VoiceBand ps={ps} voice={sys.voices.G} top={lhVoice + ps.slurBand.G + ps.lyricBand.G} />}
-      {ps.pedalBand > 0 && <PedalBand ps={ps} top={bottom} />}
+      {sys.parts.map((p, k) => {
+        const pp = ps.parts[k];
+        return (
+          <g key={"bands" + k}>
+            {pp.slurBand > 0 && <SlurBand ps={ps} voice={p.voice} top={pp.slurTop} />}
+            {pp.lyricBand > 0 && <LyricBand ps={ps} voice={p.voice} top={pp.lyricTop} />}
+            {pp.voiceBand > 0 && <VoiceBand ps={ps} voice={p.voice} top={pp.voiceTop} />}
+            {pp.pedalBand > 0 && <PedalBand ps={ps} pedal={p.pedal} top={pp.pedalTop} />}
+          </g>
+        );
+      })}
       <Marks ps={ps} />
     </g>
   );
@@ -679,7 +725,11 @@ export function Excerpt({ pages, options, scale = 1 }: { pages: Page[]; options:
   const systems = pages.flatMap((p) => p.systems);
   if (!systems.length) return null;
   const pad = 1.5;
-  const x0 = PAGE.marginX - pad;
+  // à gauche, la place de l'accolade et des noms d'instruments
+  const first = systems[0];
+  const named = first.instruments.filter((x) => x.name).map((x) => [...x.name!].length * 1.45 + 2.6);
+  const braced = first.instruments.some((x) => x.last > x.first) ? 1.8 : 0;
+  const x0 = PAGE.marginX - pad - Math.max(braced, ...named);
   const x1 = Math.max(...systems.map((ps) => ps.xs[ps.xs.length - 1] + ps.ws[ps.ws.length - 1])) + pad;
   // un extrait tient sur une page ; s'il en déborde, les pages suivantes sont décalées à la suite
   let offset = 0;
@@ -704,7 +754,7 @@ export function Excerpt({ pages, options, scale = 1 }: { pages: Page[]; options:
       <rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} fill="#fff" />
       {order.length > 0 && <OrderLine order={order} y={orderY} cx={(x0 + x1) / 2} />}
       {placed.map((ps, i) => (
-        <SystemView key={i} ps={ps} options={options} />
+        <SystemView key={i} ps={ps} options={options} names={i === 0 || options.namesEverySystem} />
       ))}
     </svg>
   );
@@ -746,8 +796,9 @@ export function PageView({ page, total, meta, options }: { page: Page; total: nu
         </g>
       )}
       {page.order.length > 0 && <OrderLine order={page.order} y={page.header ? PAGE.marginTop + headerHeight(meta) - 1 : PAGE.marginTop - 2} />}
+      {/* noms des instruments : au premier système du morceau, comme sur une partition, ou à chaque système (option) */}
       {page.systems.map((ps, i) => (
-        <SystemView key={i} ps={ps} options={options} />
+        <SystemView key={i} ps={ps} options={options} names={(page.index === 0 && i === 0) || options.namesEverySystem} />
       ))}
       <text x={PAGE.w / 2} y={PAGE.h - 8} fontSize={2.6} textAnchor="middle" fill={GREY}>
         {page.index + 1} / {total}

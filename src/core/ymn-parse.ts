@@ -7,7 +7,7 @@
 import { chordNotes } from "./chords.ts";
 import { YmnError, parseFrontmatter } from "./frontmatter.ts";
 import { ARPEGGIO_DOWN, FERMATA, HYPHEN, LYRIC_LINE, isExtender, sortLyrics, FINGER_MARK, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isSlur, isPedalText, joinsText, sortGraces, sortNotes } from "./model.ts";
-import type { Arpeggio, Beat, Division, Expression, Grace, Hairpin, Slur, Hand, Lyric, Marker, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
+import type { Arpeggio, Beat, Division, Expression, Grace, Hairpin, Instrument, Lyric, Marker, Note, Part, Pedal, PedalText, Repeat, Score, Slur, TextMark } from "./model.ts";
 import { midiOf, parseOctaveLabel } from "./pitch.ts";
 
 /** Un temps de la règle de comptage, et la barre qui le termine. */
@@ -15,16 +15,36 @@ type Segment = { from: number; to: number; barEnd: boolean; endRepeat: boolean; 
 /** Plage de colonnes occupée par un séparateur (« | », « :|| »…). */
 type SepSpan = { from: number; to: number; text: string };
 
-const isSeparator = (line: string) => {
+/**
+ * Trait entre deux parties : simple (« ─── », « --- ») entre deux parties d'un instrument,
+ * double (« ═══ », « === ») entre deux instruments. Le trait au-dessus de la première partie
+ * d'un instrument porte son nom, entouré d'espaces : « ═══╪═ Piano ═══╪═══ ».
+ */
+type Rule = { double: boolean; name?: string };
+const RULE_CHARS = /^[─━\-=═+┼╪|]+$/;
+const HORIZONTAL = /[─━\-=═]/;
+function parseRule(line: string, lineNo: number): Rule | undefined {
   const t = line.trim();
-  return t.length >= 3 && /^[─━\-=+┼|]+$/.test(t) && /[─━\-=]/.test(t);
-};
+  let body = t;
+  let name: string | undefined;
+  if (!RULE_CHARS.test(t)) {
+    // le nom, n'importe où sur le trait, entre des espaces (une ou plusieurs)
+    const m = t.match(/^([─━\-=═+┼╪|]+) +(\S.*?\S|\S) +([─━\-=═+┼╪|]+)$/);
+    if (!m || !HORIZONTAL.test(m[1]) || !HORIZONTAL.test(m[3]) || !/\p{L}/u.test(m[2])) return undefined;
+    body = m[1] + m[3];
+    name = m[2];
+  }
+  if (t.length < 3 || !HORIZONTAL.test(body)) return undefined;
+  const double = /[═=╪]/.test(body);
+  if (double && /[─━\-]/.test(body)) throw new YmnError("trait mélangé : simple (─) entre deux parties d'un instrument, double (═) entre deux instruments", lineNo, 1);
+  return { double, ...(name ? { name } : {}) };
+}
 const isRuler = (line: string) => /^m[^|\s]*\s*\|/.test(line);
 const isMarkLine = (line: string) => line.startsWith("@");
 /** Ligne des accords : « @c », puis chaque accord sur sa case. */
 export const CHORD_LINE = "@c";
 const isChordLine = (line: string) => line === CHORD_LINE || line.startsWith(CHORD_LINE + " ");
-/** Ligne des paroles d'un couplet, sous les lignes de sa main. */
+/** Ligne des paroles d'un couplet, sous les lignes de sa partie. */
 const isLyricLine = (line: string) => line === LYRIC_LINE || line.startsWith(LYRIC_LINE + " ");
 
 const SEPARATORS = new Set(["|", "||", ":||", "||:", ":||:"]);
@@ -102,6 +122,16 @@ function markTokens(line: string) {
 export function parseYmn(text: string): Score {
   const lines = text.replace(/\t/g, "    ").split(/\r?\n/);
   const { meta, bodyStartLine } = parseFrontmatter(lines);
+  // instruments déclarés : « parts: Chant, Piano », chacun nommé sur le trait au-dessus de sa première partie
+  const partsLine = lines.findIndex((l, i) => i < bodyStartLine && /^parts\s*:/.test(l)) + 1;
+  const declared = meta.parts === undefined ? undefined : String(meta.parts).split(",").map((x) => x.trim());
+  delete meta.parts;
+  if (declared) {
+    if (declared.some((x) => !x)) throw new YmnError("« parts » : les noms des instruments, séparés par des virgules (parts: Chant, Piano)", partsLine);
+    const twice = declared.find((x, i) => declared.indexOf(x) !== i);
+    if (twice) throw new YmnError(`« parts » : l'instrument « ${twice} » est nommé deux fois`, partsLine);
+  }
+  let instruments: Instrument[] | undefined; // fixés par le premier système
   const defaultDivision = (Number(meta.division ?? 2) === 3 ? 3 : 2) as Division;
 
   // découpage en blocs : lignes @, une règle de comptage, puis les lignes qui la suivent
@@ -116,7 +146,7 @@ export function parseYmn(text: string): Score {
     }
     if (isMarkLine(l)) {
       const last = blocks[blocks.length - 1];
-      // sous les lignes d'une main, sans ligne vide : ligne @ de cette voix (nuances, soufflets)
+      // sous les lignes d'une partie, sans ligne vide : ligne @ de cette partie (nuances, soufflets)
       if (last && !last.lines.includes(-1) && !pendingMarks.length) last.lines.push(i);
       else pendingMarks.push(i);
       continue;
@@ -149,10 +179,10 @@ export function parseYmn(text: string): Score {
   // fin de la case de chaque syllabe prolongée : sa prolongation doit la dépasser
   const lyricCell = new Map<Lyric, { end: number; line: number; col: number }>();
   const arpeggios: Arpeggio[] = [];
-  /** Arpège posé une seule fois par instant et par main (ou pour les deux mains). */
+  /** Arpège posé une seule fois par instant et par partie (ou pour toutes les parties). */
   const addArpeggio = (x: Arpeggio, line: number, col: number) => {
-    const clash = arpeggios.find((y) => y.t === x.t && (!y.hand || !x.hand || y.hand === x.hand));
-    if (clash) throw new YmnError("un seul arpège par accord : sur la ligne @ d'une main, ou sur celle du haut pour les deux mains", line, col);
+    const clash = arpeggios.find((y) => y.t === x.t && (y.part === undefined || x.part === undefined || y.part === x.part));
+    if (clash) throw new YmnError("un seul arpège par accord : sur la ligne @ d'une partie, ou sur celle du haut pour toutes les parties", line, col);
     arpeggios.push(x);
   };
   const expressions: Expression[] = [];
@@ -163,8 +193,8 @@ export function parseYmn(text: string): Score {
   let openSlurs: OpenSlur[] = []; // liaisons ouvertes dans ce système, qui continuent au suivant
   let pendingSlurs: OpenSlur[] = [];
   const slurAt = new Map<Slur, { line: number; col: number }>(); // position du « ( », pour les erreurs // liaisons du système précédent, à reprendre en tête de celui-ci
-  const pedalTexts: TextMark[] = [];
-  let pedalDown: Pedal | undefined; // pédale enfoncée, peut-être depuis un système précédent
+  const pedalTexts: PedalText[] = [];
+  const pedalDown = new Map<Part, Pedal>(); // pédale enfoncée de chaque partie, peut-être depuis un système précédent
   const timesMarks: { bar: number; times: number; line: number; col: number }[] = [];
   const markers: (Marker & { line: number; col: number })[] = [];
   let barIndex = -1;
@@ -236,7 +266,7 @@ export function parseYmn(text: string): Score {
 
     // ligne(s) @ au-dessus de la règle : débuts de section, nombre de passages, textes
     for (const li of block.marks) {
-      if (isLyricLine(lines[li])) throw new YmnError("les paroles se placent sous les lignes de leur main, comme ses nuances", li + 1, 1);
+      if (isLyricLine(lines[li])) throw new YmnError("les paroles se placent sous les lignes de leur partie, comme ses nuances", li + 1, 1);
       if (isChordLine(lines[li])) {
         // accords : chaque mot est un accord, posé sur une case (pas de texte de plusieurs mots)
         const line = lines[li];
@@ -281,20 +311,58 @@ export function parseYmn(text: string): Score {
       }
     }
 
-    // séparateurs : un trait obligatoire entre les mains, un trait facultatif sous la règle
+    // parties : séparées par des traits ; un trait facultatif sous la règle ouvre la première
     const content = block.lines.filter((i) => i >= 0);
-    const seps = content.filter((i) => isSeparator(lines[i]));
-    if (!seps.length) throw new YmnError("il manque le trait qui sépare la main droite de la main gauche", L);
-    if (seps.length > 2) throw new YmnError("trop de traits : un sous la règle, un entre les mains", seps[2] + 1);
-    const handSep = seps.length === 2 ? seps[1] : seps[0];
-    if (seps.length === 2 && content.indexOf(seps[0]) !== 0) {
-      throw new YmnError("le premier trait doit suivre directement la règle de comptage", seps[0] + 1);
+    const rules = new Map<number, Rule>();
+    for (const i of content) {
+      const r = parseRule(lines[i], i + 1);
+      if (r) rules.set(i, r);
     }
+    const partOfLine = new Map<number, Part>();
+    const blockParts: { rule?: Rule; line: number }[] = [{ line: L }];
+    content.forEach((li, k) => {
+      const r = rules.get(li);
+      if (!r) return partOfLine.set(li, blockParts.length - 1);
+      if (k === 0) {
+        if (r.double) throw new YmnError("le trait sous la règle est simple (─) : le double (═) sépare deux instruments", li + 1, 1);
+        blockParts[0] = { rule: r, line: li + 1 };
+      } else blockParts.push({ rule: r, line: li + 1 });
+    });
+    // instruments du système : un trait double en commence un nouveau
+    const here: { name?: string; parts: number; line: number }[] = [];
+    blockParts.forEach((bp, k) => {
+      if (k === 0 || bp.rule!.double) here.push({ ...(bp.rule?.name ? { name: bp.rule.name } : {}), parts: 1, line: bp.line });
+      else {
+        if (bp.rule!.name) throw new YmnError(`« ${bp.rule!.name} » : le nom d'un instrument s'écrit sur le trait double (═) qui le commence`, bp.line, 1);
+        here[here.length - 1].parts++;
+      }
+    });
+    here.forEach((x, k) => {
+      if (!declared) {
+        if (x.name) throw new YmnError(`instrument « ${x.name} » non déclaré : nomme les instruments dans le frontmatter (parts: …)`, x.line, 1);
+        return;
+      }
+      if (k >= declared.length) throw new YmnError(`instrument de trop : « parts » en déclare ${declared.length} (${declared.join(", ")})`, x.line, 1);
+      if (!x.name) throw new YmnError(`il manque le nom de l'instrument « ${declared[k]} » sur le trait au-dessus de sa première partie`, x.line, 1);
+      if (x.name !== declared[k]) {
+        throw new YmnError(declared.includes(x.name) ? `« ${x.name} » à la place de « ${declared[k]} » : les instruments se suivent dans l'ordre de « parts »` : `instrument « ${x.name} » non déclaré dans « parts » (${declared.join(", ")})`, x.line, 1);
+      }
+    });
+    if (declared && here.length < declared.length) throw new YmnError(`il manque des instruments : « parts » en déclare ${declared.length} (${declared.join(", ")})`, L, 1);
+    if (!instruments) instruments = here.map(({ name, parts }) => ({ ...(name ? { name } : {}), parts }));
+    else if (here.length !== instruments.length || here.some((x, k) => x.parts !== instruments![k].parts)) {
+      const shape = (xs: { parts: number }[]) => xs.map((x) => x.parts).join(" + ");
+      throw new YmnError(`ce système n'a pas les mêmes parties que le premier (${shape(here)} au lieu de ${shape(instruments)}) : chaque système écrit toutes les parties, même vides`, L, 1);
+    }
+    const partTotal = blockParts.length;
+    // dernière partie de chaque instrument : celle qui porte la pédale
+    const lastParts = new Set(here.map((_, k) => here.slice(0, k + 1).reduce((n, x) => n + x.parts, 0) - 1));
     const inSpan = (c: number) => spans.some((s) => c >= s.from && c < s.to);
 
-    // ligne @ d'une voix : nuances, textes (« cresc. », « dolce »…), soufflets, et pédale sous la main gauche
-    const pedalSigns: { t: number; text: string; line: number; col: number }[] = [];
-    const readVoiceLine = (row: string, R: number, hand: Hand) => {
+    // ligne @ d'une partie : nuances, textes (« cresc. », « dolce »…), soufflets, et pédale
+    // sous la dernière partie d'un instrument
+    const pedalSigns: { part: Part; t: number; text: string; line: number; col: number }[] = [];
+    const readVoiceLine = (row: string, R: number, part: Part) => {
       for (const tok of markTokens(row)) {
         // un soufflet peut commencer dans la case, juste après une nuance (« p <--- ») ;
         // toute autre indication commence exactement sur une case
@@ -304,21 +372,21 @@ export function parseYmn(text: string): Score {
         if (ai < 0) throw new YmnError(`« ${tok.text} » doit commencer exactement sur une case de la règle de comptage`, R, tok.col + 1);
         const a = anchors[ai];
         if (isArpeggioSign(tok.text)) {
-          addArpeggio({ t: a.t, hand, ...(tok.text === ARPEGGIO_DOWN ? { down: true } : {}) }, R, tok.col + 1);
+          addArpeggio({ t: a.t, part, ...(tok.text === ARPEGGIO_DOWN ? { down: true } : {}) }, R, tok.col + 1);
         } else if (isPedalSign(tok.text) || isPedalText(tok.text)) {
-          if (hand === "D") throw new YmnError(`« ${tok.text} » : la pédale se note sur une ligne @ sous la main gauche`, R, tok.col + 1);
-          if (isPedalText(tok.text)) pedalTexts.push({ t: a.t, text: tok.text });
-          else pedalSigns.push({ t: a.t, text: tok.text, line: R, col: tok.col + 1 });
+          if (!lastParts.has(part)) throw new YmnError(`« ${tok.text} » : la pédale se note sur une ligne @ sous la dernière partie de son instrument`, R, tok.col + 1);
+          if (isPedalText(tok.text)) pedalTexts.push({ part, t: a.t, text: tok.text });
+          else pedalSigns.push({ part, t: a.t, text: tok.text, line: R, col: tok.col + 1 });
         } else if (isSlur(tok.text)) {
           // suite d'une liaison du système précédent : elle reprend sur la première case
           // plusieurs suites : de haut en bas, dans l'ordre où les liaisons ont commencé
           const cont = tok.text.startsWith("(")
             ? undefined
-            : pendingSlurs.filter((o) => o.slur.hand === hand).sort((x, y) => x.slur.start - y.slur.start)[0];
+            : pendingSlurs.filter((o) => o.slur.part === part).sort((x, y) => x.slur.start - y.slur.start)[0];
           if (!tok.text.startsWith("(") && (!cont || ai !== 0)) {
             throw new YmnError("« ---) » sans liaison ouverte : une liaison commence par « ( »", R, tok.col + 1);
           }
-          const slur = cont ? cont.slur : { hand, start: a.t, end: -1 };
+          const slur = cont ? cont.slur : { part, start: a.t, end: -1 };
           if (cont) pendingSlurs = pendingSlurs.filter((o) => o !== cont);
           else {
             slurs.push(slur);
@@ -336,18 +404,18 @@ export function parseYmn(text: string): Score {
           const end = next ? next.t : t1;
           const kind = tok.text[0] as Hairpin["kind"];
           // suite d'un soufflet du système précédent
-          const prev = ai === 0 ? hairpins.find((h) => h.hand === hand && h.kind === kind && h.end === t0) : undefined;
+          const prev = ai === 0 ? hairpins.find((h) => h.part === part && h.kind === kind && h.end === t0) : undefined;
           if (prev) prev.end = end;
-          else hairpins.push({ hand, kind, start: a.t, end });
+          else hairpins.push({ part, kind, start: a.t, end });
         } else {
-          expressions.push({ hand, t: a.t, text: tok.text, kind: isDynamic(tok.text) ? "dynamic" : "text" });
+          expressions.push({ part, t: a.t, text: tok.text, kind: isDynamic(tok.text) ? "dynamic" : "text" });
         }
       }
     };
 
     // ligne de paroles d'une voix : une syllabe par case, « lu- » si le mot continue sur la
     // suivante, « --- » pour prolonger la syllabe précédente sur plusieurs notes
-    const readLyricLine = (row: string, R: number, hand: Hand, verse: number) => {
+    const readLyricLine = (row: string, R: number, part: Part, verse: number) => {
       let last: Lyric | undefined; // syllabe précédente sur la ligne
       let extended = false; // elle a déjà sa prolongation
       // seules les espaces séparent les syllabes : une espace insécable reste dans la syllabe (« Oh ! »)
@@ -361,7 +429,7 @@ export function parseYmn(text: string): Score {
           const end = anchors.find((x) => x.from > lastCh)?.t ?? t1;
           if (!last) {
             // suite de la prolongation d'une syllabe du système précédent
-            const prev = col === anchors[0].from ? lyrics.find((l) => l.hand === hand && l.verse === verse && l.extend === t0) : undefined;
+            const prev = col === anchors[0].from ? lyrics.find((l) => l.part === part && l.verse === verse && l.extend === t0) : undefined;
             if (!prev) throw new YmnError("« --- » prolonge la syllabe qui le précède sur la ligne : écris d'abord la syllabe", R, col + 1);
             prev.extend = end;
             last = prev;
@@ -379,36 +447,36 @@ export function parseYmn(text: string): Score {
         const a = anchors.find((x) => x.from === col);
         if (!a) throw new YmnError(`syllabe « ${tok} » : elle doit commencer exactement sur une case de la règle de comptage`, R, col + 1);
         const hyphen = tok.length > 1 && tok.endsWith(HYPHEN);
-        last = { hand, verse, t: a.t, text: hyphen ? tok.slice(0, -HYPHEN.length) : tok, ...(hyphen ? { hyphen: true } : {}) };
+        last = { part, verse, t: a.t, text: hyphen ? tok.slice(0, -HYPHEN.length) : tok, ...(hyphen ? { hyphen: true } : {}) };
         extended = false;
         lyrics.push(last);
       }
     };
 
     const nextPending: Note[] = [];
-    // petites notes du bloc, par main et instant : leur rang se lit de gauche à droite dans la case
-    const blockGraces = new Map<string, { hand: Hand; t: number; col: number; midi: number }[]>();
-    const lastOctave: Record<Hand, number | undefined> = { D: undefined, G: undefined };
-    const voiceLine: Record<Hand, boolean> = { D: false, G: false };
-    const verses: Record<Hand, number> = { D: 0, G: 0 }; // couplets : les lignes @l d'une main, de haut en bas
+    // petites notes du bloc, par partie et instant : leur rang se lit de gauche à droite dans la case
+    const blockGraces = new Map<string, { part: Part; t: number; col: number; midi: number }[]>();
+    const lastOctave: (number | undefined)[] = Array(partTotal).fill(undefined);
+    const voiceLine: boolean[] = Array(partTotal).fill(false);
+    const verses: number[] = Array(partTotal).fill(0); // couplets : les lignes @l d'une partie, de haut en bas
     for (const li of content) {
-      if (seps.includes(li)) continue;
+      if (rules.has(li)) continue;
       const row = lines[li];
       const R = li + 1;
-      const hand: Hand = li < handSep ? "D" : "G";
+      const part = partOfLine.get(li)!;
       if (isChordLine(row)) throw new YmnError("les accords se placent au-dessus de la règle de comptage", R, 1);
       if (isLyricLine(row)) {
-        voiceLine[hand] = true;
-        readLyricLine(row, R, hand, ++verses[hand]);
+        voiceLine[part] = true;
+        readLyricLine(row, R, part, ++verses[part]);
         continue;
       }
       if (isMarkLine(row)) {
-        voiceLine[hand] = true;
-        readVoiceLine(row, R, hand);
+        voiceLine[part] = true;
+        readVoiceLine(row, R, part);
         continue;
       }
-      if (voiceLine[hand]) {
-        throw new YmnError(`ligne de notes sous une ligne @ : les lignes @ se placent ${hand === "D" ? "juste au-dessus du trait entre les mains" : "à la fin du système"}`, R, 1);
+      if (voiceLine[part]) {
+        throw new YmnError("ligne de notes sous une ligne @ : les lignes @ d'une partie se placent après toutes ses lignes de notes", R, 1);
       }
       if (row[pipe] !== "|") throw new YmnError("le « | » de début de ligne doit être aligné sur celui de la règle", R, Math.min(row.length, pipe) + 1);
       // les barres (et leurs deux points de reprise, facultatifs) sont alignées sur la règle
@@ -427,10 +495,10 @@ export function parseYmn(text: string): Score {
         if (oct === undefined) {
           throw new YmnError(`octave invalide : « ${lab} » (attendu 0 pour l'octave du do central, +1, -1, +2…)`, R, 1);
         }
-        lastOctave[hand] = oct;
+        lastOctave[part] = oct;
       }
-      const octave = lastOctave[hand];
-      if (octave === undefined) throw new YmnError("la première ligne de chaque main doit indiquer son octave", R, 1);
+      const octave = lastOctave[part];
+      if (octave === undefined) throw new YmnError("la première ligne de chaque partie doit indiquer son octave", R, 1);
 
       let open: Note | undefined;
       const close = (t: number) => {
@@ -445,9 +513,9 @@ export function parseYmn(text: string): Score {
           const gc = a.from + g.index! + 1;
           const k = Number(g[1]);
           if (k < 1 || k > 12) throw new YmnError(`petite note invalide « ${g[0]} » : attendu un numéro de 1 à 12 suivi de « ${GRACE_MARK} »`, R, gc);
-          const key = hand + ":" + a.t;
+          const key = part + ":" + a.t;
           if (!blockGraces.has(key)) blockGraces.set(key, []);
-          blockGraces.get(key)!.push({ hand, t: a.t, col: gc, midi: midiOf(octave, k) });
+          blockGraces.get(key)!.push({ part, t: a.t, col: gc, midi: midiOf(octave, k) });
           graceEnd = g.index! + g[0].length;
         }
         if (graceEnd) {
@@ -472,7 +540,7 @@ export function parseYmn(text: string): Score {
           close(a.t);
           const midi = midiOf(octave, Number(digits));
           if (aux && Number(aux) === Number(digits)) throw new YmnError("une trille alterne avec une autre note", R, col);
-          open = { hand, midi, start: a.t, end: t1, ...(aux ? { trill: trillAux(midi, Number(aux)) } : {}), ...(finger ? { finger: Number(finger) } : {}) };
+          open = { part, midi, start: a.t, end: t1, ...(aux ? { trill: trillAux(midi, Number(aux)) } : {}), ...(finger ? { finger: Number(finger) } : {}) };
           notes.push(open);
           return;
         }
@@ -489,13 +557,13 @@ export function parseYmn(text: string): Score {
           if (open.midi !== midi) throw new YmnError(`« -${digits} » prolonge une note différente (${(open.midi % 12) + 1})`, R, col);
           return;
         }
-        const prev = ai === 0 ? pending.find((p) => p.hand === hand && p.midi === midi && p.end === t0) : undefined;
+        const prev = ai === 0 ? pending.find((p) => p.part === part && p.midi === midi && p.end === t0) : undefined;
         if (prev) {
           pending = pending.filter((p) => p !== prev);
           open = prev;
         } else {
           // tenue sans origine connue (début de fichier, saisie partielle) : la note commence ici
-          open = { hand, midi, start: a.t, end: t1 };
+          open = { part, midi, start: a.t, end: t1 };
           notes.push(open);
         }
       });
@@ -507,24 +575,26 @@ export function parseYmn(text: string): Score {
     pending = nextPending;
     for (const list of blockGraces.values()) {
       const cols = [...new Set(list.map((g) => g.col))].sort((x, y) => x - y);
-      for (const g of list) graces.push({ hand: g.hand, midi: g.midi, t: g.t, slot: cols.indexOf(g.col) });
+      for (const g of list) graces.push({ part: g.part, midi: g.midi, t: g.t, slot: cols.indexOf(g.col) });
     }
 
     // pédale : dans l'ordre du temps, en relâchant avant d'enfoncer à un même instant
     const order = (x: string) => (x === PEDAL_UP ? 0 : x === PEDAL_CHANGE ? 1 : 2);
-    pedalSigns.sort((a, b) => a.t - b.t || order(a.text) - order(b.text));
+    pedalSigns.sort((a, b) => a.part - b.part || a.t - b.t || order(a.text) - order(b.text));
     for (const p of pedalSigns) {
+      const down = pedalDown.get(p.part);
       if (p.text !== PEDAL_DOWN) {
-        if (!pedalDown) {
+        if (!down) {
           throw new YmnError(p.text === PEDAL_UP ? "« * » sans pédale enfoncée" : "« *Ped. » sans pédale enfoncée : écris « Ped. »", p.line, p.col);
         }
-        pedalDown.end = p.t;
-        pedalDown = undefined;
+        down.end = p.t;
+        pedalDown.delete(p.part);
       }
       if (p.text !== PEDAL_UP) {
-        if (pedalDown) throw new YmnError("« Ped. » alors que la pédale est déjà enfoncée : écris « *Ped. » pour la changer", p.line, p.col);
-        pedalDown = { start: p.t, end: -1 };
-        pedals.push(pedalDown);
+        if (pedalDown.has(p.part)) throw new YmnError("« Ped. » alors que la pédale est déjà enfoncée : écris « *Ped. » pour la changer", p.line, p.col);
+        const pedal = { part: p.part, start: p.t, end: -1 };
+        pedalDown.set(p.part, pedal);
+        pedals.push(pedal);
       }
     }
     if (pendingSlurs.length) {
@@ -542,7 +612,7 @@ export function parseYmn(text: string): Score {
     if (l.extend! <= c.end) throw new YmnError("la prolongation doit dépasser la case de sa syllabe", c.line, c.col);
   }
   // une pédale jamais relâchée tient jusqu'à la fin du morceau
-  if (pedalDown) pedalDown.end = beats.length * TICKS_PER_BEAT;
+  for (const p of pedalDown.values()) p.end = beats.length * TICKS_PER_BEAT;
 
   // nombre de passages : porté par une mesure qui finit une reprise
   for (const tm of timesMarks) {
@@ -580,20 +650,21 @@ export function parseYmn(text: string): Score {
 
   return {
     meta,
+    instruments: instruments!,
     beats,
     notes: sortNotes(notes),
     graces: sortGraces(graces),
     repeats: [...repeats.values()].sort((a, b) => a.barIndex - b.barIndex),
     texts,
-    expressions: expressions.sort((a, b) => a.t - b.t || (a.hand === b.hand ? 0 : a.hand === "D" ? -1 : 1)),
-    hairpins: hairpins.sort((a, b) => a.start - b.start || (a.hand === b.hand ? 0 : a.hand === "D" ? -1 : 1)),
-    slurs: slurs.sort((a, b) => a.start - b.start || (a.hand === b.hand ? a.end - b.end : a.hand === "D" ? -1 : 1)),
-    pedals: pedals.filter((p) => p.end > p.start),
-    pedalTexts: pedalTexts.sort((a, b) => a.t - b.t),
+    expressions: expressions.sort((a, b) => a.t - b.t || a.part - b.part),
+    hairpins: hairpins.sort((a, b) => a.start - b.start || a.part - b.part),
+    slurs: slurs.sort((a, b) => a.start - b.start || a.part - b.part || a.end - b.end),
+    pedals: pedals.filter((p) => p.end > p.start).sort((a, b) => a.start - b.start || a.part - b.part),
+    pedalTexts: pedalTexts.sort((a, b) => a.t - b.t || a.part - b.part),
     markers: markers.map(({ label, barIndex }) => ({ label, barIndex })),
     chords: chords.sort((a, b) => a.t - b.t),
     lyrics: sortLyrics(lyrics),
-    arpeggios: arpeggios.sort((a, b) => a.t - b.t || (a.hand ?? "").localeCompare(b.hand ?? "")),
+    arpeggios: arpeggios.sort((a, b) => a.t - b.t || (a.part ?? -1) - (b.part ?? -1)),
     fermatas: fermatas.sort((a, b) => a - b),
     order,
   };
