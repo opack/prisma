@@ -148,8 +148,8 @@ export function App() {
     if (!engraved.score) return [];
     // doigtés masqués : retirés avant la gravure, pour que les cases reprennent leur largeur
     const score = options.fingerings ? engraved.score : { ...engraved.score, notes: engraved.score.notes.map(({ finger: _, ...n }) => n) };
-    return engrave(score, { compact: options.density === "compact", chords: options.chords, align: options.notePosition === "aligned" });
-  }, [engraved, options.density, options.fingerings, options.chords, options.notePosition]);
+    return engrave(score, { compact: options.density === "compact", chords: options.chords, align: options.notePosition === "aligned", reminders: options.holdReminders });
+  }, [engraved, options.density, options.fingerings, options.chords, options.notePosition, options.holdReminders]);
 
   const open = async (file: File, fileHandle: FileSystemFileHandle | null = null) => {
     const text = await file.text();
@@ -503,6 +503,21 @@ export function App() {
                   />
                   Afficher les doigtés
                 </label>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Tenues</legend>
+              <div className="choices">
+                <label>
+                  <input
+                    type="checkbox"
+                    id="hold-reminders"
+                    checked={options.holdReminders}
+                    onChange={(e) => setOptions({ holdReminders: e.target.checked })}
+                  />
+                  Rappeler la note tenue en début de ligne
+                </label>
+                <span className="sample">— 8 ; sinon le seul trait de tenue</span>
               </div>
             </fieldset>
           </div>

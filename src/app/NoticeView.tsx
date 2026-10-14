@@ -35,11 +35,11 @@ function render(markdown: string) {
 function Example({ text, options }: { text: string; options: RenderOptions }) {
   const result = useMemo(() => {
     try {
-      return { pages: engrave(parseYmn(text), { compact: options.density === "compact", chords: options.chords, align: options.notePosition === "aligned" }) };
+      return { pages: engrave(parseYmn(text), { compact: options.density === "compact", chords: options.chords, align: options.notePosition === "aligned", reminders: options.holdReminders }) };
     } catch (e) {
       return { error: (e as Error).message };
     }
-  }, [text, options.density, options.chords, options.notePosition]);
+  }, [text, options.density, options.chords, options.notePosition, options.holdReminders]);
   return (
     <>
       <pre className="example-text">{text}</pre>

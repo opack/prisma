@@ -142,7 +142,7 @@ function articulationSigns(signs: string[], cx: number, cy: number) {
   });
 }
 
-function Row({ ps, row, y, centered, articulations }: { ps: PlacedSystem; row: SystemRow; y: number; centered: boolean; articulations?: Map<number, string[]> }) {
+function Row({ ps, row, y, centered, articulations, reminders }: { ps: PlacedSystem; row: SystemRow; y: number; centered: boolean; articulations?: Map<number, string[]>; reminders: boolean }) {
   const { sys, xs, ws } = ps;
   const x0 = PAGE.marginX;
   const right = xs[xs.length - 1] + ws[ws.length - 1];
@@ -223,14 +223,22 @@ function Row({ ps, row, y, centered, articulations }: { ps: PlacedSystem; row: S
             </g>
           );
         }
-        if (c === "-") {
+        // sans rappel (option), une note commencée au système précédent n'est qu'un trait de tenue
+        if (c === "-" || (c.startsWith("-") && !reminders)) {
           return <line key={a} x1={x + w * 0.22} x2={x + w * 0.62} y1={y + dy + G.rowH / 2} y2={y + dy + G.rowH / 2} stroke={INK} strokeWidth={0.32} />;
         }
         if (c.startsWith("-")) {
+          // note commencée au système précédent : le trait de tenue habituel, puis en petit et en
+          // gris le rappel de la note tenue (« — 8 »), pour ne pas le lire comme un nombre négatif
+          const y1 = y + dy + G.rowH / 2;
+          const x1 = x + 0.5, x2 = x1 + G.holdW;
           return (
-            <text key={a} x={x + 0.5} y={base + dy} fontSize={3.1} fill={GREY}>
-              {"–" + c.slice(1)}
-            </text>
+            <g key={a}>
+              <line x1={x1} x2={x2} y1={y1} y2={y1} stroke={INK} strokeWidth={0.32} />
+              <text x={x2 + 0.6} y={base + dy - 0.2} fontSize={2.7} fontWeight={600} fill={GREY}>
+                {c.slice(1)}
+              </text>
+            </g>
           );
         }
         return (
@@ -715,7 +723,7 @@ function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; options:
           return fill && <rect key={`bd${k}-${i}`} x={left} y={rowY(k, i)} width={right - left} height={G.rowH} fill={fill} />;
         });
       })}
-      {sys.parts.map((p, k) => p.rows.map((r, i) => <Row key={`r${k}-${i}`} ps={ps} row={r} y={rowY(k, i)} centered={centered} articulations={articulationsOf(k, i)} />))}
+      {sys.parts.map((p, k) => p.rows.map((r, i) => <Row key={`r${k}-${i}`} ps={ps} row={r} y={rowY(k, i)} centered={centered} articulations={articulationsOf(k, i)} reminders={options.holdReminders} />))}
       {/* trait épais entre deux parties d'un même instrument */}
       {ps.parts.map((pp, k) => pp.separator !== undefined && <line key={"sep" + k} x1={left} x2={right} y1={pp.separator} y2={pp.separator} stroke={INK} strokeWidth={0.5} />)}
       {/* arpèges : une vaguelette devant l'accord, de sa note la plus grave à la plus aiguë */}

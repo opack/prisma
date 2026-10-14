@@ -25,6 +25,8 @@ export type RenderOptions = {
   fingerings: boolean;
   /** Noms des instruments : au premier système seulement (comme une partition), ou à chaque système. */
   namesEverySystem: boolean;
+  /** En début de ligne, rappeler la note tenue depuis la ligne précédente (« — 8 ») ; sinon le seul trait de tenue. */
+  holdReminders: boolean;
   /** Couleur des couloirs d'octave : aucune (bandes grises alternées), arc-en-ciel ou feutrée. */
   octavePalette: OctavePalette;
   /** Couleurs dans un ordre mélangé (fixe) plutôt que progressif : plus de contraste entre voisines. */
@@ -33,7 +35,7 @@ export type RenderOptions = {
   chords: ChordStyle;
 };
 
-export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal", fingerings: true, namesEverySystem: false, octavePalette: "rainbow", octaveMixed: false, chords: "both" };
+export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal", fingerings: true, namesEverySystem: false, holdReminders: true, octavePalette: "rainbow", octaveMixed: false, chords: "both" };
 
 export const OCTAVE_STYLES: { value: OctaveStyle; label: string; sample: string }[] = [
   { value: "arrow", label: "Flèches", sample: "↑1  0  ↓1" },
@@ -83,10 +85,11 @@ export function loadOptions(): RenderOptions {
     const density = DENSITIES.some((d) => d.value === raw.density) ? raw.density : DEFAULT_OPTIONS.density;
     const fingerings = typeof raw.fingerings === "boolean" ? raw.fingerings : DEFAULT_OPTIONS.fingerings;
     const namesEverySystem = typeof raw.namesEverySystem === "boolean" ? raw.namesEverySystem : DEFAULT_OPTIONS.namesEverySystem;
+    const holdReminders = typeof raw.holdReminders === "boolean" ? raw.holdReminders : DEFAULT_OPTIONS.holdReminders;
     const octavePalette = OCTAVE_PALETTES.some((p) => p.value === raw.octavePalette) ? raw.octavePalette : DEFAULT_OPTIONS.octavePalette;
     const octaveMixed = typeof raw.octaveMixed === "boolean" ? raw.octaveMixed : DEFAULT_OPTIONS.octaveMixed;
     const chords = CHORD_STYLES.some((c) => c.value === raw.chords) ? raw.chords : DEFAULT_OPTIONS.chords;
-    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density, fingerings, namesEverySystem, octavePalette, octaveMixed, chords };
+    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density, fingerings, namesEverySystem, holdReminders, octavePalette, octaveMixed, chords };
   } catch {
     return DEFAULT_OPTIONS;
   }

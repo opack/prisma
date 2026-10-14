@@ -31,6 +31,7 @@ export const G = {
   graceDigit: 1.25, // largeur d'un chiffre de petite note
   graceGap: 0.75, // espace après chaque rang de petites notes
   arpeggioW: 1.5, // place de la vaguelette d'un arpège, devant l'accord
+  holdW: 2.4, // trait de tenue devant le rappel d'une note commencée au système précédent
   noteDigit: 2.05, // largeur d'un chiffre de note (Atkinson Hyperlegible en gras, 3,3 mm)
   slurLevel: 1.3, // hauteur d'un étage de liaisons
   chordNameH: 4.6, // bande du nom d'un accord (« Am »)
@@ -102,10 +103,10 @@ export function noteParts(c: string) {
  * Largeur ajoutée à une case par une note annotée trop longue pour elle : la note, sa
  * voisine de trille en petit, son doigt, puis un peu de trait ondulé pour une trille.
  */
-function noteW(c: string, cellW: number) {
+function noteW(c: string, cellW: number, reminders = true) {
   if (!c || c === "-") return 0;
-  // rappel d'une note tenue en début de système (« –12 ») : le tiret, puis les chiffres
-  if (c.startsWith("-")) return Math.max(0, 0.5 + 1.3 + (c.length - 1) * G.noteDigit + 0.45 - cellW);
+  // rappel d'une note tenue en début de système : le trait de tenue, puis ses chiffres en petit
+  if (c.startsWith("-")) return reminders ? Math.max(0, 0.5 + G.holdW + 0.6 + (c.length - 1) * G.noteDigit * 0.82 + 0.45 - cellW) : 0;
   const { main, aux, finger } = noteParts(c);
   // une note seule : ses chiffres, puis assez d'air pour ne pas se coller à la case suivante
   // (« 12 » puis « 8 » ne doit pas se lire « 128 »)
@@ -114,7 +115,8 @@ function noteW(c: string, cellW: number) {
   return Math.max(0, w - cellW);
 }
 /** Place ajoutée par les notes d'une case trop larges pour elle, sur la ligne qui en demande le plus. */
-export const noteExtra = (sys: System, a: number, cellW: number) => Math.max(0, ...sys.parts.flatMap((p) => p.rows.map((r) => noteW(r.cells[a], cellW))));
+export const noteExtra = (sys: System, a: number, cellW: number, reminders = true) =>
+  Math.max(0, ...sys.parts.flatMap((p) => p.rows.map((r) => noteW(r.cells[a], cellW, reminders))));
 
 /** Hauteur de l'en-tête de la première page : titre, sous-titre éventuel, compositeur. */
 export const headerHeight = (meta: Score["meta"]) => G.headerH + (meta.subtitle ? G.subtitleH : 0);
@@ -226,7 +228,7 @@ const barSepWidth = (c: Extract<System["columns"][number], { kind: "barSep" }>) 
  * dernière ligne d'une section (ou du morceau) le reprend, sans dépasser la largeur : ses
  * cases ont la même taille que celles du dessus, et une ligne courte reste courte.
  */
-function place(sys: System, isLast: boolean, y: number, cellW: number, chords: ChordStyle, prevStretch?: number): PlacedSystem {
+function place(sys: System, isLast: boolean, y: number, cellW: number, chords: ChordStyle, prevStretch?: number, reminders = true): PlacedSystem {
   const chordAt = new Map(sys.chords.map((c) => [c.anchor, chordW(c.text, chords)]));
   const anchorOf = (ci: number) => sys.anchors.indexOf(ci);
   const cells = sys.anchors.length;
@@ -240,7 +242,7 @@ function place(sys: System, isLast: boolean, y: number, cellW: number, chords: C
   for (const c of sys.columns) {
     // les petites notes s'ajoutent en tête de case, sans étirement
     const a = anchorOf(xs.length);
-    const w = c.kind === "anchor" ? Math.max(cellW * stretch + leadExtra(sys, a) + Math.max(noteExtra(sys, a, cellW), lyricExtra(sys, a, cellW)), chordAt.get(a) ?? 0) : c.kind === "barSep" ? barSepWidth(c) : G.beatSep;
+    const w = c.kind === "anchor" ? Math.max(cellW * stretch + leadExtra(sys, a) + Math.max(noteExtra(sys, a, cellW, reminders), lyricExtra(sys, a, cellW)), chordAt.get(a) ?? 0) : c.kind === "barSep" ? barSepWidth(c) : G.beatSep;
     xs.push(x);
     ws.push(w);
     x += w;
@@ -250,9 +252,10 @@ function place(sys: System, isLast: boolean, y: number, cellW: number, chords: C
 
 /**
  * compact : cases plus étroites, donc plus de mesures par ligne ; chords : affichage des
- * accords ; align : une note rejouée garde sa ligne (voir layout).
+ * accords ; align : une note rejouée garde sa ligne (voir layout) ; reminders : rappel, en début
+ * de système, de la note tenue depuis le système précédent.
  */
-export function engrave(score: Score, { compact = false, chords = "both" as ChordStyle, align = false } = {}): Page[] {
+export function engrave(score: Score, { compact = false, chords = "both" as ChordStyle, align = false, reminders = true } = {}): Page[] {
   const cellW = compact ? G.compactCell : G.cell;
   const systems = layout(score, {
     width: CONTENT_W,
@@ -288,7 +291,7 @@ export function engrave(score: Score, { compact = false, chords = "both" as Chor
     }
     // la ligne précédente, si elle est de la même section
     const prev = i > 0 && !sys.section && !systems[i - 1].endsSection ? lastStretch : undefined;
-    const placed = place(sys, i === systems.length - 1, y, cellW, chords, prev);
+    const placed = place(sys, i === systems.length - 1, y, cellW, chords, prev, reminders);
     lastStretch = placed.stretch;
     page.systems.push(placed);
     y += h + G.systemGap;
