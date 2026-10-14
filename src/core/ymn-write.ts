@@ -2,7 +2,7 @@
 import { writeFrontmatter } from "./frontmatter.ts";
 import { layout, noteText } from "./layout.ts";
 import type { Column, Mark, System, SystemRow, Voice } from "./layout.ts";
-import { GRACE_MARK, graceDigits, joinsText } from "./model.ts";
+import { GRACE_MARK, HYPHEN, LYRIC_LINE, graceDigits, joinsText } from "./model.ts";
 import type { Score } from "./model.ts";
 import { octaveLabel } from "./pitch.ts";
 
@@ -113,6 +113,22 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
         return { col, text: (s.opens ? "(" : "-") + "-".repeat(Math.max(0, last - col - 1)) + (s.closes ? ")" : "-") };
       }),
     ]);
+  // paroles : une ligne @l par couplet, chaque syllabe sur sa case (« lu- » si le mot
+  // continue) ; une prolongation part juste après sa syllabe, ou du début du système
+  // pour une syllabe commencée plus tôt, et finit dans sa dernière case comme un soufflet
+  const lyricLines = (v: Voice) =>
+    v.lyrics.map((l) => {
+      const items = [
+        ...l.syllables.map((x) => ({ col: anchorCol[x.anchor], text: x.text + (x.hyphen ? HYPHEN : "") })),
+        ...l.extenders.map((e) => {
+          const syl = e.opens ? l.syllables.find((x) => x.anchor === e.fromAnchor) : undefined;
+          const col = anchorCol[e.fromAnchor] + (syl ? syl.text.length + 1 : 0);
+          const last = Math.max(col, anchorCol[e.toAnchor] + widths[e.toAnchor] - 2);
+          return { col, text: "-".repeat(last - col + 1) };
+        }),
+      ].sort((a, b) => a.col - b.col);
+      return items.reduce((s, x) => s.padEnd(x.col) + x.text, LYRIC_LINE).trimEnd();
+    });
   // accords : une ligne à part, juste au-dessus de la règle, chaque accord sur sa case
   const chordLine = sys.chords.length
     ? [sys.chords.reduce((l, c) => l.padEnd(anchorCol[c.anchor]) + c.text, CHORD_LINE).trimEnd()]
@@ -123,9 +139,11 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
     ruler,
     rule(ruler),
     ...rows(sys.right),
+    ...lyricLines(sys.voices.D),
     ...voiceLines(sys.voices.D),
     rule(ruler),
     ...rows(sys.left),
+    ...lyricLines(sys.voices.G),
     ...voiceLines(sys.voices.G),
     // la pédale sur sa propre ligne @, tout en bas
     ...stackLines([...sys.pedal.signs, ...sys.pedal.texts].map((p) => ({ col: anchorCol[p.anchor], text: p.text }))),
@@ -156,6 +174,8 @@ function cellWidths(score: Score, cell: number): (t: number) => number {
   }
   for (const tm of score.texts) want(tm.t, tm.text.length + 2);
   for (const c of score.chords) want(c.t, c.text.length + 1);
+  // une syllabe tient dans sa case, trait d'union compris, suivie d'une espace
+  for (const l of score.lyrics) want(l.t, l.text.length + (l.hyphen ? HYPHEN.length : 0) + 1);
   // une trille ou un doigté (« 12~10 », « 12_3 ») élargit sa case, suivie d'une espace
   const trillNeed = new Map<number, number>();
   for (const n of score.notes) {

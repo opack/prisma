@@ -30,9 +30,9 @@ m12|1  *  |2  |3  *  *  ||1  |2  |
 
 1. **La règle de comptage** commence par `m` suivi du numéro de la première mesure. Chaque temps est encadré par des `|`, et une fin de mesure s'écrit `||`.
 2. **Un trait sous la règle**, facultatif.
-3. **Les lignes de la main droite**, suivies si besoin de ses lignes `@` de nuances.
+3. **Les lignes de la main droite**, suivies si besoin de ses lignes `@l` de paroles et `@` de nuances.
 4. **Le trait entre les mains**, obligatoire, même quand une main ne joue pas.
-5. **Les lignes de la main gauche**, suivies si besoin de ses lignes `@` de nuances et de pédale.
+5. **Les lignes de la main gauche**, suivies si besoin de ses lignes `@l` de paroles, `@` de nuances et de pédale.
 
 Les traits s'écrivent avec `─`, `-`, `=`, `+` ou `┼`, sans espace.
 
@@ -226,6 +226,24 @@ m1 |1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||
 ```
 
 À l'import MusicXML, nuances, soufflets et textes suivent leur portée ; les indications de tempo et de structure (`rit.`, `a tempo`, `Andante`…) vont sur la ligne `@` au-dessus de la règle. Chaque indication est calée sur l'attaque ou le début de temps le plus proche. Les notes sont calées sur une grille de 48 cases par temps (doubles croches et triolets de doubles croches) : une durée plus fine, comme un quintolet, prend la case la plus proche.
+
+## Paroles : lignes `@l` sous une main
+
+Une ligne qui commence par `@l` (*lyrics*), **sous les lignes d'une main** avec ses autres lignes `@`, porte un couplet de paroles. Plusieurs lignes `@l` sous une même main sont les couplets 1, 2… de haut en bas ; une ligne `@l` vide garde la place d'un couplet absent de ce système. L'écriture place les paroles juste sous les notes, avant les nuances.
+
+Comme sur la ligne `@c`, chaque mot est à part : une seule espace sépare deux syllabes. Chaque syllabe commence exactement sur une case, normalement celle de sa note. Une espace insécable reste dans la syllabe (`Oh !`), et deux syllabes chantées sur une même note s'écrivent liées par `‿` (`qu'on‿a`).
+
+| Écriture | Sens |
+|---|---|
+| `lune` | Une syllabe, qui finit son mot. |
+| `lu-` | Une syllabe suivie d'un trait d'union : le mot continue sur la syllabe suivante. |
+| `ne ---` | Prolongation (mélisme) : la syllabe se chante sur les notes suivantes, jusqu'à la fin de la case qui contient le dernier `-`. Comme une tenue de note, et comme un soufflet pour sa longueur. |
+
+La prolongation suit sa syllabe, après au moins une espace, et doit dépasser la case de la syllabe ; une syllabe suivie d'un trait d'union ne se prolonge pas (le trait d'union mène déjà à la suivante). Coupée par un changement de système, elle reprend au début du suivant par `---` sur la ligne du même couplet. Les `|` recopiés dans une prolongation (`----|---`) sont ignorés.
+
+La gravure écrit les paroles en caractères droits à empattements, pour ne pas les confondre avec les chiffres des notes, sous le début de chaque note ; le trait d'union se place entre les deux syllabes, la prolongation est un trait bas jusqu'à la fin de la dernière note. Une syllabe trop longue élargit sa case.
+
+À l'import MusicXML, chaque `<lyric>` donne une syllabe, sous la main de sa portée ; les couplets suivent l'ordre de leur numéro (`number`). `<syllabic>` `begin` ou `middle` donne le trait d'union ; `<extend>` une prolongation jusqu'à la fin de la dernière note de la voix avant la syllabe suivante du couplet, si elle couvre plusieurs notes.
 
 ## Pédale
 

@@ -14,6 +14,8 @@ export type XNote = {
   grace?: boolean | "slash";
   /** XML brut placé dans <notations> de la note (point d'orgue…). */
   notations?: string;
+  /** XML brut des paroles de la note (<lyric>…), sur la première note d'un accord. */
+  lyric?: string;
 };
 export type XMeasure = {
   notes: XNote[][]; // une liste d'événements par voix, jouées en parallèle
@@ -50,7 +52,7 @@ export function musicXml(measures: XMeasure[], divisions = 12): string {
           const ties = (n.tie ?? []).map((t) => `<tie type="${t}"/>`).join("");
           const grace = n.grace ? `<grace${n.grace === "slash" ? ' slash="yes"' : ""}/>` : "";
           const dur = n.grace ? "" : `<duration>${n.dur}</duration>`;
-          body += `<note>${grace}${k ? "<chord/>" : ""}<pitch><step>${STEPS[pc]}</step>${alt}<octave>${Math.floor(p / 12) - 1}</octave></pitch>${dur}${ties}${staff}</note>`;
+          body += `<note>${grace}${k ? "<chord/>" : ""}<pitch><step>${STEPS[pc]}</step>${alt}<octave>${Math.floor(p / 12) - 1}</octave></pitch>${dur}${ties}${staff}${!k && n.lyric ? n.lyric : ""}</note>`;
         });
       }
     });

@@ -253,6 +253,33 @@ Un accord s'écrit au choix par son **nom anglais** (`Am`, `G7`, `F#m7b5`, `G/B`
 
 La gravure montre le nom, les notes empilées (la basse en bas, comme sur les lignes d'octave), ou les deux (options « Accords ») : l'application calcule l'un à partir de l'autre.
 
+### Les paroles
+
+Les paroles s'écrivent sur une ligne `@l` (*lyrics*) sous les lignes de la partie qui chante, chaque syllabe sur la case de sa note. Un couplet par ligne, le premier en haut :
+
+```ymn
+m1 |1  |2     |3     |4   ||1    |2  |3   |4  ||
+───┼───┼──────┼──────┼────┼┼─────┼───┼────┼───┼┼
+0  |1  |1     |1     |3   ||5    |-  |3   |-  ||
+@l  Au  clair  de     la    lu-       ne,
+@l  Ma  chan-  delle  est   mor-      te,
+───┼───┼──────┼──────┼────┼┼─────┼───┼────┼───┼┼
+-1 |1  |-     |-     |-   ||8    |-  |-   |-  ||
+```
+
+- Un `-` collé à la fin d'une syllabe la relie à la suivante, dans le même mot : `lu- ne`. La gravure trace le trait d'union entre les deux.
+- Une syllabe chantée sur plusieurs notes (un mélisme) est suivie de `---` jusqu'à sa dernière note, comme une note tenue ; la gravure la prolonge d'un trait bas :
+
+```ymn
+m1 |1  |2   |3  |4  ||1  |2   |3  |4  ||
+───┼───┼────┼───┼───┼┼───┼────┼───┼───┼┼
++1 |   |    |   |1  ||   |    |   |   ||
+0  |8  |10  |12 |   ||12 |10  |8  |-  ||
+@l  A-  men -------   A-  men -------
+───┼───┼────┼───┼───┼┼───┼────┼───┼───┼┼
+-1 |1  |-   |-  |-  ||8  |-   |-  |-  ||
+```
+
 Les indications de caractère et de tempo (`dolce`, `rit.`, `a tempo`…) gardent leurs mots habituels. Les indications d'octave (`8va`, `loco`…) n'existent pas : l'octave est déjà sur chaque ligne.
 
 ## 7. Récapitulatif
@@ -280,3 +307,4 @@ Les indications de caractère et de tempo (`dolce`, `rit.`, `a tempo`…) garden
 | liaisons d'expression | `(-----)` sous la partie concernée |
 | pédale | `Ped.`, `*`, `*Ped.`, tracés en trait continu |
 | accords d'accompagnement (Am, G/B) | ligne `@c` : le nom, ou les notes de la basse vers l'aigu (`10;1;5`) |
+| paroles, traits d'union, mélismes | une ligne `@l` par couplet, sous la partie qui chante : `lu- ne`, `men ---` |

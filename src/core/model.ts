@@ -171,6 +171,20 @@ export const isSign = (t: string) => isHairpin(t) || isSlur(t) || isPedalSign(t)
 export const joinsText = (prev: string, next: string) =>
   !isSign(next) && !isHairpin(prev) && !isSlur(prev) && !isStructureSign(prev) && prev !== FERMATA && !isArpeggioSign(prev);
 
+/**
+ * Syllabe de paroles, chantée sur la note de sa main qui commence à t. verse : couplet (1, 2…).
+ * hyphen : le mot continue sur la syllabe suivante (« lu- ne »). extend : le mot se prolonge
+ * sur plusieurs notes (mélisme), jusqu'à cet instant (fin exclue).
+ */
+export type Lyric = { hand: Hand; verse: number; t: number; text: string; hyphen?: boolean; extend?: number };
+
+/** Ligne des paroles d'un couplet, sous les lignes d'une main : « @l », puis chaque syllabe sur sa case. */
+export const LYRIC_LINE = "@l";
+/** Fin de syllabe : le mot continue sur la syllabe suivante (« lu- »). */
+export const HYPHEN = "-";
+/** Prolongation d'une syllabe sur les notes suivantes (« ne ---- »), comme une tenue. */
+export const isExtender = (t: string) => /^-[-|]*$/.test(t);
+
 export type Score = {
   meta: Meta;
   /** Temps du morceau, dans l'ordre. Le temps i couvre [i·TICKS_PER_BEAT, (i+1)·TICKS_PER_BEAT[. */
@@ -189,6 +203,8 @@ export type Score = {
   markers: Marker[];
   /** Accords d'accompagnement (ligne `@c`), tels qu'écrits : nom anglais ou notes ymn. */
   chords: TextMark[];
+  /** Paroles, par instant, main et couplet. */
+  lyrics: Lyric[];
   /** Arpèges, par instant. */
   arpeggios: Arpeggio[];
   /** Points d'orgue : instants où l'on tient la note, l'accord ou le silence plus longtemps. */
@@ -210,6 +226,11 @@ export function sortNotes(notes: Note[]): Note[] {
 }
 
 /** Trie les petites notes : par instant, main droite d'abord, par rang, de l'aigu au grave. */
+/** Trie les paroles : par instant, main droite d'abord, par couplet. */
+export function sortLyrics(lyrics: Lyric[]): Lyric[] {
+  return [...lyrics].sort((a, b) => a.t - b.t || (a.hand === b.hand ? 0 : a.hand === "D" ? -1 : 1) || a.verse - b.verse);
+}
+
 export function sortGraces(graces: Grace[]): Grace[] {
   return [...graces].sort(
     (a, b) => a.t - b.t || (a.hand === b.hand ? 0 : a.hand === "D" ? -1 : 1) || a.slot - b.slot || b.midi - a.midi,

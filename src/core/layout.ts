@@ -97,8 +97,18 @@ export type HairpinSpan = {
  */
 export type SlurSpan = { fromAnchor: number; toAnchor: number; opens: boolean; closes: boolean; level: number };
 
-/** Ligne @ d'une voix : sous les lignes de sa main. */
-export type Voice = { marks: VoiceMark[]; hairpins: HairpinSpan[]; slurs: SlurSpan[] };
+/**
+ * Paroles d'un couplet dans un système : ses syllabes, et les prolongations (mélismes).
+ * Une prolongation va de la case de sa syllabe (opens), ou du début du système, jusqu'à
+ * l'ancre toAnchor comprise ; closes : elle se termine dans ce système.
+ */
+export type LyricLine = {
+  syllables: { anchor: number; text: string; hyphen: boolean }[];
+  extenders: { fromAnchor: number; toAnchor: number; opens: boolean; closes: boolean }[];
+};
+
+/** Ligne @ d'une voix : sous les lignes de sa main. lyrics : un couplet par ligne, dans l'ordre. */
+export type Voice = { marks: VoiceMark[]; hairpins: HairpinSpan[]; slurs: SlurSpan[]; lyrics: LyricLine[] };
 
 /**
  * Pédale dans un système : ses signes (pour le texte .ymn) et ses traits (pour la gravure).
@@ -197,6 +207,10 @@ function beatGrids(score: Score): BeatGrid[] {
   for (const g of score.graces) add(g.t, false);
   for (const x of score.arpeggios) add(x.t, false);
   for (const c of score.chords) add(c.t, false);
+  for (const l of score.lyrics) {
+    add(l.t, false);
+    if (l.extend !== undefined) add(l.extend, false);
+  }
   for (const s of score.slurs) {
     add(s.start, false);
     add(s.end, false);
@@ -532,6 +546,27 @@ export function layout(score: Score, m: Metrics): System[] {
       }
       return spans;
     };
+    // paroles : autant de lignes que le plus haut couplet présent dans le système
+    const lyricLines = (hand: Hand): LyricLine[] => {
+      const here = score.lyrics.filter(
+        (l) => l.hand === hand && ((l.t >= t0 && l.t < t1) || (l.t < t0 && l.extend !== undefined && l.extend > t0)),
+      );
+      const verses = Math.max(0, ...here.map((l) => l.verse));
+      return Array.from({ length: verses }, (_, v) => {
+        const mine = here.filter((l) => l.verse === v + 1);
+        return {
+          syllables: mine.filter((l) => l.t >= t0).map((l) => ({ anchor: anchorAt(l.t), text: l.text, hyphen: !!l.hyphen })),
+          extenders: mine
+            .filter((l) => l.extend !== undefined)
+            .map((l) => ({
+              fromAnchor: l.t >= t0 ? anchorAt(l.t) : 0,
+              toAnchor: l.extend! < t1 ? lastAnchorBefore(l.extend!) : anchors.length - 1,
+              opens: l.t >= t0,
+              closes: l.extend! <= t1,
+            })),
+        };
+      });
+    };
     const voice = (hand: Hand): Voice => ({
       marks: score.expressions
         .filter((e) => e.hand === hand)
@@ -557,6 +592,7 @@ export function layout(score: Score, m: Metrics): System[] {
         })
         .filter((h) => h.fromAnchor >= 0 && h.toAnchor >= h.fromAnchor),
       slurs: slurSpans(hand),
+      lyrics: lyricLines(hand),
     });
 
     const signs: PedalLine["signs"] = [];

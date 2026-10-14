@@ -6,8 +6,8 @@
  */
 import { chordNotes } from "./chords.ts";
 import { YmnError, parseFrontmatter } from "./frontmatter.ts";
-import { ARPEGGIO_DOWN, FERMATA, FINGER_MARK, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isSlur, isPedalText, joinsText, sortGraces, sortNotes } from "./model.ts";
-import type { Arpeggio, Beat, Division, Expression, Grace, Hairpin, Slur, Hand, Marker, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
+import { ARPEGGIO_DOWN, FERMATA, HYPHEN, LYRIC_LINE, isExtender, sortLyrics, FINGER_MARK, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isSlur, isPedalText, joinsText, sortGraces, sortNotes } from "./model.ts";
+import type { Arpeggio, Beat, Division, Expression, Grace, Hairpin, Slur, Hand, Lyric, Marker, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
 import { midiOf, parseOctaveLabel } from "./pitch.ts";
 
 /** Un temps de la règle de comptage, et la barre qui le termine. */
@@ -24,6 +24,8 @@ const isMarkLine = (line: string) => line.startsWith("@");
 /** Ligne des accords : « @c », puis chaque accord sur sa case. */
 export const CHORD_LINE = "@c";
 const isChordLine = (line: string) => line === CHORD_LINE || line.startsWith(CHORD_LINE + " ");
+/** Ligne des paroles d'un couplet, sous les lignes de sa main. */
+const isLyricLine = (line: string) => line === LYRIC_LINE || line.startsWith(LYRIC_LINE + " ");
 
 const SEPARATORS = new Set(["|", "||", ":||", "||:", ":||:"]);
 const SUB_LABELS = new Set(["*", ".", ","]);
@@ -143,6 +145,9 @@ export function parseYmn(text: string): Score {
   const texts: TextMark[] = [];
   const fermatas: number[] = [];
   const chords: TextMark[] = [];
+  const lyrics: Lyric[] = [];
+  // fin de la case de chaque syllabe prolongée : sa prolongation doit la dépasser
+  const lyricCell = new Map<Lyric, { end: number; line: number; col: number }>();
   const arpeggios: Arpeggio[] = [];
   /** Arpège posé une seule fois par instant et par main (ou pour les deux mains). */
   const addArpeggio = (x: Arpeggio, line: number, col: number) => {
@@ -231,6 +236,7 @@ export function parseYmn(text: string): Score {
 
     // ligne(s) @ au-dessus de la règle : débuts de section, nombre de passages, textes
     for (const li of block.marks) {
+      if (isLyricLine(lines[li])) throw new YmnError("les paroles se placent sous les lignes de leur main, comme ses nuances", li + 1, 1);
       if (isChordLine(lines[li])) {
         // accords : chaque mot est un accord, posé sur une case (pas de texte de plusieurs mots)
         const line = lines[li];
@@ -339,17 +345,63 @@ export function parseYmn(text: string): Score {
       }
     };
 
+    // ligne de paroles d'une voix : une syllabe par case, « lu- » si le mot continue sur la
+    // suivante, « --- » pour prolonger la syllabe précédente sur plusieurs notes
+    const readLyricLine = (row: string, R: number, hand: Hand, verse: number) => {
+      let last: Lyric | undefined; // syllabe précédente sur la ligne
+      let extended = false; // elle a déjà sa prolongation
+      // seules les espaces séparent les syllabes : une espace insécable reste dans la syllabe (« Oh ! »)
+      for (const w of row.slice(LYRIC_LINE.length).matchAll(/[^ ]+/g)) {
+        const tok = w[0];
+        const col = LYRIC_LINE.length + w.index!;
+        if (/^[|:]+$/.test(tok)) continue; // barres recopiées pour se repérer
+        if (isExtender(tok)) {
+          // la prolongation va jusqu'au bout de la case qui contient son dernier caractère
+          const lastCh = col + tok.length - 1;
+          const end = anchors.find((x) => x.from > lastCh)?.t ?? t1;
+          if (!last) {
+            // suite de la prolongation d'une syllabe du système précédent
+            const prev = col === anchors[0].from ? lyrics.find((l) => l.hand === hand && l.verse === verse && l.extend === t0) : undefined;
+            if (!prev) throw new YmnError("« --- » prolonge la syllabe qui le précède sur la ligne : écris d'abord la syllabe", R, col + 1);
+            prev.extend = end;
+            last = prev;
+          } else {
+            if (last.hyphen) throw new YmnError(`« ${last.text}${HYPHEN} » continue sur la syllabe suivante : elle ne se prolonge pas`, R, col + 1);
+            if (extended) throw new YmnError("une seule prolongation par syllabe", R, col + 1);
+            // une syllabe sur la dernière case d'un système se prolonge au suivant : vérifié à la fin
+            const ai = anchors.findIndex((x) => x.t === last!.t);
+            lyricCell.set(last, { end: anchors[ai + 1]?.t ?? t1, line: R, col: col + 1 });
+            last.extend = end;
+          }
+          extended = true;
+          continue;
+        }
+        const a = anchors.find((x) => x.from === col);
+        if (!a) throw new YmnError(`syllabe « ${tok} » : elle doit commencer exactement sur une case de la règle de comptage`, R, col + 1);
+        const hyphen = tok.length > 1 && tok.endsWith(HYPHEN);
+        last = { hand, verse, t: a.t, text: hyphen ? tok.slice(0, -HYPHEN.length) : tok, ...(hyphen ? { hyphen: true } : {}) };
+        extended = false;
+        lyrics.push(last);
+      }
+    };
+
     const nextPending: Note[] = [];
     // petites notes du bloc, par main et instant : leur rang se lit de gauche à droite dans la case
     const blockGraces = new Map<string, { hand: Hand; t: number; col: number; midi: number }[]>();
     const lastOctave: Record<Hand, number | undefined> = { D: undefined, G: undefined };
     const voiceLine: Record<Hand, boolean> = { D: false, G: false };
+    const verses: Record<Hand, number> = { D: 0, G: 0 }; // couplets : les lignes @l d'une main, de haut en bas
     for (const li of content) {
       if (seps.includes(li)) continue;
       const row = lines[li];
       const R = li + 1;
       const hand: Hand = li < handSep ? "D" : "G";
       if (isChordLine(row)) throw new YmnError("les accords se placent au-dessus de la règle de comptage", R, 1);
+      if (isLyricLine(row)) {
+        voiceLine[hand] = true;
+        readLyricLine(row, R, hand, ++verses[hand]);
+        continue;
+      }
       if (isMarkLine(row)) {
         voiceLine[hand] = true;
         readVoiceLine(row, R, hand);
@@ -486,6 +538,9 @@ export function parseYmn(text: string): Score {
       throw new YmnError("une liaison relie au moins deux notes : « ( » et « ) » dans deux cases différentes", slurAt.get(s)!.line, slurAt.get(s)!.col);
     }
   }
+  for (const [l, c] of lyricCell) {
+    if (l.extend! <= c.end) throw new YmnError("la prolongation doit dépasser la case de sa syllabe", c.line, c.col);
+  }
   // une pédale jamais relâchée tient jusqu'à la fin du morceau
   if (pedalDown) pedalDown.end = beats.length * TICKS_PER_BEAT;
 
@@ -537,6 +592,7 @@ export function parseYmn(text: string): Score {
     pedalTexts: pedalTexts.sort((a, b) => a.t - b.t),
     markers: markers.map(({ label, barIndex }) => ({ label, barIndex })),
     chords: chords.sort((a, b) => a.t - b.t),
+    lyrics: sortLyrics(lyrics),
     arpeggios: arpeggios.sort((a, b) => a.t - b.t || (a.hand ?? "").localeCompare(b.hand ?? "")),
     fermatas: fermatas.sort((a, b) => a - b),
     order,

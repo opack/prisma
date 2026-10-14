@@ -35,7 +35,18 @@ export const G = {
   chordNameH: 4.6, // bande du nom d'un accord (« Am »)
   chordNoteH: 2.4, // hauteur d'une note dans un accord écrit en notes ymn empilées
   chordChar: 1.9, // largeur d'un caractère du nom d'un accord
+  lyricH: 4.2, // une ligne de paroles (un couplet)
+  lyricChar: 1.6, // largeur d'un caractère de paroles
+  hyphenW: 2.2, // place d'un trait d'union après une syllabe
 };
+
+/** Largeur d'une syllabe gravée, depuis le début de sa note. */
+export const lyricTextW = (text: string) => [...text].length * G.lyricChar;
+/** Largeur que demande une syllabe : son texte, puis un trait d'union ou un peu d'air. */
+const lyricW = (text: string, hyphen: boolean) => 0.5 + lyricTextW(text) + (hyphen ? G.hyphenW : 0.9);
+/** Place ajoutée à une case par une syllabe trop longue pour elle (le couplet qui en demande le plus). */
+const lyricExtra = (sys: System, a: number, cellW: number) =>
+  Math.max(0, ...[sys.voices.D, sys.voices.G].flatMap((v) => v.lyrics.flatMap((l) => l.syllables.filter((x) => x.anchor === a).map((x) => lyricW(x.text, x.hyphen) - cellW))));
 
 /** Affichage des accords : nom anglais, notes ymn empilées, ou les deux. */
 export type ChordStyle = "name" | "notes" | "both";
@@ -63,6 +74,9 @@ const chordW = (text: string, style: ChordStyle) => {
   const p = chordParts(text);
   return showName(style, p.name) ? 0.5 + p.name!.length * G.chordChar + 0.6 : 0;
 };
+
+/** Bande des paroles d'une main : une ligne par couplet, un peu d'air au-dessus. */
+const lyricH = (v: System["voices"]["D"]) => (v.lyrics.length ? 0.4 + v.lyrics.length * G.lyricH : 0);
 
 /** Bande des liaisons d'une main, juste sous ses lignes : un étage par niveau d'imbrication. */
 const slurH = (v: System["voices"]["D"]) => (v.slurs.length ? 1 + (Math.max(...v.slurs.map((s) => s.level)) + 1) * G.slurLevel : 0);
@@ -119,6 +133,8 @@ export type PlacedSystem = {
   voiceBand: { D: number; G: number };
   /** Hauteur des bandes de liaisons sous chaque main (0 si la main n'en a pas). */
   slurBand: { D: number; G: number };
+  /** Hauteur des bandes de paroles sous chaque main : une ligne par couplet. */
+  lyricBand: { D: number; G: number };
   /** Hauteur de la bande de pédale sous le système (0 sans pédale). */
   pedalBand: number;
   height: number;
@@ -143,12 +159,13 @@ export const bands = (s: System, chords: ChordStyle = "both") => ({
   structBand: s.marks.some((m) => m.kind === "times" || m.kind === "marker" || m.kind === "fermata") ? G.markH : 0,
   voiceBand: { D: voiceH(s.voices.D), G: voiceH(s.voices.G) },
   slurBand: { D: slurH(s.voices.D), G: slurH(s.voices.G) },
+  lyricBand: { D: lyricH(s.voices.D), G: lyricH(s.voices.G) },
   pedalBand: s.pedal.spans.length || s.pedal.texts.length ? G.pedalH : 0,
 });
 
 export const systemHeight = (s: System, chords: ChordStyle = "both") => {
   const b = bands(s, chords);
-  return b.textBand + b.structBand + b.chordBand + G.rulerH + (s.right.length + s.left.length) * G.rowH + b.voiceBand.D + b.voiceBand.G + b.slurBand.D + b.slurBand.G + b.pedalBand + 2 * G.handGap + 1;
+  return b.textBand + b.structBand + b.chordBand + G.rulerH + (s.right.length + s.left.length) * G.rowH + b.voiceBand.D + b.voiceBand.G + b.slurBand.D + b.slurBand.G + b.lyricBand.D + b.lyricBand.G + b.pedalBand + 2 * G.handGap + 1;
 };
 
 /** Largeur d'une barre de mesure, selon ses signes de reprise (identique au calcul du moteur). */
@@ -170,7 +187,7 @@ function place(sys: System, isLast: boolean, y: number, cellW: number, chords: C
   for (const c of sys.columns) {
     // les petites notes s'ajoutent en tête de case, sans étirement
     const a = anchorOf(xs.length);
-    const w = c.kind === "anchor" ? Math.max(cellW * stretch + leadExtra(sys, a) + noteExtra(sys, a, cellW), chordAt.get(a) ?? 0) : c.kind === "barSep" ? barSepWidth(c) : G.beatSep;
+    const w = c.kind === "anchor" ? Math.max(cellW * stretch + leadExtra(sys, a) + Math.max(noteExtra(sys, a, cellW), lyricExtra(sys, a, cellW)), chordAt.get(a) ?? 0) : c.kind === "barSep" ? barSepWidth(c) : G.beatSep;
     xs.push(x);
     ws.push(w);
     x += w;
@@ -189,7 +206,8 @@ export function engrave(score: Score, { compact = false, chords = "both" as Chor
       cellW +
       Math.max(graceW(graceDigits(score.graces, "D", t)), graceW(graceDigits(score.graces, "G", t))) +
       (score.arpeggios.some((x) => x.t === t) ? G.arpeggioW : 0) +
-      Math.max(0, ...score.notes.filter((n) => n.start === t).map((n) => noteW(noteText(n), cellW))) +
+      // une note annotée ou une syllabe trop longue élargit sa case (l'une sous l'autre : la plus large compte)
+      Math.max(0, ...score.notes.filter((n) => n.start === t).map((n) => noteW(noteText(n), cellW)), ...score.lyrics.filter((l) => l.t === t).map((l) => lyricW(l.text, !!l.hyphen) - cellW)) +
       // un nom d'accord trop long élargit sa case
       Math.max(0, ...score.chords.filter((c) => c.t === t).map((c) => chordW(c.text, chords) - cellW)),
     beatSep: G.beatSep,

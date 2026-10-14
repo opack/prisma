@@ -999,3 +999,85 @@ describe("accords", () => {
     expect(s.expressions.map((e) => e.text)).toEqual(["dolce"]);
   });
 });
+
+describe("paroles", () => {
+  const piece = [
+    "m1 |1  |2   |3  |4  ||1  |2   |3  |4  ||",
+    "+1 |   |    |   |1  ||   |    |   |   ||",
+    "0  |8  |10  |12 |   ||12 |10  |8  |-  ||",
+    "@l  A-  men -------   A-  men -------",
+    "@l  oh  la   la  di",
+    "---",
+    "-1 |1  |-   |-  |-  ||8  |-   |-  |-  ||",
+    "",
+  ].join("\n");
+
+  it("lit une syllabe par case, le trait d'union, la prolongation et les couplets", () => {
+    const s = parseYmn(piece);
+    expect(s.lyrics.filter((l) => l.verse === 1)).toEqual([
+      { hand: "D", verse: 1, t: 0, text: "A", hyphen: true },
+      { hand: "D", verse: 1, t: T, text: "men", extend: 4 * T },
+      { hand: "D", verse: 1, t: 4 * T, text: "A", hyphen: true },
+      { hand: "D", verse: 1, t: 5 * T, text: "men", extend: 8 * T },
+    ]);
+    expect(s.lyrics.filter((l) => l.verse === 2).map((l) => l.text)).toEqual(["oh", "la", "la", "di"]);
+  });
+
+  it("réécrit les paroles telles quelles", () => {
+    const written = writeYmn(parseYmn(piece)).split("\n");
+    for (const l of piece.split("\n").slice(0, 7).filter((x) => x !== "---")) expect(written).toContain(l);
+  });
+
+  it("prolonge une syllabe d'un système au suivant", () => {
+    const s = parseYmn(piece);
+    const text = writeYmn(s, { width: 26 });
+    expect(text.match(/^@l  A-  men -------$/gm)).toHaveLength(2);
+    expect(parseYmn(text).lyrics).toEqual(s.lyrics);
+    // une syllabe tenue jusque dans le système suivant y reprend par « --- » en tête
+    const long = parseYmn(["m1 |1  |2  ||1  |2  ||", "0  |1  |3  ||5  |-  ||", "@l  oh ------------", "---", "-1 |   |   ||   |   ||", ""].join("\n"));
+    expect(long.lyrics).toEqual([{ hand: "D", verse: 1, t: 0, text: "oh", extend: 4 * T }]);
+    const split = writeYmn(long, { width: 14 });
+    expect(split).toMatch(/^@l  ---/m);
+    expect(parseYmn(split).lyrics).toEqual(long.lyrics);
+    // syllabe sur la dernière case d'un système, prolongée au suivant
+    const late = parseYmn(["m1 |1  |2  ||1  |2  ||", "0  |1  |3  ||5  |-  ||", "@l      oh --------", "---", "-1 |   |   ||   |   ||", ""].join("\n"));
+    expect(late.lyrics).toEqual([{ hand: "D", verse: 1, t: T, text: "oh", extend: 4 * T }]);
+    expect(parseYmn(writeYmn(late, { width: 14 })).lyrics).toEqual(late.lyrics);
+  });
+
+  it("refuse des paroles mal placées", () => {
+    const one = (l: string) => ["m1 |1  |2  |3  ||", "0  |1  |3  |5  ||", l, "---", "-1 |   |   |   ||", ""].join("\n");
+    expect(() => parseYmn(one("@l   la"))).toThrow(/exactement sur une case/);
+    expect(() => parseYmn(one("@l  ---"))).toThrow(/écris d'abord la syllabe/);
+    expect(() => parseYmn(one("@l  la- --"))).toThrow(/ne se prolonge pas/);
+    expect(() => parseYmn(one("@l  la -"))).toThrow(/dépasser la case/);
+    expect(() => parseYmn(["@l  la", "m1 |1  ||", "0  |1  ||", "---", ""].join("\n"))).toThrow(/sous les lignes de leur main/);
+  });
+
+  it("importe les paroles du MusicXML : syllabes, couplets, mélismes", () => {
+    const ly = (n: number, syllabic: string, text: string, extend = false) =>
+      `<lyric number="${n}"><syllabic>${syllabic}</syllabic><text>${text}</text>${extend ? "<extend/>" : ""}</lyric>`;
+    const xml = musicXml([
+      {
+        notes: [
+          [
+            { midi: [C4], dur: q, lyric: ly(1, "begin", "A") + ly(2, "single", "Oh !") },
+            { midi: [C4 + 2], dur: q, lyric: ly(1, "end", "men", true) + ly(2, "single", "la") },
+            { midi: [C4 + 4], dur: q },
+            { midi: [C4 + 5], dur: q, tie: ["start"] },
+          ],
+        ],
+      },
+      { notes: [[{ midi: [C4 + 5], dur: q, tie: ["stop"] }, { midi: [C4], dur: 3 * q, lyric: ly(1, "single", "oui") }]] },
+    ]);
+    const s = importMusicXml(xml);
+    expect(s.lyrics).toEqual([
+      { hand: "D", verse: 1, t: 0, text: "A", hyphen: true },
+      { hand: "D", verse: 2, t: 0, text: "Oh\u00A0!" },
+      { hand: "D", verse: 1, t: T, text: "men", extend: 5 * T },
+      { hand: "D", verse: 2, t: T, text: "la" },
+      { hand: "D", verse: 1, t: 5 * T, text: "oui" },
+    ]);
+    expect(parseYmn(writeYmn(s)).lyrics).toEqual(s.lyrics);
+  });
+});

@@ -1,6 +1,6 @@
 import { FINGER_MARK, TRILL_MARK, octaveOffset } from "../core/index.ts";
 import type { Meta, SystemRow, Voice } from "../core/index.ts";
-import { FINGER, G, PAGE, chordParts, graceExtra, graceSlotW, headerHeight, leadExtra, noteParts } from "./engrave.ts";
+import { FINGER, G, PAGE, chordParts, graceExtra, graceSlotW, headerHeight, leadExtra, lyricTextW, noteParts } from "./engrave.ts";
 import type { Page, PlacedSystem } from "./engrave.ts";
 import type { OctavePosition, OctaveStyle, RenderOptions } from "./options.ts";
 import { octaveTint } from "./colors.ts";
@@ -24,6 +24,8 @@ const GRACE = "#5a5f64"; // petites notes : gris foncé, entre les notes et les 
 const FONT = `"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif`;
 /** Nuances en gras italique à empattements, comme sur une partition. */
 const DYNAMIC_FONT = `Georgia, "Times New Roman", serif`;
+/** Paroles : à empattements, droites, pour ne pas les confondre avec les chiffres des notes. */
+const LYRIC_FONT = DYNAMIC_FONT;
 
 /**
  * Numéro d'octave : « 0 » pour l'octave du do central, sinon une flèche dessinée
@@ -377,6 +379,53 @@ function OrderLine({ order, y, cx = PAGE.w / 2 }: { order: string[]; y: number; 
 }
 
 /**
+ * Paroles d'une main : un couplet par ligne, chaque syllabe sous le début de sa note. Un
+ * trait d'union relie les syllabes d'un mot ; un trait bas prolonge une syllabe chantée sur
+ * plusieurs notes (mélisme), jusqu'à la fin de la dernière.
+ */
+function LyricBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: number }) {
+  const { sys, xs, ws } = ps;
+  const left = PAGE.marginX + G.prefix;
+  const right = xs[xs.length - 1] + ws[ws.length - 1];
+  const sx = (a: number) => xs[sys.anchors[a]] + leadExtra(sys, a) + 0.5;
+  const aEnd = (a: number) => xs[sys.anchors[a]] + ws[sys.anchors[a]];
+  const halo = { stroke: "#fff", strokeWidth: 0.6, paintOrder: "stroke" as const, strokeLinejoin: "round" as const };
+  return (
+    <g>
+      {voice.lyrics.map((line, v) => {
+        const base = top + 0.4 + v * G.lyricH + G.lyricH * 0.68;
+        return (
+          <g key={v}>
+            {line.syllables.map((x, i) => {
+              const end = sx(x.anchor) + lyricTextW(x.text);
+              const next = line.syllables[i + 1];
+              // trait d'union : au milieu de l'espace jusqu'à la syllabe suivante, ou juste après en fin de système
+              const gap = next ? sx(next.anchor) - end : 1.8;
+              const hw = Math.min(0.8, gap * 0.4);
+              const hx = end + gap / 2;
+              return (
+                <g key={i}>
+                  <text x={sx(x.anchor)} y={base} fontFamily={LYRIC_FONT} fontSize={3.1} fill={INK} {...halo}>
+                    {x.text}
+                  </text>
+                  {x.hyphen && <line x1={hx - hw / 2} x2={hx + hw / 2} y1={base - 0.9} y2={base - 0.9} stroke={INK} strokeWidth={0.22} />}
+                </g>
+              );
+            })}
+            {line.extenders.map((e, i) => {
+              const syl = e.opens ? line.syllables.find((x) => x.anchor === e.fromAnchor) : undefined;
+              const x1 = syl ? sx(e.fromAnchor) + lyricTextW(syl.text) + 0.3 : left;
+              const x2 = e.closes ? aEnd(e.toAnchor) - 0.8 : right;
+              return x2 > x1 ? <line key={"e" + i} x1={x1} x2={x2} y1={base + 0.35} y2={base + 0.35} stroke={INK} strokeWidth={0.25} /> : null;
+            })}
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+/**
  * Bande des nuances d'une main : nuances (p, mf…), textes (cresc., dolce…) et soufflets.
  * Un soufflet coupé par un changement de système garde son ouverture au point de coupure.
  */
@@ -478,11 +527,11 @@ function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions 
   const rhTop = y + G.rulerH;
   const rhVoice = rhTop + sys.right.length * G.rowH; // bande des nuances de la main droite
   const rhSlurs = rhVoice; // bande des liaisons de la main droite, juste sous ses lignes
-  const handY = rhVoice + ps.slurBand.D + ps.voiceBand.D + G.handGap;
+  const handY = rhVoice + ps.slurBand.D + ps.lyricBand.D + ps.voiceBand.D + G.handGap;
   const lhTop = handY + G.handGap;
   const lhVoice = lhTop + sys.left.length * G.rowH;
   const lhSlurs = lhVoice;
-  const bottom = lhVoice + ps.slurBand.G + ps.voiceBand.G;
+  const bottom = lhVoice + ps.slurBand.G + ps.lyricBand.G + ps.voiceBand.G;
 
   // bandes alternées par groupe d'octave, dans chaque main
   const bands = (rows: SystemRow[]) => {
@@ -612,8 +661,10 @@ function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions 
 
       {ps.slurBand.D > 0 && <SlurBand ps={ps} voice={sys.voices.D} top={rhSlurs} />}
       {ps.slurBand.G > 0 && <SlurBand ps={ps} voice={sys.voices.G} top={lhSlurs} />}
-      {ps.voiceBand.D > 0 && <VoiceBand ps={ps} voice={sys.voices.D} top={rhVoice + ps.slurBand.D} />}
-      {ps.voiceBand.G > 0 && <VoiceBand ps={ps} voice={sys.voices.G} top={lhVoice + ps.slurBand.G} />}
+      {ps.lyricBand.D > 0 && <LyricBand ps={ps} voice={sys.voices.D} top={rhVoice + ps.slurBand.D} />}
+      {ps.lyricBand.G > 0 && <LyricBand ps={ps} voice={sys.voices.G} top={lhVoice + ps.slurBand.G} />}
+      {ps.voiceBand.D > 0 && <VoiceBand ps={ps} voice={sys.voices.D} top={rhVoice + ps.slurBand.D + ps.lyricBand.D} />}
+      {ps.voiceBand.G > 0 && <VoiceBand ps={ps} voice={sys.voices.G} top={lhVoice + ps.slurBand.G + ps.lyricBand.G} />}
       {ps.pedalBand > 0 && <PedalBand ps={ps} top={bottom} />}
       <Marks ps={ps} />
     </g>

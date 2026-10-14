@@ -14,8 +14,32 @@
  */
 import { XMLParser } from "fast-xml-parser";
 import { chordNameNotes } from "./chords.ts";
-import { TICKS_PER_BEAT, isDynamic, isPedalText, sortGraces, sortNotes } from "./model.ts";
-import type { Arpeggio, Beat, Division, Expression, Grace, Hairpin, Slur, Hand, Marker, Meta, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
+import { TICKS_PER_BEAT, isDynamic, isPedalText, sortGraces, sortLyrics, sortNotes } from "./model.ts";
+import type { Arpeggio, Beat, Division, Expression, Grace, Hairpin, Slur, Hand, Lyric, Marker, Meta, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
+
+/**
+ * Paroles : les couplets numérotés à la suite (1, 2…) dans l'ordre de leurs numéros, une
+ * syllabe par main, couplet et instant. Un mélisme (extend) court jusqu'à la fin de la
+ * dernière note de sa voix avant la syllabe suivante du couplet, s'il en couvre plusieurs.
+ */
+function lyricsOf(raw: (RawLyric & { t: number })[], voiceNotes: (RawVoiceNote & { start: number; end: number })[], q: (t: number) => number, end: number): Lyric[] {
+  const numbers = [...new Set(raw.map((l) => l.number))].sort((a, b) => (Number(a) || 0) - (Number(b) || 0) || a.localeCompare(b));
+  const out: (Lyric & { voice: string; melisma: boolean })[] = [];
+  for (const l of raw) {
+    const t = q(l.t);
+    const verse = numbers.indexOf(l.number) + 1;
+    if (t >= end || out.some((x) => x.hand === l.hand && x.verse === verse && x.t === t)) continue;
+    out.push({ hand: l.hand, verse, t, text: l.text, ...(l.hyphen ? { hyphen: true } : {}), voice: l.voice, melisma: l.extend && !l.hyphen });
+  }
+  const notes = voiceNotes.map((n) => ({ ...n, start: q(n.start), end: q(n.end) }));
+  for (const l of out) {
+    if (!l.melisma) continue;
+    const next = Math.min(end, ...out.filter((x) => x.hand === l.hand && x.verse === l.verse && x.t > l.t).map((x) => x.t));
+    const sung = notes.filter((n) => n.hand === l.hand && n.voice === l.voice && n.start >= l.t && n.start < next);
+    if (sung.some((n) => n.start > l.t)) l.extend = Math.min(next, Math.max(...sung.map((n) => n.end)));
+  }
+  return sortLyrics(out.map(({ voice, melisma, ...l }) => l));
+}
 
 type XNode = Record<string, any>;
 const parser = new XMLParser({ preserveOrder: true, ignoreAttributes: false, attributeNamePrefix: "" });
@@ -116,8 +140,17 @@ type RawNote = { hand: Hand; midi: number; on: number; off: number; tieStart: bo
 type RawArpeggio = { hand: Hand; on: number; number?: string; down: boolean };
 /** Petite note, jouée juste avant l'instant on (en noires depuis le début de la mesure). */
 type RawGrace = { hand: Hand; midi: number; on: number; slot: number };
+/**
+ * Syllabe portée par une note : number désigne le couplet ; voice la voix de la note, pour
+ * suivre un mélisme (extend) sur les notes suivantes de cette voix.
+ */
+type RawLyric = { hand: Hand; voice: string; on: number; number: string; text: string; hyphen: boolean; extend: boolean };
+/** Note jouée, réduite à sa voix et à sa durée : sert à mesurer les mélismes. */
+type RawVoiceNote = { hand: Hand; voice: string; on: number; off: number };
 type RawMeasure = {
   number: string;
+  lyrics: RawLyric[];
+  voiceNotes: RawVoiceNote[];
   graces: RawGrace[];
   arpeggios: RawArpeggio[];
   divisions: number;
@@ -146,6 +179,8 @@ function readMeasures(part: XNode): RawMeasure[] {
     const notes: RawNote[] = [];
     const graces: RawGrace[] = [];
     const arpeggios: RawArpeggio[] = [];
+    const lyrics: RawLyric[] = [];
+    const voiceNotes: RawVoiceNote[] = [];
     const measureAlter = new Map<string, number>(); // altérations déjà posées dans la mesure, par lettre et octave
     // petites notes en attente de leur note principale, par voix
     const waiting = new Map<string, Omit<RawGrace, "on">[]>();
@@ -323,6 +358,24 @@ function readMeasures(part: XNode): RawMeasure[] {
           if (arp && !arpeggios.some((x) => x.hand === hand && x.on === on)) {
             arpeggios.push({ hand, on, number: attr(arp, "number") as string | undefined, down: attr(arp, "direction") === "down" });
           }
+          voiceNotes.push({ hand, voice, on, off: on + dur });
+          // paroles : une syllabe par couplet ; une élision (deux syllabes sur une note) s'écrit « ‿ »
+          for (const ly of findAll(n, "lyric")) {
+            const parts = kids(ly);
+            const words = findAll(parts, "text").map((x) => text(x).trim()).filter(Boolean);
+            if (!words.length) continue;
+            const syllabic = findAll(parts, "syllabic").map(text);
+            const last = syllabic[syllabic.length - 1];
+            const ext = find(parts, "extend");
+            lyrics.push({
+              hand, voice, on,
+              number: String(attr(ly, "number") ?? "1"),
+              // seules les espaces séparent les syllabes d'une ligne @l : celles d'une syllabe deviennent insécables
+              text: words.join("‿").replace(/\s+/g, "\u00A0"),
+              hyphen: last === "begin" || last === "middle",
+              extend: !!ext && attr(ext, "type") !== "stop",
+            });
+          }
           notes.push(raw);
         }
       }
@@ -336,7 +389,7 @@ function readMeasures(part: XNode): RawMeasure[] {
       divisions, beats, beatType,
       length: maxCursor,
       implicit: attr(measure, "implicit") === "yes",
-      notes, graces, arpeggios, directions, structure, startRepeat, endRepeat, times, endings,
+      notes, graces, arpeggios, lyrics, voiceNotes, directions, structure, startRepeat, endRepeat, times, endings,
     });
   }
   return out;
@@ -576,6 +629,8 @@ export function importMusicXml(xml: string, fileName?: string): Score {
   const rawGraces: Grace[] = [];
   const rawArpeggios: (RawArpeggio & { t: number })[] = [];
   const rawDirections: (RawDirection & { t: number })[] = [];
+  const rawLyrics: (RawLyric & { t: number })[] = [];
+  const rawVoiceNotes: (RawVoiceNote & { start: number; end: number })[] = [];
   const EPS = 1e-6;
 
   // Mesures numérotées comme dans le fichier : à partir du numéro de la première mesure,
@@ -604,6 +659,9 @@ export function importMusicXml(xml: string, fileName?: string): Score {
     const base = firstBeat * TICKS_PER_BEAT;
     for (const d of m.directions) rawDirections.push({ ...d, t: base + Math.round((d.at + shift) * ticksPerQuarter) });
     for (const x of m.arpeggios) rawArpeggios.push({ ...x, t: base + Math.round((x.on + shift) * ticksPerQuarter) });
+    const tick = (on: number) => base + Math.round((on + shift) * ticksPerQuarter);
+    for (const l of m.lyrics) rawLyrics.push({ ...l, t: tick(l.on) });
+    for (const v of m.voiceNotes) rawVoiceNotes.push({ ...v, start: tick(v.on), end: tick(v.off) });
     for (const g of m.graces) rawGraces.push({ hand: g.hand, midi: g.midi, t: base + Math.round((g.on + shift) * ticksPerQuarter), slot: g.slot });
     for (const n of m.notes) {
       raw.push({
@@ -680,7 +738,7 @@ export function importMusicXml(xml: string, fileName?: string): Score {
     } else arpeggios.push({ t, hand: x.hand, ...down });
   }
   arpeggios.sort((a, b) => a.t - b.t || (a.hand ?? "").localeCompare(b.hand ?? ""));
-  return { meta, beats, notes: sorted, graces: sortGraces(graces), arpeggios, ...directionsOf(rawDirections, sorted, beats.length), ...sectionsOf(playOrder(measures), measures.length) };
+  return { meta, beats, notes: sorted, graces: sortGraces(graces), arpeggios, lyrics: lyricsOf(rawLyrics, rawVoiceNotes, q, end), ...directionsOf(rawDirections, sorted, beats.length), ...sectionsOf(playOrder(measures), measures.length) };
 }
 
 /**
