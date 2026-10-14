@@ -192,6 +192,8 @@ function readMeasures(partNode: XNode, base: Part, staves: number): RawMeasure[]
   // une partie par portée : la portée 1 est la partie base, la 2 la suivante…
   const staffPart = (staff: number) => base + Math.min(Math.max(staff, 1), staves) - 1;
   let divisions = 1, beats = 4, beatType = 4, fifths = 0;
+  // instrument transpositeur : écart entre la hauteur écrite et la hauteur qui sonne (en demi-tons)
+  let transpose = 0;
   let openEnding: number[] | undefined;
 
   for (const measure of findAll(kids(partNode), "measure")) {
@@ -219,6 +221,9 @@ function readMeasures(partNode: XNode, base: Part, staves: number): RawMeasure[]
         if (find(a, "divisions")) divisions = num(find(a, "divisions"), divisions);
         const key = find(a, "key");
         if (key && find(kids(key), "fifths")) fifths = num(find(kids(key), "fifths"));
+        // <transpose> : ce qu'il faut ajouter à la note écrite pour obtenir celle qui sonne
+        const tr = find(a, "transpose");
+        if (tr) transpose = num(find(kids(tr), "chromatic")) + 12 * num(find(kids(tr), "octave-change"));
         const time = find(a, "time");
         if (time) {
           beats = num(find(kids(time), "beats"), beats);
@@ -418,6 +423,15 @@ function readMeasures(partNode: XNode, base: Part, staves: number): RawMeasure[]
     }
     // petites notes sans note principale dans la mesure : jouées juste avant la mesure suivante
     for (const list of waiting.values()) graces.push(...list.map((g) => ({ ...g, on: maxCursor })));
+    // ymn note ce qui sonne : la hauteur écrite d'un instrument transpositeur est décalée (armure,
+    // altérations et voisines d'ornement se lisent d'abord sur la partition écrite)
+    if (transpose) {
+      for (const n of notes) {
+        n.midi += transpose;
+        if (n.trill !== undefined) n.trill += transpose;
+      }
+      for (const g of graces) g.midi += transpose;
+    }
     if (closeEndingAfter) openEnding = undefined;
     out.push({
       number: String(attr(measure, "number") ?? out.length + 1),

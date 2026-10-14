@@ -1265,3 +1265,27 @@ describe("articulations", () => {
   });
 });
 
+describe("instruments transpositeurs", () => {
+  it("importe la hauteur qui sonne : une clarinette en si bémol écrite ré sonne do", () => {
+    const xml = `<?xml version="1.0"?><score-partwise version="3.1"><part-list><score-part id="P1"><part-name>Clarinette</part-name></score-part></part-list>
+      <part id="P1"><measure number="1"><attributes><divisions>1</divisions><key><fifths>2</fifths></key><time><beats>2</beats><beat-type>4</beat-type></time>
+      <transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose></attributes>
+      <note><pitch><step>D</step><octave>4</octave></pitch><duration>1</duration><notations><ornaments><trill-mark/></ornaments></notations></note>
+      <note><pitch><step>E</step><octave>4</octave></pitch><duration>1</duration></note></measure></part></score-partwise>`;
+    const s = importMusicXml(xml);
+    // ré écrit → do ; sa voisine de trille (mi écrit, dans l'armure de ré majeur) → ré
+    expect(s.notes.map((n) => [n.midi, n.trill])).toEqual([
+      [60, 62],
+      [62, undefined],
+    ]);
+  });
+
+  it("tient compte d'un changement d'octave (saxophone ténor : une neuvième plus bas)", () => {
+    const xml = `<?xml version="1.0"?><score-partwise version="3.1"><part-list><score-part id="P1"><part-name>Sax</part-name></score-part></part-list>
+      <part id="P1"><measure number="1"><attributes><divisions>1</divisions><time><beats>1</beats><beat-type>4</beat-type></time>
+      <transpose><diatonic>-1</diatonic><chromatic>-2</chromatic><octave-change>-1</octave-change></transpose></attributes>
+      <note><pitch><step>D</step><octave>5</octave></pitch><duration>1</duration></note></measure></part></score-partwise>`;
+    expect(importMusicXml(xml).notes.map((n) => n.midi)).toEqual([60]);
+  });
+});
+

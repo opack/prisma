@@ -63,6 +63,8 @@ m1 |1    |2  |3  |4   ||
 
 Le nom doit être celui que `parts` annonce à cette place : un nom non déclaré (`Pno.`), absent ou à la mauvaise place est une erreur. Sans `parts`, aucun nom ne s'écrit. La gravure écrit les noms à gauche du premier système (ou de chacun, en option).
 
+ymn note toujours la hauteur qui sonne : un instrument transpositeur (clarinette en si♭, cor en fa, saxophone) s'écrit comme il sonne, et ses parties s'alignent juste avec les autres. À l'import MusicXML, la hauteur écrite est corrigée d'après `<transpose>`.
+
 À l'import MusicXML, chaque `<part>` devient un instrument et chacune de ses portées une partie ; les instruments sont nommés d'après `<part-name>` quand il y en a plusieurs. Un arpège qui traverse les portées s'égrène d'un seul geste (`/` sur la ligne du haut) quand le morceau n'a qu'un instrument, et sinon partie par partie.
 
 ### Les cases
