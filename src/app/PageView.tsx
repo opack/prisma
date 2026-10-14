@@ -3,6 +3,7 @@ import type { Meta, SystemRow, Voice } from "../core/index.ts";
 import { FINGER, G, PAGE, graceExtra, graceSlotW, headerHeight, leadExtra, noteParts } from "./engrave.ts";
 import type { Page, PlacedSystem } from "./engrave.ts";
 import type { OctavePosition, OctaveStyle, RenderOptions } from "./options.ts";
+import { octaveTint } from "./colors.ts";
 
 const INK = "#1b1d1f";
 const GREY = "#8a8f94";
@@ -84,7 +85,7 @@ function OctaveMark({ cx, cy, offset, style }: { cx: number; cy: number; offset:
 }
 
 /** Onglet vertical pâle couvrant les lignes d'un groupe d'octave ; numéro en haut ou au centre selon les options. */
-function OctaveTabs({ rows, top, style, position }: { rows: SystemRow[]; top: number; style: OctaveStyle; position: OctavePosition }) {
+function OctaveTabs({ rows, top, style, position, tabFill }: { rows: SystemRow[]; top: number; style: OctaveStyle; position: OctavePosition; tabFill: (octave: number) => string }) {
   const groups: { octave: number; first: number; count: number }[] = [];
   rows.forEach((r, i) => {
     if (r.showOctave || !groups.length) groups.push({ octave: r.octave, first: i, count: 1 });
@@ -99,7 +100,7 @@ function OctaveTabs({ rows, top, style, position }: { rows: SystemRow[]; top: nu
         const h = g.count * G.rowH - 0.5;
         return (
           <g key={g.first}>
-            <rect x={x} y={y} width={w} height={h} rx={0.6} fill={TAB} />
+            <rect x={x} y={y} width={w} height={h} rx={0.6} fill={tabFill(g.octave)} />
             <OctaveMark
               cx={x + w / 2}
               cy={position === "top" ? top + g.first * G.rowH + G.rowH / 2 : y + h / 2}
@@ -492,6 +493,10 @@ function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions 
   };
   const rb = bands(sys.right);
   const lb = bands(sys.left);
+  // couleur par octave (option) ; sans palette, une bande grise un couloir sur deux
+  const tint = (octave: number) => octaveTint(options.octavePalette, options.octaveMixed, octaveOffset(octave));
+  const bandFill = (octave: number, alternate: boolean) => tint(octave)?.band ?? (alternate ? BAND : undefined);
+  const tabFill = (octave: number) => tint(octave)?.tab ?? TAB;
 
   return (
     <g>
@@ -537,11 +542,17 @@ function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions 
       })}
       <line x1={left} x2={right} y1={rhTop} y2={rhTop} stroke={LIGHT} strokeWidth={0.25} />
 
-      <OctaveTabs rows={sys.right} top={rhTop} style={options.octaveStyle} position={options.octavePosition} />
-      <OctaveTabs rows={sys.left} top={lhTop} style={options.octaveStyle} position={options.octavePosition} />
+      <OctaveTabs rows={sys.right} top={rhTop} style={options.octaveStyle} position={options.octavePosition} tabFill={tabFill} />
+      <OctaveTabs rows={sys.left} top={lhTop} style={options.octaveStyle} position={options.octavePosition} tabFill={tabFill} />
       {/* fonds des couloirs d'abord : les notes, dessinées ensuite, ne sont jamais recouvertes */}
-      {rb.map((b, i) => b && <rect key={"bd" + i} x={left} y={rhTop + i * G.rowH} width={right - left} height={G.rowH} fill={BAND} />)}
-      {lb.map((b, i) => b && <rect key={"bg" + i} x={left} y={lhTop + i * G.rowH} width={right - left} height={G.rowH} fill={BAND} />)}
+      {sys.right.map((r, i) => {
+        const fill = bandFill(r.octave, rb[i]);
+        return fill && <rect key={"bd" + i} x={left} y={rhTop + i * G.rowH} width={right - left} height={G.rowH} fill={fill} />;
+      })}
+      {sys.left.map((r, i) => {
+        const fill = bandFill(r.octave, lb[i]);
+        return fill && <rect key={"bg" + i} x={left} y={lhTop + i * G.rowH} width={right - left} height={G.rowH} fill={fill} />;
+      })}
       {sys.right.map((r, i) => (
         <Row key={"d" + i} ps={ps} row={r} y={rhTop + i * G.rowH} centered={options.notePosition === "center"} />
       ))}

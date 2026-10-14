@@ -47,6 +47,8 @@ Chaque ligne de notes appartient à une octave, indiquée à gauche :
 
 La gravure les montre dans un onglet à gauche (▲1, 0, ▼1). Les lignes d'une même octave forment un **couloir** ; les couloirs sont rangés de l'aigu (en haut) au grave (en bas).
 
+Pour apprendre à situer les octaves, l'application peut donner à chaque couloir une couleur pâle, toujours la même pour une octave donnée, dans tous les morceaux (options « Couleurs ») : on peut alors coller des pastilles de la même couleur sur l'instrument. Le numéro d'octave reste affiché, pour une impression en noir et blanc.
+
 Ce système remplace les clés (sol, fa, ut), les portées, les lignes supplémentaires et les « 8va » : l'octave de chaque note est écrite sur sa ligne, une fois pour toutes.
 
 ### Les parties

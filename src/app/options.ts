@@ -1,4 +1,6 @@
 /** Options de rendu, choisies dans le panneau « Options » et gardées dans le navigateur. */
+import type { OctavePalette } from "./colors.ts";
+
 export type OctaveStyle = "arrow" | "sign" | "triangle";
 export type OctavePosition = "top" | "center";
 export type NotePosition = "top" | "center";
@@ -17,9 +19,13 @@ export type RenderOptions = {
   density: Density;
   /** Graver les doigtés : les masquer allège la page sans toucher au fichier. */
   fingerings: boolean;
+  /** Couleur des couloirs d'octave : aucune (bandes grises alternées), arc-en-ciel ou feutrée. */
+  octavePalette: OctavePalette;
+  /** Couleurs dans un ordre mélangé (fixe) plutôt que progressif : plus de contraste entre voisines. */
+  octaveMixed: boolean;
 };
 
-export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal", fingerings: true };
+export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal", fingerings: true, octavePalette: "rainbow", octaveMixed: false };
 
 export const OCTAVE_STYLES: { value: OctaveStyle; label: string; sample: string }[] = [
   { value: "arrow", label: "Flèches", sample: "↑1  0  ↓1" },
@@ -35,6 +41,12 @@ export const OCTAVE_POSITIONS: { value: OctavePosition; label: string }[] = [
 export const NOTE_POSITIONS: { value: NotePosition; label: string }[] = [
   { value: "top", label: "En haut" },
   { value: "center", label: "Centrées" },
+];
+
+export const OCTAVE_PALETTES: { value: OctavePalette; label: string }[] = [
+  { value: "none", label: "Aucune" },
+  { value: "rainbow", label: "Arc-en-ciel" },
+  { value: "muted", label: "Feutrée" },
 ];
 
 export const DENSITIES: { value: Density; label: string }[] = [
@@ -55,7 +67,9 @@ export function loadOptions(): RenderOptions {
     const notePosition = NOTE_POSITIONS.some((p) => p.value === raw.notePosition) ? raw.notePosition : DEFAULT_OPTIONS.notePosition;
     const density = DENSITIES.some((d) => d.value === raw.density) ? raw.density : DEFAULT_OPTIONS.density;
     const fingerings = typeof raw.fingerings === "boolean" ? raw.fingerings : DEFAULT_OPTIONS.fingerings;
-    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density, fingerings };
+    const octavePalette = OCTAVE_PALETTES.some((p) => p.value === raw.octavePalette) ? raw.octavePalette : DEFAULT_OPTIONS.octavePalette;
+    const octaveMixed = typeof raw.octaveMixed === "boolean" ? raw.octaveMixed : DEFAULT_OPTIONS.octaveMixed;
+    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density, fingerings, octavePalette, octaveMixed };
   } catch {
     return DEFAULT_OPTIONS;
   }

@@ -6,7 +6,7 @@ import { Menu } from "./Menu.tsx";
 import { NoticeView } from "./NoticeView.tsx";
 import { PageView } from "./PageView.tsx";
 import { SAMPLE } from "./sample.ts";
-import { DENSITIES, NOTE_POSITIONS, OCTAVE_POSITIONS, OCTAVE_STYLES, loadOptions, saveOptions } from "./options.ts";
+import { DENSITIES, NOTE_POSITIONS, OCTAVE_PALETTES, OCTAVE_POSITIONS, OCTAVE_STYLES, loadOptions, saveOptions } from "./options.ts";
 import type { RenderOptions } from "./options.ts";
 import { OPENABLE, canWriteInPlace, download, droppedFile, pickFile, pickSaveTarget, writeFile } from "./files.ts";
 
@@ -375,6 +375,32 @@ export function App() {
               </label>
             ))}
             <span className="sample">dans un couloir d'octave de plusieurs lignes</span>
+          </fieldset>
+          <fieldset>
+            <legend>Couleurs</legend>
+            {OCTAVE_PALETTES.map((p) => (
+              <label key={p.value}>
+                <input
+                  type="radio"
+                  name="octavePalette"
+                  id={"palette-" + p.value}
+                  checked={options.octavePalette === p.value}
+                  onChange={() => setOptions({ octavePalette: p.value })}
+                />
+                {p.label}
+              </label>
+            ))}
+            <label>
+              <input
+                type="checkbox"
+                id="octave-mixed"
+                checked={options.octaveMixed}
+                disabled={options.octavePalette === "none"}
+                onChange={(e) => setOptions({ octaveMixed: e.target.checked })}
+              />
+              Ordre mélangé
+            </label>
+            <span className="sample">une couleur fixe par octave ; mélangées, deux octaves voisines contrastent davantage</span>
           </fieldset>
           <fieldset>
             <legend>Espacement</legend>
