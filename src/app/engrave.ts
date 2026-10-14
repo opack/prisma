@@ -10,7 +10,7 @@ export const CONTENT_W = PAGE.w - 2 * PAGE.marginX;
 
 export const G = {
   cell: 5.2, // largeur naturelle d'une case
-  compactCell: 4.1, // largeur d'une case en espacement compact (un « 12 » y tient encore)
+  compactCell: 4.1, // largeur d'une case en espacement compact (élargie là où un « 12 » ne tient pas)
   prefix: 7, // colonne des numéros d'octave
   beatSep: 0.8,
   barSep: 1.6,
@@ -103,12 +103,17 @@ export function noteParts(c: string) {
  * voisine de trille en petit, son doigt, puis un peu de trait ondulé pour une trille.
  */
 function noteW(c: string, cellW: number) {
+  if (!c || c === "-") return 0;
+  // rappel d'une note tenue en début de système (« –12 ») : le tiret, puis les chiffres
+  if (c.startsWith("-")) return Math.max(0, 0.5 + 1.3 + (c.length - 1) * G.noteDigit + 0.45 - cellW);
   const { main, aux, finger } = noteParts(c);
-  if (aux === undefined && finger === undefined) return 0;
+  // une note seule : ses chiffres, puis assez d'air pour ne pas se coller à la case suivante
+  // (« 12 » puis « 8 » ne doit pas se lire « 128 »)
+  if (aux === undefined && finger === undefined) return Math.max(0, 0.5 + main.length * G.noteDigit + 0.45 - cellW);
   const w = 0.5 + main.length * G.noteDigit + (aux ? 0.35 + aux.length * G.graceDigit : 0) + (finger ? FINGER.gap + 2 * FINGER.r : 0) + (aux ? 1 : 0.3);
   return Math.max(0, w - cellW);
 }
-/** Place ajoutée par les notes annotées d'une case, sur la ligne qui en demande le plus. */
+/** Place ajoutée par les notes d'une case trop larges pour elle, sur la ligne qui en demande le plus. */
 export const noteExtra = (sys: System, a: number, cellW: number) => Math.max(0, ...sys.parts.flatMap((p) => p.rows.map((r) => noteW(r.cells[a], cellW))));
 
 /** Hauteur de l'en-tête de la première page : titre, sous-titre éventuel, compositeur. */
@@ -216,14 +221,18 @@ export const systemHeight = (s: System, chords: ChordStyle = "both") => geometry
 const barSepWidth = (c: Extract<System["columns"][number], { kind: "barSep" }>) =>
   c.lead ? G.repeatDots + G.beatSep : G.barSep + (c.endRepeat ? G.repeatDots : 0) + (c.startRepeat ? G.repeatDots : 0);
 
-function place(sys: System, isLast: boolean, y: number, cellW: number, chords: ChordStyle): PlacedSystem {
+/**
+ * prevStretch : étirement de la ligne précédente de la même section, s'il y en a une. La
+ * dernière ligne d'une section (ou du morceau) le reprend, sans dépasser la largeur : ses
+ * cases ont la même taille que celles du dessus, et une ligne courte reste courte.
+ */
+function place(sys: System, isLast: boolean, y: number, cellW: number, chords: ChordStyle, prevStretch?: number): PlacedSystem {
   const chordAt = new Map(sys.chords.map((c) => [c.anchor, chordW(c.text, chords)]));
   const anchorOf = (ci: number) => sys.anchors.indexOf(ci);
   const cells = sys.anchors.length;
   const fixed = sys.width - cells * cellW;
   let stretch = (CONTENT_W - fixed) / (cells * cellW);
-  // la dernière ligne (du morceau, ou d'une section) n'est étirée que si elle est déjà presque pleine
-  if ((isLast || sys.endsSection) && stretch > 1.25) stretch = 1;
+  if ((isLast || sys.endsSection) && prevStretch !== undefined) stretch = Math.min(stretch, prevStretch);
   stretch = Math.max(0.5, Math.min(stretch, G.maxStretch));
   const xs: number[] = [];
   const ws: number[] = [];
@@ -268,6 +277,7 @@ export function engrave(score: Score, { compact = false, chords = "both" as Chor
   let page: Page = { index: 0, systems: [], header: true, order };
   let y = PAGE.marginTop + headerHeight(score.meta) + orderH;
   const bottom = PAGE.h - PAGE.marginBottom;
+  let lastStretch: number | undefined;
   systems.forEach((sys, i) => {
     const h = systemHeight(sys, chords);
     if (sys.section && page.systems.length) y += G.sectionGap;
@@ -276,7 +286,11 @@ export function engrave(score: Score, { compact = false, chords = "both" as Chor
       page = { index: pages.length, systems: [], header: false, order };
       y = PAGE.marginTop + orderH;
     }
-    page.systems.push(place(sys, i === systems.length - 1, y, cellW, chords));
+    // la ligne précédente, si elle est de la même section
+    const prev = i > 0 && !sys.section && !systems[i - 1].endsSection ? lastStretch : undefined;
+    const placed = place(sys, i === systems.length - 1, y, cellW, chords, prev);
+    lastStretch = placed.stretch;
+    page.systems.push(placed);
     y += h + G.systemGap;
   });
   pages.push(page);
