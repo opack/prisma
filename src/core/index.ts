@@ -6,3 +6,4 @@ export { layout, noteText } from "./layout.ts";
 export type { Column, HairpinSpan, Metrics, System, SystemRow, Voice, VoiceMark } from "./layout.ts";
 export { writeYmn, DEFAULT_WIDTH, DEFAULT_CELL } from "./ymn-write.ts";
 export { parseYmn } from "./ymn-parse.ts";
+export { CHORD_NOTE_SEPARATOR, chordName, chordNotes, chordYmnText } from "./chords.ts";

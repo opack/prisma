@@ -2,7 +2,7 @@
  * Gravure : place les systèmes calculés par le moteur de mise en page sur des pages A4.
  * Toutes les dimensions sont en millimètres.
  */
-import { FINGER_MARK, TRILL_MARK, graceDigits, layout, noteText } from "../core/index.ts";
+import { FINGER_MARK, TRILL_MARK, chordName, chordNotes, graceDigits, layout, noteText } from "../core/index.ts";
 import type { Score, System } from "../core/index.ts";
 
 export const PAGE = { w: 210, h: 297, marginX: 15, marginTop: 14, marginBottom: 16 };
@@ -32,6 +32,36 @@ export const G = {
   arpeggioW: 1.5, // place de la vaguelette d'un arpège, devant l'accord
   noteDigit: 1.85, // largeur d'un chiffre de note
   slurLevel: 1.3, // hauteur d'un étage de liaisons
+  chordNameH: 4.6, // bande du nom d'un accord (« Am »)
+  chordNoteH: 2.4, // hauteur d'une note dans un accord écrit en notes ymn empilées
+  chordChar: 1.9, // largeur d'un caractère du nom d'un accord
+};
+
+/** Affichage des accords : nom anglais, notes ymn empilées, ou les deux. */
+export type ChordStyle = "name" | "notes" | "both";
+
+/** Notes d'un accord (de la basse vers l'aigu) et nom à graver : celui écrit, ou celui reconnu. */
+export function chordParts(text: string) {
+  const notes = chordNotes(text) ?? [];
+  const name = /^[A-G]/.test(text) ? text : chordName(notes);
+  return { notes, name };
+}
+const showName = (style: ChordStyle, name?: string) => !!name && style !== "notes";
+// sans nom reconnu, les notes s'affichent toujours
+const showNotes = (style: ChordStyle, name?: string) => style !== "name" || !name;
+
+/** Hauteur de la bande des accords d'un système : le nom, et/ou les notes empilées. */
+const chordH = (s: System, style: ChordStyle) => {
+  if (!s.chords.length) return 0;
+  const parts = s.chords.map((c) => chordParts(c.text));
+  const named = parts.some((p) => showName(style, p.name));
+  const stack = Math.max(0, ...parts.filter((p) => showNotes(style, p.name)).map((p) => p.notes.length));
+  return (named ? G.chordNameH : 0.8) + stack * G.chordNoteH;
+};
+/** Largeur que demande un accord : son nom ; ses notes empilées tiennent dans une case. */
+const chordW = (text: string, style: ChordStyle) => {
+  const p = chordParts(text);
+  return showName(style, p.name) ? 0.5 + p.name!.length * G.chordChar + 0.6 : 0;
 };
 
 /** Bande des liaisons d'une main, juste sous ses lignes : un étage par niveau d'imbrication. */
@@ -96,6 +126,8 @@ export type PlacedSystem = {
   xs: number[];
   /** Largeur de chaque colonne. */
   ws: number[];
+  /** Hauteur de la bande des accords, juste au-dessus de la règle (0 sans accord). */
+  chordBand: number;
 };
 
 /** order : ordre de jeu des sections, gravé en tête de chaque page (vide s'il n'y a pas de section). */
@@ -105,7 +137,8 @@ export type Page = { index: number; systems: PlacedSystem[]; header: boolean; or
 const voiceH = (v: System["voices"]["D"]) => (v.marks.some((m) => m.kind !== "arpeggio") || v.hairpins.length ? G.voiceH : 0);
 
 /** Bandes au-dessus de la règle, de haut en bas : textes, puis débuts de section, points d'orgue et « 3× ». */
-export const bands = (s: System) => ({
+export const bands = (s: System, chords: ChordStyle = "both") => ({
+  chordBand: chordH(s, chords),
   textBand: s.marks.some((m) => m.kind === "text") ? G.markH : 0,
   structBand: s.marks.some((m) => m.kind === "times" || m.kind === "marker" || m.kind === "fermata") ? G.markH : 0,
   voiceBand: { D: voiceH(s.voices.D), G: voiceH(s.voices.G) },
@@ -113,16 +146,17 @@ export const bands = (s: System) => ({
   pedalBand: s.pedal.spans.length || s.pedal.texts.length ? G.pedalH : 0,
 });
 
-export const systemHeight = (s: System) => {
-  const b = bands(s);
-  return b.textBand + b.structBand + G.rulerH + (s.right.length + s.left.length) * G.rowH + b.voiceBand.D + b.voiceBand.G + b.slurBand.D + b.slurBand.G + b.pedalBand + 2 * G.handGap + 1;
+export const systemHeight = (s: System, chords: ChordStyle = "both") => {
+  const b = bands(s, chords);
+  return b.textBand + b.structBand + b.chordBand + G.rulerH + (s.right.length + s.left.length) * G.rowH + b.voiceBand.D + b.voiceBand.G + b.slurBand.D + b.slurBand.G + b.pedalBand + 2 * G.handGap + 1;
 };
 
 /** Largeur d'une barre de mesure, selon ses signes de reprise (identique au calcul du moteur). */
 const barSepWidth = (c: Extract<System["columns"][number], { kind: "barSep" }>) =>
   c.lead ? G.repeatDots + G.beatSep : G.barSep + (c.endRepeat ? G.repeatDots : 0) + (c.startRepeat ? G.repeatDots : 0);
 
-function place(sys: System, isLast: boolean, y: number, cellW: number): PlacedSystem {
+function place(sys: System, isLast: boolean, y: number, cellW: number, chords: ChordStyle): PlacedSystem {
+  const chordAt = new Map(sys.chords.map((c) => [c.anchor, chordW(c.text, chords)]));
   const anchorOf = (ci: number) => sys.anchors.indexOf(ci);
   const cells = sys.anchors.length;
   const fixed = sys.width - cells * cellW;
@@ -136,16 +170,16 @@ function place(sys: System, isLast: boolean, y: number, cellW: number): PlacedSy
   for (const c of sys.columns) {
     // les petites notes s'ajoutent en tête de case, sans étirement
     const a = anchorOf(xs.length);
-    const w = c.kind === "anchor" ? cellW * stretch + leadExtra(sys, a) + noteExtra(sys, a, cellW) : c.kind === "barSep" ? barSepWidth(c) : G.beatSep;
+    const w = c.kind === "anchor" ? Math.max(cellW * stretch + leadExtra(sys, a) + noteExtra(sys, a, cellW), chordAt.get(a) ?? 0) : c.kind === "barSep" ? barSepWidth(c) : G.beatSep;
     xs.push(x);
     ws.push(w);
     x += w;
   }
-  return { sys, stretch, y, height: systemHeight(sys), xs, ws, ...bands(sys) };
+  return { sys, stretch, y, height: systemHeight(sys, chords), xs, ws, ...bands(sys, chords) };
 }
 
-/** compact : cases plus étroites, donc plus de mesures par ligne. */
-export function engrave(score: Score, compact = false): Page[] {
+/** compact : cases plus étroites, donc plus de mesures par ligne ; chords : affichage des accords. */
+export function engrave(score: Score, { compact = false, chords = "both" as ChordStyle } = {}): Page[] {
   const cellW = compact ? G.compactCell : G.cell;
   const systems = layout(score, {
     width: CONTENT_W,
@@ -155,7 +189,9 @@ export function engrave(score: Score, compact = false): Page[] {
       cellW +
       Math.max(graceW(graceDigits(score.graces, "D", t)), graceW(graceDigits(score.graces, "G", t))) +
       (score.arpeggios.some((x) => x.t === t) ? G.arpeggioW : 0) +
-      Math.max(0, ...score.notes.filter((n) => n.start === t).map((n) => noteW(noteText(n), cellW))),
+      Math.max(0, ...score.notes.filter((n) => n.start === t).map((n) => noteW(noteText(n), cellW))) +
+      // un nom d'accord trop long élargit sa case
+      Math.max(0, ...score.chords.filter((c) => c.t === t).map((c) => chordW(c.text, chords) - cellW)),
     beatSep: G.beatSep,
     barSep: G.barSep,
     repeatDots: G.repeatDots,
@@ -167,14 +203,14 @@ export function engrave(score: Score, compact = false): Page[] {
   let y = PAGE.marginTop + headerHeight(score.meta) + orderH;
   const bottom = PAGE.h - PAGE.marginBottom;
   systems.forEach((sys, i) => {
-    const h = systemHeight(sys);
+    const h = systemHeight(sys, chords);
     if (sys.section && page.systems.length) y += G.sectionGap;
     if (y + h > bottom && page.systems.length) {
       pages.push(page);
       page = { index: pages.length, systems: [], header: false, order };
       y = PAGE.marginTop + orderH;
     }
-    page.systems.push(place(sys, i === systems.length - 1, y, cellW));
+    page.systems.push(place(sys, i === systems.length - 1, y, cellW, chords));
     y += h + G.systemGap;
   });
   pages.push(page);

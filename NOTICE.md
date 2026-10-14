@@ -236,6 +236,23 @@ m1 |1    |2  |3  |4  ||1     |2  |3  |4  ||
 - **Liaisons d'expression** : `(-----)`, de la première à la dernière note liée. Elles dessinent les phrases ; la gravure les trace en arcs fins juste sous les lignes de la partie.
 - **Pédale** (piano), sous la partie du bas : `Ped.` enfonce, `*` relâche, `*Ped.` change. La gravure trace un trait sous le système, avec une pointe à chaque changement : on voit exactement ce qui est tenu. Une consigne comme `Ped. simile` (« continuer de même ») s'écrit sur la même ligne.
 
+### Les accords d'accompagnement
+
+Les accords à jouer par un accompagnateur (guitare, ou un pianiste qui improvise) s'écrivent sur une ligne `@c` (*chords*), au-dessus de la règle, chacun sur la case où il commence :
+
+```ymn
+@c  Am             G/B
+m1 |1  *  |2  *  ||1   |2  ||
+───┼──────┼──────┼┼────┼───┼┼
+0  |5  3  |1  3  ||3   |-  ||
+───┼──────┼──────┼┼────┼───┼┼
+-1 |10 -  |-  -  ||12  |-  ||
+```
+
+Un accord s'écrit au choix par son **nom anglais** (`Am`, `G7`, `F#m7b5`, `G/B` pour un sol avec si à la basse), lu partout ailleurs par les accompagnateurs, ou par ses **notes ymn** séparées par `;`, de la basse vers l'aigu : `Am` s'écrit aussi `10;1;5`. L'ordre compte : `Am7` (`10;1;5;8`) et `C6` (`1;5;8;10`) ont les mêmes notes, seule la basse les distingue. Les notes n'ont pas d'octave : un accord dit quelles notes jouer, pas où.
+
+La gravure montre le nom, les notes empilées (la basse en bas, comme sur les lignes d'octave), ou les deux (options « Accords ») : l'application calcule l'un à partir de l'autre.
+
 Les indications de caractère et de tempo (`dolce`, `rit.`, `a tempo`…) gardent leurs mots habituels. Les indications d'octave (`8va`, `loco`…) n'existent pas : l'octave est déjà sur chaque ligne.
 
 ## 7. Récapitulatif
@@ -262,3 +279,4 @@ Les indications de caractère et de tempo (`dolce`, `rit.`, `a tempo`…) garden
 | nuances, soufflets | les mêmes, sous la partie concernée |
 | liaisons d'expression | `(-----)` sous la partie concernée |
 | pédale | `Ped.`, `*`, `*Ped.`, tracés en trait continu |
+| accords d'accompagnement (Am, G/B) | ligne `@c` : le nom, ou les notes de la basse vers l'aigu (`10;1;5`) |

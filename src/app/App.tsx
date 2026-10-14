@@ -6,7 +6,7 @@ import { Menu } from "./Menu.tsx";
 import { NoticeView } from "./NoticeView.tsx";
 import { PageView } from "./PageView.tsx";
 import { SAMPLE } from "./sample.ts";
-import { DENSITIES, NOTE_POSITIONS, OCTAVE_PALETTES, OCTAVE_POSITIONS, OCTAVE_STYLES, loadOptions, saveOptions } from "./options.ts";
+import { CHORD_STYLES, DENSITIES, NOTE_POSITIONS, OCTAVE_PALETTES, OCTAVE_POSITIONS, OCTAVE_STYLES, loadOptions, saveOptions } from "./options.ts";
 import type { RenderOptions } from "./options.ts";
 import { OPENABLE, canWriteInPlace, download, droppedFile, pickFile, pickSaveTarget, writeFile } from "./files.ts";
 
@@ -141,8 +141,8 @@ export function App() {
     if (!engraved.score) return [];
     // doigtés masqués : retirés avant la gravure, pour que les cases reprennent leur largeur
     const score = options.fingerings ? engraved.score : { ...engraved.score, notes: engraved.score.notes.map(({ finger: _, ...n }) => n) };
-    return engrave(score, options.density === "compact");
-  }, [engraved, options.density, options.fingerings]);
+    return engrave(score, { compact: options.density === "compact", chords: options.chords });
+  }, [engraved, options.density, options.fingerings, options.chords]);
 
   const open = async (file: File, fileHandle: FileSystemFileHandle | null = null) => {
     const text = await file.text();
@@ -414,6 +414,21 @@ export function App() {
                   onChange={() => setOptions({ density: d.value })}
                 />
                 {d.label}
+              </label>
+            ))}
+          </fieldset>
+          <fieldset>
+            <legend>Accords</legend>
+            {CHORD_STYLES.map((c) => (
+              <label key={c.value}>
+                <input
+                  type="radio"
+                  name="chords"
+                  id={"chords-" + c.value}
+                  checked={options.chords === c.value}
+                  onChange={() => setOptions({ chords: c.value })}
+                />
+                {c.label} <span className="sample">{c.sample}</span>
               </label>
             ))}
           </fieldset>

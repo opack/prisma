@@ -13,6 +13,7 @@
  *   (rit., a tempo…) vont au-dessus du système. Pédale de résonance.
  */
 import { XMLParser } from "fast-xml-parser";
+import { chordNameNotes } from "./chords.ts";
 import { TICKS_PER_BEAT, isDynamic, isPedalText, sortGraces, sortNotes } from "./model.ts";
 import type { Arpeggio, Beat, Division, Expression, Grace, Hairpin, Slur, Hand, Marker, Meta, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
 
@@ -63,7 +64,17 @@ export function pulse(beats: number, beatType: number): { count: number; quarter
 }
 
 /** Indication d'une direction MusicXML, positionnée en noires depuis le début de la mesure. */
-type RawDirection = { hand: Hand; at: number; kind: "dynamic" | "words" | "wedge" | "pedal" | "fermata" | "slur"; text: string; number?: string };
+type RawDirection = { hand: Hand; at: number; kind: "dynamic" | "words" | "wedge" | "pedal" | "fermata" | "slur" | "chord"; text: string; number?: string };
+
+/** Qualités MusicXML (<kind>) en suffixes d'accord ; une qualité absente n'est pas importée. */
+const HARMONY_KIND: Record<string, string> = {
+  major: "", minor: "m", augmented: "aug", diminished: "dim", dominant: "7", "major-seventh": "maj7", "minor-seventh": "m7",
+  "diminished-seventh": "dim7", "augmented-seventh": "aug7", "half-diminished": "m7b5", "major-minor": "mMaj7",
+  "major-sixth": "6", "minor-sixth": "m6", "dominant-ninth": "9", "major-ninth": "maj9", "minor-ninth": "m9",
+  "dominant-11th": "11", "minor-11th": "m11", "dominant-13th": "13", "major-13th": "maj13", "minor-13th": "m13",
+  "suspended-second": "sus2", "suspended-fourth": "sus4", power: "5",
+};
+const STEP_NAME = (step: string, alter: number) => step + (alter > 0 ? "#" : alter < 0 ? "b" : "");
 
 /** Textes qui concernent tout le système : le tempo (la structure devient repères et sauts). */
 const SYSTEM_WORDS =
@@ -160,6 +171,21 @@ function readMeasures(part: XNode): RawMeasure[] {
         cursor -= num(find(kids(item), "duration")) / divisions;
       } else if (t === "forward") {
         cursor += num(find(kids(item), "duration")) / divisions;
+      } else if (t === "harmony") {
+        // accord d'accompagnement : fondamentale, qualité, basse éventuelle
+        const h = kids(item);
+        const root = kids(find(h, "root"));
+        const kind = text(find(h, "kind"));
+        const suffix = HARMONY_KIND[kind];
+        if (root.length && suffix !== undefined) {
+          const bass = kids(find(h, "bass"));
+          const name =
+            STEP_NAME(text(find(root, "root-step")), num(find(root, "root-alter"))) +
+            suffix +
+            (bass.length ? "/" + STEP_NAME(text(find(bass, "bass-step")), num(find(bass, "bass-alter"))) : "");
+          const offset = find(h, "offset") ? num(find(h, "offset")) / divisions : 0;
+          directions.push({ hand: "D", at: cursor + offset, kind: "chord", text: name });
+        }
       } else if (t === "direction") {
         const d = kids(item);
         const at = cursor + num(find(d, "offset")) / divisions;
@@ -681,6 +707,7 @@ function directionsOf(dirs: (RawDirection & { t: number })[], notes: Note[], bea
     pedal = undefined;
   };
   const fermatas: number[] = [];
+  const chords: TextMark[] = [];
   const pedalTexts: TextMark[] = [];
   const seen = new Set<string>();
   // à un même instant, une liaison se referme avant qu'une autre ne commence sur la même note
@@ -696,6 +723,11 @@ function directionsOf(dirs: (RawDirection & { t: number })[], notes: Note[], bea
         const [s] = openSlurs.splice(i, 1);
         if (t > s.start && !slurs.some((x) => x.hand === s.hand && x.start === s.start && x.end === t)) slurs.push({ hand: s.hand, start: s.start, end: t });
       }
+      continue;
+    }
+    // un accord peut aussi être écrit en simple texte (« A7 » au-dessus de la portée) : tout le texte doit être un nom d'accord
+    if (d.kind === "chord" || (d.kind === "words" && chordNameNotes(d.text.trim()))) {
+      if (t < end && !chords.some((c) => c.t === t)) chords.push({ t, text: d.text.trim() });
       continue;
     }
     if (d.kind === "fermata") {
@@ -749,5 +781,5 @@ function directionsOf(dirs: (RawDirection & { t: number })[], notes: Note[], bea
   hairpins.sort((a, b) => a.start - b.start);
   if (pedal) pedalUp(end);
   slurs.sort((a, b) => a.start - b.start || (a.hand === b.hand ? a.end - b.end : a.hand === "D" ? -1 : 1));
-  return { texts, expressions, hairpins, slurs, pedals, pedalTexts, fermatas };
+  return { texts, expressions, hairpins, slurs, pedals, pedalTexts, fermatas, chords: chords.sort((a, b) => a.t - b.t) };
 }

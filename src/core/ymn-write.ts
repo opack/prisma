@@ -113,8 +113,13 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
         return { col, text: (s.opens ? "(" : "-") + "-".repeat(Math.max(0, last - col - 1)) + (s.closes ? ")" : "-") };
       }),
     ]);
+  // accords : une ligne à part, juste au-dessus de la règle, chaque accord sur sa case
+  const chordLine = sys.chords.length
+    ? [sys.chords.reduce((l, c) => l.padEnd(anchorCol[c.anchor]) + c.text, CHORD_LINE).trimEnd()]
+    : [];
   return [
     ...stackLines(sys.marks.map((m) => ({ col: colOf(m), text: m.text }))),
+    ...chordLine,
     ruler,
     rule(ruler),
     ...rows(sys.right),
@@ -127,6 +132,10 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
   ];
 }
 
+/** Ligne des accords, au-dessus de la règle de comptage (voir ymn-parse). */
+const CHORD_LINE = "@c";
+
+/** Largeur de la colonne de gauche : le numéro de mesure le plus long. */
 export function prefixWidth(score: Score): number {
   const longest = Math.max(...score.beats.map((b) => b.bar.length), 1);
   return Math.max(4, longest + 2);
@@ -146,6 +155,7 @@ function cellWidths(score: Score, cell: number): (t: number) => number {
     want(e.t, e.text.length + (pin ? 3 : 2));
   }
   for (const tm of score.texts) want(tm.t, tm.text.length + 2);
+  for (const c of score.chords) want(c.t, c.text.length + 1);
   // une trille ou un doigté (« 12~10 », « 12_3 ») élargit sa case, suivie d'une espace
   const trillNeed = new Map<number, number>();
   for (const n of score.notes) {

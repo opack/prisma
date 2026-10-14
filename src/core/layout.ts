@@ -129,6 +129,8 @@ export type System = {
   endsSection: boolean;
   voices: Record<Hand, Voice>;
   pedal: PedalLine;
+  /** Accords d'accompagnement, sur leur ancre, tels qu'écrits. */
+  chords: { anchor: number; text: string }[];
   /** Arpèges du système, sur leur ancre ; hand absente : les deux mains. */
   arpeggios: { anchor: number; hand?: Hand; down: boolean }[];
   /** Pour chaque main et chaque ancre, le nombre de chiffres de chaque rang de petites notes. */
@@ -194,6 +196,7 @@ function beatGrids(score: Score): BeatGrid[] {
   for (const t of score.fermatas) add(t, false);
   for (const g of score.graces) add(g.t, false);
   for (const x of score.arpeggios) add(x.t, false);
+  for (const c of score.chords) add(c.t, false);
   for (const s of score.slurs) {
     add(s.start, false);
     add(s.end, false);
@@ -598,6 +601,7 @@ export function layout(score: Score, m: Metrics): System[] {
       voices: { D: voice("D"), G: voice("G") },
       pedal: { signs, spans, texts: pedalTexts },
       arpeggios,
+      chords: score.chords.map((c) => ({ anchor: anchorT.indexOf(c.t), text: c.text })).filter((c) => c.anchor >= 0),
       graceDigits: { D: digits("D"), G: digits("G") },
       width,
     };

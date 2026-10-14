@@ -1,5 +1,6 @@
 /** Options de rendu, choisies dans le panneau « Options » et gardées dans le navigateur. */
 import type { OctavePalette } from "./colors.ts";
+import type { ChordStyle } from "./engrave.ts";
 
 export type OctaveStyle = "arrow" | "sign" | "triangle";
 export type OctavePosition = "top" | "center";
@@ -23,9 +24,11 @@ export type RenderOptions = {
   octavePalette: OctavePalette;
   /** Couleurs dans un ordre mélangé (fixe) plutôt que progressif : plus de contraste entre voisines. */
   octaveMixed: boolean;
+  /** Accords : nom anglais, notes ymn empilées, ou les deux. */
+  chords: ChordStyle;
 };
 
-export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal", fingerings: true, octavePalette: "rainbow", octaveMixed: false };
+export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal", fingerings: true, octavePalette: "rainbow", octaveMixed: false, chords: "both" };
 
 export const OCTAVE_STYLES: { value: OctaveStyle; label: string; sample: string }[] = [
   { value: "arrow", label: "Flèches", sample: "↑1  0  ↓1" },
@@ -49,6 +52,12 @@ export const OCTAVE_PALETTES: { value: OctavePalette; label: string }[] = [
   { value: "muted", label: "Feutrée" },
 ];
 
+export const CHORD_STYLES: { value: ChordStyle; label: string; sample: string }[] = [
+  { value: "name", label: "Nom", sample: "Am" },
+  { value: "notes", label: "Notes", sample: "10 1 5" },
+  { value: "both", label: "Les deux", sample: "Am + 10 1 5" },
+];
+
 export const DENSITIES: { value: Density; label: string }[] = [
   { value: "normal", label: "Normal" },
   { value: "compact", label: "Compact" },
@@ -69,7 +78,8 @@ export function loadOptions(): RenderOptions {
     const fingerings = typeof raw.fingerings === "boolean" ? raw.fingerings : DEFAULT_OPTIONS.fingerings;
     const octavePalette = OCTAVE_PALETTES.some((p) => p.value === raw.octavePalette) ? raw.octavePalette : DEFAULT_OPTIONS.octavePalette;
     const octaveMixed = typeof raw.octaveMixed === "boolean" ? raw.octaveMixed : DEFAULT_OPTIONS.octaveMixed;
-    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density, fingerings, octavePalette, octaveMixed };
+    const chords = CHORD_STYLES.some((c) => c.value === raw.chords) ? raw.chords : DEFAULT_OPTIONS.chords;
+    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density, fingerings, octavePalette, octaveMixed, chords };
   } catch {
     return DEFAULT_OPTIONS;
   }

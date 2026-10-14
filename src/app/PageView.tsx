@@ -1,6 +1,6 @@
 import { FINGER_MARK, TRILL_MARK, octaveOffset } from "../core/index.ts";
 import type { Meta, SystemRow, Voice } from "../core/index.ts";
-import { FINGER, G, PAGE, graceExtra, graceSlotW, headerHeight, leadExtra, noteParts } from "./engrave.ts";
+import { FINGER, G, PAGE, chordParts, graceExtra, graceSlotW, headerHeight, leadExtra, noteParts } from "./engrave.ts";
 import type { Page, PlacedSystem } from "./engrave.ts";
 import type { OctavePosition, OctaveStyle, RenderOptions } from "./options.ts";
 import { octaveTint } from "./colors.ts";
@@ -468,7 +468,8 @@ function PedalBand({ ps, top }: { ps: PlacedSystem; top: number }) {
 
 function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions }) {
   const { sys, xs, ws } = ps;
-  const y = ps.y + ps.textBand + ps.structBand; // haut de la règle de comptage
+  const chordTop = ps.y + ps.textBand + ps.structBand; // bande des accords, juste au-dessus de la règle
+  const y = chordTop + ps.chordBand; // haut de la règle de comptage
   const x0 = PAGE.marginX;
   const left = x0 + G.prefix;
   const right = xs[xs.length - 1] + ws[ws.length - 1];
@@ -541,6 +542,28 @@ function SystemView({ ps, options }: { ps: PlacedSystem; options: RenderOptions 
         return <path key={a} d={arms.join(" ")} stroke={LIGHT_TEXT} strokeWidth={0.28} strokeLinecap="round" />;
       })}
       <line x1={left} x2={right} y1={rhTop} y2={rhTop} stroke={LIGHT} strokeWidth={0.25} />
+      {/* accords : le nom en haut, les notes ymn empilées dessous, la basse en bas */}
+      {sys.chords.map((c, i) => {
+        const { notes, name } = chordParts(c.text);
+        const x = xs[sys.anchors[c.anchor]] + leadExtra(sys, c.anchor) + 0.5;
+        const named = !!name && options.chords !== "notes";
+        const stacked = options.chords !== "name" || !name;
+        return (
+          <g key={"ch" + i}>
+            {named && (
+              <text x={x} y={chordTop + 3.4} fontSize={3.4} fontWeight={700} fill={INK}>
+                {name}
+              </text>
+            )}
+            {stacked &&
+              notes.map((n, k) => (
+                <text key={k} x={x} y={y - 0.6 - k * G.chordNoteH} fontSize={2.2} fontWeight={600} fill={TAB_TEXT}>
+                  {n}
+                </text>
+              ))}
+          </g>
+        );
+      })}
 
       <OctaveTabs rows={sys.right} top={rhTop} style={options.octaveStyle} position={options.octavePosition} tabFill={tabFill} />
       <OctaveTabs rows={sys.left} top={lhTop} style={options.octaveStyle} position={options.octavePosition} tabFill={tabFill} />

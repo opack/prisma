@@ -187,6 +187,8 @@ export type Score = {
   /** Consignes de pédale (« Ped. simile »…), sur la ligne de pédale. */
   pedalTexts: TextMark[];
   markers: Marker[];
+  /** Accords d'accompagnement (ligne `@c`), tels qu'écrits : nom anglais ou notes ymn. */
+  chords: TextMark[];
   /** Arpèges, par instant. */
   arpeggios: Arpeggio[];
   /** Points d'orgue : instants où l'on tient la note, l'accord ou le silence plus longtemps. */

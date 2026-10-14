@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { FORMAT_VERSION, TICKS_PER_BEAT as T, importMusicXml, layout, parseYmn, writeYmn } from "../src/core/index.ts";
 import type { Score } from "../src/core/index.ts";
 import { playOrder, sectionsOf } from "../src/core/musicxml.ts";
+import { chordName, chordNameNotes, chordNotes } from "../src/core/chords.ts";
 import { musicXml, q } from "./helpers.ts";
 
 const C4 = 60;
@@ -916,5 +917,85 @@ describe("version du format", () => {
     expect(() => parseYmn(withFormat(String(FORMAT_VERSION + 1)))).toThrow(/plus récente/);
     expect(() => parseYmn(withFormat(String(FORMAT_VERSION - 1)))).toThrow(/ancienne version/);
     expect(() => parseYmn(withFormat("un"))).toThrow(/numéro de version/);
+  });
+});
+
+describe("accords", () => {
+  it("calcule les notes d'un accord nommé, de la basse vers l'aigu", () => {
+    const n = (name: string) => chordNameNotes(name)?.join(";");
+    expect(n("C")).toBe("1;5;8");
+    expect(n("Am")).toBe("10;1;5");
+    expect(n("Am7")).toBe("10;1;5;8");
+    expect(n("G/B")).toBe("12;3;8");
+    expect(n("F#m7b5")).toBe("7;10;1;5");
+    expect(n("Bb")).toBe("11;3;6");
+    expect(n("C6/9")).toBe("1;3;5;8;10");
+    expect(n("Xm")).toBeUndefined();
+    expect(n("Cfoo")).toBeUndefined();
+  });
+
+  it("reconnaît un accord à partir de ses notes, la basse décidant entre Am7 et C6", () => {
+    expect(chordName([10, 1, 5])).toBe("Am");
+    expect(chordName([10, 1, 5, 8])).toBe("Am7");
+    expect(chordName([1, 5, 8, 10])).toBe("C6");
+    expect(chordName([12, 3, 8])).toBe("G/B");
+    expect(chordName([1, 2, 3])).toBeUndefined();
+    expect(chordNotes("10;1;5")).toEqual([10, 1, 5]);
+    expect(chordNotes("10;13")).toBeUndefined();
+  });
+
+  const piece = (chords: string) => [chords, "m1      |1  |2  |3  |4  ||", "0       |1  |-  |5  |-  ||", "---", ""].join("\n");
+
+  it("lit la ligne @c, en nom anglais ou en notes ymn, et l'écrit au-dessus de la règle", () => {
+    const s = parseYmn(piece("@c       C       10;1;5"));
+    expect(s.chords).toEqual([{ t: 0, text: "C" }, { t: 2 * T, text: "10;1;5" }]);
+    const { text, back } = roundTrip(s);
+    expect(back.chords).toEqual(s.chords);
+    const lines = text.split("\n");
+    expect(lines[lines.findIndex((l) => l.startsWith("m1")) - 1]).toMatch(/^@c +C +10;1;5$/);
+  });
+
+  it("tient dans la colonne de gauche la plus étroite", () => {
+    const s = parseYmn(piece("@c       Am"));
+    expect(writeYmn(s)).toMatch(/^@c  Am$/m);
+    expect(writeYmn(s)).toMatch(/^m1 \|1/m);
+  });
+
+  it("refuse un accord inconnu, mal placé ou sous les notes", () => {
+    expect(() => parseYmn(piece("@c       Hm"))).toThrow(/accord inconnu/);
+    expect(() => parseYmn(piece("@c        C"))).toThrow(/exactement sur une case/);
+    expect(() => parseYmn(["m1 |1  ||", "0  |1  ||", "@c  C", "---", ""].join("\n"))).toThrow(/au-dessus de la règle/);
+  });
+
+  it("importe les accords du MusicXML (<harmony>), basse comprise", () => {
+    const harmony = (step: string, kind: string, extra = "") => `<harmony><root><root-step>${step}</root-step></root><kind>${kind}</kind>${extra}</harmony>`;
+    const xml = musicXml([
+      {
+        notes: [
+          [
+            { midi: [C4], dur: 2 * q, before: harmony("A", "minor-seventh") },
+            { midi: [C4], dur: 2 * q, before: harmony("G", "major", "<bass><bass-step>B</bass-step></bass>") },
+          ],
+        ],
+      },
+    ]);
+    expect(importMusicXml(xml).chords).toEqual([{ t: 0, text: "Am7" }, { t: 2 * T, text: "G/B" }]);
+  });
+
+  it("importe les accords écrits en simple texte au-dessus de la portée", () => {
+    const words = (w: string) => `<direction placement="above"><direction-type><words>${w}</words></direction-type><staff>1</staff></direction>`;
+    const xml = musicXml([
+      {
+        notes: [
+          [
+            { midi: [C4], dur: 2 * q, before: words("A7") + words("dolce") },
+            { midi: [C4], dur: 2 * q, before: words(" E7 ") },
+          ],
+        ],
+      },
+    ]);
+    const s = importMusicXml(xml);
+    expect(s.chords).toEqual([{ t: 0, text: "A7" }, { t: 2 * T, text: "E7" }]);
+    expect(s.expressions.map((e) => e.text)).toEqual(["dolce"]);
   });
 });

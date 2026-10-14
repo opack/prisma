@@ -142,6 +142,21 @@ Une ou plusieurs lignes facultatives, **au-dessus** de la règle de comptage, qu
 
 Pour la première mesure d'un système, `*A` se place sur le `|` de la colonne de gauche (ou sur celui de `|:` quand le système commence par une reprise).
 
+## Accords : ligne `@c`
+
+Une ligne qui commence par `@c` (*chords*), **au-dessus** de la règle de comptage (avec les autres lignes `@` du haut), porte les accords d'accompagnement. Chaque mot est un accord, qui commence exactement sur sa case ; contrairement aux autres lignes `@`, deux mots voisins sont toujours deux accords.
+
+Un accord s'écrit de deux façons :
+
+| Écriture | Exemple | Sens |
+|---|---|---|
+| nom anglais | `Am`, `G7`, `Cmaj7`, `F#m7b5`, `Bb`, `Dsus4`, `C6/9`, `G/B` | la fondamentale (`A` à `G`, suivie de `#` ou `b`), la qualité, puis `/` et la basse si elle diffère |
+| notes ymn | `10;1;5`, `12;3;8` | les notes séparées par `;`, **de la basse vers l'aigu**, sans octave |
+
+Qualités reconnues : `` (majeur), `m`, `dim`, `aug`, `sus2`, `sus4`, `5`, `6`, `m6`, `7`, `maj7`, `m7`, `mMaj7`, `dim7`, `m7b5`, `aug7`, `7sus4`, `7b5`, `add9`, `madd9`, `6/9`, `9`, `maj9`, `m9`, `7b9`, `7#9`, `11`, `m11`, `13`, `maj13`, `m13` (et leurs variantes usuelles : `min`, `-`, `M7`, `Δ`, `°`, `ø`, `+`). Un accord inconnu est une erreur.
+
+L'ordre des notes ymn compte : `Am7` (`10;1;5;8`) et `C6` (`1;5;8;10`) ont les mêmes notes, seule la basse les distingue. Le fichier garde l'écriture choisie ; la gravure affiche le nom, les notes empilées (la basse en bas), ou les deux, en calculant l'un à partir de l'autre. À l'import MusicXML, les accords viennent de `<harmony>`, ou d'un simple texte dont tout le contenu est un nom d'accord (`A7` écrit au-dessus de la portée).
+
 ## Sections et ordre de jeu
 
 Un morceau qui ne se joue pas d'un bout à l'autre se découpe en **sections**, et un **ordre de jeu** les enchaîne, comme les couplets et le refrain d'une chanson. Ce mécanisme unique remplace les cases 1. et 2., D.C., D.S., segno, coda, To Coda et Fine : on joue les sections dans l'ordre de la liste, et le morceau s'arrête quand la liste est finie. Il n'y a rien à retenir en jouant.

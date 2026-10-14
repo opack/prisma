@@ -4,6 +4,7 @@
  * Les sauts de ligne sont libres : le temps absolu est reconstitué à partir des règles
  * de comptage. Voir FORMAT.md pour la grammaire complète.
  */
+import { chordNotes } from "./chords.ts";
 import { YmnError, parseFrontmatter } from "./frontmatter.ts";
 import { ARPEGGIO_DOWN, FERMATA, FINGER_MARK, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isSlur, isPedalText, joinsText, sortGraces, sortNotes } from "./model.ts";
 import type { Arpeggio, Beat, Division, Expression, Grace, Hairpin, Slur, Hand, Marker, Note, Pedal, Repeat, Score, TextMark } from "./model.ts";
@@ -20,6 +21,9 @@ const isSeparator = (line: string) => {
 };
 const isRuler = (line: string) => /^m[^|\s]*\s*\|/.test(line);
 const isMarkLine = (line: string) => line.startsWith("@");
+/** Ligne des accords : « @c », puis chaque accord sur sa case. */
+export const CHORD_LINE = "@c";
+const isChordLine = (line: string) => line === CHORD_LINE || line.startsWith(CHORD_LINE + " ");
 
 const SEPARATORS = new Set(["|", "||", ":||", "||:", ":||:"]);
 const SUB_LABELS = new Set(["*", ".", ","]);
@@ -138,6 +142,7 @@ export function parseYmn(text: string): Score {
   };
   const texts: TextMark[] = [];
   const fermatas: number[] = [];
+  const chords: TextMark[] = [];
   const arpeggios: Arpeggio[] = [];
   /** Arpège posé une seule fois par instant et par main (ou pour les deux mains). */
   const addArpeggio = (x: Arpeggio, line: number, col: number) => {
@@ -226,6 +231,23 @@ export function parseYmn(text: string): Score {
 
     // ligne(s) @ au-dessus de la règle : débuts de section, nombre de passages, textes
     for (const li of block.marks) {
+      if (isChordLine(lines[li])) {
+        // accords : chaque mot est un accord, posé sur une case (pas de texte de plusieurs mots)
+        const line = lines[li];
+        const re = /\S+/g;
+        re.lastIndex = CHORD_LINE.length;
+        for (let w = re.exec(line); w; w = re.exec(line)) {
+          const col = w.index;
+          const a = anchors.find((x) => x.from === col);
+          if (!a) throw new YmnError(`accord « ${w[0]} » : il doit commencer exactement sur une case de la règle de comptage`, li + 1, col + 1);
+          if (!chordNotes(w[0])) {
+            throw new YmnError(`accord inconnu « ${w[0]} » : nom anglais (Am, G7, F#m7b5, G/B…) ou notes ymn séparées par « ; », de la basse vers l'aigu (10;1;5)`, li + 1, col + 1);
+          }
+          if (chords.some((c) => c.t === a.t)) throw new YmnError("deux accords sur une même case", li + 1, col + 1);
+          chords.push({ t: a.t, text: w[0] });
+        }
+        continue;
+      }
       for (const tok of markTokens(lines[li])) {
         const marker = tok.text.match(MARKER_SIGN);
         if (marker) {
@@ -327,6 +349,7 @@ export function parseYmn(text: string): Score {
       const row = lines[li];
       const R = li + 1;
       const hand: Hand = li < handSep ? "D" : "G";
+      if (isChordLine(row)) throw new YmnError("les accords se placent au-dessus de la règle de comptage", R, 1);
       if (isMarkLine(row)) {
         voiceLine[hand] = true;
         readVoiceLine(row, R, hand);
@@ -513,6 +536,7 @@ export function parseYmn(text: string): Score {
     pedals: pedals.filter((p) => p.end > p.start),
     pedalTexts: pedalTexts.sort((a, b) => a.t - b.t),
     markers: markers.map(({ label, barIndex }) => ({ label, barIndex })),
+    chords: chords.sort((a, b) => a.t - b.t),
     arpeggios: arpeggios.sort((a, b) => a.t - b.t || (a.hand ?? "").localeCompare(b.hand ?? "")),
     fermatas: fermatas.sort((a, b) => a - b),
     order,
