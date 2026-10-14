@@ -27,7 +27,13 @@
    - **Ce qui reste propre au piano** : la pédale (sous la dernière partie d'un piano), les accolades qui réunissent les deux mains ;
    - **Import MusicXML** : une partie par `<part>`, et par portée pour un instrument à deux portées ;
    - **Vocabulaire** : parler de parties partout (code, FORMAT.md), « main » restant un cas particulier.
-2. **Paroles** (à concevoir, après les parties) : une syllabe par note, sous la partie chantée, sur une ligne `@` réservée aux paroles. Chaque syllabe commence sur la case de sa note ; une syllabe qui se prolonge sur plusieurs notes (mélisme) garde un trait. Il faut une règle à part : sur les autres lignes `@`, deux mots séparés par une seule espace forment un seul texte, alors que deux syllabes voisines sont deux indications. Le MusicXML les fournit (`<lyric>` : `<syllabic>`, `<text>`, `<extend>`).
+2. **Accords** (à concevoir ; possible avant les parties) : sur une ligne `@chords`, au-dessus du système, chaque accord commençant sur sa case, comme sur une grille d'accords. Une ligne annoncée plutôt qu'une ligne `@` ordinaire : chaque mot y est une indication à part (pas de « deux mots à une espace = un texte »), un accord n'est jamais confondu avec un mot (`A`), il se grave autrement (romain gras), et on pourra le transposer.
+   - **Deux écritures, lues toutes les deux** : le nom anglais (`Am`, `C7`, `Gmaj7`, `F#m`, `Bb`, `Dm7b5`, `sus4`, `add9`, `dim`, `aug`, `G/B`…) ou les notes ymn séparées par `;`, **du grave à l'aigu à partir de la basse** : `Am` = `10;1;5`, `G/B` = `12;3;8`. L'ordre compte : `Am7` (`10;1;5;8`) et `C6` (`1;5;8;10`) ont les mêmes notes, seule la basse les distingue. Pas d'octave : un accord dit quelles notes jouer, pas où.
+   - **Conversion** : du nom vers les notes par calcul ; des notes vers le nom par reconnaissance (fiable pour les accords usuels ; dans le doute, on garde les notes). Le fichier garde l'écriture choisie.
+   - **Gravure** : option « Accords » : nom anglais, notes ymn, ou les deux. Les notes ymn sont gravées **empilées**, en petit, la basse en bas et la plus aiguë en haut, comme un accord sur les lignes d'octave : aucun séparateur à la gravure.
+   - **Import MusicXML** : `<harmony>` (`<root>`, `<kind>`, `<bass>`).
+   - Séparateur `;` : bas et discret ; `+` (octave), `,` et `.` (règle de comptage) sont déjà pris, `&` est trop lourd à lire.
+3. **Paroles** (à concevoir, après les parties) : sur une ligne `@lyrics` sous la partie chantée, une syllabe par note, chacune commençant sur la case de sa note ; un `-` en fin de syllabe la relie à la suivante (`lu- ne`), un mot étendu sur plusieurs notes (mélisme) garde un trait. Comme pour `@chords`, chaque mot y est une indication à part. Plusieurs couplets : plusieurs lignes `@lyrics`. Le MusicXML les fournit (`<lyric>` : `<syllabic>`, `<text>`, `<extend>`, `number` pour le couplet).
 
 ## Hors v1 pour l'instant
 
