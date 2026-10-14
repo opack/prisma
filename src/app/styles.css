@@ -31,6 +31,9 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 button:disabled { opacity: .5; cursor: default; }
 
 .options { padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px 28px; align-items: start; }
+.options { position: relative; padding-right: 44px; }
+.options .close { position: absolute; top: 6px; right: 8px; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; }
+.options .close:hover { background: var(--line); color: inherit; }
 .options .group { display: grid; gap: 8px; align-content: start; }
 .options h2 { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 2px; }
 .options fieldset { border: 0; margin: 0; padding: 0; display: grid; grid-template-columns: 10.5em 1fr; align-items: start; }

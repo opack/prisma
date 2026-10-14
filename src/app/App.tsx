@@ -46,6 +46,13 @@ export function App() {
   const [source, setSource] = useState(load);
   const [options, setOptionsState] = useState<RenderOptions>(loadOptions);
   const [showOptions, setShowOptions] = useState(false);
+  // Échap ferme le panneau d'options
+  useEffect(() => {
+    if (!showOptions) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setShowOptions(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showOptions]);
   /** Notice du pianiste, affichée à la place de l'éditeur et de l'aperçu. */
   const [showGuide, setShowGuide] = useState(false);
   const setOptions = (patch: Partial<RenderOptions>) => {
@@ -330,6 +337,9 @@ export function App() {
 
       {showOptions && (
         <section id="options" className="options" aria-label="Options de rendu">
+          <button className="close" onClick={() => setShowOptions(false)} aria-label="Fermer les options" title="Fermer (Échap)">
+            ×
+          </button>
           <div className="group">
             <h2>Général</h2>
             <fieldset>
