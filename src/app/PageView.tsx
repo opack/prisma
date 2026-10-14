@@ -425,6 +425,9 @@ function LyricBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: nu
   );
 }
 
+/** Largeur estimée d'une indication gravée : une nuance (gras italique), ou un texte. */
+const markW = (text: string, kind: string) => [...text].length * (kind === "dynamic" ? 2.1 : 1.35) + 0.9;
+
 /**
  * Bande des nuances d'une partie : nuances (p, mf…), textes (cresc., dolce…) et soufflets.
  * Un soufflet coupé par un changement de système garde son ouverture au point de coupure.
@@ -456,18 +459,22 @@ function VoiceBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: nu
           />
         );
       })}
-      {voice.marks.map((m, i) =>
+      {voice.marks.map((m, i) => {
         // l'arpège se dessine devant l'accord (voir SystemView), pas dans cette bande
-        m.kind === "arpeggio" ? null : m.kind === "dynamic" ? (
-          <text key={"m" + i} x={ax(m.anchor) + 0.9} y={base} fontFamily={DYNAMIC_FONT} fontSize={3.6} fontWeight={700} fontStyle="italic" fill={INK} {...halo}>
+        if (m.kind === "arpeggio") return null;
+        // plusieurs indications sur une même case (« pp » puis « con sordina ») : à la suite
+        const before = voice.marks.slice(0, i).filter((x) => x.anchor === m.anchor && x.kind !== "arpeggio");
+        const x = ax(m.anchor) + before.reduce((w, b) => w + markW(b.text, b.kind) + 1, 0);
+        return m.kind === "dynamic" ? (
+          <text key={"m" + i} x={x + 0.9} y={base} fontFamily={DYNAMIC_FONT} fontSize={3.6} fontWeight={700} fontStyle="italic" fill={INK} {...halo}>
             {m.text}
           </text>
         ) : (
-          <text key={"m" + i} x={ax(m.anchor) + 0.7} y={base} fontSize={2.8} fontStyle="italic" fill={INK} {...halo}>
+          <text key={"m" + i} x={x + 0.7} y={base} fontSize={2.8} fontStyle="italic" fill={INK} {...halo}>
             {m.text}
           </text>
-        ),
-      )}
+        );
+      })}
     </g>
   );
 }

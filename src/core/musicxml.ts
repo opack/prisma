@@ -105,6 +105,19 @@ const STEP_NAME = (step: string, alter: number) => step + (alter > 0 ? "#" : alt
 const SYSTEM_WORDS =
   /^(rit|ritard|ritardando|rall|rallentando|accel|accelerando|a tempo|tempo|tempo primo|tempo i|rubato|meno mosso|più mosso|piu mosso|poco rit|molto rit|allarg|allargando|fermata|grave|largo|larghetto|lento|adagio|andante|andantino|moderato|allegretto|allegro|vivace|presto|prestissimo|lent|très lent|modéré|vif|animé|cédez|retenu|en retenant|en serrant)(?![a-zà-ÿ])/i;
 
+/**
+ * Lettres de nuance de la police musicale SMuFL (U+E520…), que certains logiciels écrivent
+ * dans les textes (« pp con sordina ») : remplacées par les lettres ordinaires.
+ */
+const SMUFL_DYNAMICS: Record<number, string> = {
+  0xe520: "p", 0xe521: "m", 0xe522: "f", 0xe523: "r", 0xe524: "s", 0xe525: "z", 0xe526: "n",
+  0xe527: "pppppp", 0xe528: "ppppp", 0xe529: "pppp", 0xe52a: "ppp", 0xe52b: "pp", 0xe52c: "mp", 0xe52d: "mf",
+  0xe52e: "pf", 0xe52f: "ff", 0xe530: "fff", 0xe531: "ffff", 0xe532: "fffff", 0xe533: "ffffff", 0xe534: "fp",
+  0xe535: "fz", 0xe536: "sf", 0xe537: "sfp", 0xe538: "sfpp", 0xe539: "sfz", 0xe53a: "sfzp", 0xe53b: "sffz",
+  0xe53c: "rf", 0xe53d: "rfz",
+};
+const plainDynamics = (t: string) => t.replace(/[\ue520-\ue53d]/g, (c) => SMUFL_DYNAMICS[c.codePointAt(0)!] ?? "");
+
 /** Indications d'octave (« 8va », « (sol 8vb) », « loco »…) : inutiles, chaque note porte déjà son octave. */
 const OCTAVE_WORDS = /(^|[^0-9a-z])(8|15|22)\s*(va|vb|ma|mb|ve|a|b)(?![a-z])|\b(loco|ottava|bassa)\b/i;
 
@@ -236,7 +249,7 @@ function readMeasures(partNode: XNode, base: Part, staves: number): RawMeasure[]
               for (const k of kids(c)) {
                 const kt = tag(k);
                 if (!kt || kt === "#text") continue;
-                const value = kt === "other-dynamics" ? text(k).trim() : kt;
+                const value = kt === "other-dynamics" ? plainDynamics(text(k)).trim() : kt;
                 if (value) directions.push({ part, at, kind: "dynamic", text: value });
               }
             } else if (ct === "wedge") {
@@ -245,7 +258,7 @@ function readMeasures(partNode: XNode, base: Part, staves: number): RawMeasure[]
               directions.push({ part, at, kind: "pedal", text: attr(c, "type") ?? "" });
             } else if (ct === "words") {
               // certains logiciels laissent des balises de mise en forme dans le texte (« <font …> »)
-              const w = text(c).replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+              const w = plainDynamics(text(c)).replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
               if (w && !OCTAVE_WORDS.test(w)) words.push(w);
             }
           }
@@ -253,7 +266,15 @@ function readMeasures(partNode: XNode, base: Part, staves: number): RawMeasure[]
         const st = structureOf(d, words, at);
         structure.push(...st);
         // les mots d'une indication de structure (« D.S. al Coda »…) deviennent un saut, pas un texte
-        if (words.length && !st.length) directions.push({ part, at, kind: "words", text: words.join(" ") });
+        if (words.length && !st.length) {
+          // une nuance en tête de texte (« pp con sordina ») : la nuance, puis le texte
+          const all = words.join(" ");
+          const lead = all.match(/^(\S+) (.+)$/);
+          if (lead && isDynamic(lead[1])) {
+            directions.push({ part, at, kind: "dynamic", text: lead[1] });
+            directions.push({ part, at, kind: "words", text: lead[2] });
+          } else directions.push({ part, at, kind: "words", text: all });
+        }
       } else if (t === "sound") {
         structure.push(...structureOf([item], [], cursor));
       } else if (t === "barline") {

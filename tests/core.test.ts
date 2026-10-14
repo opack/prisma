@@ -984,6 +984,12 @@ describe("accords", () => {
     expect(importMusicXml(xml).chords).toEqual([{ t: 0, text: "Am7" }, { t: 2 * T, text: "G/B" }]);
   });
 
+  it("lit les lettres de nuance de la police musicale, et sépare une nuance en tête de texte", () => {
+    const words = (w: string) => `<direction><direction-type><words>${w}</words></direction-type><staff>1</staff></direction>`;
+    const xml = musicXml([{ notes: [[{ midi: [C4], dur: 2 * q, before: words("\ue520\ue520 con sordina") }, { midi: [C4], dur: 2 * q, before: words("mf dolce") }]] }]);
+    expect(importMusicXml(xml).expressions.map((e) => `${e.kind}:${e.text}`)).toEqual(["dynamic:pp", "text:con sordina", "dynamic:mf", "text:dolce"]);
+  });
+
   it("importe les accords écrits en simple texte au-dessus de la portée", () => {
     const words = (w: string) => `<direction placement="above"><direction-type><words>${w}</words></direction-type><staff>1</staff></direction>`;
     const xml = musicXml([
