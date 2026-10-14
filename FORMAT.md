@@ -242,6 +242,8 @@ Une ou plusieurs lignes `@` placées **sous les lignes d'une partie** portent se
 
 Une liaison relie des notes différentes, à jouer liées (legato), et dessine les phrases. Ce n'est pas la liaison de prolongation entre deux notes identiques : celle-là n'existe pas ici, la note se tient avec `-`. Comme un soufflet, une liaison coupée par un changement de système s'écrit `(-----` en fin de système et `-----)` au début du suivant (`------` pour un système qu'elle traverse tout entier). Les liaisons imbriquées ou qui se chevauchent vont chacune sur sa ligne `@` ; quand plusieurs liaisons d'une partie continuent au système suivant, leurs suites s'écrivent de haut en bas dans l'ordre où elles ont commencé. La gravure les trace comme des arcs fins dans une bande juste sous les lignes de la partie, la plus courte au plus près des notes.
 
+À la main, les indications d'une partie se répartissent librement sur ses lignes `@`. L'écriture, elle, les range toujours par famille, dans l'ordre de la gravure : d'abord les liaisons, puis les paroles (`@l`), puis les nuances, soufflets, textes et arpèges, enfin la pédale. Une famille n'occupe une ligne que si elle a quelque chose dans le système.
+
 Un soufflet est toujours lu à part : une seule espace suffit entre lui et sa voisine. Il peut commencer dans la case d'une nuance, juste après elle : `p <----` part de la case du `p`. Il peut traverser les barres (avec des `-` ou des `|`). Coupé par un changement de système, il se réécrit au début du système suivant et se lit comme un seul soufflet ; la gravure le laisse ouvert au point de coupure.
 
 ```

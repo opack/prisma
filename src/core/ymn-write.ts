@@ -105,7 +105,10 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
   // lignes @ d'une voix : nuances et textes sur leur ancre ; un soufflet couvre ses cases
   // (son dernier caractère tombe dans la dernière case, en laissant une espace avant la suivante)
   // un soufflet qui part d'une case portant une nuance s'écrit juste après elle : « p <--- »
-  const voiceLines = (v: Voice) =>
+  // lignes @ d'une partie, rangées par famille dans l'ordre de la gravure : le phrasé
+  // (liaisons), puis l'expression (nuances, soufflets, textes, arpèges) ; une famille
+  // n'occupe une ligne que si elle a quelque chose dans ce système
+  const expressionLines = (v: Voice) =>
     stackLines([
       ...v.marks.map((m) => ({ col: anchorCol[m.anchor], text: m.text })),
       ...v.hairpins.map((h) => {
@@ -114,17 +117,19 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
         const last = Math.max(col, anchorCol[h.toAnchor] + widths[h.toAnchor] - 2);
         return { col, text: h.kind + "-".repeat(last - col) };
       }),
-      // liaison : « ( » sur la case de la première note (après une nuance de la même case),
-      // « ) » dans celle de la dernière ; coupée, elle va jusqu'au bout du système. Les suites
-      // de liaisons commencées plus tôt s'écrivent de haut en bas dans l'ordre de leur début
-      // (v.slurs est trié ainsi), comme le relit le lecteur
-      ...v.slurs.map((s) => {
-        const before = s.opens ? Math.max(0, ...v.marks.filter((m) => m.anchor === s.fromAnchor).map((m) => m.text.length + 1)) : 0;
-        const col = anchorCol[s.fromAnchor] + before;
+    ]);
+  // liaison : « ( » sur la case de la première note, « ) » dans celle de la dernière ;
+  // coupée, elle va jusqu'au bout du système. Les suites de liaisons commencées plus tôt
+  // s'écrivent de haut en bas dans l'ordre de leur début (v.slurs est trié ainsi), comme
+  // le relit le lecteur
+  const phrasingLines = (v: Voice) =>
+    stackLines(
+      v.slurs.map((s) => {
+        const col = anchorCol[s.fromAnchor];
         const last = s.closes ? Math.max(col + 1, anchorCol[s.toAnchor] + 1) : anchorCol[s.toAnchor] + widths[s.toAnchor] - 2;
         return { col, text: (s.opens ? "(" : "-") + "-".repeat(Math.max(0, last - col - 1)) + (s.closes ? ")" : "-") };
       }),
-    ]);
+    );
   // paroles : une ligne @l par couplet, chaque syllabe sur sa case (« lu- » si le mot
   // continue) ; une prolongation part juste après sa syllabe, ou du début du système
   // pour une syllabe commencée plus tôt, et finit dans sa dernière case comme un soufflet
@@ -157,8 +162,9 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
       return [
         rule(ruler, prefix, first > 0, first >= 0 ? sys.instruments[first].name : undefined),
         ...rows(p.rows),
+        ...phrasingLines(p.voice),
         ...lyricLines(p.voice),
-        ...voiceLines(p.voice),
+        ...expressionLines(p.voice),
         ...stackLines([...p.pedal.signs, ...p.pedal.texts].map((x) => ({ col: anchorCol[x.anchor], text: x.text }))),
       ];
     }),
@@ -184,7 +190,7 @@ function cellWidths(score: Score, cell: number): (t: number) => number {
   const need = new Map<number, number>();
   const want = (t: number, w: number) => need.set(t, Math.max(need.get(t) ?? cell, w));
   for (const e of score.expressions) {
-    const pin = score.hairpins.some((h) => h.part === e.part && h.start === e.t) || score.slurs.some((s) => s.part === e.part && s.start === e.t);
+    const pin = score.hairpins.some((h) => h.part === e.part && h.start === e.t);
     want(e.t, e.text.length + (pin ? 3 : 2));
   }
   for (const tm of score.texts) want(tm.t, tm.text.length + 2);
