@@ -295,36 +295,36 @@ describe("sections", () => {
     `${order ? `---\norder: ${order}\n---\n` : ""}${top}\n${r}\n${notes}\n---\n`;
 
   it("lit les sections et l'ordre de jeu", () => {
-    const s = parseYmn(piece("A B A", at([3, "*A"], [bar[1] + 1, "*B"])));
+    const s = parseYmn(piece("A B A", at([3, "[A]"], [bar[1] + 1, "[B]"])));
     expect(s.markers).toEqual([{ label: "A", barIndex: 0 }, { label: "B", barIndex: 2 }]);
     expect(s.order).toEqual(["A", "B", "A"]);
     expect(s.meta.order).toBeUndefined();
   });
 
   it("commence chaque section sur un nouveau système, et ferme la précédente d'une double barre", () => {
-    const s = parseYmn(piece("A B A", at([3, "*A"], [bar[1] + 1, "*B"])));
+    const s = parseYmn(piece("A B A", at([3, "[A]"], [bar[1] + 1, "[B]"])));
     const systems = layout(s, { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 });
     expect(systems.map((x) => x.section)).toEqual(["A", "B"]);
     expect(systems.map((x) => x.endsSection)).toEqual([true, false]);
     const bars = systems[0].columns.filter((c) => c.kind === "barSep") as { section?: boolean }[];
     expect(bars.map((c) => !!c.section)).toEqual([false, true]);
     // à l'écriture aussi : la section B ouvre le second système
-    expect(writeYmn(s)).toMatch(/\n\n@  \*B\nm3 \|/);
+    expect(writeYmn(s)).toMatch(/\n\n@  \[B\]\nm3 \|/);
   });
 
   it("refuse un ordre de jeu qui nomme une section absente", () => {
-    expect(() => parseYmn(piece("A C", at([3, "*A"], [bar[1] + 1, "*B"])))).toThrow(/aucune section « \*C »/);
+    expect(() => parseYmn(piece("A C", at([3, "[A]"], [bar[1] + 1, "[B]"])))).toThrow(/aucune section « \[C\] »/);
   });
 
   it("refuse un morceau qui commence avant sa première section", () => {
-    expect(() => parseYmn(piece("B", at([bar[1] + 1, "*B"])))).toThrow(/première mesure/);
+    expect(() => parseYmn(piece("B", at([bar[1] + 1, "[B]"])))).toThrow(/première mesure/);
   });
 
   it("refuse une reprise à cheval sur deux sections", () => {
     const r = "m1 ||:1  ||1  ||1  :||1  ||";
     const b = [...r.matchAll(/\|\|/g)].map((m) => m.index!);
     const notes = "0  ||:1  ||1  ||1  :||1  ||";
-    expect(() => parseYmn(piece("A B", at([4, "*A"], [b[1] + 1, "*B"]), r, notes))).toThrow(/reprise passe le début de la section « \*B »/);
+    expect(() => parseYmn(piece("A B", at([4, "[A]"], [b[1] + 1, "[B]"]), r, notes))).toThrow(/reprise passe le début de la section « \[B\] »/);
   });
 });
 

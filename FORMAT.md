@@ -159,17 +159,17 @@ Une reprise reste simple et locale : elle ne passe jamais le début d'une sectio
 
 ## Ligne d'indications `@`
 
-Une ou plusieurs lignes facultatives, **au-dessus** de la règle de comptage, qui commencent par `@`. Chaque indication est alignée sur une colonne de la règle (le lecteur signale une erreur sinon), et peut déborder sur les colonnes suivantes. Deux mots séparés par une seule espace forment un seul texte (`a tempo`, `più f`, `Ped. simile`) : deux indications distinctes sont séparées par au moins deux espaces. Seuls les signes restent à part même à une espace de leur voisin : un soufflet, un signe de pédale placé après un texte, un début de section `*A`, un point d'orgue `^`, un arpège `/`. Les `|` et `:` recopiés pour se repérer sont ignorés.
+Une ou plusieurs lignes facultatives, **au-dessus** de la règle de comptage, qui commencent par `@`. Chaque indication est alignée sur une colonne de la règle (le lecteur signale une erreur sinon), et peut déborder sur les colonnes suivantes. Deux mots séparés par une seule espace forment un seul texte (`a tempo`, `più f`, `Ped. simile`) : deux indications distinctes sont séparées par au moins deux espaces. Seuls les signes restent à part même à une espace de leur voisin : un soufflet, un signe de pédale placé après un texte, un début de section `[A]`, un point d'orgue `^`, un arpège `/`. Les `|` et `:` recopiés pour se repérer sont ignorés.
 
 | Indication | Placée sur | Sens |
 |---|---|---|
 | `3×` (ou `3x`) | une case de la mesure qui se termine par `:||` | Le passage se joue 3 fois. |
-| `*A` | le **dernier** `|` de la barre qui ouvre la mesure | Début de la section A (voir « Sections et ordre de jeu »). |
+| `[A]` | le **dernier** `|` de la barre qui ouvre la mesure | Début de la section A (voir « Sections et ordre de jeu »). |
 | `^` | une case | Point d'orgue : la note, l'accord ou le silence qui commence là se tient plus longtemps que sa valeur, à l'appréciation du pianiste. Gravé 𝄐 au-dessus de la case. |
 | `/` | une case | Arpège de toutes les parties, d'un seul geste : de la note la plus grave du système à la plus aiguë. `\` : de l'aigu au grave. Gravé comme une vaguelette verticale devant l'accord. |
 | autre texte | une case | Indication pour tout le système : `rit.`, `a tempo`… (les nuances d'une partie vont sous ses lignes, voir plus bas) |
 
-Pour la première mesure d'un système, `*A` se place sur le `|` de la colonne de gauche (ou sur celui de `|:` quand le système commence par une reprise).
+Pour la première mesure d'un système, `[A]` se place sur le `|` de la colonne de gauche (ou sur celui de `|:` quand le système commence par une reprise).
 
 ## Accords : ligne `@c`
 
@@ -190,7 +190,7 @@ L'ordre des notes ymn compte : `Am7` (`10;1;5;8`) et `C6` (`1;5;8;10`) ont les m
 
 Un morceau qui ne se joue pas d'un bout à l'autre se découpe en **sections**, et un **ordre de jeu** les enchaîne, comme les couplets et le refrain d'une chanson. Ce mécanisme unique remplace les cases 1. et 2., D.C., D.S., segno, coda, To Coda et Fine : on joue les sections dans l'ordre de la liste, et le morceau s'arrête quand la liste est finie. Il n'y a rien à retenir en jouant.
 
-- `*A` sur la ligne `@` du haut marque le début de la section A. Une section va jusqu'au début de la suivante (ou jusqu'à la fin du morceau). La première section commence à la première mesure.
+- `[A]` sur la ligne `@` du haut marque le début de la section A. Une section va jusqu'au début de la suivante (ou jusqu'à la fin du morceau). La première section commence à la première mesure.
 - `order: A B A C` dans le frontmatter donne l'ordre de jeu. Sans `order`, les sections se jouent l'une après l'autre.
 - Le lecteur signale une section posée deux fois, un ordre qui nomme une section absente, un morceau qui commence avant sa première section, et une reprise à cheval sur deux sections.
 
@@ -203,21 +203,21 @@ Un morceau en quatre mesures, A (mesures 1 et 2), B (3) et C (4), joué A, B, A 
 order: A B A C
 ---
 
-@  *A
+@  [A]
 m1 |1  |2  ||1  |2  ||
 ───┼───┼───┼┼───┼───┼┼
 0  |1  |3  ||5  |3  ||
 ───┼───┼───┼┼───┼───┼┼
 -1 |1  |   ||8  |   ||
 
-@  *B
+@  [B]
 m3 |1  |2  ||
 ───┼───┼───┼┼
 0  |8  |   ||
 ───┼───┼───┼┼
 -1 |5  |   ||
 
-@  *C
+@  [C]
 m4 |1  |2  ||
 ───┼───┼───┼┼
 0  |1  |   ||

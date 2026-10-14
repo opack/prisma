@@ -65,7 +65,7 @@ export type SystemRow = {
 };
 
 /**
- * Indication de la ligne @. Les débuts de section (« *A ») sont placés sur une barre de
+ * Indication de la ligne @. Les débuts de section (« [A] ») sont placés sur une barre de
  * mesure (column : index dans columns, -1 pour la barre de gauche du système) ; les autres
  * indications sur une ancre (anchor : index dans anchors).
  */
@@ -560,7 +560,7 @@ export function layout(score: Score, m: Metrics): System[] {
     }
     // début de section : sa lettre en tête du système
     const section = score.markers.find((mk) => firstAnchorOfBar(mk.barIndex) === 0);
-    if (section) marks.push({ column: -1, text: "*" + section.label, kind: "marker", label: section.label });
+    if (section) marks.push({ column: -1, text: `[${section.label}]`, kind: "marker", label: section.label });
     for (const t of score.fermatas) {
       const a = anchors.findIndex((ci) => (columns[ci] as { t: number }).t === t);
       if (a >= 0) marks.push({ anchor: a, text: "^", kind: "fermata" });

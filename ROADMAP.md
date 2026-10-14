@@ -6,7 +6,7 @@
 - Reprises simples (`||:`, `:||`, `3×`).
 - Nuances et soufflets, par partie (lignes `@` sous chaque partie).
 - Pédale (`Ped.`, `*`, `*Ped.` sous la dernière partie de l'instrument), tracée comme un trait sous lui.
-- Sections et ordre de jeu (`*A`, `order: A A B C`), à la place des cases, D.C., D.S., segno, coda, To Coda et Fine.
+- Sections et ordre de jeu (`[A]`, `order: A A B C`), à la place des cases, D.C., D.S., segno, coda, To Coda et Fine.
 - Point d'orgue (`^` sur la ligne `@` du haut).
 - Petites notes (`3'5`, dans la case de la note principale), d'une seule sorte.
 - Ornements : trille (`5~7`, voisine écrite en clair), mordant et gruppetto écrits en petites notes, arpège (`/` sur la ligne `@` d'une partie, ou du haut pour toutes).

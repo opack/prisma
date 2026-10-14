@@ -178,7 +178,7 @@ export const isPedalSign = (t: string) => t === PEDAL_DOWN || t === PEDAL_UP || 
 export const isPedalText = (t: string) => /^Ped\.\s+\S/.test(t);
 
 /**
- * Début de section (« *A ») : une lettre posée au début d'une mesure. La section va
+ * Début de section (« [A] », comme l'étiquette gravée : la lettre dans un cadre) : une lettre posée au début d'une mesure. La section va
  * jusqu'au début de la suivante. L'ordre de jeu (Score.order) enchaîne les sections :
  * il remplace cases, D.C., D.S., segno, coda et Fine.
  */
@@ -188,7 +188,7 @@ export type Marker = { label: string; barIndex: number };
 export const FERMATA = "^";
 
 /** Signe d'un début de section, sur la ligne @ du haut. */
-export const MARKER_SIGN = /^\*([A-Z])$/;
+export const MARKER_SIGN = /^\[([A-Z])\]$/;
 export const isStructureSign = (t: string) => MARKER_SIGN.test(t);
 
 /** Signe toujours lu à part sur une ligne @ : soufflet, signe de pédale, début de section. */

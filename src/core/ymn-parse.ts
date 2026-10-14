@@ -88,7 +88,7 @@ const nextBar = (bar: string) => (/^\d+$/.test(bar) ? String(Number(bar) + 1) : 
 /**
  * Indications d'une ligne @ : groupes de mots séparés par au moins deux espaces. Deux mots
  * à une seule espace forment un seul texte (« a tempo », « più f ») ; les signes (soufflets
- * « <--- », signes de pédale, débuts de section « *A ») restent à part (voir joinsText).
+ * « <--- », signes de pédale, débuts de section « [A] ») restent à part (voir joinsText).
  */
 function markTokens(line: string) {
   const out: { col: number; text: string }[] = [];
@@ -287,7 +287,7 @@ export function parseYmn(text: string): Score {
       for (const tok of markTokens(lines[li])) {
         const marker = tok.text.match(MARKER_SIGN);
         if (marker) {
-          // « *A » sur le dernier « | » de la barre qui ouvre la mesure
+          // « [A] » : son « [ » sur le dernier « | » de la barre qui ouvre la mesure
           const j = spans.findIndex((sp) => tok.col >= sp.from && tok.col < sp.to);
           const sp = spans[j];
           if (j < 0 || j >= segs.length || !segOpensBar[j]) {
@@ -625,17 +625,17 @@ export function parseYmn(text: string): Score {
   // à cheval sur deux sections (une reprise reste locale)
   markers.sort((a, b) => a.barIndex - b.barIndex);
   for (const m of markers) {
-    if (markers.find((x) => x.label === m.label) !== m) throw new YmnError(`section « *${m.label} » posée deux fois`, m.line, m.col);
+    if (markers.find((x) => x.label === m.label) !== m) throw new YmnError(`section « [${m.label}] » posée deux fois`, m.line, m.col);
   }
   if (markers.length && markers[0].barIndex !== 0) {
-    throw new YmnError(`le morceau commence avant la première section « *${markers[0].label} » : pose une section sur la première mesure`, markers[0].line, markers[0].col);
+    throw new YmnError(`le morceau commence avant la première section « [${markers[0].label}] » : pose une section sur la première mesure`, markers[0].line, markers[0].col);
   }
   let repeatStart = 0;
   for (const r of [...repeats.values()].sort((a, b) => a.barIndex - b.barIndex)) {
     if (r.start) repeatStart = r.barIndex;
     if (!r.end) continue;
     const inside = markers.find((m) => m.barIndex > repeatStart && m.barIndex <= r.barIndex);
-    if (inside) throw new YmnError(`la reprise passe le début de la section « *${inside.label} » : une reprise reste dans sa section`, inside.line, inside.col);
+    if (inside) throw new YmnError(`la reprise passe le début de la section « [${inside.label}] » : une reprise reste dans sa section`, inside.line, inside.col);
     repeatStart = r.barIndex + 1;
   }
 
@@ -645,7 +645,7 @@ export function parseYmn(text: string): Score {
   delete meta.order;
   for (const label of order) {
     if (!/^[A-Z]$/.test(label)) throw new YmnError(`ordre de jeu : « ${label} » n'est pas une lettre de section (A à Z)`, orderLine);
-    if (!markers.some((m) => m.label === label)) throw new YmnError(`ordre de jeu : aucune section « *${label} » dans le morceau`, orderLine);
+    if (!markers.some((m) => m.label === label)) throw new YmnError(`ordre de jeu : aucune section « [${label}] » dans le morceau`, orderLine);
   }
 
   return {

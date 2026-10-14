@@ -207,28 +207,28 @@ Deux signes se posent sur une ligne `@`, au-dessus ou sous les notes :
 
 La partition classique multiplie les renvois : cases 1. et 2., D.C. (*da capo*, reprendre au début), D.S. (*dal segno*, reprendre au signe 𝄋), coda (𝄌), Fine. Il faut les repérer, les retenir et sauter dans la page en jouant.
 
-ymn les remplace tous par un seul mécanisme, celui d'une chanson : le morceau est découpé en **sections**, marquées par une lettre (`*A`, `*B`…), et l'**ordre de jeu** est écrit une fois pour toutes en tête du fichier, et de chaque page gravée : `A A B A C`. On joue les sections dans cet ordre, et le morceau s'arrête à la fin de la liste. Chaque section commence une nouvelle ligne, comme un couplet.
+ymn les remplace tous par un seul mécanisme, celui d'une chanson : le morceau est découpé en **sections**, marquées par une lettre (`[A]`, `[B]`…), et l'**ordre de jeu** est écrit une fois pour toutes en tête du fichier, et de chaque page gravée : `A A B A C`. On joue les sections dans cet ordre, et le morceau s'arrête à la fin de la liste. Chaque section commence une nouvelle ligne, comme un couplet.
 
 ```ymn
 ---
 order: A B A C
 ---
 
-@  *A
+@  [A]
 m1 |1  |2  ||1  |2  ||
 ───┼───┼───┼┼───┼───┼┼
 0  |1  |3  ||5  |3  ||
 ───┼───┼───┼┼───┼───┼┼
 -1 |1  |   ||8  |   ||
 
-@  *B
+@  [B]
 m3 |1  |2  ||
 ───┼───┼───┼┼
 0  |8  |   ||
 ───┼───┼───┼┼
 -1 |5  |   ||
 
-@  *C
+@  [C]
 m4 |1  |2  ||
 ───┼───┼───┼┼
 0  |1  |   ||
@@ -323,7 +323,7 @@ Les indications de caractère et de tempo (`dolce`, `rit.`, `a tempo`…) garden
 | arpège (vaguelette) | `/` sur une ligne `@` |
 | point d'orgue 𝄐 | `^` sur la ligne `@` du haut, une fois pour toutes les parties |
 | doigtés | `5_3` |
-| cases 1. et 2., D.C., D.S., segno, coda, Fine | sections (`*A`) et ordre de jeu (`order: A B A C`) |
+| cases 1. et 2., D.C., D.S., segno, coda, Fine | sections (`[A]`) et ordre de jeu (`order: A B A C`) |
 | reprises | `||:` … `:||`, et `3×` |
 | nuances, soufflets | les mêmes, sous la partie concernée |
 | liaisons d'expression | `(-----)` sous la partie concernée |
