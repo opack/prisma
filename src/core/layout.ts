@@ -24,6 +24,11 @@ export type Metrics = {
   barSep: number;
   /** Largeur ajoutée par les deux points d'un signe de reprise, de chaque côté. */
   repeatDots: number;
+  /**
+   * Notes alignées (gravure seulement) : une note rejouée ou qui revient garde la ligne
+   * de la précédente, au lieu de remonter en haut de son couloir.
+   */
+  align?: boolean;
 };
 
 export type Column =
@@ -324,7 +329,7 @@ type Group = { hand: Hand; octave: number; lanes: Lane[]; blocks: Block[] };
  * Dans chaque bloc, les notes sont rangées de haut en bas, la plus aiguë en premier :
  * une note seule est toujours sur la ligne du haut, quel que soit le reste du couloir.
  */
-function groups(notes: Note[], t0: number): Group[] {
+function groups(notes: Note[], t0: number, align = false): Group[] {
   const byKey = new Map<string, Note[]>();
   for (const n of notes) {
     const key = n.hand + octaveOf(n.midi);
@@ -336,6 +341,11 @@ function groups(notes: Note[], t0: number): Group[] {
     const s = (n: Note) => Math.max(n.start, t0);
     const sorted = [...list].sort((a, b) => s(a) - s(b) || b.midi - a.midi);
     const g: Group = { hand: sorted[0].hand, octave: octaveOf(sorted[0].midi), lanes: [], blocks: [] };
+    if (align) {
+      g.lanes = alignedLanes(list, t0, g.hand, g.octave);
+      out.push(g);
+      continue;
+    }
     let local: Note[][] = [];
     let block: Block | undefined;
     const flush = () => {
@@ -362,6 +372,52 @@ function groups(notes: Note[], t0: number): Group[] {
     out.push(g);
   }
   return out.sort((a, b) => b.octave - a.octave);
+}
+
+/** Silence le plus long entre deux notes de même hauteur qui restent sur la même ligne (notes alignées). */
+const ALIGN_GAP = TICKS_PER_BEAT;
+
+/**
+ * Lignes d'un couloir, notes alignées : chaque note rejouée (après au plus un temps de
+ * silence) reste sur la ligne de la précédente, ce qui forme des chaînes. Deux chaînes qui
+ * sonnent ensemble à un instant se rangent l'aiguë au-dessus de la grave ; chacune prend la
+ * première ligne sous toutes celles qui doivent être au-dessus d'elle. C'est le moins de
+ * lignes possible pour ces chaînes : des lignes restent vides par endroits.
+ */
+function alignedLanes(list: Note[], t0: number, hand: Hand, octave: number): Lane[] {
+  const s = (n: Note) => Math.max(n.start, t0);
+  const chains: { midi: number; notes: Note[] }[] = [];
+  const last = new Map<number, { midi: number; notes: Note[] }>();
+  for (const n of [...list].sort((a, b) => s(a) - s(b) || b.midi - a.midi)) {
+    const c = last.get(n.midi);
+    const prev = c?.notes[c.notes.length - 1];
+    if (c && prev && s(n) >= prev.end && s(n) - prev.end <= ALIGN_GAP) c.notes.push(n);
+    else {
+      const chain = { midi: n.midi, notes: [n] };
+      chains.push(chain);
+      last.set(n.midi, chain);
+    }
+  }
+  const overlap = (a: Note[], b: Note[]) => a.some((x) => b.some((y) => s(x) < y.end && s(y) < x.end));
+  // de l'aigu au grave : toutes les chaînes à ranger au-dessus d'une chaîne sont déjà placées
+  const sorted = [...chains].sort((a, b) => b.midi - a.midi);
+  const lane = new Map<(typeof chains)[number], number>();
+  for (const c of sorted) {
+    let k = 0;
+    for (const above of sorted) {
+      if (above.midi <= c.midi) break;
+      if (overlap(above.notes, c.notes)) k = Math.max(k, lane.get(above)! + 1);
+    }
+    lane.set(c, k);
+  }
+  const lanes: Lane[] = [];
+  for (const c of sorted) {
+    const k = lane.get(c)!;
+    for (let i = lanes.length; i <= k; i++) lanes.push({ hand, octave, notes: [] });
+    lanes[k].notes.push(...c.notes);
+  }
+  for (const l of lanes) l.notes.sort((a, b) => a.start - b.start);
+  return lanes;
 }
 
 /** Texte d'une attaque : le numéro, puis la voisine d'une trille (« 5~7 ») et le doigt (« 5_3 »). */
@@ -424,7 +480,7 @@ export function layout(score: Score, m: Metrics): System[] {
     const anchorT = anchors.map((ci) => (columns[ci] as { t: number }).t);
     const digits = (hand: Hand) => anchorT.map((t) => graceDigits(score.graces, hand, t));
     const toRows = (hand: Hand): SystemRow[] => {
-      const gs = groups(inSystem.filter((n) => n.hand === hand), t0);
+      const gs = groups(inSystem.filter((n) => n.hand === hand), t0, m.align);
       // petites notes : sur la première ligne libre de leur couloir d'octave (créé au besoin)
       const graces = score.graces.filter((g) => g.hand === hand && g.t >= t0 && g.t < t1);
       const slotsAt = digits(hand);

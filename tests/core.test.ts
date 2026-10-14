@@ -1081,3 +1081,39 @@ describe("paroles", () => {
     expect(parseYmn(writeYmn(s)).lyrics).toEqual(s.lyrics);
   });
 });
+
+describe("notes alignées", () => {
+  const metrics = { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 };
+  const rows = (text: string, align: boolean) => layout(parseYmn(text), { ...metrics, align })[0].right.map((r) => r.cells);
+  const piece = ["m1 |1  |2  |3  |4  ||", "0  |8  |   |8  |10 ||", "   |5  |5  |5  |5  ||", "   |1  |1  |   |   ||", "---", "-1 |1  |-  |-  |-  ||", ""].join("\n");
+
+  it("range par défaut chaque accord depuis le haut du couloir", () => {
+    expect(rows(piece, false)).toEqual([
+      ["8", "5", "8", "10"],
+      ["5", "1", "5", "5"],
+      ["1", "", "", ""],
+    ]);
+  });
+
+  it("garde sur sa ligne une note rejouée, l'aiguë toujours au-dessus de la grave", () => {
+    expect(rows(piece, true)).toEqual([
+      ["8", "", "8", "10"],
+      ["5", "5", "5", "5"],
+      ["1", "1", "", ""],
+    ]);
+  });
+
+  it("ne touche pas au texte .ymn", () => {
+    expect(writeYmn(parseYmn(piece))).toContain("0  |8  |5  |8  |10 ||");
+  });
+
+  it("ajoute une ligne quand des chaînes se croisent, et seulement alors", () => {
+    // le 5 tient tout du long : le 8 au-dessus, puis le 3 au-dessous
+    const cross = ["m1 |1  |2  ||", "0  |8  |5  ||", "   |5  |3  ||", "---", "-1 |   |   ||", ""].join("\n");
+    expect(rows(cross, true)).toEqual([
+      ["8", ""],
+      ["5", "5"],
+      ["", "3"],
+    ]);
+  });
+});

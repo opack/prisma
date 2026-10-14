@@ -20,12 +20,12 @@
 - Couleur par octave (option de l'application) : une teinte pâle fixe par octave, palette arc-en-ciel ou feutrée, dans l'ordre ou dans un ordre mélangé (fixe) pour plus de contraste entre octaves voisines ; le numéro d'octave reste affiché.
 - Accords d'accompagnement : ligne `@c`, en nom anglais (`Am`, `G/B`) ou en notes ymn de la basse vers l'aigu (`10;1;5`) ; gravés en nom, en notes empilées, ou les deux (option) ; importés de `<harmony>` ou d'un texte qui n'est qu'un nom d'accord.
 - Paroles : une ligne `@l` par couplet sous la main qui chante, une syllabe par case, `lu- ne` pour le trait d'union, `ne ---` pour un mélisme ; gravées sous les notes en caractères à empattements ; importées de `<lyric>`.
+- Notes alignées (option de gravure « Notes : alignées ») : une note rejouée garde sa ligne d'un temps à l'autre, l'aiguë toujours au-dessus de la grave, avec le moins de lignes possible ; le fichier `.ymn` ne change pas.
 - Import : les indications d'octave (`8va`, `8vb`, `loco`…) sont ignorées, chaque note portant déjà son octave.
 
 ## À faire
 
-1. **Aligner les notes qui se suivent** (option de gravure) : dans chaque octave, une note tenue ou rejouée garde sa rangée d'un temps à l'autre, pour que l'œil suive une note répétée ou une voix qui avance. Dans une case, les notes restent rangées de l'aigu vers le grave ; seule leur place verticale change, en laissant des rangées vides au besoin. Le calcul regarde la suite du morceau (chaînes de notes identiques d'un temps à l'autre) et garde le moins de rangées possible. Ne touche pas au fichier `.ymn` : seulement l'aperçu, l'impression et les exemples de la notice.
-2. **Plusieurs parties** (à concevoir) : aujourd'hui, une partition a exactement deux parties, séparées par le trait épais (au piano, la main droite et la main gauche ; dans le code, encore « D » et « G »). Il en faudrait autant que voulu : un chant au-dessus du piano, un duo, un ensemble. Reste à concevoir :
+1. **Plusieurs parties** (à concevoir) : aujourd'hui, une partition a exactement deux parties, séparées par le trait épais (au piano, la main droite et la main gauche ; dans le code, encore « D » et « G »). Il en faudrait autant que voulu : un chant au-dessus du piano, un duo, un ensemble. Reste à concevoir :
    - **Écriture `.ymn`** : un trait par séparation, et un nom pour chaque partie (« Chant », « Piano »…), peut-être dans la colonne de gauche ou sur le trait ;
    - **Ce qui reste propre au piano** : la pédale (sous la dernière partie d'un piano), les accolades qui réunissent les deux mains ; les paroles (`@l`) suivent leur partie ;
    - **Import MusicXML** : une partie par `<part>`, et par portée pour un instrument à deux portées ;

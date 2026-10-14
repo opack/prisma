@@ -195,8 +195,11 @@ function place(sys: System, isLast: boolean, y: number, cellW: number, chords: C
   return { sys, stretch, y, height: systemHeight(sys, chords), xs, ws, ...bands(sys, chords) };
 }
 
-/** compact : cases plus étroites, donc plus de mesures par ligne ; chords : affichage des accords. */
-export function engrave(score: Score, { compact = false, chords = "both" as ChordStyle } = {}): Page[] {
+/**
+ * compact : cases plus étroites, donc plus de mesures par ligne ; chords : affichage des
+ * accords ; align : une note rejouée garde sa ligne (voir layout).
+ */
+export function engrave(score: Score, { compact = false, chords = "both" as ChordStyle, align = false } = {}): Page[] {
   const cellW = compact ? G.compactCell : G.cell;
   const systems = layout(score, {
     width: CONTENT_W,
@@ -213,6 +216,7 @@ export function engrave(score: Score, { compact = false, chords = "both" as Chor
     beatSep: G.beatSep,
     barSep: G.barSep,
     repeatDots: G.repeatDots,
+    align,
   });
   const pages: Page[] = [];
   const order = score.order;

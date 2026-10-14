@@ -71,6 +71,8 @@ m1 |1  |2  |3  |4  ||
 
 Les lignes sans numéro d'octave continuent le couloir du dessus.
 
+Dans le fichier, chaque accord se range depuis le haut de son couloir. À la gravure, l'option « Notes : alignées » garde sur sa ligne une note rejouée d'un temps à l'autre, quitte à laisser des lignes vides : après `8 5 1`, un accord `5 1` reste sur les deux lignes du bas au lieu de remonter, et l'on suit des yeux les notes qui reviennent. Le fichier ne change pas.
+
 ## 3. Le temps
 
 ### Ce que veut dire 4/4, 3/4, 6/8…

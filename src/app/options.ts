@@ -4,7 +4,7 @@ import type { ChordStyle } from "./engrave.ts";
 
 export type OctaveStyle = "arrow" | "sign" | "triangle";
 export type OctavePosition = "top" | "center";
-export type NotePosition = "top" | "center";
+export type NotePosition = "top" | "center" | "aligned";
 export type Density = "normal" | "compact";
 
 export type RenderOptions = {
@@ -14,7 +14,10 @@ export type RenderOptions = {
   octavePosition: OctavePosition;
   /** Regraver automatiquement peu après la dernière frappe. */
   autoEngrave: boolean;
-  /** Place des notes dans un couloir d'octave : en haut, ou chaque bloc centré verticalement. */
+  /**
+   * Place des notes dans un couloir d'octave : en haut, chaque bloc centré verticalement, ou
+   * alignées (une note rejouée garde sa ligne, pour suivre des yeux une note qui revient).
+   */
   notePosition: NotePosition;
   /** Espacement des cases : normal, ou compact pour gagner de la place sur les partitions chargées. */
   density: Density;
@@ -44,6 +47,7 @@ export const OCTAVE_POSITIONS: { value: OctavePosition; label: string }[] = [
 export const NOTE_POSITIONS: { value: NotePosition; label: string }[] = [
   { value: "top", label: "En haut" },
   { value: "center", label: "Centrées" },
+  { value: "aligned", label: "Alignées" },
 ];
 
 export const OCTAVE_PALETTES: { value: OctavePalette; label: string }[] = [

@@ -141,8 +141,8 @@ export function App() {
     if (!engraved.score) return [];
     // doigtés masqués : retirés avant la gravure, pour que les cases reprennent leur largeur
     const score = options.fingerings ? engraved.score : { ...engraved.score, notes: engraved.score.notes.map(({ finger: _, ...n }) => n) };
-    return engrave(score, { compact: options.density === "compact", chords: options.chords });
-  }, [engraved, options.density, options.fingerings, options.chords]);
+    return engrave(score, { compact: options.density === "compact", chords: options.chords, align: options.notePosition === "aligned" });
+  }, [engraved, options.density, options.fingerings, options.chords, options.notePosition]);
 
   const open = async (file: File, fileHandle: FileSystemFileHandle | null = null) => {
     const text = await file.text();
@@ -374,7 +374,7 @@ export function App() {
                 {p.label}
               </label>
             ))}
-            <span className="sample">dans un couloir d'octave de plusieurs lignes</span>
+            <span className="sample">dans un couloir d'octave de plusieurs lignes ; alignées : une note rejouée garde sa ligne</span>
           </fieldset>
           <fieldset>
             <legend>Couleurs</legend>
