@@ -1117,3 +1117,25 @@ describe("notes alignées", () => {
     ]);
   });
 });
+
+describe("bpm", () => {
+  const body = "m1 |1  ||\n0  |1  ||\n---\n-1 |   ||\n";
+  it("se lit en temps par minute, et se réécrit tel quel", () => {
+    const s = parseYmn(`---\nbpm: 78\n---\n${body}`);
+    expect(s.meta.bpm).toBe(78);
+    expect(writeYmn(s)).toMatch(/^bpm: 78$/m);
+  });
+
+  it("refuse un tempo en mots", () => {
+    expect(() => parseYmn(`---\nbpm: Andante\n---\n${body}`)).toThrow(/temps par minute/);
+  });
+
+  it("importe le tempo du MusicXML, converti en temps de la règle (noire pointée en 6/8)", () => {
+    const sound = `<direction><direction-type><words>Allegro</words></direction-type><sound tempo="120"/></direction>`;
+    const four = musicXml([{ notes: [[{ midi: [C4], dur: 4 * q, before: sound }]] }]);
+    expect(importMusicXml(four).meta.bpm).toBe(120);
+    const six = musicXml([{ time: [6, 8], notes: [[{ midi: [C4], dur: 6 * (q / 2), before: sound }]] }]);
+    expect(importMusicXml(six).meta.bpm).toBe(80);
+  });
+});
+

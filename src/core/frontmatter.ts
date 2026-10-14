@@ -51,6 +51,15 @@ export function parseFrontmatter(lines: string[]): FrontmatterResult {
       }
       continue; // la version n'est pas une information du morceau : l'écriture la remet toujours
     }
+    if (key === "bpm") {
+      // en temps par minute : le temps est celui de la règle de comptage (la noire pointée d'un 6/8)
+      const n = Number(value);
+      if (!value || !(n > 0)) {
+        throw new YmnError("« bpm » est un nombre de temps par minute, par exemple « bpm: 78 » ; une indication comme « Andante » se place sur la ligne @ au-dessus de la règle", i + 1);
+      }
+      meta.bpm = n;
+      continue;
+    }
     if (NUMERIC_KEYS.has(key)) {
       const n = Number(value);
       if (!Number.isInteger(n) || n < 2) throw new YmnError(`« ${key} » doit être un entier ≥ 2`, i + 1);
@@ -63,7 +72,7 @@ export function parseFrontmatter(lines: string[]): FrontmatterResult {
   throw new YmnError("frontmatter non fermé : il manque la ligne « --- » de fin", lines.length);
 }
 
-const ORDER = ["format", "title", "subtitle", "composer", "tempo", "source", "order", "division", "cell"];
+const ORDER = ["format", "title", "subtitle", "composer", "bpm", "source", "order", "division", "cell"];
 
 /** Frontmatter d'un fichier écrit : toujours avec la version du format, en tête. */
 export function writeFrontmatter(meta: Meta): string[] {

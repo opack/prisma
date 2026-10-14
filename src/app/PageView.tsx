@@ -738,9 +738,9 @@ export function PageView({ page, total, meta, options }: { page: Page; total: nu
               {meta.composer}
             </text>
           )}
-          {meta.tempo && (
+          {meta.bpm && (
             <text x={PAGE.marginX} y={PAGE.marginTop + 12 + (meta.subtitle ? G.subtitleH : 0)} fontSize={3.2} fill={INK}>
-              {meta.tempo}
+              {meta.bpm} bpm
             </text>
           )}
         </g>

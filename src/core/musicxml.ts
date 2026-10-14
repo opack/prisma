@@ -624,6 +624,13 @@ export function importMusicXml(xml: string, fileName?: string): Score {
   if (fileName) meta.source = fileName;
 
   const measures = readMeasures(part);
+  // tempo de départ : <sound tempo> (en noires par minute) au début, converti en temps de la règle
+  const startTempo = findAll(kids(part), "measure")
+    .slice(0, 1)
+    .flatMap((m) => kids(m).flatMap((x) => (tag(x) === "sound" ? [x] : tag(x) === "direction" ? findAll(kids(x), "sound") : [])))
+    .map((snd) => Number(attr(snd, "tempo")))
+    .find((t) => t > 0);
+  if (startTempo && measures.length) meta.bpm = Math.round(startTempo / pulse(measures[0].beats, measures[0].beatType).quarters);
   const beats: Beat[] = [];
   const raw: (Note & { tieStart: boolean; tieStop: boolean })[] = [];
   const rawGraces: Grace[] = [];

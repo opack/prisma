@@ -77,7 +77,8 @@ export type Meta = {
   /** Sous-titre, gravé sous le titre : « Op. 9 n° 2 », « Suite bergamasque, 3ᵉ mouvement »… */
   subtitle?: string;
   composer?: string;
-  tempo?: string;
+  /** Tempo, en temps par minute : le temps de la règle de comptage (la noire pointée d'un 6/8). */
+  bpm?: number;
   source?: string;
   /** Largeur d'une case dans le texte .ymn (3 par défaut). */
   cell?: number;
