@@ -29,6 +29,7 @@
    - **Import MusicXML** : une partie par `<part>`, et par portée pour un instrument à deux portées ;
    - **Vocabulaire** : parler de parties partout (code, FORMAT.md), « main » restant un cas particulier.
 2. **Paroles** (à concevoir, après les parties) : sur une ligne `@l` sous la partie chantée, une syllabe par note, chacune commençant sur la case de sa note ; un `-` en fin de syllabe la relie à la suivante (`lu- ne`), un mot étendu sur plusieurs notes (mélisme) garde un trait. Comme pour `@c`, chaque mot y est une indication à part. Plusieurs couplets : plusieurs lignes `@l`. Le MusicXML les fournit (`<lyric>` : `<syllabic>`, `<text>`, `<extend>`, `number` pour le couplet).
+3. **Aligner les notes qui se suivent** (option de gravure, après les paroles) : dans chaque octave, une note tenue ou rejouée garde sa rangée d'un temps à l'autre, pour que l'œil suive une note répétée ou une voix qui avance. Dans une case, les notes restent rangées de l'aigu vers le grave ; seule leur place verticale change, en laissant des rangées vides au besoin. Le calcul regarde la suite du morceau (chaînes de notes identiques d'un temps à l'autre) et garde le moins de rangées possible. Ne touche pas au fichier `.ymn` : seulement l'aperçu, l'impression et les exemples de la notice.
 
 ## Hors v1 pour l'instant
 
