@@ -26,7 +26,11 @@
 
 ## À faire
 
-Rien pour l'instant.
+1. **Écouter la partition** (à concevoir) : un bouton « Écouter » qui joue le morceau dans le navigateur.
+   - **Premier temps, les notes** : hauteurs, durées et tempo (`bpm`), un son de piano, toutes les parties ensemble ; les reprises et l'ordre des sections déroulés comme à la lecture.
+   - **Ensuite, l'interprétation** : nuances et soufflets en intensité, pédale tenue, petites notes, trilles et arpèges joués, point d'orgue en suspens, un timbre par instrument.
+   - **Lecture suivie** : la case jouée surlignée sur la gravure.
+   - **Bibliothèque** : à choisir (synthèse Web Audio, ou échantillons de piano), selon la qualité du son et le poids à télécharger.
 
 ## Hors v1 pour l'instant
 
