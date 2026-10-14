@@ -116,7 +116,33 @@ function OctaveTabs({ rows, top, style, position, tabFill }: { rows: SystemRow[]
   );
 }
 
-function Row({ ps, row, y, centered }: { ps: PlacedSystem; row: SystemRow; y: number; centered: boolean }) {
+/**
+ * Signes d'articulation d'une note, à la verticale de ses chiffres, en haut de sa ligne,
+ * côte à côte : staccato (point), accent (« > »), marcato (« ^ »). cx : milieu des chiffres ;
+ * cy : milieu des signes.
+ */
+function articulationSigns(signs: string[], cx: number, cy: number) {
+  const k = G.articulationScale;
+  return signs.map((sign, i) => {
+    const sx = cx + (i - (signs.length - 1) / 2) * G.articulationStep * k;
+    // dessinés autour de (0, 0), puis mis à l'échelle sur place
+    const shape =
+      sign === "." ? (
+        <circle cx={0} cy={0} r={0.3} fill={INK} />
+      ) : sign === "!" ? (
+        <path d="M -0.42 -0.32 L 0.42 0 L -0.42 0.32" fill="none" stroke={INK} strokeWidth={0.22} />
+      ) : (
+        <path d="M -0.38 0.32 L 0 -0.38 L 0.38 0.32" fill="none" stroke={INK} strokeWidth={0.26} />
+      );
+    return (
+      <g key={sign} transform={`translate(${sx} ${cy}) scale(${k})`}>
+        {shape}
+      </g>
+    );
+  });
+}
+
+function Row({ ps, row, y, centered, articulations }: { ps: PlacedSystem; row: SystemRow; y: number; centered: boolean; articulations?: Map<number, string[]> }) {
   const { sys, xs, ws } = ps;
   const x0 = PAGE.marginX;
   const right = xs[xs.length - 1] + ws[ws.length - 1];
@@ -150,10 +176,14 @@ function Row({ ps, row, y, centered }: { ps: PlacedSystem; row: SystemRow; y: nu
         const mid = y + dy + G.rowH / 2;
         // trille : la note, sa voisine en petit, puis un trait ondulé sur toute sa durée
         if (row.trill[a] && c === "-") return <path key={a} d={wave(xs[ci], x + w, mid)} {...WAVE} />;
-        // note annotée : la voisine de trille en petit (en haut), le doigt en négatif (en bas à droite)
-        if (!c.startsWith("-") && (c.includes(TRILL_MARK) || c.includes(FINGER_MARK))) {
+        // note annotée : son articulation au-dessus d'elle, la voisine de trille en petit (en haut à
+        // droite), le doigt en négatif (en bas à droite)
+        const arts = !c.startsWith("-") ? articulations?.get(a) : undefined;
+        if (!c.startsWith("-") && (c.includes(TRILL_MARK) || c.includes(FINGER_MARK) || arts)) {
           const { main, aux, finger } = noteParts(c);
           let end = x + 0.5 + main.length * G.noteDigit;
+          // au-dessus des chiffres, à cheval sur le haut de la ligne : assez d'air pour rester lisible
+          const art = articulationSigns(arts ?? [], x + 0.5 + (main.length * G.noteDigit) / 2 - 0.15, y + dy - 0.05);
           const auxX = end + 0.35;
           if (aux) end = auxX + aux.length * 1.25;
           const fx = end + FINGER.gap + FINGER.r;
@@ -163,6 +193,7 @@ function Row({ ps, row, y, centered }: { ps: PlacedSystem; row: SystemRow; y: nu
               <text x={x + 0.5} y={base + dy} fontSize={3.3} fontWeight={600} fill={INK}>
                 {main}
               </text>
+              {art}
               {aux && (
                 <text x={auxX} y={base + dy - 1.05} fontSize={2.3} fontWeight={600} fill={GRACE}>
                   {aux}
@@ -460,10 +491,10 @@ function VoiceBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: nu
         );
       })}
       {voice.marks.map((m, i) => {
-        // l'arpège se dessine devant l'accord (voir SystemView), pas dans cette bande
-        if (m.kind === "arpeggio") return null;
+        // l'arpège et les articulations se dessinent sur l'accord (voir SystemView), pas dans cette bande
+        if (m.kind === "arpeggio" || m.kind === "articulation") return null;
         // plusieurs indications sur une même case (« pp » puis « con sordina ») : à la suite
-        const before = voice.marks.slice(0, i).filter((x) => x.anchor === m.anchor && x.kind !== "arpeggio");
+        const before = voice.marks.slice(0, i).filter((x) => x.anchor === m.anchor && x.kind !== "arpeggio" && x.kind !== "articulation");
         const x = ax(m.anchor) + before.reduce((w, b) => w + markW(b.text, b.kind) + 1, 0);
         return m.kind === "dynamic" ? (
           <text key={"m" + i} x={x + 0.9} y={base} fontFamily={DYNAMIC_FONT} fontSize={3.6} fontWeight={700} fontStyle="italic" fill={INK} {...halo}>
@@ -579,6 +610,17 @@ function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; options:
   const bandFill = (octave: number, alt: boolean) => tint(octave)?.band ?? (alt ? BAND : undefined);
   const tabFill = (octave: number) => tint(octave)?.tab ?? TAB;
   const centered = options.notePosition === "center";
+  // articulations de chaque partie : portées par sa note la plus aiguë attaquée dans la case (une fois pour l'accord)
+  const articulationsOf = (k: number, i: number) => {
+    const p = sys.parts[k];
+    const out = new Map<number, string[]>();
+    for (const m of p.voice.marks) {
+      if (m.kind !== "articulation") continue;
+      const top = p.rows.findIndex((r) => !!r.cells[m.anchor] && !r.cells[m.anchor].startsWith("-"));
+      if (top === i) out.set(m.anchor, [...(out.get(m.anchor) ?? []), m.text]);
+    }
+    return out;
+  };
 
   return (
     <g>
@@ -673,7 +715,7 @@ function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; options:
           return fill && <rect key={`bd${k}-${i}`} x={left} y={rowY(k, i)} width={right - left} height={G.rowH} fill={fill} />;
         });
       })}
-      {sys.parts.map((p, k) => p.rows.map((r, i) => <Row key={`r${k}-${i}`} ps={ps} row={r} y={rowY(k, i)} centered={centered} />))}
+      {sys.parts.map((p, k) => p.rows.map((r, i) => <Row key={`r${k}-${i}`} ps={ps} row={r} y={rowY(k, i)} centered={centered} articulations={articulationsOf(k, i)} />))}
       {/* trait épais entre deux parties d'un même instrument */}
       {ps.parts.map((pp, k) => pp.separator !== undefined && <line key={"sep" + k} x1={left} x2={right} y1={pp.separator} y2={pp.separator} stroke={INK} strokeWidth={0.5} />)}
       {/* arpèges : une vaguelette devant l'accord, de sa note la plus grave à la plus aiguë */}

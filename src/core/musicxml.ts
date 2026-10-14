@@ -15,8 +15,8 @@
  */
 import { XMLParser } from "fast-xml-parser";
 import { chordNameNotes } from "./chords.ts";
-import { TICKS_PER_BEAT, isDynamic, isPedalText, partCount, sortGraces, sortLyrics, sortNotes } from "./model.ts";
-import type { Arpeggio, Beat, Division, Expression, Grace, Hairpin, Instrument, Slur, Part, Lyric, Marker, Meta, Note, Pedal, PedalText, Repeat, Score, TextMark } from "./model.ts";
+import { TICKS_PER_BEAT, sortArticulations, isDynamic, isPedalText, partCount, sortGraces, sortLyrics, sortNotes } from "./model.ts";
+import type { Arpeggio, Articulation, ArticulationKind, Beat, Division, Expression, Grace, Hairpin, Instrument, Slur, Part, Lyric, Marker, Meta, Note, Pedal, PedalText, Repeat, Score, TextMark } from "./model.ts";
 
 /**
  * Paroles : les couplets numérotés à la suite (1, 2…) dans l'ordre de leurs numéros, une
@@ -161,8 +161,13 @@ type RawGrace = { part: Part; midi: number; on: number; slot: number };
 type RawLyric = { part: Part; voice: string; on: number; number: string; text: string; hyphen: boolean; extend: boolean };
 /** Note jouée, réduite à sa voix et à sa durée : sert à mesurer les mélismes. */
 type RawVoiceNote = { part: Part; voice: string; on: number; off: number };
+/** Articulation d'une note : staccato, accent ou marcato (le tenuto est la durée écrite). */
+type RawArticulation = { part: Part; on: number; kind: ArticulationKind };
+/** Articulations MusicXML retenues ; le détaché-lié (tenuto et staccato) reste un staccato. */
+const ARTICULATIONS: Record<string, ArticulationKind> = { staccato: "staccato", staccatissimo: "staccato", spiccato: "staccato", "detached-legato": "staccato", accent: "accent", "strong-accent": "marcato" };
 type RawMeasure = {
   number: string;
+  articulations: RawArticulation[];
   lyrics: RawLyric[];
   voiceNotes: RawVoiceNote[];
   graces: RawGrace[];
@@ -197,6 +202,7 @@ function readMeasures(partNode: XNode, base: Part, staves: number): RawMeasure[]
     const arpeggios: RawArpeggio[] = [];
     const lyrics: RawLyric[] = [];
     const voiceNotes: RawVoiceNote[] = [];
+    const articulations: RawArticulation[] = [];
     const measureAlter = new Map<string, number>(); // altérations déjà posées dans la mesure, par lettre et octave
     // petites notes en attente de leur note principale, par voix
     const waiting = new Map<string, Omit<RawGrace, "on">[]>();
@@ -383,6 +389,11 @@ function readMeasures(partNode: XNode, base: Part, staves: number): RawMeasure[]
             arpeggios.push({ part, on, number: attr(arp, "number") as string | undefined, down: attr(arp, "direction") === "down" });
           }
           voiceNotes.push({ part, voice, on, off: on + dur });
+          // articulations : une par partie et instant (un accord n'en porte qu'une de chaque)
+          for (const x of notations.filter((y) => tag(y) === "articulations").flatMap((y) => kids(y))) {
+            const kind = ARTICULATIONS[tag(x)];
+            if (kind && !articulations.some((y) => y.part === part && y.on === on && y.kind === kind)) articulations.push({ part, on, kind });
+          }
           // paroles : une syllabe par couplet ; une élision (deux syllabes sur une note) s'écrit « ‿ »
           for (const ly of findAll(n, "lyric")) {
             const parts = kids(ly);
@@ -413,7 +424,7 @@ function readMeasures(partNode: XNode, base: Part, staves: number): RawMeasure[]
       divisions, beats, beatType,
       length: maxCursor,
       implicit: attr(measure, "implicit") === "yes",
-      notes, graces, arpeggios, lyrics, voiceNotes, directions, structure, startRepeat, endRepeat, times, endings,
+      notes, graces, arpeggios, articulations, lyrics, voiceNotes, directions, structure, startRepeat, endRepeat, times, endings,
     });
   }
   return out;
@@ -682,6 +693,7 @@ export function importMusicXml(xml: string, fileName?: string): Score {
       into.graces.push(...m.graces);
       into.arpeggios.push(...m.arpeggios);
       into.lyrics.push(...m.lyrics);
+      into.articulations.push(...m.articulations);
       into.voiceNotes.push(...m.voiceNotes);
       // accords et points d'orgue : une seule fois, déjà donnés par la première partie
       into.directions.push(...m.directions.filter((d) => d.kind !== "chord" || !into.directions.some((x) => x.kind === "chord")));
@@ -709,6 +721,7 @@ export function importMusicXml(xml: string, fileName?: string): Score {
   const rawArpeggios: (RawArpeggio & { t: number })[] = [];
   const rawDirections: (RawDirection & { t: number })[] = [];
   const rawLyrics: (RawLyric & { t: number })[] = [];
+  const rawArticulations: (RawArticulation & { t: number })[] = [];
   const rawVoiceNotes: (RawVoiceNote & { start: number; end: number })[] = [];
   const EPS = 1e-6;
 
@@ -740,6 +753,7 @@ export function importMusicXml(xml: string, fileName?: string): Score {
     for (const x of m.arpeggios) rawArpeggios.push({ ...x, t: base + Math.round((x.on + shift) * ticksPerQuarter) });
     const tick = (on: number) => base + Math.round((on + shift) * ticksPerQuarter);
     for (const l of m.lyrics) rawLyrics.push({ ...l, t: tick(l.on) });
+    for (const x of m.articulations) rawArticulations.push({ ...x, t: tick(x.on) });
     for (const v of m.voiceNotes) rawVoiceNotes.push({ ...v, start: tick(v.on), end: tick(v.off) });
     for (const g of m.graces) rawGraces.push({ part: g.part, midi: g.midi, t: base + Math.round((g.on + shift) * ticksPerQuarter), slot: g.slot });
     for (const n of m.notes) {
@@ -818,7 +832,12 @@ export function importMusicXml(xml: string, fileName?: string): Score {
     } else arpeggios.push({ t, part: x.part, ...down });
   }
   arpeggios.sort((a, b) => a.t - b.t || (a.part ?? -1) - (b.part ?? -1));
-  return { meta, instruments, beats, notes: sorted, graces: sortGraces(graces), arpeggios, lyrics: lyricsOf(rawLyrics, rawVoiceNotes, q, end), ...directionsOf(rawDirections, sorted, beats.length, lastPart), ...sectionsOf(playOrder(measures), measures.length) };
+  const articulations: Articulation[] = [];
+  for (const x of rawArticulations) {
+    const t = q(x.t);
+    if (t < end && !articulations.some((y) => y.part === x.part && y.t === t && y.kind === x.kind)) articulations.push({ part: x.part, t, kind: x.kind });
+  }
+  return { meta, instruments, beats, notes: sorted, graces: sortGraces(graces), arpeggios, articulations: sortArticulations(articulations), lyrics: lyricsOf(rawLyrics, rawVoiceNotes, q, end), ...directionsOf(rawDirections, sorted, beats.length, lastPart), ...sectionsOf(playOrder(measures), measures.length) };
 }
 
 /**

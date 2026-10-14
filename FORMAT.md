@@ -238,6 +238,9 @@ Une ou plusieurs lignes `@` placées **sous les lignes d'une partie** portent se
 | `>----` | Decrescendo, de même. |
 | `(-----)` | Liaison d'expression : de la note de la case du `(` à celle de la case du `)`, jouées liées. |
 | `/` | Arpège de l'accord de cette partie, du grave à l'aigu (`\` : de l'aigu au grave). |
+| `.` | Staccato : ce que la partie attaque dans cette case (une note ou tout l'accord) se joue détaché, plus court. Gravé comme un point en haut à droite de la note la plus aiguë. |
+| `!` | Accent : l'attaque est plus forte que ses voisines. Gravé `>`. |
+| `!!` | Marcato : un accent plus fort et plus sec. Gravé `^`. |
 | autre texte | Indication pour cette partie : `cresc.`, `dim.`, `dolce`, `sempre legato`, `più f`… |
 
 Une liaison relie des notes différentes, à jouer liées (legato), et dessine les phrases. Ce n'est pas la liaison de prolongation entre deux notes identiques : celle-là n'existe pas ici, la note se tient avec `-`. Comme un soufflet, une liaison coupée par un changement de système s'écrit `(-----` en fin de système et `-----)` au début du suivant (`------` pour un système qu'elle traverse tout entier). Les liaisons imbriquées ou qui se chevauchent vont chacune sur sa ligne `@` ; quand plusieurs liaisons d'une partie continuent au système suivant, leurs suites s'écrivent de haut en bas dans l'ordre où elles ont commencé. La gravure les trace comme des arcs fins dans une bande juste sous les lignes de la partie, la plus courte au plus près des notes.
@@ -303,7 +306,7 @@ m1 |1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||
 
 ## Hors format pour l'instant
 
-Articulations. Voir ROADMAP.md.
+Polymétrie. Voir ROADMAP.md.
 
 ## Versions
 

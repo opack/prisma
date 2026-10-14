@@ -89,6 +89,19 @@ export const ARPEGGIO_DOWN = "\\";
 export const isArpeggioSign = (t: string) => t === ARPEGGIO_UP || t === ARPEGGIO_DOWN;
 
 /**
+ * Articulation : la manière d'attaquer ce que la partie joue à l'instant t (une note, ou
+ * tout l'accord). staccato : détaché, plus court ; accent : plus fort que ses voisines ;
+ * marcato : accent plus fort et plus sec.
+ */
+export type Articulation = { part: Part; t: number; kind: ArticulationKind };
+export type ArticulationKind = "staccato" | "accent" | "marcato";
+
+/** Articulations sur une ligne @ de partie : « . » staccato, « ! » accent, « !! » marcato. */
+export const ARTICULATION_SIGNS: Record<ArticulationKind, string> = { staccato: ".", accent: "!", marcato: "!!" };
+export const articulationOf = (t: string) => (Object.keys(ARTICULATION_SIGNS) as ArticulationKind[]).find((k) => ARTICULATION_SIGNS[k] === t);
+export const isArticulationSign = (t: string) => articulationOf(t) !== undefined;
+
+/**
  * Petite note : jouée très vite juste avant l'instant t, sans compter dans le temps.
  * slot : rang dans la suite des petites notes de cette partie à cet instant (0 en premier) ;
  * deux petites notes de même rang se jouent ensemble.
@@ -192,7 +205,7 @@ export const MARKER_SIGN = /^\[([A-Z])\]$/;
 export const isStructureSign = (t: string) => MARKER_SIGN.test(t);
 
 /** Signe toujours lu à part sur une ligne @ : soufflet, signe de pédale, début de section. */
-export const isSign = (t: string) => isHairpin(t) || isSlur(t) || isPedalSign(t) || isStructureSign(t) || t === FERMATA || isArpeggioSign(t);
+export const isSign = (t: string) => isHairpin(t) || isSlur(t) || isPedalSign(t) || isStructureSign(t) || t === FERMATA || isArpeggioSign(t) || isArticulationSign(t);
 
 /**
  * Deux mots d'une ligne @ séparés par une seule espace forment un seul texte (« a tempo »,
@@ -200,7 +213,7 @@ export const isSign = (t: string) => isHairpin(t) || isSlur(t) || isPedalSign(t)
  * soufflet ou un début de section.
  */
 export const joinsText = (prev: string, next: string) =>
-  !isSign(next) && !isHairpin(prev) && !isSlur(prev) && !isStructureSign(prev) && prev !== FERMATA && !isArpeggioSign(prev);
+  !isSign(next) && !isHairpin(prev) && !isSlur(prev) && !isStructureSign(prev) && prev !== FERMATA && !isArpeggioSign(prev) && !isArticulationSign(prev);
 
 /**
  * Syllabe de paroles, chantée sur la note de sa partie qui commence à t. verse : couplet (1, 2…).
@@ -240,6 +253,8 @@ export type Score = {
   lyrics: Lyric[];
   /** Arpèges, par instant. */
   arpeggios: Arpeggio[];
+  /** Articulations, par instant et partie. */
+  articulations: Articulation[];
   /** Points d'orgue : instants où l'on tient la note, l'accord ou le silence plus longtemps. */
   fermatas: number[];
   /** Ordre de jeu des sections, par leur lettre ; vide : le morceau se joue d'un bout à l'autre. */
@@ -259,6 +274,12 @@ export function sortNotes(notes: Note[]): Note[] {
 }
 
 /** Trie les petites notes : par instant, partie du haut d'abord, par rang, de l'aigu au grave. */
+const ARTICULATION_ORDER: ArticulationKind[] = ["staccato", "accent", "marcato"];
+/** Trie les articulations : par instant, partie, puis staccato, accent, marcato. */
+export function sortArticulations(xs: Articulation[]): Articulation[] {
+  return [...xs].sort((a, b) => a.t - b.t || a.part - b.part || ARTICULATION_ORDER.indexOf(a.kind) - ARTICULATION_ORDER.indexOf(b.kind));
+}
+
 /** Trie les paroles : par instant, partie du haut d'abord, par couplet. */
 export function sortLyrics(lyrics: Lyric[]): Lyric[] {
   return [...lyrics].sort((a, b) => a.t - b.t || a.part - b.part || a.verse - b.verse);

@@ -6,8 +6,8 @@
  */
 import { chordNotes } from "./chords.ts";
 import { YmnError, parseFrontmatter } from "./frontmatter.ts";
-import { ARPEGGIO_DOWN, FERMATA, HYPHEN, LYRIC_LINE, isExtender, sortLyrics, FINGER_MARK, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isSlur, isPedalText, joinsText, sortGraces, sortNotes } from "./model.ts";
-import type { Arpeggio, Beat, Division, Expression, Grace, Hairpin, Instrument, Lyric, Marker, Note, Part, Pedal, PedalText, Repeat, Score, Slur, TextMark } from "./model.ts";
+import { ARPEGGIO_DOWN, FERMATA, articulationOf, isArticulationSign, HYPHEN, LYRIC_LINE, isExtender, sortLyrics, FINGER_MARK, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isSlur, isPedalText, joinsText, sortArticulations, sortGraces, sortNotes } from "./model.ts";
+import type { Arpeggio, Articulation, Beat, Division, Expression, Grace, Hairpin, Instrument, Lyric, Marker, Note, Part, Pedal, PedalText, Repeat, Score, Slur, TextMark } from "./model.ts";
 import { midiOf, parseOctaveLabel } from "./pitch.ts";
 
 /** Un temps de la règle de comptage, et la barre qui le termine. */
@@ -179,6 +179,7 @@ export function parseYmn(text: string): Score {
   // fin de la case de chaque syllabe prolongée : sa prolongation doit la dépasser
   const lyricCell = new Map<Lyric, { end: number; line: number; col: number }>();
   const arpeggios: Arpeggio[] = [];
+  const articulations: Articulation[] = [];
   /** Arpège posé une seule fois par instant et par partie (ou pour toutes les parties). */
   const addArpeggio = (x: Arpeggio, line: number, col: number) => {
     const clash = arpeggios.find((y) => y.t === x.t && (y.part === undefined || x.part === undefined || y.part === x.part));
@@ -307,6 +308,8 @@ export function parseYmn(text: string): Score {
           if (!fermatas.includes(a.t)) fermatas.push(a.t);
         } else if (isArpeggioSign(tok.text)) {
           addArpeggio({ t: a.t, ...(tok.text === ARPEGGIO_DOWN ? { down: true } : {}) }, li + 1, tok.col + 1);
+        } else if (isArticulationSign(tok.text)) {
+          throw new YmnError(`« ${tok.text} » : une articulation se place sur une ligne @ sous sa partie`, li + 1, tok.col + 1);
         } else texts.push({ t: a.t, text: tok.text });
       }
     }
@@ -364,15 +367,19 @@ export function parseYmn(text: string): Score {
     const pedalSigns: { part: Part; t: number; text: string; line: number; col: number }[] = [];
     const readVoiceLine = (row: string, R: number, part: Part) => {
       for (const tok of markTokens(row)) {
-        // un soufflet peut commencer dans la case, juste après une nuance (« p <--- ») ;
-        // toute autre indication commence exactement sur une case
-        const ai = isHairpin(tok.text) || isSlur(tok.text)
+        // un soufflet, une liaison ou une articulation peut commencer dans la case, juste
+        // après une autre indication (« p <--- », « . ! ») ; le reste commence exactement sur une case
+        const ai = isHairpin(tok.text) || isSlur(tok.text) || isArticulationSign(tok.text)
           ? anchors.findIndex((x) => tok.col >= x.from && tok.col < x.to)
           : anchors.findIndex((x) => x.from === tok.col);
         if (ai < 0) throw new YmnError(`« ${tok.text} » doit commencer exactement sur une case de la règle de comptage`, R, tok.col + 1);
         const a = anchors[ai];
         if (isArpeggioSign(tok.text)) {
           addArpeggio({ t: a.t, part, ...(tok.text === ARPEGGIO_DOWN ? { down: true } : {}) }, R, tok.col + 1);
+        } else if (isArticulationSign(tok.text)) {
+          const kind = articulationOf(tok.text)!;
+          if (articulations.some((x) => x.part === part && x.t === a.t && x.kind === kind)) throw new YmnError(`« ${tok.text} » posé deux fois sur la même case`, R, tok.col + 1);
+          articulations.push({ part, t: a.t, kind });
         } else if (isPedalSign(tok.text) || isPedalText(tok.text)) {
           if (!lastParts.has(part)) throw new YmnError(`« ${tok.text} » : la pédale se note sur une ligne @ sous la dernière partie de son instrument`, R, tok.col + 1);
           if (isPedalText(tok.text)) pedalTexts.push({ part, t: a.t, text: tok.text });
@@ -665,6 +672,7 @@ export function parseYmn(text: string): Score {
     chords: chords.sort((a, b) => a.t - b.t),
     lyrics: sortLyrics(lyrics),
     arpeggios: arpeggios.sort((a, b) => a.t - b.t || (a.part ?? -1) - (b.part ?? -1)),
+    articulations: sortArticulations(articulations),
     fermatas: fermatas.sort((a, b) => a - b),
     order,
   };

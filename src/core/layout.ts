@@ -5,7 +5,7 @@
  * Le moteur ne connaît que des « unités » de largeur : des caractères pour le texte,
  * des millimètres pour le rendu graphique. Seules les mesures changent.
  */
-import { ARPEGGIO_DOWN, ARPEGGIO_UP, FINGER_MARK, partCount, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, TRILL_MARK, beatStart, graceDigits, repeatOf } from "./model.ts";
+import { ARPEGGIO_DOWN, ARPEGGIO_UP, ARTICULATION_SIGNS, FINGER_MARK, partCount, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, TRILL_MARK, beatStart, graceDigits, repeatOf } from "./model.ts";
 import type { Beat, Division, Hairpin, Instrument, Note, Part, Score } from "./model.ts";
 import { numberOf, octaveOf } from "./pitch.ts";
 
@@ -82,7 +82,7 @@ export type Mark = {
 export const markColumn = (sys: { anchors: number[] }, m: Mark) => (m.anchor !== undefined ? sys.anchors[m.anchor] : m.column!);
 
 /** Indication d'une voix (nuance ou texte), sur une ancre. */
-export type VoiceMark = { anchor: number; text: string; kind: "dynamic" | "text" | "arpeggio" };
+export type VoiceMark = { anchor: number; text: string; kind: "dynamic" | "text" | "arpeggio" | "articulation" };
 
 /** Portion d'un soufflet visible dans un système. */
 export type HairpinSpan = {
@@ -215,6 +215,7 @@ function beatGrids(score: Score): BeatGrid[] {
   for (const t of score.fermatas) add(t, false);
   for (const g of score.graces) add(g.t, false);
   for (const x of score.arpeggios) add(x.t, false);
+  for (const x of score.articulations) add(x.t, false);
   for (const c of score.chords) add(c.t, false);
   for (const l of score.lyrics) {
     add(l.t, false);
@@ -635,6 +636,9 @@ export function layout(score: Score, m: Metrics): System[] {
           score.arpeggios
             .filter((x) => x.part === part)
             .map((x) => ({ anchor: anchorAt(x.t), text: x.down ? ARPEGGIO_DOWN : ARPEGGIO_UP, kind: "arpeggio" as const })),
+          score.articulations
+            .filter((x) => x.part === part)
+            .map((x) => ({ anchor: anchorAt(x.t), text: ARTICULATION_SIGNS[x.kind], kind: "articulation" as const })),
         )
         .filter((m) => m.anchor >= 0)
         .sort((x, y) => x.anchor - y.anchor),

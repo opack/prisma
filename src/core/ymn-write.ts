@@ -2,7 +2,7 @@
 import { writeFrontmatter } from "./frontmatter.ts";
 import { layout, noteText } from "./layout.ts";
 import type { Column, Mark, System, SystemRow, Voice } from "./layout.ts";
-import { GRACE_MARK, HYPHEN, LYRIC_LINE, firstParts, graceDigits, joinsText, partCount } from "./model.ts";
+import { ARTICULATION_SIGNS, GRACE_MARK, HYPHEN, LYRIC_LINE, firstParts, graceDigits, joinsText, partCount } from "./model.ts";
 import type { Score } from "./model.ts";
 import { octaveLabel } from "./pitch.ts";
 
@@ -110,7 +110,11 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
   // n'occupe une ligne que si elle a quelque chose dans ce système
   const expressionLines = (v: Voice) =>
     stackLines([
-      ...v.marks.map((m) => ({ col: anchorCol[m.anchor], text: m.text })),
+      // deux articulations d'une même case se suivent sur la même ligne : « . ! »
+      ...v.marks.map((m, i) => {
+        const before = m.kind === "articulation" ? v.marks.slice(0, i).filter((x) => x.kind === "articulation" && x.anchor === m.anchor) : [];
+        return { col: anchorCol[m.anchor] + before.reduce((w, x) => w + x.text.length + 1, 0), text: m.text };
+      }),
       ...v.hairpins.map((h) => {
         const before = Math.max(0, ...v.marks.filter((m) => m.anchor === h.fromAnchor).map((m) => m.text.length + 1));
         const col = anchorCol[h.fromAnchor] + before;
@@ -194,6 +198,11 @@ function cellWidths(score: Score, cell: number): (t: number) => number {
     want(e.t, e.text.length + (pin ? 3 : 2));
   }
   for (const tm of score.texts) want(tm.t, tm.text.length + 2);
+  // une articulation, suivie d'une espace (deux signes d'une même case : « . ! »)
+  for (const t of new Set(score.articulations.map((x) => x.t))) {
+    const here = score.articulations.filter((x) => x.t === t);
+    want(t, here.reduce((w, x) => w + ARTICULATION_SIGNS[x.kind].length + 1, 0));
+  }
   for (const c of score.chords) want(c.t, c.text.length + 1);
   // une syllabe tient dans sa case, trait d'union compris, suivie d'une espace
   for (const l of score.lyrics) want(l.t, l.text.length + (l.hyphen ? HYPHEN.length : 0) + 1);

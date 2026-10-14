@@ -22,6 +22,7 @@
 - Paroles : une ligne `@l` par couplet sous la partie qui chante, une syllabe par case, `lu- ne` pour le trait d'union, `ne ---` pour un mélisme ; gravées sous les notes en caractères à empattements ; importées de `<lyric>`.
 - Notes alignées (option de gravure « Notes : alignées ») : une note rejouée garde sa ligne d'un temps à l'autre, l'aiguë toujours au-dessus de la grave, avec le moins de lignes possible ; le fichier `.ymn` ne change pas.
 - Plusieurs parties et instruments : autant de parties que voulu (une main, une voix, une flûte), séparées par un trait simple dans un instrument et double entre deux instruments ; noms déclarés dans `parts:` et écrits sur les traits ; une seule règle de comptage pour toutes ; pédale sous la dernière partie de son instrument ; accolade et noms à la gravure ; import de toutes les `<part>` du MusicXML, une partie par portée.
+- Articulations : `.` staccato, `!` accent, `!!` marcato, sur la ligne d'expression de la partie, pour tout ce qu'elle attaque dans la case ; gravées comme les signes classiques en haut à droite de la note ; importées du MusicXML (le tenuto, déjà dans la durée, est ignoré).
 - Import : les indications d'octave (`8va`, `8vb`, `loco`…) sont ignorées, chaque note portant déjà son octave.
 
 ## À faire
@@ -34,7 +35,7 @@
 
 ## Hors v1 pour l'instant
 
-Articulations (staccato, accents…). Polymétrie (des parties dont les barres de mesure ne tombent pas au même endroit).
+Polymétrie (des parties dont les barres de mesure ne tombent pas au même endroit).
 
 ## Limites connues
 

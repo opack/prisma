@@ -31,7 +31,7 @@ export const G = {
   graceDigit: 1.25, // largeur d'un chiffre de petite note
   graceGap: 0.75, // espace après chaque rang de petites notes
   arpeggioW: 1.5, // place de la vaguelette d'un arpège, devant l'accord
-  noteDigit: 1.85, // largeur d'un chiffre de note
+  noteDigit: 2.05, // largeur d'un chiffre de note (Atkinson Hyperlegible en gras, 3,3 mm)
   slurLevel: 1.3, // hauteur d'un étage de liaisons
   chordNameH: 4.6, // bande du nom d'un accord (« Am »)
   chordNoteH: 2.4, // hauteur d'une note dans un accord écrit en notes ymn empilées
@@ -39,6 +39,8 @@ export const G = {
   lyricH: 4.2, // une ligne de paroles (un couplet)
   lyricChar: 1.6, // largeur d'un caractère de paroles
   hyphenW: 2.2, // place d'un trait d'union après une syllabe
+  articulationScale: 1.15, // taille des signes d'articulation
+  articulationStep: 1.1, // écart entre deux signes d'articulation côte à côte, au-dessus de la note
 };
 
 /** Largeur d'une syllabe gravée, depuis le début de sa note. */
@@ -87,7 +89,7 @@ const slurH = (v: Voice) => (v.slurs.length ? 1 + (Math.max(...v.slurs.map((s) =
  * négatif reste lisible en petit, s'imprime en noir et blanc, et ne ressemble à aucune note.
  * r : demi-largeur de la pastille.
  */
-export const FINGER = { r: 1.2, gap: 0.3 };
+export const FINGER = { r: 1.2, gap: 0.55 };
 
 /** Morceaux d'une attaque : la note, la voisine d'une trille, le doigt. */
 export function noteParts(c: string) {
@@ -168,7 +170,8 @@ export type PartPlace = {
 export type Page = { index: number; systems: PlacedSystem[]; header: boolean; order: string[] };
 
 // l'arpège se dessine devant l'accord, pas dans la bande des nuances
-const voiceH = (v: Voice) => (v.marks.some((m) => m.kind !== "arpeggio") || v.hairpins.length ? G.voiceH : 0);
+// l'arpège et les articulations se dessinent sur la note, pas dans la bande des nuances
+const voiceH = (v: Voice) => (v.marks.some((m) => m.kind !== "arpeggio" && m.kind !== "articulation") || v.hairpins.length ? G.voiceH : 0);
 
 /**
  * Disposition verticale d'un système dont le haut est à y : au-dessus de la règle, les bandes

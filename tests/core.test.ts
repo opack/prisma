@@ -1218,3 +1218,50 @@ describe("parties et instruments", () => {
   });
 });
 
+describe("articulations", () => {
+  const piece = ["m1 |1  |2  |3  |4  ||", "0  |8  |10 |12 |8  ||", "   |5  |   |   |   ||", "@   .   .   !   !!", "---", "-1 |1  |-  |-  |-  ||", ""].join("\n");
+
+  it("lit staccato, accent et marcato sur la ligne @ de la partie", () => {
+    expect(parseYmn(piece).articulations).toEqual([
+      { part: 0, t: 0, kind: "staccato" },
+      { part: 0, t: T, kind: "staccato" },
+      { part: 0, t: 2 * T, kind: "accent" },
+      { part: 0, t: 3 * T, kind: "marcato" },
+    ]);
+  });
+
+  it("les réécrit telles quelles, et garde deux articulations d'une même case", () => {
+    expect(writeYmn(parseYmn(piece))).toContain("@   .   .   !   !!");
+    const two = piece.replace("@   .   .   !   !!", "@   . !");
+    const s = parseYmn(two);
+    expect(s.articulations.map((x) => x.kind)).toEqual(["staccato", "accent"]);
+    expect(parseYmn(writeYmn(s)).articulations).toEqual(s.articulations);
+  });
+
+  it("refuse une articulation au-dessus de la règle, ou deux fois la même", () => {
+    expect(() => parseYmn("@   .\n" + piece)).toThrow(/sous sa partie/);
+    expect(() => parseYmn(piece.replace("@   .   .   !   !!", "@   . ."))).toThrow(/deux fois/);
+  });
+
+  it("importe les articulations du MusicXML, une fois par accord, sans le tenuto", () => {
+    const art = (inner: string) => `<articulations>${inner}</articulations>`;
+    const xml = musicXml([
+      {
+        notes: [
+          [
+            { midi: [C4, C4 + 4], dur: q, notations: art("<staccato/>") },
+            { midi: [C4], dur: q, notations: art("<accent/>") },
+            { midi: [C4], dur: q, notations: art("<strong-accent/>") },
+            { midi: [C4], dur: q, notations: art("<tenuto/>") },
+          ],
+        ],
+      },
+    ]);
+    expect(importMusicXml(xml).articulations).toEqual([
+      { part: 0, t: 0, kind: "staccato" },
+      { part: 0, t: T, kind: "accent" },
+      { part: 0, t: 2 * T, kind: "marcato" },
+    ]);
+  });
+});
+

@@ -256,6 +256,7 @@ m1 |1    |2  |3  |4  ||1     |2  |3  |4  ||
 - **Nuances** : `pp`, `p`, `mp`, `mf`, `f`, `ff`… comme sur une partition classique, gravées en gras italique.
 - **Soufflets** : `<----` crescendo, `>----` decrescendo, de leur première case à la dernière.
 - **Liaisons d'expression** : `(-----)`, de la première à la dernière note liée. Elles dessinent les phrases ; la gravure les trace en arcs fins juste sous les lignes de la partie.
+- **Articulations**, sur la case de l'attaque, pour la note ou tout l'accord : `.` staccato (détaché, plus court), `!` accent (plus fort), `!!` marcato (plus fort et plus sec). La gravure dessine le point, le `>` ou le `^` classique en haut à droite de la note. Le tenuto n'a pas de signe : la durée écrite est déjà la durée jouée.
 - **Pédale** (piano), sous la partie du bas : `Ped.` enfonce, `*` relâche, `*Ped.` change. La gravure trace un trait sous le système, avec une pointe à chaque changement : on voit exactement ce qui est tenu. Une consigne comme `Ped. simile` (« continuer de même ») s'écrit sur la même ligne.
 
 ### Les accords d'accompagnement
@@ -327,6 +328,7 @@ Les indications de caractère et de tempo (`dolce`, `rit.`, `a tempo`…) garden
 | reprises | `||:` … `:||`, et `3×` |
 | nuances, soufflets | les mêmes, sous la partie concernée |
 | liaisons d'expression | `(-----)` sous la partie concernée |
+| staccato, accent, marcato | `.`, `!`, `!!` sous la partie concernée ; le tenuto n'a pas de signe |
 | pédale | `Ped.`, `*`, `*Ped.`, tracés en trait continu |
 | accords d'accompagnement (Am, G/B) | ligne `@c` : le nom, ou les notes de la basse vers l'aigu (`10;1;5`) |
 | paroles, traits d'union, mélismes | une ligne `@l` par couplet, sous la partie qui chante : `lu- ne`, `men ---` |
