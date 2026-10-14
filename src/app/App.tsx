@@ -330,132 +330,157 @@ export function App() {
 
       {showOptions && (
         <section id="options" className="options" aria-label="Options de rendu">
-          <fieldset>
-            <legend>Octaves</legend>
-            {OCTAVE_STYLES.map((s) => (
-              <label key={s.value}>
-                <input
-                  type="radio"
-                  name="octaveStyle"
-                  id={"octave-" + s.value}
-                  checked={options.octaveStyle === s.value}
-                  onChange={() => setOptions({ octaveStyle: s.value })}
-                />
-                {s.label} <span className="sample">{s.sample}</span>
-              </label>
-            ))}
-          </fieldset>
-          <fieldset>
-            <legend>Position</legend>
-            {OCTAVE_POSITIONS.map((p) => (
-              <label key={p.value}>
-                <input
-                  type="radio"
-                  name="octavePosition"
-                  id={"position-" + p.value}
-                  checked={options.octavePosition === p.value}
-                  onChange={() => setOptions({ octavePosition: p.value })}
-                />
-                {p.label}
-              </label>
-            ))}
-          </fieldset>
-          <fieldset>
-            <legend>Notes</legend>
-            {NOTE_POSITIONS.map((p) => (
-              <label key={p.value}>
-                <input
-                  type="radio"
-                  name="notePosition"
-                  id={"notes-" + p.value}
-                  checked={options.notePosition === p.value}
-                  onChange={() => setOptions({ notePosition: p.value })}
-                />
-                {p.label}
-              </label>
-            ))}
-            <span className="sample">dans un couloir d'octave de plusieurs lignes ; alignées : une note rejouée garde sa ligne</span>
-          </fieldset>
-          <fieldset>
-            <legend>Couleurs</legend>
-            {OCTAVE_PALETTES.map((p) => (
-              <label key={p.value}>
-                <input
-                  type="radio"
-                  name="octavePalette"
-                  id={"palette-" + p.value}
-                  checked={options.octavePalette === p.value}
-                  onChange={() => setOptions({ octavePalette: p.value })}
-                />
-                {p.label}
-              </label>
-            ))}
-            <label>
-              <input
-                type="checkbox"
-                id="octave-mixed"
-                checked={options.octaveMixed}
-                disabled={options.octavePalette === "none"}
-                onChange={(e) => setOptions({ octaveMixed: e.target.checked })}
-              />
-              Ordre mélangé
-            </label>
-            <span className="sample">une couleur fixe par octave ; mélangées, deux octaves voisines contrastent davantage</span>
-          </fieldset>
-          <fieldset>
-            <legend>Espacement</legend>
-            {DENSITIES.map((d) => (
-              <label key={d.value}>
-                <input
-                  type="radio"
-                  name="density"
-                  id={"density-" + d.value}
-                  checked={options.density === d.value}
-                  onChange={() => setOptions({ density: d.value })}
-                />
-                {d.label}
-              </label>
-            ))}
-          </fieldset>
-          <fieldset>
-            <legend>Accords</legend>
-            {CHORD_STYLES.map((c) => (
-              <label key={c.value}>
-                <input
-                  type="radio"
-                  name="chords"
-                  id={"chords-" + c.value}
-                  checked={options.chords === c.value}
-                  onChange={() => setOptions({ chords: c.value })}
-                />
-                {c.label} <span className="sample">{c.sample}</span>
-              </label>
-            ))}
-          </fieldset>
-          <fieldset>
-            <legend>Doigtés</legend>
-            <label>
-              <input
-                type="checkbox"
-                id="fingerings"
-                checked={options.fingerings}
-                onChange={(e) => setOptions({ fingerings: e.target.checked })}
-              />
-              Afficher les doigtés
-            </label>
-          </fieldset>
-          <fieldset>
-            <legend>Gravure</legend>
-            <label>
-              <input
-                type="checkbox"
-                id="auto-engrave"
-                checked={options.autoEngrave}
-                onChange={(e) => setOptions({ autoEngrave: e.target.checked })}
-              />
-              Graver automatiquement pendant la saisie
-            </label>
-          </fieldset>
+          <div className="group">
+            <h2>Général</h2>
+            <fieldset>
+              <legend>Accompagnement</legend>
+              <div className="choices">
+                {CHORD_STYLES.map((c) => (
+                  <label key={c.value}>
+                    <input
+                      type="radio"
+                      name="chords"
+                      id={"chords-" + c.value}
+                      checked={options.chords === c.value}
+                      onChange={() => setOptions({ chords: c.value })}
+                    />
+                    {c.label} <span className="sample">{c.sample}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Gravure</legend>
+              <div className="choices">
+                <label>
+                  <input
+                    type="checkbox"
+                    id="auto-engrave"
+                    checked={options.autoEngrave}
+                    onChange={(e) => setOptions({ autoEngrave: e.target.checked })}
+                  />
+                  Graver automatiquement pendant la saisie
+                </label>
+              </div>
+            </fieldset>
+          </div>
+          <div className="group">
+            <h2>Octaves</h2>
+            <fieldset>
+              <legend>Symbole</legend>
+              <div className="choices">
+                {OCTAVE_STYLES.map((s) => (
+                  <label key={s.value}>
+                    <input
+                      type="radio"
+                      name="octaveStyle"
+                      id={"octave-" + s.value}
+                      checked={options.octaveStyle === s.value}
+                      onChange={() => setOptions({ octaveStyle: s.value })}
+                    />
+                    {s.label} <span className="sample">{s.sample}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Position</legend>
+              <div className="choices">
+                {OCTAVE_POSITIONS.map((p) => (
+                  <label key={p.value}>
+                    <input
+                      type="radio"
+                      name="octavePosition"
+                      id={"position-" + p.value}
+                      checked={options.octavePosition === p.value}
+                      onChange={() => setOptions({ octavePosition: p.value })}
+                    />
+                    {p.label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Couleurs</legend>
+              <div className="choices">
+                {OCTAVE_PALETTES.map((p) => (
+                  <label key={p.value}>
+                    <input
+                      type="radio"
+                      name="octavePalette"
+                      id={"palette-" + p.value}
+                      checked={options.octavePalette === p.value}
+                      onChange={() => setOptions({ octavePalette: p.value })}
+                    />
+                    {p.label}
+                  </label>
+                ))}
+                <label>
+                  <input
+                    type="checkbox"
+                    id="octave-mixed"
+                    checked={options.octaveMixed}
+                    disabled={options.octavePalette === "none"}
+                    onChange={(e) => setOptions({ octaveMixed: e.target.checked })}
+                  />
+                  Ordre mélangé
+                </label>
+                <span className="sample">une couleur fixe par octave ; mélangées, deux octaves voisines contrastent davantage</span>
+              </div>
+            </fieldset>
+          </div>
+          <div className="group">
+            <h2>Notes</h2>
+            <fieldset>
+              <legend>Position</legend>
+              <div className="choices">
+                {NOTE_POSITIONS.map((p) => (
+                  <label key={p.value}>
+                    <input
+                      type="radio"
+                      name="notePosition"
+                      id={"notes-" + p.value}
+                      checked={options.notePosition === p.value}
+                      onChange={() => setOptions({ notePosition: p.value })}
+                    />
+                    {p.label}
+                  </label>
+                ))}
+                <span className="sample">dans un couloir d'octave de plusieurs lignes ; alignées : une note rejouée garde sa ligne</span>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Espacement</legend>
+              <div className="choices">
+                {DENSITIES.map((d) => (
+                  <label key={d.value}>
+                    <input
+                      type="radio"
+                      name="density"
+                      id={"density-" + d.value}
+                      checked={options.density === d.value}
+                      onChange={() => setOptions({ density: d.value })}
+                    />
+                    {d.label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Doigtés</legend>
+              <div className="choices">
+                <label>
+                  <input
+                    type="checkbox"
+                    id="fingerings"
+                    checked={options.fingerings}
+                    onChange={(e) => setOptions({ fingerings: e.target.checked })}
+                  />
+                  Afficher les doigtés
+                </label>
+              </div>
+            </fieldset>
+          </div>
         </section>
       )}
 
