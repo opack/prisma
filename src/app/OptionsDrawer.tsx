@@ -29,6 +29,11 @@ const CHORDS: Option<RenderOptions["chords"]>[] = [
   { value: "notes", label: "Notes", hint: "les notes ymn empilées, la basse en bas : 10 1 5" },
 ];
 
+const SECTIONS: Option<RenderOptions["sections"]>[] = [
+  { value: "newLine", label: "À la ligne", hint: "chaque section commence une nouvelle ligne, comme les couplets d'une chanson" },
+  { value: "inline", label: "À la suite", hint: "une section suit la précédente sur la même ligne, séparée par un blanc : la partition est plus courte" },
+];
+
 const SIMILE: Option<RenderOptions["simile"]>[] = [
   { value: "pedals", label: "Pédales", hint: "les pédales qu'il demande, gravées comme les autres ; le fichier garde la mention" },
   { value: "faded", label: "Pédales atténuées", hint: "les mêmes, en gris clair, pour alléger la page" },
@@ -190,6 +195,7 @@ export function OptionsDrawer({ options, setOptions, onClose }: { options: Rende
               onChange={(namesEverySystem) => setOptions({ namesEverySystem })}
               hint={options.namesEverySystem ? "le nom de chaque instrument en tête de chaque système" : "les noms au premier système seulement, comme sur une partition"}
             />
+            <Choice id="sections" label="Sections" value={options.sections} options={SECTIONS} onChange={(sections) => setOptions({ sections })} />
             <Choice id="simile" label="Ped. simile" value={options.simile} options={SIMILE} onChange={(simile) => setOptions({ simile })} />
           </>
         )}

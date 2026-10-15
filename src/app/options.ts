@@ -39,6 +39,8 @@ export type RenderOptions = {
   octaveMixed: boolean;
   /** Accords : nom anglais, notes ymn empilées, ou les deux. */
   chords: ChordStyle;
+  /** Sections : chacune commence une nouvelle ligne, ou suit la précédente sur la même ligne, séparée par un blanc. */
+  sections: SectionLayout;
   /** « Ped. simile » : gravé en pédales comme les autres, en pédales atténuées, ou en mention seule. */
   simile: SimileDisplay;
   /** Écoute : le métronome sur les temps (bouton à côté de la lecture). */
@@ -53,7 +55,7 @@ export type RenderOptions = {
   clickVolume: number;
 };
 
-export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal", fingerings: true, namesEverySystem: false, holdReminders: true, octavePalette: "rainbow", octaveMixed: false, chords: "both", simile: "pedals", metronome: false, clickSounds: DEFAULT_CLICK_SOUNDS, clickGrid: "cells", countIn: false, clickVolume: 1 };
+export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal", fingerings: true, namesEverySystem: false, holdReminders: true, octavePalette: "rainbow", octaveMixed: false, chords: "both", sections: "newLine", simile: "pedals", metronome: false, clickSounds: DEFAULT_CLICK_SOUNDS, clickGrid: "cells", countIn: false, clickVolume: 1 };
 
 export const OCTAVE_STYLES: { value: OctaveStyle; label: string; sample: string }[] = [
   { value: "arrow", label: "Flèches", sample: "↑1  0  ↓1" },
@@ -86,6 +88,12 @@ export const CHORD_STYLES: { value: ChordStyle; label: string; sample: string }[
   { value: "name", label: "Nom", sample: "Am" },
   { value: "notes", label: "Notes", sample: "10 1 5" },
   { value: "both", label: "Les deux", sample: "Am + 10 1 5" },
+];
+
+export type SectionLayout = "newLine" | "inline";
+export const SECTION_LAYOUTS: { value: SectionLayout; label: string }[] = [
+  { value: "newLine", label: "À la ligne" },
+  { value: "inline", label: "À la suite" },
 ];
 
 export const SIMILE_DISPLAYS: { value: SimileDisplay; label: string }[] = [
@@ -124,6 +132,7 @@ export function loadOptions(): RenderOptions {
     const octaveMixed = typeof raw.octaveMixed === "boolean" ? raw.octaveMixed : DEFAULT_OPTIONS.octaveMixed;
     const chords = CHORD_STYLES.some((c) => c.value === raw.chords) ? raw.chords : DEFAULT_OPTIONS.chords;
     const simile = SIMILE_DISPLAYS.some((d) => d.value === raw.simile) ? raw.simile : DEFAULT_OPTIONS.simile;
+    const sections = SECTION_LAYOUTS.some((d) => d.value === raw.sections) ? raw.sections : DEFAULT_OPTIONS.sections;
     const metronome = typeof raw.metronome === "boolean" ? raw.metronome : DEFAULT_OPTIONS.metronome;
     const countIn = typeof raw.countIn === "boolean" ? raw.countIn : DEFAULT_OPTIONS.countIn;
     const clickVolume = typeof raw.clickVolume === "number" && raw.clickVolume >= 0 && raw.clickVolume <= 2 ? raw.clickVolume : DEFAULT_OPTIONS.clickVolume;
@@ -132,7 +141,7 @@ export function loadOptions(): RenderOptions {
     const clickSounds = Object.fromEntries(
       Object.entries(DEFAULT_CLICK_SOUNDS).map(([level, d]) => [level, CLICK_SOUNDS.some((c) => c.value === sounds[level]) ? sounds[level] : d]),
     ) as ClickSounds;
-    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density, fingerings, namesEverySystem, holdReminders, octavePalette, octaveMixed, chords, simile, metronome, clickSounds, clickGrid, countIn, clickVolume };
+    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density, fingerings, namesEverySystem, holdReminders, octavePalette, octaveMixed, chords, sections, simile, metronome, clickSounds, clickGrid, countIn, clickVolume };
   } catch {
     return DEFAULT_OPTIONS;
   }

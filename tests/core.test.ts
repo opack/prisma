@@ -336,6 +336,21 @@ describe("sections", () => {
     expect(writeYmn(s)).toMatch(/\n\n@  \[B\]\nm3 \|/);
   });
 
+  it("à la suite : une section suit la précédente sur la même ligne, séparée par un blanc", () => {
+    const s = parseYmn(piece("A B A", at([3, "[A]"], [bar[1] + 1, "[B]"])));
+    const metrics = { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 };
+    const [one, ...rest] = layout(s, { ...metrics, sectionSep: 4 });
+    expect(rest).toEqual([]);
+    expect(one.section).toBe("A");
+    const bars = one.columns.filter((c) => c.kind === "barSep") as { section?: boolean; spaced?: boolean }[];
+    expect(bars.map((c) => [!!c.section, !!c.spaced])).toEqual([[false, false], [true, true], [false, false], [false, false]]);
+    // la lettre de B contre la barre qui l'ouvre ; 4 de plus que la ligne ordinaire
+    const opening = one.columns.findIndex((c) => c.kind === "barSep" && c.spaced);
+    expect(one.marks.filter((m) => m.kind === "marker").map((m) => [m.label, m.column])).toEqual([["A", -1], ["B", opening]]);
+    const plain = layout(parseYmn(piece("", "", ruler)), metrics)[0];
+    expect(one.width - plain.width).toBe(4);
+  });
+
   it("refuse un ordre de jeu qui nomme une section absente", () => {
     expect(() => parseYmn(piece("A C", at([3, "[A]"], [bar[1] + 1, "[B]"])))).toThrow(/aucune section « \[C\] »/);
   });

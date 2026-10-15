@@ -31,6 +31,12 @@ export type Metrics = {
    * une ligne par note, qui dessine la mélodie et les arpèges.
    */
   align?: Align;
+  /**
+   * Sections à la suite : une section qui commence en cours de ligne ne passe pas à la ligne
+   * suivante ; un blanc de sectionSep la sépare de la précédente. Par défaut, chaque section
+   * commence une nouvelle ligne.
+   */
+  sectionSep?: number;
 };
 
 export type Align = "replayed" | "pitch";
@@ -43,7 +49,11 @@ export type Column =
    * startRepeat : « ||: » (la mesure suivante en commence une). lead : barre de début de
    * système, présente seulement quand le système commence par « ||: ».
    */
-  | { kind: "barSep"; endRepeat?: boolean; startRepeat?: boolean; lead?: boolean; final?: boolean; section?: boolean };
+  /**
+   * section : double barre de fin de section ; spaced : une nouvelle section suit sur la même
+   * ligne, après un blanc (la barre ferme la section, puis la suivante s'ouvre comme une ligne).
+   */
+  | { kind: "barSep"; endRepeat?: boolean; startRepeat?: boolean; lead?: boolean; final?: boolean; section?: boolean; spaced?: boolean };
 // final : dernière barre du morceau (double barre de fin, trait fin puis trait épais) ;
 // section : barre qui termine une section (double barre)
 
@@ -271,10 +281,11 @@ function barsOf(beats: Beat[]): number[][] {
 function breakSystems(score: Score, grids: BeatGrid[], m: Metrics): number[][] {
   const bars = barsOf(score.beats);
   const avail = m.width - m.prefix;
+  const sectionStarts = new Set(score.markers.map((mk) => mk.barIndex));
   const barEndW = (barIndex: number) => {
     const r = repeatOf(score, barIndex);
     const next = repeatOf(score, barIndex + 1);
-    return m.barSep + (r?.end ? m.repeatDots : 0) + (next?.start ? m.repeatDots : 0);
+    return m.barSep + (r?.end ? m.repeatDots : 0) + (next?.start ? m.repeatDots : 0) + (sectionStarts.has(barIndex + 1) ? (m.sectionSep ?? 0) : 0);
   };
   const beatW = (i: number, last: boolean) =>
     cellsWidth(i, grids[i].n, m) + (last ? barEndW(score.beats[i].barIndex) : m.beatSep);
@@ -290,10 +301,9 @@ function breakSystems(score: Score, grids: BeatGrid[], m: Metrics): number[][] {
     cur = [];
     used = 0;
   };
-  // chaque section commence un nouveau système, comme les couplets d'une chanson
-  const sectionStarts = new Set(score.markers.map((mk) => mk.barIndex));
+  // par défaut, chaque section commence un nouveau système, comme les couplets d'une chanson
   for (const bar of bars) {
-    if (sectionStarts.has(score.beats[bar[0]].barIndex)) flush();
+    if (m.sectionSep === undefined && sectionStarts.has(score.beats[bar[0]].barIndex)) flush();
     const w = barW(bar);
     if (cur.length && used + w <= avail) {
       cur.push(...bar);
@@ -489,8 +499,11 @@ export function layout(score: Score, m: Metrics): System[] {
       if (bi === score.beats.length - 1) col.final = true;
       // fin de section : double barre
       else if (!endRepeat && !startRepeat && score.markers.some((mk) => mk.barIndex === barIndex + 1)) col.section = true;
+      // une section qui suit sur la même ligne : un blanc la sépare de la précédente
+      const spaced = m.sectionSep !== undefined && !lastOfSystem && score.markers.some((mk) => mk.barIndex === barIndex + 1);
+      if (spaced) col.spaced = true;
       columns.push(col);
-      width += m.barSep + (endRepeat ? m.repeatDots : 0) + (startRepeat ? m.repeatDots : 0);
+      width += m.barSep + (endRepeat ? m.repeatDots : 0) + (startRepeat ? m.repeatDots : 0) + (spaced ? m.sectionSep! : 0);
     });
 
     const inSystem = score.notes.filter((n) => n.start < t1 && n.end > t0);
@@ -572,9 +585,16 @@ export function layout(score: Score, m: Metrics): System[] {
       const a = lastAnchorOfBar(r.barIndex);
       if (a !== undefined) marks.push({ anchor: a, text: `${r.times}×`, kind: "times" });
     }
-    // début de section : sa lettre en tête du système
+    // début de section : sa lettre en tête du système, ou contre la barre qui l'ouvre en cours de ligne
     const section = score.markers.find((mk) => firstAnchorOfBar(mk.barIndex) === 0);
     if (section) marks.push({ column: -1, text: `[${section.label}]`, kind: "marker", label: section.label });
+    for (const mk of score.markers) {
+      const a = firstAnchorOfBar(mk.barIndex);
+      if (a === undefined || a === 0) continue;
+      let column = anchors[a] - 1;
+      while (column > 0 && columns[column].kind !== "barSep") column--;
+      marks.push({ column, text: `[${mk.label}]`, kind: "marker", label: mk.label });
+    }
     for (const t of score.fermatas) {
       const a = anchors.findIndex((ci) => (columns[ci] as { t: number }).t === t);
       if (a >= 0) marks.push({ anchor: a, text: "^", kind: "fermata" });

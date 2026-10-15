@@ -304,10 +304,20 @@ function SlurBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: num
 type BarCol = Extract<PlacedSystem["sys"]["columns"][number], { kind: "barSep" }>;
 
 /**
+ * Barre entre deux sections à la suite : la fin de la section (double barre, ou « :|| »), un
+ * blanc, puis le début de la suivante, ouverte comme une ligne (trait, ou « ||: »).
+ */
+function spacedParts(col: BarCol, x: number, w: number) {
+  const close = G.barSep + (col.endRepeat ? G.repeatDots : 0);
+  const open = col.startRepeat ? G.repeatDots + G.beatSep : 0;
+  return { close, open, gap: [x + close, x + w - open] as [number, number] };
+}
+
+/**
  * Barre de mesure, avec ses signes de reprise : « :|| » (points, trait fin, trait épais),
  * « ||: » (trait épais, trait fin, points). Les points sont placés au milieu de chaque partie.
  */
-function BarLine({ x, w, col, top, bottom, sections }: { x: number; w: number; col: BarCol; top: number; bottom: number; sections: number[][] }) {
+function BarLine({ x, w, col, top, bottom, sections, end }: { x: number; w: number; col: BarCol; top: number; bottom: number; sections: number[][]; end: boolean }) {
   const thin = (lx: number, k: string) => <line key={k} x1={lx} x2={lx} y1={top} y2={bottom} stroke={INK} strokeWidth={0.22} />;
   const thick = (lx: number, k: string) => <line key={k} x1={lx} x2={lx} y1={top} y2={bottom} stroke={INK} strokeWidth={0.6} />;
   const dots = (dx: number, k: string) =>
@@ -322,23 +332,37 @@ function BarLine({ x, w, col, top, bottom, sections }: { x: number; w: number; c
     });
   // les points sont centrés dans la place qui leur est réservée (G.repeatDots)
   const d = G.repeatDots / 2;
+  if (col.spaced) {
+    const { close, open, gap } = spacedParts(col, x, w);
+    const sub = { top, bottom, sections, end: true };
+    return (
+      <g>
+        <BarLine x={x} w={close} col={{ kind: "barSep", endRepeat: col.endRepeat, section: !col.endRepeat }} {...sub} />
+        <line x1={gap[1]} x2={gap[1]} y1={top} y2={bottom} stroke={INK} strokeWidth={0.45} />
+        {open > 0 && <BarLine x={gap[1]} w={open} col={{ kind: "barSep", lead: true }} {...sub} />}
+      </g>
+    );
+  }
   if (col.lead) return <g>{thin(x + 0.55, "t")}{dots(x + w - d, "d")}</g>;
   if (!col.endRepeat && !col.startRepeat) {
     // fin du morceau : double barre, trait fin puis trait épais
-    if (col.final) return <g>{thin(x + w - 1.25, "t")}{thick(x + w - 0.45, "T")}</g>;
+    if (col.final) return <g>{thin(x + w - 1.1, "t")}{thick(x + w - 0.3, "T")}</g>;
+    // en fin de système, la barre ferme les couloirs : elle s'aligne sur leur bord droit
     // début de section : double barre
     if (col.section) {
       // aussi marquée qu'une barre de mesure : deux traits de même épaisseur
       const bar = (lx: number, k: string) => <line key={k} x1={lx} x2={lx} y1={top} y2={bottom} stroke={INK} strokeWidth={0.4} />;
-      return <g>{bar(x + w / 2 - 0.45, "t1")}{bar(x + w / 2 + 0.45, "t2")}</g>;
+      const m = end ? x + w - 0.65 : x + w / 2;
+      return <g>{bar(m - 0.45, "t1")}{bar(m + 0.45, "t2")}</g>;
     }
-    return <line x1={x + w / 2} x2={x + w / 2} y1={top} y2={bottom} stroke={INK} strokeWidth={0.45} />;
+    const lx = end ? x + w - 0.225 : x + w / 2;
+    return <line x1={lx} x2={lx} y1={top} y2={bottom} stroke={INK} strokeWidth={0.45} />;
   }
   if (col.endRepeat && col.startRepeat) {
     const m = x + w / 2;
     return <g>{dots(x + d, "a")}{thin(m - 0.75, "t1")}{thick(m, "T")}{thin(m + 0.75, "t2")}{dots(x + w - d, "b")}</g>;
   }
-  if (col.endRepeat) return <g>{dots(x + d, "a")}{thin(x + w - 1.25, "t")}{thick(x + w - 0.45, "T")}</g>;
+  if (col.endRepeat) return <g>{dots(x + d, "a")}{thin(x + w - 1.1, "t")}{thick(x + w - 0.3, "T")}</g>;
   return <g>{thick(x + 0.45, "T")}{thin(x + 1.25, "t")}{dots(x + w - d, "b")}</g>;
 }
 
@@ -387,7 +411,9 @@ function Marks({ ps }: { ps: PlacedSystem }) {
       {sys.marks
         .filter((m) => m.kind === "marker")
         .map((m, i) => {
-          const bar = m.column! >= 0 ? xs[m.column!] + ws[m.column!] / 2 : left;
+          const c = m.column! >= 0 ? (sys.columns[m.column!] as BarCol) : undefined;
+          // en cours de ligne, contre la barre qui ouvre la section (après le blanc, s'il y en a un)
+          const bar = !c ? left : c.spaced ? spacedParts(c, xs[m.column!], ws[m.column!]).gap[1] : xs[m.column!] + ws[m.column!] / 2;
           return <SectionBox key={"r" + i} x={bar + 0.6} y={top} label={m.label!} />;
         })}
       {sys.marks
@@ -628,6 +654,18 @@ function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; options:
   const right = xs[xs.length - 1] + ws[ws.length - 1];
   const rulerBase = y + G.rulerH * 0.72;
   const rowsOf = (k: number) => sys.parts[k].rows;
+  // sections à la suite : le blanc entre la fin d'une section et la suivante coupe les couloirs
+  const gaps = sys.columns.flatMap((c, ci) => (c.kind === "barSep" && c.spaced ? [spacedParts(c, xs[ci], ws[ci]).gap] : []));
+  const spans = (a: number, b: number) => {
+    const out: [number, number][] = [];
+    let from = a;
+    for (const [g0, g1] of gaps) {
+      out.push([from, g0]);
+      from = g1;
+    }
+    out.push([from, b]);
+    return out;
+  };
   const rowY = (k: number, i: number) => ps.parts[k].rowsTop + i * G.rowH;
 
   // bandes alternées par groupe d'octave, dans chaque partie
@@ -697,7 +735,9 @@ function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; options:
         });
         return <path key={a} d={arms.join(" ")} stroke={LIGHT_TEXT} strokeWidth={0.28} strokeLinecap="round" />;
       })}
-      <line x1={left} x2={right} y1={y + G.rulerH} y2={y + G.rulerH} stroke={LIGHT} strokeWidth={0.25} />
+      {spans(left, right).map(([a, b], j) => (
+        <line key={"rl" + j} x1={a} x2={b} y1={y + G.rulerH} y2={y + G.rulerH} stroke={LIGHT} strokeWidth={0.25} />
+      ))}
       {/* accords : le nom en haut, les notes ymn empilées dessous, la basse en bas */}
       {sys.chords.map((c, i) => {
         const { notes, name } = chordParts(c.text);
@@ -745,12 +785,16 @@ function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; options:
         const alt = alternate(p.rows);
         return p.rows.map((r, i) => {
           const fill = bandFill(r.octave, alt[i]);
-          return fill && <rect key={`bd${k}-${i}`} x={left} y={rowY(k, i)} width={right - left} height={G.rowH} fill={fill} />;
+          return fill && spans(left, right).map(([a, b], j) => <rect key={`bd${k}-${i}-${j}`} x={a} y={rowY(k, i)} width={b - a} height={G.rowH} fill={fill} />);
         });
       })}
       {sys.parts.map((p, k) => p.rows.map((r, i) => <Row key={`r${k}-${i}`} ps={ps} row={r} y={rowY(k, i)} centered={centered} articulations={articulationsOf(k, i)} reminders={options.holdReminders} />))}
       {/* trait épais entre deux parties d'un même instrument */}
-      {ps.parts.map((pp, k) => pp.separator !== undefined && <line key={"sep" + k} x1={left} x2={right} y1={pp.separator} y2={pp.separator} stroke={INK} strokeWidth={0.5} />)}
+      {ps.parts.map(
+        (pp, k) =>
+          pp.separator !== undefined &&
+          spans(left, right).map(([a, b], j) => <line key={`sep${k}-${j}`} x1={a} x2={b} y1={pp.separator} y2={pp.separator} stroke={INK} strokeWidth={0.5} />),
+      )}
       {/* arpèges : une vaguelette devant l'accord, de sa note la plus grave à la plus aiguë */}
       {sys.arpeggios.map((arp, i) => {
         const attack = (r: SystemRow) => !!r.cells[arp.anchor] && !r.cells[arp.anchor].startsWith("-");
@@ -777,7 +821,7 @@ function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; options:
                 const x = xs[ci] + ws[ci] / 2;
                 return <line key={ci} x1={x} x2={x} y1={top} y2={bottom} stroke={LIGHT} strokeWidth={0.22} />;
               }
-              return <BarLine key={ci} x={xs[ci]} w={ws[ci]} col={c} top={top} bottom={bottom} sections={sections} />;
+              return <BarLine key={ci} x={xs[ci]} w={ws[ci]} col={c} top={top} bottom={bottom} sections={sections} end={ci === sys.columns.length - 1} />;
             })}
           </g>
         );

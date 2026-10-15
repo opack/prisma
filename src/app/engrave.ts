@@ -24,6 +24,7 @@ export const G = {
   instrumentGap: 5, // espace entre deux instruments
   systemGap: 6.5,
   sectionGap: 5, // espace en plus avant une nouvelle section
+  sectionSep: 5.2, // sections à la suite : un blanc d'une case entre la fin d'une section et la suivante, sur la même ligne
   headerH: 17, // titre, en première page
   subtitleH: 5, // place en plus pour un sous-titre
   orderH: 6, // ordre de jeu des sections, en tête de chaque page
@@ -221,7 +222,12 @@ export const systemHeight = (s: System, chords: ChordStyle = "both") => geometry
 
 /** Largeur d'une barre de mesure, selon ses signes de reprise (identique au calcul du moteur). */
 const barSepWidth = (c: Extract<System["columns"][number], { kind: "barSep" }>) =>
-  c.lead ? G.repeatDots + G.beatSep : G.barSep + (c.endRepeat ? G.repeatDots : 0) + (c.startRepeat ? G.repeatDots : 0);
+  c.lead
+    ? G.repeatDots + G.beatSep
+    : c.spaced
+      ? // fin de section, blanc, puis début de la suivante, ouvert comme un début de ligne
+        G.barSep + (c.endRepeat ? G.repeatDots : 0) + G.sectionSep + (c.startRepeat ? G.repeatDots + G.beatSep : 0)
+      : G.barSep + (c.endRepeat ? G.repeatDots : 0) + (c.startRepeat ? G.repeatDots : 0);
 
 /**
  * prevStretch : étirement de la ligne précédente de la même section, s'il y en a une. La
@@ -253,9 +259,10 @@ function place(sys: System, isLast: boolean, y: number, cellW: number, chords: C
 /**
  * compact : cases plus étroites, donc plus de mesures par ligne ; chords : affichage des
  * accords ; align : notes alignées, une note rejouée gardant sa ligne, ou une ligne par note (voir layout) ; reminders : rappel, en début
- * de système, de la note tenue depuis le système précédent.
+ * de système, de la note tenue depuis le système précédent ; inlineSections : une nouvelle section
+ * suit sur la même ligne, séparée par un blanc, au lieu de commencer une ligne.
  */
-export function engrave(score: Score, { compact = false, chords = "both" as ChordStyle, align = undefined as Align | undefined, reminders = true } = {}): Page[] {
+export function engrave(score: Score, { compact = false, chords = "both" as ChordStyle, align = undefined as Align | undefined, reminders = true, inlineSections = false } = {}): Page[] {
   const cellW = compact ? G.compactCell : G.cell;
   const systems = layout(score, {
     width: CONTENT_W,
@@ -273,6 +280,7 @@ export function engrave(score: Score, { compact = false, chords = "both" as Chor
     barSep: G.barSep,
     repeatDots: G.repeatDots,
     align,
+    sectionSep: inlineSections ? G.sectionSep : undefined,
   });
   const pages: Page[] = [];
   const order = score.order;
