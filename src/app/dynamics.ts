@@ -64,8 +64,11 @@ function levelAt(marks: Mark[], t: number): number {
   return level;
 }
 
-/** La vélocité de chaque note du morceau, dans l'ordre de score.notes. */
-export function velocities(score: Score): number[] {
+/**
+ * L'intensité d'une attaque d'une partie à un instant du morceau. Une note attaquée pile sur un
+ * accent (sf, fp…) prend l'intensité de l'accent ; une petite note, qui précède sa note, non.
+ */
+export function velocityAt(score: Score): (part: Part, t: number, accent?: boolean) => number {
   const own = new Map<Part, Mark[]>();
   const partsCount = score.instruments.reduce((n, i) => n + i.parts, 0);
   for (let p = 0; p < partsCount; p++) own.set(p, marksOf(score, p));
@@ -80,9 +83,15 @@ export function velocities(score: Score): number[] {
       used.set(p, shared.sort((a, b) => a.t - b.t));
     }
   }
-  return score.notes.map((n) => {
-    const marks = used.get(n.part) ?? [];
-    const hit = marks.find((m) => m.t === n.start && m.kind !== "ramp" && m.attack !== undefined) as { attack: number } | undefined;
-    return clamp(hit ? hit.attack : levelAt(marks, n.start));
-  });
+  return (part, t, accent = true) => {
+    const marks = used.get(part) ?? [];
+    const hit = accent ? (marks.find((m) => m.t === t && m.kind !== "ramp" && m.attack !== undefined) as { attack: number } | undefined) : undefined;
+    return clamp(hit ? hit.attack : levelAt(marks, t));
+  };
+}
+
+/** La vélocité de chaque note du morceau, dans l'ordre de score.notes. */
+export function velocities(score: Score): number[] {
+  const at = velocityAt(score);
+  return score.notes.map((n) => at(n.part, n.start));
 }

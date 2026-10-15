@@ -7,7 +7,7 @@
  */
 import { TICKS_PER_BEAT } from "../core/index.ts";
 import type { Score } from "../core/index.ts";
-import { velocities } from "./dynamics.ts";
+import { velocities, velocityAt } from "./dynamics.ts";
 import { soundingEnds } from "./pedal.ts";
 
 /**
@@ -16,8 +16,12 @@ import { soundingEnds } from "./pedal.ts";
  */
 export type Passage = { from: number; to: number; at: number; entry: number };
 
-/** Une note sur le déroulé : son attaque et sa fin en instants joués, son intensité (vélocité MIDI). */
-export type PlayedNote = { start: number; end: number; midi: number; velocity: number };
+/**
+ * Une note sur le déroulé : son attaque et sa fin en instants joués, son intensité (vélocité MIDI).
+ * grace : petite note, jouée `grace` crans avant l'instant `start` de sa note principale (start et
+ * end sont alors cet instant) ; la durée d'un cran se décide au tempo de l'écoute.
+ */
+export type PlayedNote = { start: number; end: number; midi: number; velocity: number; grace?: number };
 
 /** Les mesures [first, last] d'une section, ou du morceau entier. */
 type Bars = { first: number; last: number };
@@ -88,7 +92,17 @@ export function playedNotes(score: Score, ps: Passage[]): PlayedNote[] {
     score.notes.forEach((n, i) => {
       if (n.start >= p.from && n.start < p.to) out.push({ start: p.at + n.start - p.from, end: p.at + Math.min(ends[i], p.to) - p.from, midi: n.midi, velocity: velocity[i] });
     });
-  return out.sort((a, b) => a.start - b.start || a.midi - b.midi);
+  // petites notes : rangées avant leur note, la première le plus tôt ; même rang, jouées ensemble
+  const level = velocityAt(score);
+  const ranks = new Map<string, number>();
+  for (const g of score.graces) ranks.set(`${g.part}:${g.t}`, Math.max(ranks.get(`${g.part}:${g.t}`) ?? 0, g.slot + 1));
+  for (const p of runs)
+    for (const g of score.graces)
+      if (g.t >= p.from && g.t < p.to) {
+        const t = p.at + g.t - p.from;
+        out.push({ start: t, end: t, midi: g.midi, velocity: level(g.part, g.t, false), grace: ranks.get(`${g.part}:${g.t}`)! - g.slot });
+      }
+  return out.sort((a, b) => a.start - b.start || (b.grace ?? 0) - (a.grace ?? 0) || a.midi - b.midi);
 }
 
 /** Le passage joué à un instant joué. */

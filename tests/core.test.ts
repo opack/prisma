@@ -1489,3 +1489,20 @@ describe("écoute : Ped. simile", () => {
     expect(playedPedals(t).slice(1)).toEqual([ped(2, 4)]);
   });
 });
+
+describe("écoute : petites notes", () => {
+  it("joue les petites notes juste avant leur note, de gauche à droite", async () => {
+    const { passages, playedNotes } = await import("../src/app/performance.ts");
+    const { playNotes } = await import("../src/app/player.ts");
+    // l'exemple de FORMAT.md, sur le 2e temps : 3 (octave du dessus), 7, 9, puis le 5 sur le temps
+    const s = parseYmn(["m1 |1  |2        ||", "+1 |   |3'       ||", "0  |1  |  7'9'5  ||", ""].join("\n"));
+    const notes = playNotes(playedNotes(s, passages(s)), 60);
+    expect(notes.map((n) => [n.midi, +n.time.toFixed(2), +n.duration.toFixed(2)])).toEqual([
+      [60, 0, 1],
+      [74, 0.79, 0.07],
+      [66, 0.86, 0.07],
+      [68, 0.93, 0.07],
+      [64, 1, 1],
+    ]);
+  });
+});

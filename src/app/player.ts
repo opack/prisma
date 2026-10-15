@@ -4,7 +4,8 @@
  * pour le curseur de la gravure.
  *
  * Les notes telles qu'écrites, toutes les parties ensemble, au tempo choisi (celui du morceau par
- * défaut), reprises et ordre des sections déroulés, nuances et soufflets en intensité, pédale de résonance.
+ * défaut), reprises et ordre des sections déroulés, nuances et soufflets en intensité, pédale de résonance,
+ * petites notes.
  */
 import type { SplendidGrandPiano } from "smplr";
 import { TICKS_PER_BEAT } from "../core/index.ts";
@@ -30,16 +31,26 @@ export type PlayNote = { time: number; midi: number; duration: number; velocity:
 /** Durée d'un tick, en secondes, au tempo donné. */
 export const secondsPerTick = (bpm: number) => 60 / bpm / TICKS_PER_BEAT;
 
+/** Durée d'une petite note : brève, sans dépasser le sixième d'un temps aux tempos rapides. */
+const GRACE = 0.07;
+/** Une petite note peut commencer avant le départ de l'écoute, pendant le délai du début. */
+const EARLIEST = -LEAD_IN;
+
 /**
  * Les notes à jouer à partir de l'instant joué `from` (en ticks, reprises comprises), dans l'ordre
  * où elles commencent : celles qui sonnent encore à cet instant sont rejouées dès le départ, pour ce
- * qui leur reste.
+ * qui leur reste. Les petites notes se jouent juste avant leur note.
  */
 export function playNotes(notes: PlayedNote[], bpm: number, from = 0): PlayNote[] {
   const sec = secondsPerTick(bpm);
+  const grace = Math.min(GRACE, 60 / bpm / 6);
   return notes
-    .filter((n) => n.end > from)
-    .map((n) => ({ time: Math.max(0, n.start - from) * sec, midi: n.midi, duration: (n.end - Math.max(n.start, from)) * sec, velocity: n.velocity }))
+    .filter((n) => (n.grace ? n.start >= from : n.end > from))
+    .map((n) =>
+      n.grace
+        ? { time: Math.max(EARLIEST, (n.start - from) * sec - n.grace * grace), midi: n.midi, duration: grace, velocity: n.velocity }
+        : { time: Math.max(0, n.start - from) * sec, midi: n.midi, duration: (n.end - Math.max(n.start, from)) * sec, velocity: n.velocity },
+    )
     .sort((a, b) => a.time - b.time || a.midi - b.midi);
 }
 
