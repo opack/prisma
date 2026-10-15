@@ -25,10 +25,11 @@
 - Articulations : `.` staccato, `!` accent, `!!` marcato, sur la ligne d'expression de la partie, pour tout ce qu'elle attaque dans la case ; gravées comme les signes classiques en haut à droite de la note ; importées du MusicXML (le tenuto, déjà dans la durée, est ignoré).
 - Instruments transpositeurs : notés à la hauteur qui sonne, la hauteur écrite du MusicXML corrigée d'après `<transpose>`.
 - Import : les indications d'octave (`8va`, `8vb`, `loco`…) sont ignorées, chaque note portant déjà son octave.
+- Import : une nuance écrite en toutes lettres dans un texte (« sempre pianissimo ») reçoit aussi son signe (`pp`) ; le texte est gardé en entier. L'écoute ne lit que les signes.
 - Écoute, premier temps : bouton « Écouter » qui joue les notes de toutes les parties avec un piano échantillonné (bibliothèque smplr, sons téléchargés au premier clic), curseur sur la case jouée et défilement qui remonte le système en haut de l'écran ; pause qui reprend sur la case surlignée, arrêt, tempo celui de `bpm` par défaut, modifiable même en cours de lecture et rétabli d'un clic.
 - Écoute : un clic sur une colonne de la gravure y place le curseur, d'où la lecture démarre ou reprend (ou repart aussitôt si elle est en cours) ; les notes qui sonnent encore à cet endroit sont rejouées.
 - Écoute : reprises (`||:`, `:||`, `3×`) et ordre des sections déroulés comme à la lecture ; le curseur suit chaque passage, et la lettre de la section jouée est entourée dans l'ordre de jeu en tête de page ; un clic dans une mesure jouée plusieurs fois reste dans le passage en cours, ou revient au plus récent ; un clic sur une lettre de l'ordre de jeu va droit à cette section.
-- Écoute : nuances en intensité (de `ppp` à `fff`, mf par défaut), accents (`sf`, `sfz`, `fz`, `rfz`) sur la seule note attaquée, `fp` et `sfp` ; soufflets, `cresc.` et `dim.` menés jusqu'à la nuance suivante, ou d'une nuance sans elle ; une partie sans indication suit celles de son instrument.
+- Écoute : nuances en intensité (de `ppp` à `fff`, mf par défaut), accents (`sf`, `sfz`, `fz`, `rfz`) sur la seule note attaquée, `fp` et `sfp` ; soufflets, `cresc.` et `dim.` menés jusqu'à la nuance suivante, ou d'une nuance sans elle ; chaque indication vaut pour tout l'instrument, sauf pour une partie qui a la sienne au même instant (une nuance par main écrite au même endroit).
 - Écoute : pédale de résonance, pour toutes les parties de son instrument : une note relâchée sonne jusqu'à ce que la pédale remonte, un changement de pédale efface l'harmonie précédente, une touche rejouée arrête sa note tenue ; après « Ped. simile », le motif de la dernière mesure pédalée est reproduit à chaque mesure, jusqu'au prochain signe de pédale ou à la section suivante.
 - Écoute : petites notes jouées brèves juste avant leur note, de gauche à droite dans la case, ensemble quand elles sont alignées.
 - Écoute : trilles, la note et sa voisine alternées une douzaine de fois par seconde, en commençant et en finissant par la note.
@@ -40,15 +41,15 @@
 
 ## À faire
 
-1. **Compléter l'écoute** : un timbre par instrument (importé du MusicXML quand il l'indique, sinon choisi au moment de l'écoute, d'une façon à définir).
-2. **Métronome** à l'écoute, en itérations :
+1. **Métronome** à l'écoute, en itérations :
    1. activable d'un bouton à côté de la lecture, sur les temps, le premier temps de la mesure marqué (levées comprises) ; lecture avec ou sans les instruments (le métronome seul) ;
    2. les divisions du temps, sur la grille régulière (en 2 ou en 3 selon `division`, puis chaque division en deux) et non sur les cases écrites ; un son par niveau (premier temps, temps, division, subdivision), « aucun » pour ne pas marquer un niveau ; sons synthétisés, sans téléchargement ;
    3. décompte d'une mesure avant le départ, en option, et volume du métronome par rapport aux instruments ;
    4. plus tard : couper ou garder chaque partie séparément, pour travailler une main pendant que l'autre joue.
-3. **Bouton engrenage** en haut à droite pour afficher ou masquer le panneau d'options ; le panneau, de plus en plus fourni, devra peut-être changer de forme (une rubrique « Écoute » s'y ajoutera avec le métronome).
-4. **Mode lecture** : masquer le panneau d'édition pour jouer plutôt qu'éditer ; les pages de la gravure côte à côte, avec un défilement horizontal.
-5. **Bibliothèque de partitions** (à concevoir) : retrouver et ouvrir ses morceaux depuis l'application.
+2. **Bouton engrenage** en haut à droite pour afficher ou masquer le panneau d'options ; le panneau, de plus en plus fourni, devra peut-être changer de forme (une rubrique « Écoute » s'y ajoutera avec le métronome).
+3. **Mode lecture** : masquer le panneau d'édition pour jouer plutôt qu'éditer ; les pages de la gravure côte à côte, avec un défilement horizontal.
+4. **Bibliothèque de partitions** (à concevoir) : retrouver et ouvrir ses morceaux depuis l'application.
+5. **Timbre par instrument** à l'écoute (importé du MusicXML quand il l'indique, sinon choisi au moment de l'écoute, d'une façon à définir).
 
 ## Hors v1 pour l'instant
 

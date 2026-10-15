@@ -15,7 +15,7 @@
  */
 import { XMLParser } from "fast-xml-parser";
 import { chordNameNotes } from "./chords.ts";
-import { TICKS_PER_BEAT, sortArticulations, isDynamic, isPedalText, partCount, sortGraces, sortLyrics, sortNotes } from "./model.ts";
+import { TICKS_PER_BEAT, dynamicInWords, sortArticulations, isDynamic, isPedalText, partCount, sortGraces, sortLyrics, sortNotes } from "./model.ts";
 import type { Arpeggio, Articulation, ArticulationKind, Beat, Division, Expression, Grace, Hairpin, Instrument, Slur, Part, Lyric, Marker, Meta, Note, Pedal, PedalText, Repeat, Score, TextMark } from "./model.ts";
 
 /**
@@ -284,7 +284,12 @@ function readMeasures(partNode: XNode, base: Part, staves: number): RawMeasure[]
           if (lead && isDynamic(lead[1])) {
             directions.push({ part, at, kind: "dynamic", text: lead[1] });
             directions.push({ part, at, kind: "words", text: lead[2] });
-          } else directions.push({ part, at, kind: "words", text: all });
+          } else {
+            // une nuance en toutes lettres (« sempre pianissimo ») : son signe, et le texte en entier
+            const sign = dynamicInWords(all);
+            if (sign && !directions.some((x) => x.kind === "dynamic" && x.part === part && x.at === at)) directions.push({ part, at, kind: "dynamic", text: sign });
+            directions.push({ part, at, kind: "words", text: all });
+          }
         }
       } else if (t === "sound") {
         structure.push(...structureOf([item], [], cursor));

@@ -736,6 +736,15 @@ describe("consignes de pédale", () => {
     expect(() => parseYmn(piece("@   Ped. simile", ""))).toThrow(/sous la dernière partie de son instrument/);
   });
 
+  it("donne son signe à une nuance écrite en toutes lettres, et garde le texte", () => {
+    const dir = `<direction><direction-type><words>sempre pianissimo e senza sordini</words></direction-type><staff>1</staff></direction>`;
+    const s = importMusicXml(musicXml([{ notes: [[{ midi: [C4], dur: 4 * q, before: dir }]] }]));
+    expect(s.expressions).toEqual([
+      { part: 0, t: 0, text: "pp", kind: "dynamic" },
+      { part: 0, t: 0, text: "sempre pianissimo e senza sordini", kind: "text" },
+    ]);
+  });
+
   it("importe « Ped. simile » du MusicXML sur la ligne de pédale, même écrit sur la portée du haut", () => {
     const dir = `<direction><direction-type><words>Ped. simile</words></direction-type><staff>1</staff></direction>`;
     const s = importMusicXml(musicXml([{ notes: [[{ midi: [C4], dur: 4 * q, before: dir }]] }]));
@@ -1435,8 +1444,12 @@ describe("écoute : nuances", () => {
     expect(velocities(piece(3, { expressions: [dyn(0, "f"), { part: 0, t: 0, text: "dim.", kind: "text" }, dyn(2, "p")] }))).toEqual([86, 64, 42]);
   });
 
-  it("fait suivre à une partie sans indication celles de son instrument", () => {
-    expect(velocities(piece(2, { expressions: [dyn(1, "pp")] }, 2))).toEqual([70, 70, 28, 28]);
+  it("applique une nuance à tout l'instrument, sauf à une partie qui a la sienne au même instant", () => {
+    // pp écrit à droite vaut aussi pour la gauche, même si la gauche a ses propres indications ; le f
+    // écrit à gauche vaut de même pour la droite
+    expect(velocities(piece(3, { expressions: [dyn(1, "pp"), dyn(2, "f", 1)] }, 2))).toEqual([70, 70, 28, 28, 86, 86]);
+    // mf à droite et p à gauche, écrits ensemble : chacune le sien
+    expect(velocities(piece(1, { expressions: [dyn(0, "mf"), dyn(0, "p", 1)] }, 2))).toEqual([70, 42]);
   });
 });
 

@@ -1,9 +1,11 @@
 /**
  * Nuances à l'écoute : l'intensité (vélocité MIDI, de 1 à 127) de chaque note, d'après les nuances,
- * les soufflets et les « cresc. » / « dim. » de sa partie.
+ * les soufflets et les « cresc. » / « dim. ».
  *
- * Une partie sans aucune indication d'intensité suit celles des autres parties de son instrument :
- * au piano, la nuance écrite entre les portées vaut pour les deux mains.
+ * Une indication vaut pour tout l'instrument, sous quelque partie qu'elle soit écrite : au piano,
+ * la nuance écrite entre les portées vaut pour les deux mains (et le MusicXML la range sous l'une
+ * d'elles). Une partie qui a sa propre indication au même instant garde la sienne : deux nuances
+ * écrites ensemble, une par main, se jouent chacune pour sa main.
  */
 import { TICKS_PER_BEAT, instrumentOf, isDynamic } from "../core/index.ts";
 import type { Part, Score } from "../core/index.ts";
@@ -72,16 +74,21 @@ export function velocityAt(score: Score): (part: Part, t: number, accent?: boole
   const own = new Map<Part, Mark[]>();
   const partsCount = score.instruments.reduce((n, i) => n + i.parts, 0);
   for (let p = 0; p < partsCount; p++) own.set(p, marksOf(score, p));
-  // une partie sans indication suit celles des autres parties de son instrument
+  // les indications des autres parties de l'instrument, sauf là où la partie a la sienne
+  const family = (m: Mark) => (m.kind === "ramp" ? "ramp" : "level");
   const used = new Map<Part, Mark[]>();
   for (let p = 0; p < partsCount; p++) {
     const mine = own.get(p)!;
-    if (mine.length) used.set(p, mine);
-    else {
-      const k = instrumentOf(score.instruments, p);
-      const shared = [...own].filter(([q]) => instrumentOf(score.instruments, q) === k).flatMap(([, ms]) => ms);
-      used.set(p, shared.sort((a, b) => a.t - b.t));
+    const taken = new Set(mine.map((m) => `${family(m)}:${m.t}`));
+    const k = instrumentOf(score.instruments, p);
+    const others = [...own].filter(([q]) => q !== p && instrumentOf(score.instruments, q) === k).flatMap(([, ms]) => ms);
+    const shared: Mark[] = [];
+    for (const m of others) {
+      const key = `${family(m)}:${m.t}`;
+      if (!taken.has(key)) (taken.add(key), shared.push(m));
     }
+    // à un même instant, la nuance d'abord, puis le changement qui part d'elle
+    used.set(p, [...mine, ...shared].sort((a, b) => a.t - b.t || (family(a) === "ramp" ? 1 : 0) - (family(b) === "ramp" ? 1 : 0)));
   }
   return (part, t, accent = true) => {
     const marks = used.get(part) ?? [];

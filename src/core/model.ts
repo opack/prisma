@@ -145,6 +145,15 @@ export const DYNAMICS = ["ppp", "pp", "p", "mp", "mf", "f", "ff", "fff", "sf", "
 /** Nuance, éventuellement entre parenthèses (nuance ajoutée par l'éditeur : « (mp) »). */
 export const isDynamic = (t: string) => DYNAMICS.includes(t.replace(/^\((.+)\)$/, "$1"));
 
+/** Nuances écrites en toutes lettres dans un texte, et leur signe. */
+const DYNAMIC_WORDS: Record<string, string> = { pianississimo: "ppp", pianissimo: "pp", mezzopiano: "mp", piano: "p", mezzoforte: "mf", forte: "f", fortissimo: "ff", fortississimo: "fff" };
+
+/** La nuance qu'un texte écrit en toutes lettres (« sempre pianissimo » : pp), s'il y en a une. */
+export function dynamicInWords(text: string): string | undefined {
+  const word = /\b(pianississimo|pianissimo|mezzo[ -]?piano|piano|mezzo[ -]?forte|fortississimo|fortissimo|forte)\b/i.exec(text)?.[1];
+  return word && DYNAMIC_WORDS[word.toLowerCase().replace(/[ -]/, "")];
+}
+
 /**
  * Indication propre à une voix, placée sur une ancre : une nuance (« p », « mf »…) ou un
  * texte (« cresc. », « dolce »…).
