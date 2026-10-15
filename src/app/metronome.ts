@@ -1,14 +1,30 @@
 /**
  * Son du métronome : un coup de bloc de bois enregistré (« Metronome.wav » de Druminfected sur
  * freesound.org, licence CC0), raccourci à ses 90 premières millisecondes. Le fichier fait partie
- * de l'application : rien à télécharger. Le premier temps de la mesure est le même coup, joué
- * plus haut et plus fort.
+ * de l'application : rien à télécharger. Chaque niveau (premier temps, temps, division,
+ * subdivision) prend un son au choix : le même coup, plus ou moins haut, ou aucun.
  */
 import tickUrl from "./sounds/metronome.wav?url";
+import type { ClickLevel } from "./performance.ts";
 
-/** Hauteur (vitesse de lecture) et force du coup : premier temps de la mesure, ou autre temps. */
-const STRONG = { rate: 1.3, gain: 1 };
-const WEAK = { rate: 1, gain: 0.7 };
+/** Les sons au choix : le même coup de bois, joué plus ou moins vite (donc plus ou moins haut). */
+export type ClickSound = "higher" | "high" | "wood" | "low" | "none";
+/** Du silence au plus aigu : l'ordre d'un curseur. */
+export const CLICK_SOUNDS: { value: ClickSound; label: string }[] = [
+  { value: "none", label: "Aucun" },
+  { value: "low", label: "Grave" },
+  { value: "wood", label: "Bois" },
+  { value: "high", label: "Aigu" },
+  { value: "higher", label: "Très aigu" },
+];
+const RATE: Record<Exclude<ClickSound, "none">, number> = { higher: 1.65, high: 1.3, wood: 1, low: 0.75 };
+
+/** Force du coup selon son niveau : les divisions plus discrètes que les temps. */
+const GAIN: Record<ClickLevel, number> = { downbeat: 1, beat: 0.7, division: 0.45, subdivision: 0.3 };
+
+/** Le son de chaque niveau. */
+export type ClickSounds = Record<ClickLevel, ClickSound>;
+export const DEFAULT_CLICK_SOUNDS: ClickSounds = { downbeat: "high", beat: "wood", division: "none", subdivision: "none" };
 
 /** Le son décodé, une fois par contexte audio. */
 const cache = new WeakMap<AudioContext, Promise<AudioBuffer>>();
@@ -26,13 +42,12 @@ export function loadClick(context: AudioContext): Promise<AudioBuffer> {
 }
 
 /** Programme un coup à l'instant `time` de l'horloge audio ; renvoie de quoi l'annuler. */
-export function click(context: AudioContext, buffer: AudioBuffer, time: number, strong: boolean): () => void {
-  const { rate, gain } = strong ? STRONG : WEAK;
+export function click(context: AudioContext, buffer: AudioBuffer, time: number, level: ClickLevel, sound: Exclude<ClickSound, "none">): () => void {
   const source = context.createBufferSource();
   source.buffer = buffer;
-  source.playbackRate.value = rate;
+  source.playbackRate.value = RATE[sound];
   const volume = context.createGain();
-  volume.gain.value = gain;
+  volume.gain.value = GAIN[level];
   source.connect(volume).connect(context.destination);
   source.start(time);
   source.onended = () => volume.disconnect();

@@ -2,6 +2,9 @@
 import type { OctavePalette } from "./colors.ts";
 import type { ChordStyle } from "./engrave.ts";
 import type { SimileDisplay } from "./pedal.ts";
+import { CLICK_SOUNDS, DEFAULT_CLICK_SOUNDS } from "./metronome.ts";
+import type { ClickSounds } from "./metronome.ts";
+import type { ClickGrid } from "./performance.ts";
 
 export type OctaveStyle = "arrow" | "sign" | "triangle";
 export type OctavePosition = "top" | "center";
@@ -40,11 +43,13 @@ export type RenderOptions = {
   metronome: boolean;
   /** Écoute : les instruments, sans eux le métronome seul (bouton à côté de la lecture). */
   instruments: boolean;
-  /** Métronome : le premier temps de la mesure sonne autrement (plus aigu et plus fort). */
-  accentDownbeat: boolean;
+  /** Métronome : le son de chaque niveau (premier temps, temps, division, subdivision), ou aucun. */
+  clickSounds: ClickSounds;
+  /** Métronome : sur la grille régulière des temps, ou sur les cases écrites. */
+  clickGrid: ClickGrid;
 };
 
-export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal", fingerings: true, namesEverySystem: false, holdReminders: true, octavePalette: "rainbow", octaveMixed: false, chords: "both", simile: "pedals", metronome: false, instruments: true, accentDownbeat: true };
+export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal", fingerings: true, namesEverySystem: false, holdReminders: true, octavePalette: "rainbow", octaveMixed: false, chords: "both", simile: "pedals", metronome: false, instruments: true, clickSounds: DEFAULT_CLICK_SOUNDS, clickGrid: "cells" };
 
 export const OCTAVE_STYLES: { value: OctaveStyle; label: string; sample: string }[] = [
   { value: "arrow", label: "Flèches", sample: "↑1  0  ↓1" },
@@ -81,6 +86,12 @@ export const SIMILE_DISPLAYS: { value: SimileDisplay; label: string }[] = [
   { value: "text", label: "Mention seule" },
 ];
 
+export const CLICK_GRIDS: { value: ClickGrid; label: string }[] = [
+  { value: "cells", label: "Cases écrites" },
+  { value: "attacks", label: "Attaques" },
+  { value: "beats", label: "Temps et divisions" },
+];
+
 export const DENSITIES: { value: Density; label: string }[] = [
   { value: "normal", label: "Normal" },
   { value: "compact", label: "Compact" },
@@ -107,8 +118,12 @@ export function loadOptions(): RenderOptions {
     const simile = SIMILE_DISPLAYS.some((d) => d.value === raw.simile) ? raw.simile : DEFAULT_OPTIONS.simile;
     const metronome = typeof raw.metronome === "boolean" ? raw.metronome : DEFAULT_OPTIONS.metronome;
     const instruments = typeof raw.instruments === "boolean" ? raw.instruments : DEFAULT_OPTIONS.instruments;
-    const accentDownbeat = typeof raw.accentDownbeat === "boolean" ? raw.accentDownbeat : DEFAULT_OPTIONS.accentDownbeat;
-    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density, fingerings, namesEverySystem, holdReminders, octavePalette, octaveMixed, chords, simile, metronome, instruments, accentDownbeat };
+    const clickGrid = CLICK_GRIDS.some((g) => g.value === raw.clickGrid) ? raw.clickGrid : DEFAULT_OPTIONS.clickGrid;
+    const sounds = raw.clickSounds ?? {};
+    const clickSounds = Object.fromEntries(
+      Object.entries(DEFAULT_CLICK_SOUNDS).map(([level, d]) => [level, CLICK_SOUNDS.some((c) => c.value === sounds[level]) ? sounds[level] : d]),
+    ) as ClickSounds;
+    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density, fingerings, namesEverySystem, holdReminders, octavePalette, octaveMixed, chords, simile, metronome, instruments, clickSounds, clickGrid };
   } catch {
     return DEFAULT_OPTIONS;
   }

@@ -195,9 +195,11 @@ export function anchorLabel(k: number, n: number, base: Division, beatLabel: num
   return ",";
 }
 
-type BeatGrid = { n: number; labels: string[] };
+/** Les cases d'un temps : leur nombre, et le nom de chacune (chiffre du temps, « * », « . », « , »). */
+export type BeatGrid = { n: number; labels: string[] };
 
-function beatGrids(score: Score): BeatGrid[] {
+/** Les cases écrites de chaque temps, telles que les montrent le texte et la gravure. */
+export function beatGrids(score: Score): BeatGrid[] {
   const T = TICKS_PER_BEAT;
   const offsets: number[][] = score.beats.map(() => []);
   const attacks: number[][] = score.beats.map(() => []);

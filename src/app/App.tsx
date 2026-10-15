@@ -5,11 +5,28 @@ import { engrave } from "./engrave.ts";
 import { Menu } from "./Menu.tsx";
 import { ListenControls } from "./ListenControls.tsx";
 import { withSimile } from "./pedal.ts";
+import { CLICK_SOUNDS } from "./metronome.ts";
+import type { ClickGrid, ClickLevel } from "./performance.ts";
+
+/** Ce que fait entendre chaque façon de battre le métronome. */
+const GRID_HINTS: Record<ClickGrid, string> = {
+  cells: "un coup par case écrite : il fait entendre quand jouer",
+  attacks: "seulement là où une note commence : ni les tenues, ni les silences",
+  beats: "une grille régulière, quelles que soient les cases écrites",
+};
+
+/** Les niveaux du métronome, chacun avec son son au choix. */
+const CLICK_LEVELS: { value: ClickLevel; label: string; sample: string }[] = [
+  { value: "downbeat", label: "Premier temps", sample: "de la mesure (1)" },
+  { value: "beat", label: "Temps", sample: "1, 2, 3…" },
+  { value: "division", label: "Division", sample: "le temps en 2 (ou en 3) : *" },
+  { value: "subdivision", label: "Subdivision", sample: "chaque division en 2 : ." },
+];
 import { player } from "./player.ts";
 import { NoticeView } from "./NoticeView.tsx";
 import { PageView } from "./PageView.tsx";
 import { SAMPLE } from "./sample.ts";
-import { CHORD_STYLES, DENSITIES, NOTE_POSITIONS, OCTAVE_PALETTES, OCTAVE_POSITIONS, OCTAVE_STYLES, SIMILE_DISPLAYS, loadOptions, saveOptions } from "./options.ts";
+import { CHORD_STYLES, CLICK_GRIDS, DENSITIES, NOTE_POSITIONS, OCTAVE_PALETTES, OCTAVE_POSITIONS, OCTAVE_STYLES, SIMILE_DISPLAYS, loadOptions, saveOptions } from "./options.ts";
 import type { RenderOptions } from "./options.ts";
 import { OPENABLE, canWriteInPlace, download, droppedFile, pickFile, pickSaveTarget, writeFile } from "./files.ts";
 
@@ -284,8 +301,8 @@ export function App() {
   // écoute : le morceau gravé, avec le curseur sur la gravure ; arrêtée quand on regrave
   useEffect(() => player.load(score), [score]);
   useEffect(
-    () => player.setSound({ metronome: options.metronome, instruments: options.instruments, accentDownbeat: options.accentDownbeat }),
-    [options.metronome, options.instruments, options.accentDownbeat],
+    () => player.setSound({ metronome: options.metronome, instruments: options.instruments, clickSounds: options.clickSounds, clickGrid: options.clickGrid }),
+    [options.metronome, options.instruments, options.clickSounds, options.clickGrid],
   );
 
   return (
@@ -425,17 +442,40 @@ export function App() {
             </fieldset>
           </div>
           <div className="group">
-            <h2>Écoute</h2>
+            <h2>Métronome</h2>
             <fieldset>
-              <legend>Métronome</legend>
+              <legend>Battre</legend>
               <div className="choices">
-                <label>
-                  <input type="checkbox" id="accent-downbeat" checked={options.accentDownbeat} onChange={(e) => setOptions({ accentDownbeat: e.target.checked })} />
-                  Marquer le premier temps de la mesure
-                </label>
-                <span className="sample">plus aigu et plus fort que les autres ; sinon, tous les temps pareils</span>
+                {CLICK_GRIDS.map((g) => (
+                  <label key={g.value}>
+                    <input type="radio" name="clickGrid" id={"click-grid-" + g.value} checked={options.clickGrid === g.value} onChange={() => setOptions({ clickGrid: g.value })} />
+                    {g.label}
+                  </label>
+                ))}
+                <span className="sample">{GRID_HINTS[options.clickGrid]}</span>
               </div>
             </fieldset>
+            {CLICK_LEVELS.map((l) => (
+              <fieldset key={l.value}>
+                <legend>{l.label}</legend>
+                <div className="choices">
+                  {/* du silence au plus aigu : un curseur, plus parlant qu'une liste pour cinq crans */}
+                  <input
+                    type="range"
+                    className="click-sound"
+                    id={"click-" + l.value}
+                    min={0}
+                    max={CLICK_SOUNDS.length - 1}
+                    step={1}
+                    value={CLICK_SOUNDS.findIndex((c) => c.value === options.clickSounds[l.value])}
+                    onChange={(e) => setOptions({ clickSounds: { ...options.clickSounds, [l.value]: CLICK_SOUNDS[Number(e.target.value)].value } })}
+                    aria-valuetext={CLICK_SOUNDS.find((c) => c.value === options.clickSounds[l.value])?.label}
+                  />
+                  <span className="click-sound-name">{CLICK_SOUNDS.find((c) => c.value === options.clickSounds[l.value])?.label}</span>
+                  <span className="sample">{l.sample}</span>
+                </div>
+              </fieldset>
+            ))}
           </div>
           <div className="group">
             <h2>Octaves</h2>

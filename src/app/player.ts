@@ -12,8 +12,9 @@ import type { SplendidGrandPiano } from "smplr";
 import { TICKS_PER_BEAT } from "../core/index.ts";
 import type { Score } from "../core/index.ts";
 import { clicks, entryAt, entryStart, holds, inFirstBar, passages, playedLength, playedNotes, playedTick, scoreTick, stretched, unstretched } from "./performance.ts";
-import type { Click, Hold, PlayedNote, Passage } from "./performance.ts";
-import { click, loadClick } from "./metronome.ts";
+import type { Click, ClickGrid, Hold, PlayedNote, Passage } from "./performance.ts";
+import { DEFAULT_CLICK_SOUNDS, click, loadClick } from "./metronome.ts";
+import type { ClickSounds } from "./metronome.ts";
 
 /** Tempo d'un morceau qui n'en indique pas. */
 export const DEFAULT_BPM = 80;
@@ -99,7 +100,7 @@ export type PlayerSnapshot = {
 };
 
 /** Ce que l'on entend : le métronome, les instruments, et si le premier temps de la mesure sonne autrement. */
-type Sound = { metronome: boolean; instruments: boolean; accentDownbeat: boolean };
+type Sound = { metronome: boolean; instruments: boolean; clickSounds: ClickSounds; clickGrid: ClickGrid };
 
 type Piano = Awaited<ReturnType<typeof SplendidGrandPiano>["load"]>;
 
@@ -119,8 +120,8 @@ class Player {
   private holds: Hold[] = [];
   private clicks: Click[] = [];
   private tick?: AudioBuffer;
-  /** Ce que l'on entend : le métronome, les instruments (l'un, l'autre ou les deux), le premier temps marqué ou non. */
-  private sound: Sound = { metronome: false, instruments: true, accentDownbeat: true };
+  /** Ce que l'on entend : le métronome, les instruments (l'un, l'autre ou les deux), le son de chaque niveau du métronome. */
+  private sound: Sound = { metronome: false, instruments: true, clickSounds: DEFAULT_CLICK_SOUNDS, clickGrid: "cells" };
   /** Instant joué de la pause (le curseur, lui, montre l'instant du morceau). */
   private pos = 0;
   private bpm = DEFAULT_BPM;
@@ -147,7 +148,7 @@ class Player {
     this.passages = score ? passages(score) : [];
     this.notes = score ? playedNotes(score, this.passages) : [];
     this.holds = score ? holds(score, this.passages) : [];
-    this.clicks = score ? clicks(score, this.passages) : [];
+    this.clicks = score ? clicks(score, this.passages, this.sound.clickGrid) : [];
     this.set({ entries: this.passages.length ? this.passages[this.passages.length - 1].entry + 1 : 0 });
   }
 
@@ -178,7 +179,8 @@ class Player {
 
   /** Métronome et instruments, chacun entendu ou non ; en cours de lecture, la suite repart ainsi. */
   setSound(sound: Sound) {
-    if (sound.metronome === this.sound.metronome && sound.instruments === this.sound.instruments && sound.accentDownbeat === this.sound.accentDownbeat) return;
+    if (JSON.stringify(sound) === JSON.stringify(this.sound)) return;
+    if (sound.clickGrid !== this.sound.clickGrid && this.score) this.clicks = clicks(this.score, this.passages, sound.clickGrid);
     this.sound = sound;
     if (this.snapshot.state !== "playing") return;
     const from = this.now();
@@ -293,7 +295,13 @@ class Player {
     const played = (elapsed: number) => unstretched(hs, zero + Math.max(0, elapsed) / sec);
     const start = context.currentTime + LEAD_IN;
     this.now = () => played(context.currentTime - start);
-    const beats = this.sound.metronome ? this.clicks.filter((c) => c.at >= from).map((c) => ({ time: (stretched(hs, c.at) - zero) * sec, strong: c.strong && this.sound.accentDownbeat })) : [];
+    const sounds = this.sound.clickSounds;
+    const beats = this.sound.metronome
+      ? this.clicks.flatMap((c) => {
+          const sound = sounds[c.level];
+          return c.at >= from && sound !== "none" ? [{ time: (stretched(hs, c.at) - zero) * sec, level: c.level, sound }] : [];
+        })
+      : [];
     let next = 0, nextBeat = 0;
     // programmation par tranches : interrompre coupe aussi ce qui n'a pas encore été programmé
     const schedule = () => {
@@ -306,7 +314,7 @@ class Player {
       }
       for (; nextBeat < beats.length && beats[nextBeat].time < now - start + LOOKAHEAD; nextBeat++) {
         const b = beats[nextBeat];
-        this.voices.push({ end: start + b.time + 0.1, stop: click(context, this.tick!, start + b.time, b.strong) });
+        this.voices.push({ end: start + b.time + 0.1, stop: click(context, this.tick!, start + b.time, b.level, b.sound) });
       }
     };
     schedule();

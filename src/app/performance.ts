@@ -5,7 +5,7 @@
  * Deux échelles de temps, en ticks : l'instant du morceau (sa place sur la partition) et l'instant
  * joué (depuis le début de l'écoute). Une mesure reprise a un instant du morceau et deux instants joués.
  */
-import { TICKS_PER_BEAT } from "../core/index.ts";
+import { TICKS_PER_BEAT, beatGrids } from "../core/index.ts";
 import type { ArticulationKind, Score } from "../core/index.ts";
 import { velocities, velocityAt } from "./dynamics.ts";
 import { soundingEnds } from "./pedal.ts";
@@ -77,14 +77,43 @@ export function passages(score: Score): Passage[] {
   return out;
 }
 
-/** Un temps du métronome, en instant joué ; strong : le premier temps de la mesure. */
-export type Click = { at: number; strong: boolean };
+/** Niveau d'un coup de métronome : premier temps de la mesure, temps, division du temps, subdivision. */
+export type ClickLevel = "downbeat" | "beat" | "division" | "subdivision";
 
-/** Les temps du métronome sur le déroulé, reprises comprises ; une levée commence sur un temps faible. */
-export function clicks(score: Score, ps: Passage[]): Click[] {
+/** Un coup du métronome, en instant joué. */
+export type Click = { at: number; level: ClickLevel };
+
+/** Ce que bat le métronome : la grille régulière du temps, les cases écrites, ou les attaques. */
+export type ClickGrid = "beats" | "cells" | "attacks";
+
+/**
+ * Les coups du métronome sur le déroulé, reprises comprises. Sur la grille régulière de chaque
+ * temps : le temps, sa division en 2 ou en 3 selon son découpage, puis chaque division coupée en
+ * deux. Ou sur les cases écrites : un coup par case, à son niveau (« * » division, « . » et « , »
+ * subdivision), ce qui fait entendre quand jouer. Ou sur les seules attaques : chaque case, temps
+ * compris, où une note commence dans n'importe quelle partie (pas une case de tenue, de silence ou
+ * de soufflet). Une levée commence sur un temps, pas sur un premier temps.
+ */
+export function clicks(score: Score, ps: Passage[], grid: ClickGrid = "beats"): Click[] {
+  const cells = grid === "beats" ? [] : beatGrids(score);
+  const attacks = grid === "attacks" ? new Set(score.notes.map((n) => n.start)) : undefined;
   const out: Click[] = [];
   for (const p of ps)
-    for (let t = p.from; t < p.to; t += TICKS_PER_BEAT) out.push({ at: p.at + t - p.from, strong: score.beats[t / TICKS_PER_BEAT]?.label === 1 });
+    for (let t = p.from; t < p.to; t += TICKS_PER_BEAT) {
+      const i = t / TICKS_PER_BEAT, beat = score.beats[i];
+      const at = p.at + t - p.from;
+      if (!attacks || attacks.has(t)) out.push({ at, level: beat?.label === 1 ? "downbeat" : "beat" });
+      if (grid !== "beats") {
+        const { n, labels } = cells[i] ?? { n: 1, labels: [] };
+        for (let k = 1; k < n; k++) {
+          const offset = (k * TICKS_PER_BEAT) / n;
+          if (!attacks || attacks.has(t + offset)) out.push({ at: at + offset, level: labels[k] === "*" ? "division" : "subdivision" });
+        }
+        continue;
+      }
+      const n = beat?.division ?? 2;
+      for (let k = 1; k < 2 * n; k++) out.push({ at: at + (k * TICKS_PER_BEAT) / (2 * n), level: k % 2 ? "subdivision" : "division" });
+    }
   return out;
 }
 
