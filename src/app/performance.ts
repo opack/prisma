@@ -8,6 +8,7 @@
 import { TICKS_PER_BEAT } from "../core/index.ts";
 import type { Score } from "../core/index.ts";
 import { velocities } from "./dynamics.ts";
+import { soundingEnds } from "./pedal.ts";
 
 /**
  * Un passage joué d'une traite : les instants du morceau [from, to[, joués à partir de l'instant
@@ -81,11 +82,11 @@ export function playedNotes(score: Score, ps: Passage[]): PlayedNote[] {
     if (prev && prev.to === p.from) runs[runs.length - 1] = { ...prev, to: p.to };
     else runs.push(p);
   }
-  const velocity = velocities(score);
+  const velocity = velocities(score), ends = soundingEnds(score);
   const out: PlayedNote[] = [];
   for (const p of runs)
     score.notes.forEach((n, i) => {
-      if (n.start >= p.from && n.start < p.to) out.push({ start: p.at + n.start - p.from, end: p.at + Math.min(n.end, p.to) - p.from, midi: n.midi, velocity: velocity[i] });
+      if (n.start >= p.from && n.start < p.to) out.push({ start: p.at + n.start - p.from, end: p.at + Math.min(ends[i], p.to) - p.from, midi: n.midi, velocity: velocity[i] });
     });
   return out.sort((a, b) => a.start - b.start || a.midi - b.midi);
 }

@@ -4,7 +4,7 @@
  * pour le curseur de la gravure.
  *
  * Les notes telles qu'écrites, toutes les parties ensemble, au tempo choisi (celui du morceau par
- * défaut), reprises et ordre des sections déroulés, nuances et soufflets en intensité ; pas encore la pédale.
+ * défaut), reprises et ordre des sections déroulés, nuances et soufflets en intensité, pédale de résonance.
  */
 import type { SplendidGrandPiano } from "smplr";
 import { TICKS_PER_BEAT } from "../core/index.ts";
