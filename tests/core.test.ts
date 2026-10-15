@@ -1543,3 +1543,17 @@ describe("écoute : trilles", () => {
     expect(last.time + last.duration).toBeCloseTo(1);
   });
 });
+
+describe("écoute : arpèges", () => {
+  it("égrène l'accord à partir du temps, du grave à l'aigu ou de l'aigu au grave", async () => {
+    const { passages, playedNotes } = await import("../src/app/performance.ts");
+    const { playNotes } = await import("../src/app/player.ts");
+    const s = parseYmn(["m1 |1    |2    ||", "0  |8    |8    ||", "   |5    |5    ||", "   |1    |1    ||", "@   /     \\", ""].join("\n"));
+    const notes = playNotes(playedNotes(s, passages(s)), 60);
+    const at = (t: number) => notes.filter((n) => n.time >= t && n.time < t + 0.5).map((n) => [n.midi, +n.time.toFixed(2)]);
+    expect(at(0)).toEqual([[60, 0], [64, 0.04], [67, 0.08]]);
+    expect(at(1)).toEqual([[67, 1], [64, 1.04], [60, 1.08]]);
+    // toutes les notes s'arrêtent ensemble, à la fin de l'accord
+    expect(notes.filter((n) => n.time < 0.5).map((n) => +(n.time + n.duration).toFixed(2))).toEqual([1, 1, 1]);
+  });
+});

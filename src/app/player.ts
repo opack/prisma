@@ -5,7 +5,7 @@
  *
  * Les notes telles qu'écrites, toutes les parties ensemble, au tempo choisi (celui du morceau par
  * défaut), reprises et ordre des sections déroulés, nuances et soufflets en intensité, pédale de résonance,
- * petites notes, trilles.
+ * petites notes, trilles, arpèges.
  */
 import type { SplendidGrandPiano } from "smplr";
 import { TICKS_PER_BEAT } from "../core/index.ts";
@@ -38,6 +38,8 @@ const GRACE = 0.07;
 /** Une petite note peut commencer avant le départ de l'écoute, pendant le délai du début. */
 const EARLIEST = -LEAD_IN;
 
+/** Écart entre deux notes d'un arpège, sans que l'accord égrené dépasse la moitié d'un temps. */
+const ROLL = 0.04;
 /** Durée d'une note de trille : une douzaine de notes par seconde, sans dépasser le quart d'un temps. */
 const TRILL = 0.08;
 
@@ -45,7 +47,8 @@ const TRILL = 0.08;
  * Les notes à jouer à partir de l'instant joué `from` (en ticks, reprises comprises), dans l'ordre
  * où elles commencent : celles qui sonnent encore à cet instant sont rejouées dès le départ, pour ce
  * qui leur reste. Les petites notes se jouent juste avant leur note ; une trille alterne la note et
- * sa voisine, en commençant et en finissant par la note, qui sonne ensuite jusqu'au bout.
+ * sa voisine, en commençant et en finissant par la note, qui sonne ensuite jusqu'au bout ; un arpège
+ * égrène son accord à partir du temps.
  */
 export function playNotes(notes: PlayedNote[], bpm: number, from = 0): PlayNote[] {
   const sec = secondsPerTick(bpm);
@@ -58,7 +61,9 @@ export function playNotes(notes: PlayedNote[], bpm: number, from = 0): PlayNote[
     }
     if (n.end <= from) continue;
     const begin = Math.max(n.start, from);
-    const time = (begin - from) * sec, end = (n.end - from) * sec;
+    // une note d'arpège part un peu après la précédente, et reste tenue (sauf reprise en cours d'accord)
+    const rolled = n.roll && n.start >= from ? n.roll.rank * Math.min(ROLL, 60 / bpm / 2 / n.roll.count) : 0;
+    const time = (begin - from) * sec + rolled, end = (n.end - from) * sec;
     const trill = n.trill && n.trill.until > begin ? n.trill : undefined;
     if (!trill) {
       out.push({ time, midi: n.midi, duration: end - time, velocity: n.velocity });

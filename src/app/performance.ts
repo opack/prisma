@@ -21,7 +21,10 @@ export type Passage = { from: number; to: number; at: number; entry: number };
  * grace : petite note, jouée `grace` crans avant l'instant `start` de sa note principale (start et
  * end sont alors cet instant) ; la durée d'un cran se décide au tempo de l'écoute.
  */
-export type PlayedNote = { start: number; end: number; midi: number; velocity: number; grace?: number; trill?: Trill };
+export type PlayedNote = { start: number; end: number; midi: number; velocity: number; grace?: number; trill?: Trill; roll?: Roll };
+
+/** Note d'un arpège : son rang dans l'accord égrené (0 : sur le temps) et le nombre de notes de l'accord. */
+export type Roll = { rank: number; count: number };
 
 /** Trille d'une note : sa voisine, alternée jusqu'à la fin écrite de la note (en instant joué) ; la pédale ne la prolonge pas. */
 export type Trill = { midi: number; until: number };
@@ -89,7 +92,7 @@ export function playedNotes(score: Score, ps: Passage[]): PlayedNote[] {
     if (prev && prev.to === p.from) runs[runs.length - 1] = { ...prev, to: p.to };
     else runs.push(p);
   }
-  const velocity = velocities(score), ends = soundingEnds(score);
+  const velocity = velocities(score), ends = soundingEnds(score), rolls = rollRanks(score);
   const out: PlayedNote[] = [];
   for (const p of runs)
     score.notes.forEach((n, i) => {
@@ -99,6 +102,7 @@ export function playedNotes(score: Score, ps: Passage[]): PlayedNote[] {
           midi: n.midi,
           velocity: velocity[i],
           ...(n.trill !== undefined ? { trill: { midi: n.trill, until: p.at + Math.min(n.end, p.to) - p.from } } : {}),
+          ...(rolls[i] ? { roll: rolls[i] } : {}),
         });
     });
   // petites notes : rangées avant leur note, la première le plus tôt ; même rang, jouées ensemble
@@ -112,6 +116,19 @@ export function playedNotes(score: Score, ps: Passage[]): PlayedNote[] {
         out.push({ start: t, end: t, midi: g.midi, velocity: level(g.part, g.t, false), grace: ranks.get(`${g.part}:${g.t}`)! - g.slot });
       }
   return out.sort((a, b) => a.start - b.start || (b.grace ?? 0) - (a.grace ?? 0) || a.midi - b.midi);
+}
+
+/**
+ * Arpèges : pour chaque note, sa place dans l'accord égrené (rien hors arpège). Du grave à l'aigu, ou de l'aigu au grave ; sans partie, tout le système d'un geste.
+ */
+function rollRanks(score: Score): (Roll | undefined)[] {
+  const ranks: (Roll | undefined)[] = score.notes.map(() => undefined);
+  for (const a of score.arpeggios) {
+    const chord = score.notes.map((n, i) => ({ n, i })).filter(({ n }) => n.start === a.t && (a.part === undefined || n.part === a.part));
+    chord.sort((x, y) => (a.down ? y.n.midi - x.n.midi : x.n.midi - y.n.midi));
+    chord.forEach(({ i }, k) => (ranks[i] = { rank: k, count: chord.length }));
+  }
+  return ranks;
 }
 
 /** Le passage joué à un instant joué. */
