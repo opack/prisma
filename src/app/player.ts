@@ -5,13 +5,13 @@
  *
  * Les notes telles qu'écrites, toutes les parties ensemble, au tempo choisi (celui du morceau par
  * défaut), reprises et ordre des sections déroulés, nuances et soufflets en intensité, pédale de résonance,
- * petites notes, trilles, arpèges.
+ * petites notes, trilles, arpèges, points d'orgue.
  */
 import type { SplendidGrandPiano } from "smplr";
 import { TICKS_PER_BEAT } from "../core/index.ts";
 import type { Score } from "../core/index.ts";
-import { entryAt, entryStart, inFirstBar, passages, playedLength, playedNotes, playedTick, scoreTick } from "./performance.ts";
-import type { PlayedNote, Passage } from "./performance.ts";
+import { entryAt, entryStart, holds, inFirstBar, passages, playedLength, playedNotes, playedTick, scoreTick, stretched, unstretched } from "./performance.ts";
+import type { Hold, PlayedNote, Passage } from "./performance.ts";
 
 /** Tempo d'un morceau qui n'en indique pas. */
 export const DEFAULT_BPM = 80;
@@ -50,27 +50,30 @@ const TRILL = 0.08;
  * sa voisine, en commençant et en finissant par la note, qui sonne ensuite jusqu'au bout ; un arpège
  * égrène son accord à partir du temps.
  */
-export function playNotes(notes: PlayedNote[], bpm: number, from = 0): PlayNote[] {
+export function playNotes(notes: PlayedNote[], bpm: number, from = 0, hs: Hold[] = []): PlayNote[] {
   const sec = secondsPerTick(bpm);
+  // en secondes depuis le départ, points d'orgue compris
+  const zero = stretched(hs, from);
+  const at = (played: number) => (stretched(hs, played) - zero) * sec;
   const grace = Math.min(GRACE, 60 / bpm / 6);
   const out: PlayNote[] = [];
   for (const n of notes) {
     if (n.grace) {
-      if (n.start >= from) out.push({ time: Math.max(EARLIEST, (n.start - from) * sec - n.grace * grace), midi: n.midi, duration: grace, velocity: n.velocity });
+      if (n.start >= from) out.push({ time: Math.max(EARLIEST, at(n.start) - n.grace * grace), midi: n.midi, duration: grace, velocity: n.velocity });
       continue;
     }
     if (n.end <= from) continue;
     const begin = Math.max(n.start, from);
     // une note d'arpège part un peu après la précédente, et reste tenue (sauf reprise en cours d'accord)
     const rolled = n.roll && n.start >= from ? n.roll.rank * Math.min(ROLL, 60 / bpm / 2 / n.roll.count) : 0;
-    const time = (begin - from) * sec + rolled, end = (n.end - from) * sec;
+    const time = at(begin) + rolled, end = at(n.end);
     const trill = n.trill && n.trill.until > begin ? n.trill : undefined;
     if (!trill) {
       out.push({ time, midi: n.midi, duration: end - time, velocity: n.velocity });
       continue;
     }
     // un nombre impair de notes égales : la note, la voisine, la note… et la dernière est la note
-    const span = (trill.until - begin) * sec;
+    const span = at(trill.until) - at(begin);
     const count = Math.max(3, 2 * Math.round(span / Math.min(TRILL, 60 / bpm / 4) / 2) + 1);
     const step = span / count;
     for (let k = 0; k < count; k++) {
@@ -108,6 +111,7 @@ class Player {
   /** Le déroulé du morceau et ses notes, en instants joués. */
   private passages: Passage[] = [];
   private notes: PlayedNote[] = [];
+  private holds: Hold[] = [];
   /** Instant joué de la pause (le curseur, lui, montre l'instant du morceau). */
   private pos = 0;
   private bpm = DEFAULT_BPM;
@@ -133,6 +137,7 @@ class Player {
     this.score = score;
     this.passages = score ? passages(score) : [];
     this.notes = score ? playedNotes(score, this.passages) : [];
+    this.holds = score ? holds(score, this.passages) : [];
     this.set({ entries: this.passages.length ? this.passages[this.passages.length - 1].entry + 1 : 0 });
   }
 
@@ -258,11 +263,15 @@ class Player {
   private start(from: number) {
     const run = this.run;
     const context = this.context!, piano = this.piano!;
-    const notes = playNotes(this.notes, this.bpm, from);
+    const hs = this.holds;
+    const notes = playNotes(this.notes, this.bpm, from, hs);
     const sec = secondsPerTick(this.bpm);
-    const length = (playedLength(this.passages) - from) * sec;
+    const zero = stretched(hs, from);
+    const length = (stretched(hs, playedLength(this.passages)) - zero) * sec;
+    // l'instant joué après `elapsed` secondes : pendant un point d'orgue, il avance deux fois moins vite
+    const played = (elapsed: number) => unstretched(hs, zero + Math.max(0, elapsed) / sec);
     const start = context.currentTime + LEAD_IN;
-    this.now = () => from + Math.max(0, (context.currentTime - start) / sec);
+    this.now = () => played(context.currentTime - start);
     let next = 0;
     // programmation par tranches : interrompre coupe aussi ce qui n'a pas encore été programmé
     const schedule = () => {
@@ -281,7 +290,7 @@ class Player {
       if (run !== this.run) return;
       const elapsed = context.currentTime - start;
       if (elapsed > length + TAIL) return this.stop();
-      this.set(elapsed < length ? this.at(from + Math.max(0, elapsed / sec)) : { tick: null, entry: null });
+      this.set(elapsed < length ? this.at(played(elapsed)) : { tick: null, entry: null });
       this.frame = requestAnimationFrame(follow);
     };
     this.frame = requestAnimationFrame(follow);

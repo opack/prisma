@@ -33,11 +33,12 @@
 - Écoute : petites notes jouées brèves juste avant leur note, de gauche à droite dans la case, ensemble quand elles sont alignées.
 - Écoute : trilles, la note et sa voisine alternées une douzaine de fois par seconde, en commençant et en finissant par la note.
 - Écoute : arpèges égrenés à partir du temps, du grave à l'aigu (`/`) ou de l'aigu au grave (`\`), d'une partie ou de tout le système, les notes restant tenues.
+- Écoute : point d'orgue, ce qui commence là (note, accord ou silence) tenu deux fois plus longtemps (deux temps de plus au plus), le curseur restant sur sa case.
 - Écoute : boutons de lecture en icônes : début du morceau, section précédente (début de la section jouée, ou la section d'avant si l'on est dans sa première mesure ou au second clic rapproché), lecture et pause, section suivante, arrêt.
 
 ## À faire
 
-1. **Compléter l'écoute** : point d'orgue, articulations, un timbre par instrument (importé du MusicXML quand il l'indique, sinon choisi au moment de l'écoute, d'une façon à définir).
+1. **Compléter l'écoute** : articulations, un timbre par instrument (importé du MusicXML quand il l'indique, sinon choisi au moment de l'écoute, d'une façon à définir).
 2. **Métronome** à l'écoute, en itérations :
    1. activable d'un bouton à côté de la lecture, sur les temps, le premier temps de la mesure marqué (levées comprises) ; lecture avec ou sans les instruments (le métronome seul) ;
    2. les divisions du temps, sur la grille régulière (en 2 ou en 3 selon `division`, puis chaque division en deux) et non sur les cases écrites ; un son par niveau (premier temps, temps, division, subdivision), « aucun » pour ne pas marquer un niveau ; sons synthétisés, sans téléchargement ;

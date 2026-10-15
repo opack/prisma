@@ -131,6 +131,44 @@ function rollRanks(score: Score): (Roll | undefined)[] {
   return ranks;
 }
 
+/**
+ * Point d'orgue : à l'instant joué `at`, ce qui commence là (note, accord ou silence, jusqu'à la
+ * prochaine attaque) se tient deux fois plus longtemps, d'au plus deux temps de plus. `length` :
+ * la durée ainsi doublée, en ticks joués.
+ */
+export type Hold = { at: number; length: number };
+
+export function holds(score: Score, ps: Passage[]): Hold[] {
+  const attacks = [...new Set(score.notes.map((n) => n.start))].sort((a, b) => a - b);
+  const out: Hold[] = [];
+  for (const p of ps)
+    for (const t of score.fermatas) {
+      if (t < p.from || t >= p.to) continue;
+      const next = attacks.find((x) => x > t) ?? t + TICKS_PER_BEAT;
+      out.push({ at: p.at + t - p.from, length: Math.min(Math.min(next, p.to) - t, 2 * TICKS_PER_BEAT) });
+    }
+  return out.sort((a, b) => a.at - b.at);
+}
+
+/** L'instant d'horloge (en ticks, points d'orgue compris) d'un instant joué. */
+export function stretched(hs: Hold[], played: number): number {
+  let out = played;
+  for (const h of hs) if (played > h.at) out += Math.min(played - h.at, h.length);
+  return out;
+}
+
+/** L'instant joué d'un instant d'horloge : pendant un point d'orgue, le temps joué avance deux fois moins vite. */
+export function unstretched(hs: Hold[], clock: number): number {
+  let shift = 0;
+  for (const h of hs) {
+    const start = h.at + shift; // le point d'orgue sur l'horloge
+    if (clock <= start) break;
+    if (clock < start + 2 * h.length) return h.at + (clock - start) / 2;
+    shift += h.length;
+  }
+  return clock - shift;
+}
+
 /** Le passage joué à un instant joué. */
 const passageAt = (ps: Passage[], played: number) => ps.find((x) => played >= x.at && played < x.at + x.to - x.from);
 

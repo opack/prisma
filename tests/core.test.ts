@@ -1557,3 +1557,22 @@ describe("écoute : arpèges", () => {
     expect(notes.filter((n) => n.time < 0.5).map((n) => +(n.time + n.duration).toFixed(2))).toEqual([1, 1, 1]);
   });
 });
+
+describe("écoute : point d'orgue", () => {
+  it("tient deux fois plus longtemps ce qui commence sous le point d'orgue, et décale la suite", async () => {
+    const { passages, playedNotes, holds, stretched, unstretched } = await import("../src/app/performance.ts");
+    const { playNotes } = await import("../src/app/player.ts");
+    const s = parseYmn(["@       ^", "m1 |1  |2  |3  ||", "0  |1  |5  |8  ||", ""].join("\n"));
+    const ps = passages(s);
+    const hs = holds(s, ps);
+    expect(hs).toEqual([{ at: T, length: T }]);
+    expect(playNotes(playedNotes(s, ps), 60, 0, hs).map((n) => [n.midi, n.time, n.duration])).toEqual([
+      [60, 0, 1],
+      [64, 1, 2],
+      [67, 3, 1],
+    ]);
+    // le curseur reste sur la case du point d'orgue pendant qu'il dure
+    expect([0.5, 1.5, 2.5, 3.5].map((c) => unstretched(hs, c * T) / T)).toEqual([0.5, 1.25, 1.75, 2.5]);
+    expect(stretched(hs, 2.5 * T) / T).toBe(3.5);
+  });
+});
