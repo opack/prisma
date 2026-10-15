@@ -13,7 +13,7 @@ export type ClickSound = "higher" | "high" | "wood" | "low" | "none";
 export const CLICK_SOUNDS: { value: ClickSound; label: string }[] = [
   { value: "none", label: "Aucun" },
   { value: "low", label: "Grave" },
-  { value: "wood", label: "Bois" },
+  { value: "wood", label: "Moyen" },
   { value: "high", label: "Aigu" },
   { value: "higher", label: "Très aigu" },
 ];
