@@ -140,3 +140,15 @@ textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16p
 .setting .flag { flex: none; width: 38px; height: 28px; }
 .setting .slider { flex: 1; accent-color: var(--accent); min-width: 0; }
 .setting .slider-value { min-width: 4.5em; color: var(--ink); }
+/* les parties jouées : le bouton de la musique, sa flèche et la liste à cocher qu'elle ouvre */
+.bar .parts-menu { position: relative; display: flex; }
+.bar .toggles .parts-menu button { border-radius: 0; margin-left: -1px; }
+.bar .toggles .parts-menu button.more { width: 1.4em; border-radius: 0 4px 4px 0; color: var(--muted); }
+.bar .toggles .parts-menu button.more.open, .bar .toggles .parts-menu button.more:hover:not(:disabled) { color: var(--accent); }
+.bar .toggles button.partial { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, #fff) 0 4px, #fff 4px 8px); }
+.parts-list { position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; min-width: 240px; padding: 10px 12px; background: #fff; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12); display: grid; gap: 6px; }
+.parts-list label { display: flex; gap: 8px; align-items: center; cursor: pointer; white-space: nowrap; }
+.parts-title { margin: 0 0 2px; font-weight: 600; }
+.parts-actions { display: flex; gap: 6px; margin-top: 4px; }
+.bar .parts-actions button { width: auto; padding: 3px 10px; margin: 0; border-radius: 4px; color: var(--ink); background: #fff; }
+.parts-hint { margin: 2px 0 0; color: var(--muted); font-size: 0.85em; line-height: 1.35; white-space: normal; }

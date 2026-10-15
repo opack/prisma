@@ -1382,8 +1382,8 @@ describe("écoute", () => {
     s.notes = [{ part: 0, midi: 60, start: 0, end: 3 * T }];
     // après le retour en arrière la note s'arrête ; au dernier passage elle tient jusqu'au bout
     expect(playedNotes(s, passages(s))).toEqual([
-      { start: 0, end: T, midi: 60, velocity: 70 },
-      { start: T, end: 4 * T, midi: 60, velocity: 70 },
+      { part: 0, start: 0, end: T, midi: 60, velocity: 70 },
+      { part: 0, start: T, end: 4 * T, midi: 60, velocity: 70 },
     ]);
   });
 
@@ -1688,5 +1688,20 @@ describe("écoute : décompte", () => {
     expect(short(countIn(s, ps, 0))).toBe("1···1··");
     expect(short(countIn(s, ps, T))).toBe("1···");
     expect(short(countIn(s, ps, 3 * T))).toBe("1···1·");
+  });
+});
+
+describe("écoute : parties", () => {
+  it("nomme les parties : les mains d'un clavier, le rang ailleurs", async () => {
+    const { partNames } = await import("../src/app/parts.ts");
+    expect(partNames([{ parts: 2 }])).toEqual(["Main droite", "Main gauche"]);
+    expect(partNames([{ name: "Chant", parts: 1 }, { name: "Piano", parts: 2 }])).toEqual(["Chant", "Piano — main droite", "Piano — main gauche"]);
+    expect(partNames([{ name: "Chœur", parts: 2 }])).toEqual(["Chœur — partie 1", "Chœur — partie 2"]);
+  });
+
+  it("garde la partie de chaque note jouée, pour pouvoir la rendre muette", async () => {
+    const { passages, playedNotes } = await import("../src/app/performance.ts");
+    const s = parseYmn("m1 |1  ||\n0  |1  ||\n---\n-1 |1  ||\n");
+    expect(playedNotes(s, passages(s)).map((n) => [n.midi, n.part])).toEqual([[48, 1], [60, 0]]);
   });
 });

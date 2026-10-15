@@ -21,7 +21,7 @@ export type Passage = { from: number; to: number; at: number; entry: number };
  * grace : petite note, jouée `grace` crans avant l'instant `start` de sa note principale (start et
  * end sont alors cet instant) ; la durée d'un cran se décide au tempo de l'écoute.
  */
-export type PlayedNote = { start: number; end: number; midi: number; velocity: number; grace?: number; trill?: Trill; roll?: Roll };
+export type PlayedNote = { part: number; start: number; end: number; midi: number; velocity: number; grace?: number; trill?: Trill; roll?: Roll };
 
 /** Note d'un arpège : son rang dans l'accord égrené (0 : sur le temps) et le nombre de notes de l'accord. */
 export type Roll = { rank: number; count: number };
@@ -159,6 +159,7 @@ export function playedNotes(score: Score, ps: Passage[]): PlayedNote[] {
   for (const p of runs)
     score.notes.forEach((n, i) => {
       if (n.start >= p.from && n.start < p.to) out.push({
+          part: n.part,
           start: p.at + n.start - p.from,
           end: p.at + Math.min(ends[i], p.to) - p.from,
           midi: n.midi,
@@ -175,7 +176,7 @@ export function playedNotes(score: Score, ps: Passage[]): PlayedNote[] {
     for (const g of score.graces)
       if (g.t >= p.from && g.t < p.to) {
         const t = p.at + g.t - p.from;
-        out.push({ start: t, end: t, midi: g.midi, velocity: level(g.part, g.t, false), grace: ranks.get(`${g.part}:${g.t}`)! - g.slot });
+        out.push({ part: g.part, start: t, end: t, midi: g.midi, velocity: level(g.part, g.t, false), grace: ranks.get(`${g.part}:${g.t}`)! - g.slot });
       }
   return out.sort((a, b) => a.start - b.start || (b.grace ?? 0) - (a.grace ?? 0) || a.midi - b.midi);
 }

@@ -285,17 +285,21 @@ export function App() {
   const { problem, score } = engraved;
   // écoute : le morceau gravé, avec le curseur sur la gravure ; arrêtée quand on regrave
   useEffect(() => player.load(score), [score]);
+  // parties muettes : le temps d'une séance, rétablies quand les parties du morceau changent
+  const [muted, setMuted] = useState<number[]>([]);
+  const partsKey = JSON.stringify(score?.instruments ?? []);
+  useEffect(() => setMuted([]), [partsKey]);
   useEffect(
     () =>
       player.setSound({
         metronome: options.metronome,
-        instruments: options.instruments,
+        muted,
         clickSounds: options.clickSounds,
         clickGrid: options.clickGrid,
         countIn: options.countIn,
         clickVolume: options.clickVolume,
       }),
-    [options.metronome, options.instruments, options.clickSounds, options.clickGrid, options.countIn, options.clickVolume],
+    [options.metronome, muted, options.clickSounds, options.clickGrid, options.countIn, options.clickVolume],
   );
 
   return (
@@ -354,8 +358,9 @@ export function App() {
           score={score}
           disabled={!score || !pages.length}
           metronome={options.metronome}
-          instruments={options.instruments}
-          onSound={(sound) => setOptions(sound)}
+          onMetronome={(metronome) => setOptions({ metronome })}
+          muted={muted}
+          onMuted={setMuted}
         />
         <button className="primary" onClick={engraveNow} title="Ctrl+Entrée">
           Graver{dirty ? " •" : ""}

@@ -31,6 +31,7 @@
 - Métronome, divisions : chaque niveau (premier temps, temps, division du temps en 2 ou en 3 selon son découpage, subdivision en deux) a son son au choix, sur un curseur à cinq crans (aucun, grave, bois, aigu, très aigu) ; le métronome bat les cases écrites (par défaut : un coup par case, qui fait entendre quand jouer), ou les seules attaques (là où une note commence, temps compris : ni tenues ni silences), ou la grille régulière du temps ; les divisions plus discrètes que les temps.
 - Métronome, décompte et volume : en option, une mesure de décompte avant de jouer (puis, pour une levée, les temps qui y mènent), même métronome coupé ; le volume du métronome par rapport aux instruments, sur un curseur, appliqué aussitôt.
 - Options : un bouton engrenage en haut à droite ouvre juste en dessous un tiroir, par-dessus l'aperçu (il ne pousse rien), rangé en onglets (Partition, Octaves, Notes, Métronome), chacun du réglage le plus général au plus précis ; une ligne par réglage, une liste déroulante pour chaque choix, et sous elle une courte explication du choix en cours ; les couleurs d'octave réunies en un seul choix (blanc et gris, arc-en-ciel, feutré, chacun dans l'ordre ou mélangé), avec un petit drapeau des teintes empilées.
+- Écoute : parties muettes, pour en jouer une soi-même pendant que l'app joue les autres ; le bouton de la musique la coupe ou la rend d'un clic (avec les parties choisies avant), sa flèche ouvre la liste des parties à cocher (« Piano — main droite », « Chant »…), avec « toutes » et « aucune » ; une partie muette le reste le temps de la séance, rétablie quand les parties du morceau changent ; aucune partie jouée : le métronome seul.
 - Écoute, premier temps : bouton « Écouter » qui joue les notes de toutes les parties avec un piano échantillonné (bibliothèque smplr, sons téléchargés au premier clic), curseur sur la case jouée et défilement qui remonte le système en haut de l'écran ; pause qui reprend sur la case surlignée, arrêt, tempo celui de `bpm` par défaut, modifiable même en cours de lecture et rétabli d'un clic.
 - Écoute : un clic sur une colonne de la gravure y place le curseur, d'où la lecture démarre ou reprend (ou repart aussitôt si elle est en cours) ; les notes qui sonnent encore à cet endroit sont rejouées.
 - Écoute : reprises (`||:`, `:||`, `3×`) et ordre des sections déroulés comme à la lecture ; le curseur suit chaque passage, et la lettre de la section jouée est entourée dans l'ordre de jeu en tête de page ; un clic dans une mesure jouée plusieurs fois reste dans le passage en cours, ou revient au plus récent ; un clic sur une lettre de l'ordre de jeu va droit à cette section.
@@ -46,11 +47,10 @@
 
 ## À faire
 
-1. **Parties muettes à l'écoute** : rendre muette une partie ou un instrument (une main, une voix), pour s'entraîner à la jouer pendant que l'app joue les autres.
-2. **Mode lecture** : masquer le panneau d'édition pour jouer plutôt qu'éditer ; les pages de la gravure côte à côte, avec un défilement horizontal.
-3. **Bibliothèque de partitions** (à concevoir) : retrouver et ouvrir ses morceaux depuis l'application.
-4. **Trouver un nom à la notation** : « ymn » est provisoire ; une fois le nom choisi, renommer tout ce qui le porte (extension `.ymn`, commande `ymn`, application, documentation, code).
-5. **Timbre par instrument** à l'écoute (importé du MusicXML quand il l'indique, sinon choisi au moment de l'écoute, d'une façon à définir).
+1. **Mode lecture** : masquer le panneau d'édition pour jouer plutôt qu'éditer ; les pages de la gravure côte à côte, avec un défilement horizontal.
+2. **Bibliothèque de partitions** (à concevoir) : retrouver et ouvrir ses morceaux depuis l'application.
+3. **Trouver un nom à la notation** : « ymn » est provisoire ; une fois le nom choisi, renommer tout ce qui le porte (extension `.ymn`, commande `ymn`, application, documentation, code).
+4. **Timbre par instrument** à l'écoute (importé du MusicXML quand il l'indique, sinon choisi au moment de l'écoute, d'une façon à définir).
 
 ## Hors v1 pour l'instant
 

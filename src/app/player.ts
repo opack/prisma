@@ -6,7 +6,7 @@
  * Les notes telles qu'écrites, toutes les parties ensemble, au tempo choisi (celui du morceau par
  * défaut), reprises et ordre des sections déroulés, nuances et soufflets en intensité, pédale de résonance,
  * petites notes, trilles, arpèges, points d'orgue, articulations ; un métronome sur les temps, avec
- * ou sans les instruments.
+ * ou sans les instruments ; des parties muettes, pour les jouer soi-même.
  */
 import type { SplendidGrandPiano } from "smplr";
 import { TICKS_PER_BEAT } from "../core/index.ts";
@@ -99,8 +99,8 @@ export type PlayerSnapshot = {
   error?: string;
 };
 
-/** Ce que l'on entend : le métronome, les instruments, et si le premier temps de la mesure sonne autrement. */
-type Sound = { metronome: boolean; instruments: boolean; clickSounds: ClickSounds; clickGrid: ClickGrid; countIn: boolean; clickVolume: number };
+/** Ce que l'on entend : le métronome et ses réglages, et les parties rendues muettes (leurs numéros). */
+type Sound = { metronome: boolean; muted: number[]; clickSounds: ClickSounds; clickGrid: ClickGrid; countIn: boolean; clickVolume: number };
 
 type Piano = Awaited<ReturnType<typeof SplendidGrandPiano>["load"]>;
 
@@ -120,8 +120,8 @@ class Player {
   private holds: Hold[] = [];
   private clicks: Click[] = [];
   private tick?: AudioBuffer;
-  /** Ce que l'on entend : le métronome, les instruments (l'un, l'autre ou les deux), le son de chaque niveau du métronome. */
-  private sound: Sound = { metronome: false, instruments: true, clickSounds: DEFAULT_CLICK_SOUNDS, clickGrid: "cells", countIn: false, clickVolume: 1 };
+  /** Ce que l'on entend : le métronome, les parties (sauf les muettes), le son de chaque niveau du métronome. */
+  private sound: Sound = { metronome: false, muted: [], clickSounds: DEFAULT_CLICK_SOUNDS, clickGrid: "cells", countIn: false, clickVolume: 1 };
   /** Instant joué de la pause (le curseur, lui, montre l'instant du morceau). */
   private pos = 0;
   private bpm = DEFAULT_BPM;
@@ -178,11 +178,11 @@ class Player {
     this.start(from, this.sound.countIn);
   }
 
-  /** Métronome et instruments, chacun entendu ou non ; en cours de lecture, la suite repart ainsi. */
+  /** Métronome et parties muettes ; en cours de lecture, la suite repart ainsi. */
   setSound(sound: Sound) {
     if (this.context) clickVolume(this.context, sound.clickVolume);
     // le volume s'applique aussitôt, le décompte au prochain départ : rien à reprogrammer
-    const heard = (s: Sound) => JSON.stringify([s.metronome, s.instruments, s.clickSounds, s.clickGrid]);
+    const heard = (s: Sound) => JSON.stringify([s.metronome, s.muted, s.clickSounds, s.clickGrid]);
     const restart = heard(sound) !== heard(this.sound);
     if (sound.clickGrid !== this.sound.clickGrid && this.score) this.clicks = clicks(this.score, this.passages, sound.clickGrid);
     this.sound = sound;
@@ -292,7 +292,9 @@ class Player {
     const run = this.run;
     const context = this.context!, piano = this.piano!;
     const hs = this.holds;
-    const notes = this.sound.instruments ? playNotes(this.notes, this.bpm, from, hs) : [];
+    // une partie muette n'est pas jouée : on la joue soi-même pendant que l'app joue les autres
+    const muted = new Set(this.sound.muted);
+    const notes = playNotes(muted.size ? this.notes.filter((n) => !muted.has(n.part)) : this.notes, this.bpm, from, hs);
     const sec = secondsPerTick(this.bpm);
     const zero = stretched(hs, from);
     const length = (stretched(hs, playedLength(this.passages)) - zero) * sec;

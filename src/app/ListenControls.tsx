@@ -1,6 +1,7 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Score } from "../core/index.ts";
 import { DEFAULT_BPM, player } from "./player.ts";
+import { partNames } from "./parts.ts";
 
 const labels = { idle: "Écouter", loading: "Chargement du piano… (cliquer pour annuler)", playing: "Pause", paused: "Reprendre" };
 
@@ -21,9 +22,17 @@ const MAX_BPM = 300;
  * arrêt ; et le tempo, celui de la partition
  * par défaut, qu'on peut changer (même en cours de lecture) puis rétablir.
  */
-type Sound = { metronome: boolean; instruments: boolean };
+type Props = {
+  score?: Score;
+  disabled: boolean;
+  metronome: boolean;
+  onMetronome: (on: boolean) => void;
+  /** Les parties muettes (leurs numéros) : on les joue soi-même pendant que l'app joue les autres. */
+  muted: number[];
+  onMuted: (parts: number[]) => void;
+};
 
-export function ListenControls({ score, disabled, metronome, instruments, onSound }: { score?: Score; disabled: boolean; onSound: (sound: Sound) => void } & Sound) {
+export function ListenControls({ score, disabled, metronome, onMetronome, muted, onMuted }: Props) {
   const { state, error, entry: playing, entries } = useSyncExternalStore(player.subscribe, player.getSnapshot);
   const entry = playing ?? 0;
   const written = score?.meta.bpm ?? DEFAULT_BPM;
@@ -91,22 +100,77 @@ export function ListenControls({ score, disabled, metronome, instruments, onSoun
         <button
           className={metronome ? "on" : undefined}
           aria-pressed={metronome}
-          onClick={() => onSound({ metronome: !metronome, instruments })}
+          onClick={() => onMetronome(!metronome)}
           title={metronome ? "Métronome : marque les temps" : "Métronome : coupé"}
           aria-label="Métronome"
         >
           <Icon d="M6.2 1.5h3.6L13 14.5H3zM7 4.5l-.9 8h3.8l-.9-8zM8 11.8 12.6 3.6l.9.5-4.4 8z" />
         </button>
-        <button
-          className={instruments ? "on" : undefined}
-          aria-pressed={instruments}
-          onClick={() => onSound({ metronome, instruments: !instruments })}
-          title={instruments ? "Instruments : joués" : "Instruments : coupés (le métronome seul)"}
-          aria-label="Instruments"
-        >
-          <Icon d="M6 2.5 13 1v9.2a2.3 2.3 0 1 1-1.5-2.15V4.1L7.5 5v6.7A2.3 2.3 0 1 1 6 9.55z" />
-        </button>
+        <PartsMenu score={score} muted={muted} onMuted={onMuted} />
       </span>
     </>
+  );
+}
+
+/**
+ * Les parties jouées : un bouton qui coupe ou rend la musique d'un clic (le métronome seul reste),
+ * et sa flèche, qui ouvre la liste des parties, chacune à cocher pour l'entendre ou la rendre
+ * muette (pour la jouer soi-même). La musique rendue retrouve les parties choisies avant.
+ */
+function PartsMenu({ score, muted, onMuted }: { score?: Score; muted: number[]; onMuted: (parts: number[]) => void }) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLSpanElement>(null);
+  // le dernier choix où une partie au moins jouait : la musique rendue le retrouve
+  const before = useRef<number[]>([]);
+  useEffect(() => {
+    if (!open) return;
+    const outside = (e: MouseEvent) => !root.current?.contains(e.target as Node) && setOpen(false);
+    const key = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("mousedown", outside);
+    window.addEventListener("keydown", key);
+    return () => {
+      window.removeEventListener("mousedown", outside);
+      window.removeEventListener("keydown", key);
+    };
+  }, [open]);
+  const names = score ? partNames(score.instruments) : [];
+  const all = names.map((_, k) => k);
+  const silent = names.length > 0 && muted.length >= names.length;
+  const state = !muted.length ? "on" : silent ? undefined : "on partial";
+  const title = !muted.length ? "Musique : toutes les parties jouées" : silent ? "Musique : coupée (le métronome seul)" : `Musique : ${muted.length} partie${muted.length > 1 ? "s" : ""} muette${muted.length > 1 ? "s" : ""} sur ${names.length}`;
+  const toggle = (k: number) => onMuted(muted.includes(k) ? muted.filter((x) => x !== k) : [...muted, k].sort((a, b) => a - b));
+  if (!silent) before.current = muted;
+  const music = () => onMuted(silent ? before.current : all);
+  return (
+    <span className="parts-menu" ref={root}>
+      <button className={state} aria-pressed={!silent} onClick={music} disabled={!names.length} title={title} aria-label="Musique">
+        <Icon d="M6 2.5 13 1v9.2a2.3 2.3 0 1 1-1.5-2.15V4.1L7.5 5v6.7A2.3 2.3 0 1 1 6 9.55z" />
+      </button>
+      <button className={`more${open ? " open" : ""}`} aria-haspopup="true" aria-expanded={open} onClick={() => setOpen((v) => !v)} disabled={!names.length} title="Choisir les parties jouées" aria-label="Parties jouées">
+        <svg width="8" height="16" viewBox="0 0 8 16" aria-hidden="true">
+          <path d="M1 6.5h6L4 10z" fill="currentColor" />
+        </svg>
+      </button>
+      {open && (
+        <div className="parts-list" role="dialog" aria-label="Parties jouées">
+          <p className="parts-title">Parties jouées</p>
+          {names.map((name, k) => (
+            <label key={k}>
+              <input type="checkbox" checked={!muted.includes(k)} onChange={() => toggle(k)} />
+              {name}
+            </label>
+          ))}
+          <div className="parts-actions">
+            <button onClick={() => onMuted([])} disabled={!muted.length}>
+              Toutes
+            </button>
+            <button onClick={() => onMuted(all)} disabled={silent}>
+              Aucune
+            </button>
+          </div>
+          <p className="parts-hint">Une partie muette n'est pas jouée : à vous de la jouer, avec le métronome au besoin.</p>
+        </div>
+      )}
+    </span>
   );
 }
