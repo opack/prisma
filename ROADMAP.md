@@ -35,11 +35,12 @@
 - Écoute : arpèges égrenés à partir du temps, du grave à l'aigu (`/`) ou de l'aigu au grave (`\`), d'une partie ou de tout le système, les notes restant tenues.
 - Écoute : point d'orgue, ce qui commence là (note, accord ou silence) tenu deux fois plus longtemps (deux temps de plus au plus), le curseur restant sur sa case.
 - Gravure de « Ped. simile » (option) : les pédales qu'il demande, gravées comme les autres (par défaut), atténuées en gris clair, ou la seule mention ; le fichier garde la mention.
+- Écoute : articulations, le staccato joué moitié moins long, l'accent plus fort, le marcato plus fort et un peu plus court ; la pédale peut encore tenir une note détachée.
 - Écoute : boutons de lecture en icônes : début du morceau, section précédente (début de la section jouée, ou la section d'avant si l'on est dans sa première mesure ou au second clic rapproché), lecture et pause, section suivante, arrêt.
 
 ## À faire
 
-1. **Compléter l'écoute** : articulations, un timbre par instrument (importé du MusicXML quand il l'indique, sinon choisi au moment de l'écoute, d'une façon à définir).
+1. **Compléter l'écoute** : un timbre par instrument (importé du MusicXML quand il l'indique, sinon choisi au moment de l'écoute, d'une façon à définir).
 2. **Métronome** à l'écoute, en itérations :
    1. activable d'un bouton à côté de la lecture, sur les temps, le premier temps de la mesure marqué (levées comprises) ; lecture avec ou sans les instruments (le métronome seul) ;
    2. les divisions du temps, sur la grille régulière (en 2 ou en 3 selon `division`, puis chaque division en deux) et non sur les cases écrites ; un son par niveau (premier temps, temps, division, subdivision), « aucun » pour ne pas marquer un niveau ; sons synthétisés, sans téléchargement ;

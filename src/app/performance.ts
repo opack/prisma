@@ -6,7 +6,7 @@
  * joué (depuis le début de l'écoute). Une mesure reprise a un instant du morceau et deux instants joués.
  */
 import { TICKS_PER_BEAT } from "../core/index.ts";
-import type { Score } from "../core/index.ts";
+import type { ArticulationKind, Score } from "../core/index.ts";
 import { velocities, velocityAt } from "./dynamics.ts";
 import { soundingEnds } from "./pedal.ts";
 
@@ -92,7 +92,11 @@ export function playedNotes(score: Score, ps: Passage[]): PlayedNote[] {
     if (prev && prev.to === p.from) runs[runs.length - 1] = { ...prev, to: p.to };
     else runs.push(p);
   }
-  const velocity = velocities(score), ends = soundingEnds(score), rolls = rollRanks(score);
+  // articulations : la touche relâchée plus tôt (la pédale peut encore tenir le son), l'attaque plus forte
+  const marks = score.notes.map((n) => score.articulations.filter((a) => a.part === n.part && a.t === n.start).map((a) => a.kind));
+  const released = score.notes.map((n, i) => ({ ...n, end: n.start + (n.end - n.start) * Math.min(1, ...marks[i].map((k) => SHORTER[k])) }));
+  const velocity = velocities(score).map((v, i) => Math.min(127, v + Math.max(0, ...marks[i].map((k) => LOUDER[k]))));
+  const ends = soundingEnds({ ...score, notes: released }), rolls = rollRanks(score);
   const out: PlayedNote[] = [];
   for (const p of runs)
     score.notes.forEach((n, i) => {
@@ -117,6 +121,11 @@ export function playedNotes(score: Score, ps: Passage[]): PlayedNote[] {
       }
   return out.sort((a, b) => a.start - b.start || (b.grace ?? 0) - (a.grace ?? 0) || a.midi - b.midi);
 }
+
+/** Part de sa durée que garde une note articulée : un staccato sonne moitié moins, un marcato un peu moins. */
+const SHORTER: Record<ArticulationKind, number> = { staccato: 0.5, accent: 1, marcato: 0.75 };
+/** Ce qu'ajoute une articulation à l'intensité de la note (vélocité). */
+const LOUDER: Record<ArticulationKind, number> = { staccato: 0, accent: 20, marcato: 28 };
 
 /**
  * Arpèges : pour chaque note, sa place dans l'accord égrené (rien hors arpège). Du grave à l'aigu, ou de l'aigu au grave ; sans partie, tout le système d'un geste.

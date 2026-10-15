@@ -5,7 +5,7 @@
  *
  * Les notes telles qu'écrites, toutes les parties ensemble, au tempo choisi (celui du morceau par
  * défaut), reprises et ordre des sections déroulés, nuances et soufflets en intensité, pédale de résonance,
- * petites notes, trilles, arpèges, points d'orgue.
+ * petites notes, trilles, arpèges, points d'orgue, articulations.
  */
 import type { SplendidGrandPiano } from "smplr";
 import { TICKS_PER_BEAT } from "../core/index.ts";

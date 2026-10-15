@@ -1586,3 +1586,16 @@ describe("écoute : point d'orgue", () => {
     expect(stretched(hs, 2.5 * T) / T).toBe(3.5);
   });
 });
+
+describe("écoute : articulations", () => {
+  it("raccourcit le staccato, renforce l'accent, et les deux pour le marcato", async () => {
+    const { passages, playedNotes } = await import("../src/app/performance.ts");
+    const s = parseYmn(["m1 |1  |2  |3  |4  ||", "0  |8  |10 |12 |8  ||", "@   .   !   !!", ""].join("\n"));
+    expect(playedNotes(s, passages(s)).map((n) => [n.midi, (n.end - n.start) / T, n.velocity])).toEqual([
+      [67, 0.5, 70],
+      [69, 1, 90],
+      [71, 0.75, 98],
+      [67, 1, 70],
+    ]);
+  });
+});
