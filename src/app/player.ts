@@ -10,7 +10,7 @@
 import type { SplendidGrandPiano } from "smplr";
 import { TICKS_PER_BEAT } from "../core/index.ts";
 import type { Score } from "../core/index.ts";
-import { entryAt, entryStart, passages, playedLength, playedNotes, playedTick, scoreTick } from "./performance.ts";
+import { entryAt, entryStart, inFirstBar, passages, playedLength, playedNotes, playedTick, scoreTick } from "./performance.ts";
 import type { PlayedNote, Passage } from "./performance.ts";
 
 /** Tempo d'un morceau qui n'en indique pas. */
@@ -22,6 +22,8 @@ const LOOKAHEAD = 0.4;
 const TICK_INTERVAL = 60;
 /** Durée, au-delà de sa fin, pendant laquelle une note peut encore sonner (son extinction). */
 const RELEASE = 1;
+/** Deux clics sur « précédent » à moins de ce délai (ms) : la section d'avant, pas le début de celle-ci. */
+const PREVIOUS_AGAIN = 800;
 /** Laisser sonner la dernière note avant de s'arrêter. */
 const TAIL = 1.5;
 
@@ -61,6 +63,8 @@ export type PlayerSnapshot = {
   tick: number | null;
   /** Rang, dans l'ordre de jeu, de la section jouée : le passage en cours d'une section jouée plusieurs fois. */
   entry: number | null;
+  /** Nombre de sections dans l'ordre de jeu du morceau chargé (1 sans sections, 0 sans morceau). */
+  entries: number;
   error?: string;
 };
 
@@ -68,7 +72,7 @@ type Piano = Awaited<ReturnType<typeof SplendidGrandPiano>["load"]>;
 
 /** Lecteur unique de l'application : un état, et des abonnés (les boutons, le curseur). */
 class Player {
-  private snapshot: PlayerSnapshot = { state: "idle", tick: null, entry: null };
+  private snapshot: PlayerSnapshot = { state: "idle", tick: null, entry: null, entries: 0 };
   private listeners = new Set<() => void>();
   private context?: AudioContext;
   private piano?: Piano;
@@ -104,6 +108,7 @@ class Player {
     this.score = score;
     this.passages = score ? passages(score) : [];
     this.notes = score ? playedNotes(score, this.passages) : [];
+    this.set({ entries: this.passages.length ? this.passages[this.passages.length - 1].entry + 1 : 0 });
   }
 
   /** Joue le morceau, depuis l'endroit de la pause s'il y en a une, sinon depuis le début. */
@@ -148,6 +153,37 @@ class Player {
     if (this.snapshot.state === "loading") return;
     const playing = this.snapshot.state === "playing";
     this.go(playedTick(this.passages, tick, playing ? this.now() : this.snapshot.state === "paused" ? this.pos : 0));
+  }
+
+  /** Revient au tout début du morceau. */
+  rewind() {
+    if (this.snapshot.state !== "loading") this.go(0);
+  }
+
+  private previousAt = 0;
+  private previousTo = 0;
+
+  /**
+   * Revient au début de la section jouée ; si l'on est encore dans sa première mesure, ou au second
+   * clic rapproché, au début de la précédente.
+   */
+  previous() {
+    if (this.snapshot.state === "loading") return;
+    const now = performance.now();
+    const state = this.snapshot.state;
+    const pos = state === "playing" ? this.now() : state === "paused" ? this.pos : 0;
+    const entry = this.snapshot.entry ?? 0;
+    const back = now - this.previousAt < PREVIOUS_AGAIN ? this.previousTo : this.score && inFirstBar(this.score, this.passages, pos) ? entry : entry + 1;
+    const to = Math.max(0, back - 1);
+    this.previousAt = now;
+    this.previousTo = to;
+    this.seekEntry(to);
+  }
+
+  /** Va au début de la section suivante dans l'ordre de jeu. */
+  next() {
+    const to = (this.snapshot.entry ?? 0) + 1;
+    if (this.snapshot.state !== "loading" && to < this.snapshot.entries) this.seekEntry(to);
   }
 
   /** Place la lecture au début de la section de rang `entry` dans l'ordre de jeu (un clic sur sa lettre). */

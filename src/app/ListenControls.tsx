@@ -2,15 +2,28 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import type { Score } from "../core/index.ts";
 import { DEFAULT_BPM, player } from "./player.ts";
 
+const labels = { idle: "Écouter", loading: "Chargement du piano… (cliquer pour annuler)", playing: "Pause", paused: "Reprendre" };
+
+/** Icône des boutons de lecture, dessinée dans un carré de 16. */
+function Icon({ d }: { d: string }) {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+      <path d={d} fill="currentColor" />
+    </svg>
+  );
+}
+
 const MIN_BPM = 20;
 const MAX_BPM = 300;
 
 /**
- * Commandes d'écoute de la barre : lecture, pause et arrêt, et le tempo, celui de la partition
+ * Commandes d'écoute de la barre : début, section précédente, lecture et pause, section suivante,
+ * arrêt ; et le tempo, celui de la partition
  * par défaut, qu'on peut changer (même en cours de lecture) puis rétablir.
  */
 export function ListenControls({ score, disabled }: { score?: Score; disabled: boolean }) {
-  const { state, error } = useSyncExternalStore(player.subscribe, player.getSnapshot);
+  const { state, error, entry: playing, entries } = useSyncExternalStore(player.subscribe, player.getSnapshot);
+  const entry = playing ?? 0;
   const written = score?.meta.bpm ?? DEFAULT_BPM;
   const [chosen, setChosen] = useState<number | null>(null);
   const [draft, setDraft] = useState<string | null>(null); // saisie en cours, pas encore un tempo valable
@@ -55,14 +68,23 @@ export function ListenControls({ score, disabled }: { score?: Score; disabled: b
         )}
         <span className="unit">bpm</span>
       </span>
-      <button className="listen" onClick={toggle} disabled={disabled}>
-        {state === "loading" ? "Chargement du piano…" : state === "playing" ? "❚❚ Pause" : state === "paused" ? "▶ Reprendre" : "▶ Écouter"}
-      </button>
-      {state !== "idle" && (
-        <button className="stop" onClick={() => player.stop()} title="Arrêter et revenir au début">
-          ■
+      <span className="transport">
+        <button onClick={() => player.rewind()} disabled={disabled} title="Revenir au début du morceau" aria-label="Revenir au début">
+          <Icon d="M2 3h2v10H2zM9 3v10L4 8zM14 3v10L9 8z" />
         </button>
-      )}
+        <button onClick={() => player.previous()} disabled={disabled} title="Début de la section (deux clics : section précédente)" aria-label="Section précédente">
+          <Icon d="M3 3h2v10H3zM13 3v10L5 8z" />
+        </button>
+        <button className="listen" onClick={toggle} disabled={disabled} title={labels[state]} aria-label={labels[state]}>
+          {state === "loading" ? <span className="loading">…</span> : <Icon d={state === "playing" ? "M4 3h3v10H4zM9 3h3v10H9z" : "M4 2.5v11L13 8z"} />}
+        </button>
+        <button onClick={() => player.next()} disabled={disabled || entry + 1 >= entries} title="Section suivante" aria-label="Section suivante">
+          <Icon d="M11 3h2v10h-2zM3 3v10l8-5z" />
+        </button>
+        <button onClick={() => player.stop()} disabled={state === "idle"} title="Arrêter et revenir au début" aria-label="Arrêter">
+          <Icon d="M3.5 3.5h9v9h-9z" />
+        </button>
+      </span>
     </>
   );
 }

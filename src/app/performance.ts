@@ -117,6 +117,17 @@ export function scoreTick(ps: Passage[], played: number): number | null {
 /** Le rang, dans l'ordre de jeu, de la section jouée à cet instant. */
 export const entryAt = (ps: Passage[], played: number) => passageAt(ps, played)?.entry ?? null;
 
+/** Vrai si l'instant joué tombe dans la première mesure de sa section. */
+export function inFirstBar(score: Score, ps: Passage[], played: number): boolean {
+  const p = passageAt(ps, played);
+  const first = p && ps.find((x) => x.entry === p.entry);
+  if (!first) return false;
+  const bar = score.beats[Math.floor(first.from / TICKS_PER_BEAT)]?.barIndex;
+  let end = first.from;
+  while (score.beats[end / TICKS_PER_BEAT]?.barIndex === bar) end += TICKS_PER_BEAT;
+  return played - first.at < end - first.from;
+}
+
 /** L'instant joué où commence la section de rang `entry` dans l'ordre de jeu. */
 export const entryStart = (ps: Passage[], entry: number) => ps.find((x) => x.entry === entry)?.at ?? null;
 

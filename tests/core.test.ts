@@ -1506,3 +1506,19 @@ describe("écoute : petites notes", () => {
     ]);
   });
 });
+
+describe("écoute : première mesure d'une section", () => {
+  it("sait si l'on est encore dans la première mesure de la section jouée", async () => {
+    const { passages, inFirstBar } = await import("../src/app/performance.ts");
+    // A B A, des mesures de 2 temps : A = mesures 1 et 2, B = mesure 3
+    const s: Score = {
+      ...parseYmn("m1 |1  ||\n0  |1  ||\n"),
+      beats: Array.from({ length: 6 }, (_, i) => ({ bar: String((i >> 1) + 1), barIndex: i >> 1, label: (i % 2) + 1, division: 2 }) as Score["beats"][number]),
+      markers: [{ label: "A", barIndex: 0 }, { label: "B", barIndex: 2 }],
+      order: ["A", "B", "A"],
+    };
+    const ps = passages(s);
+    expect([0, 1.5, 2, 3].map((t) => inFirstBar(s, ps, t * T))).toEqual([true, true, false, false]);
+    expect([4, 5.5, 6, 7.5, 8].map((t) => inFirstBar(s, ps, t * T))).toEqual([true, true, true, true, false]);
+  });
+});
