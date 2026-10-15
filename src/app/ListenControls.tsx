@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Score } from "../core/index.ts";
 import { DEFAULT_BPM, player } from "./player.ts";
 import { partNames } from "./parts.ts";
+import { usePopover } from "./popover.ts";
 
 const labels = { idle: "Écouter", loading: "Chargement du piano… (cliquer pour annuler)", playing: "Pause", paused: "Reprendre" };
 
@@ -118,21 +119,9 @@ export function ListenControls({ score, disabled, metronome, onMetronome, muted,
  * muette (pour la jouer soi-même). La musique rendue retrouve les parties choisies avant.
  */
 function PartsMenu({ score, muted, onMuted }: { score?: Score; muted: number[]; onMuted: (parts: number[]) => void }) {
-  const [open, setOpen] = useState(false);
-  const root = useRef<HTMLSpanElement>(null);
+  const { open, setOpen, root } = usePopover<HTMLSpanElement>();
   // le dernier choix où une partie au moins jouait : la musique rendue le retrouve
   const before = useRef<number[]>([]);
-  useEffect(() => {
-    if (!open) return;
-    const outside = (e: MouseEvent) => !root.current?.contains(e.target as Node) && setOpen(false);
-    const key = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    window.addEventListener("mousedown", outside);
-    window.addEventListener("keydown", key);
-    return () => {
-      window.removeEventListener("mousedown", outside);
-      window.removeEventListener("keydown", key);
-    };
-  }, [open]);
   const names = score ? partNames(score.instruments) : [];
   const all = names.map((_, k) => k);
   const silent = names.length > 0 && muted.length >= names.length;
@@ -152,15 +141,15 @@ function PartsMenu({ score, muted, onMuted }: { score?: Score; muted: number[]; 
         </svg>
       </button>
       {open && (
-        <div className="parts-list" role="dialog" aria-label="Parties jouées">
-          <p className="parts-title">Parties jouées</p>
+        <div className="popover parts-list" role="dialog" aria-label="Parties jouées">
+          <p className="popover-title">Parties jouées</p>
           {names.map((name, k) => (
             <label key={k}>
               <input type="checkbox" checked={!muted.includes(k)} onChange={() => toggle(k)} />
               {name}
             </label>
           ))}
-          <div className="parts-actions">
+          <div className="popover-actions">
             <button onClick={() => onMuted([])} disabled={!muted.length}>
               Toutes
             </button>
@@ -168,7 +157,7 @@ function PartsMenu({ score, muted, onMuted }: { score?: Score; muted: number[]; 
               Aucune
             </button>
           </div>
-          <p className="parts-hint">Une partie muette n'est pas jouée : à vous de la jouer, avec le métronome au besoin.</p>
+          <p className="popover-hint">Une partie muette n'est pas jouée : à vous de la jouer, avec le métronome au besoin.</p>
         </div>
       )}
     </span>

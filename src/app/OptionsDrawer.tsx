@@ -178,7 +178,7 @@ export function OptionsDrawer({ options, setOptions, onClose }: { options: Rende
               text="Graver automatiquement"
               checked={options.autoEngrave}
               onChange={(autoEngrave) => setOptions({ autoEngrave })}
-              hint={options.autoEngrave ? "la gravure suit la saisie, peu après la dernière frappe" : "on grave d'un clic sur « Graver » (Ctrl+Entrée)"}
+              hint={options.autoEngrave ? "la gravure suit la saisie, peu après la dernière frappe" : "on grave d'un clic sur le bouton Graver, en bas de l'éditeur (Ctrl+Entrée)"}
             />
             <Choice id="chords" label="Accompagnement" value={options.chords} options={CHORDS} onChange={(chords) => setOptions({ chords })} />
             <Check

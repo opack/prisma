@@ -850,11 +850,18 @@ function PlayCursor({ page }: { page: Page }) {
   const { tick } = useSyncExternalStore(player.subscribe, player.getSnapshot);
   const ref = useRef<SVGRectElement>(null);
   const k = tick === null ? -1 : page.systems.findIndex((ps) => tick >= ps.sys.start && tick < ps.sys.end);
-  // un système qui sort de l'écran est remonté en haut : la page ne bouge plus jusqu'à ce que la lecture en sorte
+  // un système qui sort de l'écran est remonté en haut : la page ne bouge plus jusqu'à ce que la lecture en sorte ;
+  // en mode lecture, les pages côte à côte, la page jouée vient à gauche : les suivantes se lisent d'avance
   useEffect(() => {
     const el = ref.current, pane = el?.closest(".preview");
     if (!el || !pane) return;
-    const box = el.getBoundingClientRect(), view = pane.getBoundingClientRect();
+    const view = pane.getBoundingClientRect();
+    if (pane.closest(".reading")) {
+      const left = el.ownerSVGElement!.getBoundingClientRect().left - view.left - parseFloat(getComputedStyle(pane).scrollPaddingLeft || "0");
+      if (Math.abs(left) > 1) pane.scrollTo({ left: pane.scrollLeft + left, behavior: "smooth" });
+      return;
+    }
+    const box = el.getBoundingClientRect();
     if (box.top >= view.top && box.bottom <= view.bottom) return;
     pane.scrollTo({ top: pane.scrollTop + box.top - view.top - 16, behavior: "smooth" });
   }, [k]);

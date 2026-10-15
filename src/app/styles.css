@@ -27,7 +27,6 @@ body { font-family: var(--ui); color: var(--ink); background: var(--chrome); fon
 button { font: inherit; padding: 6px 12px; border: 1px solid var(--line); border-radius: 4px; background: #fff; color: var(--ink); cursor: pointer; }
 button:hover { border-color: var(--muted); }
 button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 button:disabled { opacity: .5; cursor: default; }
 
 .workspace { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 0; }
@@ -39,6 +38,21 @@ textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16p
 .preview { overflow: auto; padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 24px; }
 .page { display: block; width: min(100%, 210mm); height: auto; aspect-ratio: 210 / 297; flex: none; box-shadow: 0 1px 3px rgba(0,0,0,.18), 0 6px 18px rgba(0,0,0,.08); background: #fff; }
 .empty { color: var(--muted); }
+/* la languette de l'éditeur : sur le bord gauche en lecture, contre l'éditeur en édition */
+.split { position: relative; }
+.edge { position: absolute; z-index: 3; top: 50%; left: 0; transform: translateY(-50%); display: grid; justify-items: center; gap: 6px; width: 22px; padding: 10px 0; border-left: 0; border-radius: 0 6px 6px 0; background: var(--panel); color: var(--muted); box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.08); }
+.edge:hover { color: var(--accent); border-color: var(--accent); }
+.split:not(.reading) .edge { left: calc(max(360px, 42%) - 1px); }
+/* mode lecture : sans l'éditeur, les pages côte à côte, chacune de toute la hauteur, qu'on fait
+   défiler de côté une page à la fois */
+@media screen {
+  .split.reading { grid-template-columns: 1fr; }
+  .split.reading .source[hidden] { display: none; }
+  .split.reading .preview { flex-direction: row; align-items: stretch; padding: 12px 12px 12px 32px; gap: 12px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scroll-padding: 12px 12px 12px 32px; }
+  .split.reading .page { height: 100%; width: auto; max-width: none; scroll-snap-align: start; }
+  /* une page de plus que l'écran ne montre pas en entier : la dernière se cale contre le bord */
+  .split.reading .page:last-child { scroll-snap-align: end; }
+}
 
 /* glisser-déposer un fichier : un voile sur toute la fenêtre */
 .app { position: relative; }
@@ -77,7 +91,7 @@ textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16p
 @page { size: A4 portrait; margin: 0; }
 @media print {
   body { background: #fff; }
-  .bar, .source, .drawer { display: none !important; }
+  .bar, .source, .drawer, .edge { display: none !important; }
   .app, .split { display: block; height: auto; }
   .preview { overflow: visible; padding: 0; gap: 0; display: block; }
   /* La page gravée s'adapte à la zone imprimable réelle (marges du navigateur comprises)
@@ -116,9 +130,9 @@ textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16p
 /* clic sur une colonne de la gravure : la lecture y démarre */
 .page .seek rect { cursor: pointer; }
 
-/* bouton des options, tout à droite de la barre */
-.bar .gear { display: flex; align-items: center; padding: 6px 8px; color: var(--muted); }
-.bar .gear.on, .bar .gear:hover { color: var(--accent); }
+/* bouton des options, en icône, tout à droite de la barre */
+.bar .icon { display: flex; align-items: center; padding: 6px 8px; color: var(--muted); }
+.bar .icon.on, .bar .icon:hover:not(:disabled) { color: var(--accent); }
 /* panneau des options : un tiroir à droite, sous le bouton engrenage, par-dessus l'aperçu ; il ne
    pousse rien */
 .drawer { position: absolute; top: 0; right: 0; bottom: 0; z-index: 15; width: min(440px, 100%); display: flex; flex-direction: column; background: var(--panel); border-left: 1px solid var(--line); box-shadow: -8px 0 24px rgba(0, 0, 0, 0.08); }
@@ -146,9 +160,21 @@ textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16p
 .bar .toggles .parts-menu button.more { width: 1.4em; border-radius: 0 4px 4px 0; color: var(--muted); }
 .bar .toggles .parts-menu button.more.open, .bar .toggles .parts-menu button.more:hover:not(:disabled) { color: var(--accent); }
 .bar .toggles button.partial { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, #fff) 0 4px, #fff 4px 8px); }
-.parts-list { position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; min-width: 240px; padding: 10px 12px; background: #fff; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12); display: grid; gap: 6px; }
-.parts-list label { display: flex; gap: 8px; align-items: center; cursor: pointer; white-space: nowrap; }
-.parts-title { margin: 0 0 2px; font-weight: 600; }
-.parts-actions { display: flex; gap: 6px; margin-top: 4px; }
-.bar .parts-actions button { width: auto; padding: 3px 10px; margin: 0; border-radius: 4px; color: var(--ink); background: #fff; }
-.parts-hint { margin: 2px 0 0; color: var(--muted); font-size: 0.85em; line-height: 1.35; white-space: normal; }
+/* petit panneau ouvert sous un bouton : la liste des parties, les réglages de la gravure */
+.popover { position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; min-width: 240px; padding: 10px 12px; background: #fff; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12); display: grid; gap: 6px; }
+.popover label { display: flex; gap: 8px; align-items: center; cursor: pointer; white-space: nowrap; }
+.popover-title { margin: 0 0 2px; font-weight: 600; }
+.popover-actions { display: flex; gap: 6px; margin-top: 4px; }
+.bar .popover-actions button { width: auto; padding: 3px 10px; margin: 0; border-radius: 4px; color: var(--ink); background: #fff; }
+.popover-hint { margin: 2px 0 0; color: var(--muted); font-size: 0.85em; line-height: 1.35; white-space: normal; }
+/* graver : un bouton flottant en bas de l'éditeur, contre les pages, et sa flèche vers les réglages
+   de la gravure */
+.editor { position: relative; min-height: 0; }
+.editor textarea { padding-bottom: 76px; }
+.engrave { position: absolute; right: 24px; bottom: 20px; z-index: 2; display: flex; border-radius: 6px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18), 0 6px 16px rgba(0, 0, 0, 0.1); }
+.engrave > button { position: relative; display: flex; align-items: center; justify-content: center; height: 40px; border: 0; background: var(--accent); color: #fff; }
+.engrave > button:first-child { width: 44px; padding: 0; border-radius: 6px 0 0 6px; }
+.engrave > button:first-child:disabled { opacity: 1; background: color-mix(in srgb, var(--accent) 40%, #fff); }
+.engrave > button.more { width: 22px; padding: 0; border-radius: 0 6px 6px 0; border-left: 1px solid rgba(255, 255, 255, 0.35); }
+.engrave > button:hover:not(:disabled) { filter: brightness(1.12); }
+.engrave .popover { top: auto; bottom: calc(100% + 8px); }

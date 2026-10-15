@@ -4,6 +4,7 @@ import type { Score } from "../core/index.ts";
 import { engrave } from "./engrave.ts";
 import { Menu } from "./Menu.tsx";
 import { ListenControls } from "./ListenControls.tsx";
+import { EngraveButton } from "./EngraveButton.tsx";
 import { OptionsDrawer } from "./OptionsDrawer.tsx";
 import { withSimile } from "./pedal.ts";
 
@@ -25,6 +26,20 @@ const load = () => {
   } catch {
     return SAMPLE;
   }
+};
+/**
+ * Édition : l'éditeur à gauche, les pages empilées à droite ; sinon la lecture, les pages seules,
+ * côte à côte. Le mode se retrouve d'une visite à l'autre.
+ */
+const EDITING_KEY = "ymn:editing";
+const loadEditing = (source: string) => {
+  try {
+    const stored = localStorage.getItem(EDITING_KEY);
+    if (stored !== null) return stored === "true";
+  } catch {
+    /* stockage indisponible : le mode se déduit du texte */
+  }
+  return !source.trim();
 };
 const persist = (s: string) => {
   try {
@@ -60,6 +75,51 @@ export function App() {
   }, [showOptions]);
   /** Notice du pianiste, affichée à la place de l'éditeur et de l'aperçu. */
   const [showGuide, setShowGuide] = useState(false);
+  /**
+   * Lecture, le mode ordinaire : pour jouer. Sans l'éditeur, les pages côte à côte, chacune de toute
+   * la hauteur de l'écran ; on tourne les pages au clavier ou avec une pédale tourne-pages.
+   * Édition : l'éditeur à côté des pages. Une nouvelle partition, un MusicXML importé ou un .ymn
+   * qui ne se grave pas s'ouvrent en édition, un .ymn en lecture.
+   */
+  const [editing, setEditingState] = useState(() => loadEditing(source) || !!tryParse(source).problem);
+  const setEditing = (on: boolean) => {
+    setEditingState(on);
+    setShowGuide(false);
+    try {
+      localStorage.setItem(EDITING_KEY, String(on));
+    } catch {
+      /* stockage indisponible : sans conséquence */
+    }
+  };
+  const reading = !editing;
+  const preview = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!reading) return;
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (e.ctrlKey || e.metaKey || e.altKey || target.closest("input, select, textarea, .drawer")) return;
+      const turn = { PageDown: 1, ArrowRight: 1, ArrowDown: 1, PageUp: -1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+      const pane = preview.current;
+      if (!turn || !pane) return;
+      e.preventDefault();
+      const page = pane.querySelector<SVGSVGElement>(".page");
+      const step = page ? page.getBoundingClientRect().width + parseFloat(getComputedStyle(pane).columnGap || "0") : pane.clientWidth;
+      pane.scrollBy({ left: turn * step, behavior: "smooth" });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [reading]);
+  /** Plein écran, celui du navigateur (F11 y mène aussi) : la coche du menu le suit. */
+  const [fullScreen, setFullScreen] = useState(() => !!document.fullscreenElement);
+  useEffect(() => {
+    const follow = () => setFullScreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", follow);
+    return () => document.removeEventListener("fullscreenchange", follow);
+  }, []);
+  const toggleFullScreen = () => {
+    const done = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    done.catch(() => setNotice("Plein écran impossible : essayez F11"));
+  };
   const setOptions = (patch: Partial<RenderOptions>) => {
     const next = { ...options, ...patch };
     setOptionsState(next);
@@ -123,6 +183,14 @@ export function App() {
         e.preventDefault();
         openFileRef.current();
       }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "e") {
+        e.preventDefault();
+        toggleEditingRef.current();
+      }
+      if (e.key === "F11") {
+        e.preventDefault();
+        toggleFullScreenRef.current();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -158,7 +226,7 @@ export function App() {
     return engrave(score, { compact: options.density === "compact", chords: options.chords, align: options.notePosition === "aligned", reminders: options.holdReminders });
   }, [engraved, options.density, options.fingerings, options.chords, options.notePosition, options.holdReminders, options.simile]);
 
-  const open = async (file: File, fileHandle: FileSystemFileHandle | null = null) => {
+  const open = async (file: File, fileHandle: FileSystemFileHandle | null = null, keepMode = false) => {
     const text = await file.text();
     let ymn = text;
     const isXml = /\.(musicxml|xml)$/i.test(file.name);
@@ -170,6 +238,7 @@ export function App() {
         ymn = writeYmn(importMusicXml(text, file.name), { width: DEFAULT_WIDTH });
       } catch (e) {
         setEngraved({ problem: { message: `Import MusicXML impossible : ${(e as Error).message}` } });
+        setEditing(true);
         return;
       }
       setFileName(file.name.replace(/\.(musicxml|xml)$/i, ".ymn"));
@@ -177,9 +246,14 @@ export function App() {
       setFileName(file.name);
     }
     setSource(ymn);
-    setEngraved(tryParse(ymn));
+    const parsed = tryParse(ymn);
+    setEngraved(parsed);
     setEngravedSource(ymn);
     persist(ymn);
+    // un import est presque toujours à retoucher ; un texte qui ne se grave pas montre son erreur ;
+    // un fichier rechargé garde le mode en cours
+    if (isXml || parsed.problem) setEditing(true);
+    else if (!keepMode) setEditing(false);
   };
 
   /** Modifications perdues si l'on remplace le texte : on demande d'abord. */
@@ -199,6 +273,10 @@ export function App() {
   };
   const openFileRef = useRef(openFile);
   openFileRef.current = openFile;
+  const toggleEditingRef = useRef(() => {});
+  toggleEditingRef.current = () => setEditing(!editing);
+  const toggleFullScreenRef = useRef(toggleFullScreen);
+  toggleFullScreenRef.current = toggleFullScreen;
 
   // glisser-déposer un fichier sur la fenêtre pour l'ouvrir ; le compteur suit les entrées et
   // sorties successives au-dessus des éléments de la page
@@ -253,7 +331,8 @@ export function App() {
     setSavedText(null);
     setFileName("morceau.ymn");
     persist("");
-    editor.current?.focus();
+    setEditing(true);
+    setTimeout(() => editor.current?.focus());
   };
 
   /** Relit depuis le disque le fichier ouvert (modifié ailleurs, ou pour annuler ses changements). */
@@ -261,7 +340,7 @@ export function App() {
     if (!handle) return;
     if (unsaved && !window.confirm(`Recharger ${handle.name} depuis le disque ? Les modifications non enregistrées seront perdues.`)) return;
     try {
-      await open(await handle.getFile(), handle);
+      await open(await handle.getFile(), handle, true);
       setNotice(`${handle.name} rechargé`);
     } catch (e) {
       setNotice(`Rechargement impossible : ${(e as Error).message}`);
@@ -328,9 +407,17 @@ export function App() {
           label="Gravure"
           items={[
             { label: "Graver", onSelect: engraveNow, shortcut: "Ctrl+Entrée" },
+            { label: "Graver automatiquement", onSelect: () => setOptions({ autoEngrave: !options.autoEngrave }), checked: options.autoEngrave },
             { label: "Options", onSelect: () => setShowOptions((v) => !v), checked: showOptions },
             "separator",
             { label: "Imprimer…", onSelect: () => window.print(), shortcut: "Ctrl+P", disabled: !pages.length || showGuide },
+          ]}
+        />
+        <Menu
+          label="Affichage"
+          items={[
+            { label: "Éditeur", onSelect: () => setEditing(!editing), checked: editing, shortcut: "Ctrl+E" },
+            { label: "Plein écran", onSelect: toggleFullScreen, checked: fullScreen, shortcut: "F11" },
           ]}
         />
         <Menu label="Aide" items={[{ label: "Notice", onSelect: () => setShowGuide((v) => !v), checked: showGuide }]} />
@@ -362,11 +449,8 @@ export function App() {
           muted={muted}
           onMuted={setMuted}
         />
-        <button className="primary" onClick={engraveNow} title="Ctrl+Entrée">
-          Graver{dirty ? " •" : ""}
-        </button>
         <button
-          className={"gear" + (showOptions ? " on" : "")}
+          className={"icon gear" + (showOptions ? " on" : "")}
           onClick={() => setShowOptions((v) => !v)}
           aria-pressed={showOptions}
           aria-controls="options"
@@ -393,8 +477,24 @@ export function App() {
           <NoticeView options={options} />
         </main>
       )}
-      <main className="split" hidden={showGuide}>
-        <section className="source">
+      <main className={"split" + (reading ? " reading" : "")} hidden={showGuide}>
+        {/* la languette de l'éditeur, sur le bord où il apparaît : on le tire, on le repousse */}
+        <button
+          className="edge"
+          onClick={() => setEditing(!editing)}
+          aria-pressed={editing}
+          title={editing ? "Masquer l'éditeur (Ctrl+E)" : "Afficher l'éditeur (Ctrl+E)"}
+          aria-label="Éditeur"
+        >
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+            <path fill="currentColor" d="M11.3 1.3a1.5 1.5 0 0 1 2.1 0l1.3 1.3a1.5 1.5 0 0 1 0 2.1l-8.6 8.6-3.9 1.2 1.2-3.9zM10.4 4 3.5 10.9l-.6 2.2 2.2-.6L12 5.6z" />
+          </svg>
+          <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden>
+            <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d={editing ? "M10 3 5 8l5 5" : "M6 3l5 5-5 5"} />
+          </svg>
+        </button>
+        <section className="source" hidden={reading}>
+          <div className="editor">
           <textarea
             ref={editor}
             value={source}
@@ -405,6 +505,8 @@ export function App() {
               setSource(e.target.value);
             }}
           />
+          <EngraveButton dirty={dirty} auto={options.autoEngrave} onEngrave={engraveNow} onAuto={(autoEngrave) => setOptions({ autoEngrave })} />
+          </div>
           {problem && (
             <button className="problem" onClick={() => goTo(problem.line, problem.column)}>
               {problem.message}
@@ -412,7 +514,13 @@ export function App() {
           )}
         </section>
 
-        <section className="preview" aria-label="Aperçu">
+        <section
+          className="preview"
+          ref={preview}
+          aria-label={reading ? "Partition" : "Aperçu"}
+          // en lecture, la molette fait défiler les pages côte à côte
+          onWheel={(e) => reading && Math.abs(e.deltaY) > Math.abs(e.deltaX) && e.currentTarget.scrollBy({ left: e.deltaY })}
+        >
           {score && !pages.length && <p className="empty">Aucune mesure à graver.</p>}
           {pages.map((p) => (
             <PageView key={p.index} page={p} total={pages.length} meta={score!.meta} options={options} />

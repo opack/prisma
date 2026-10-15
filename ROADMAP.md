@@ -44,13 +44,13 @@
 - Gravure de « Ped. simile » (option) : les pédales qu'il demande, gravées comme les autres (par défaut), atténuées en gris clair, ou la seule mention ; le fichier garde la mention.
 - Écoute : articulations, le staccato joué moitié moins long, l'accent plus fort, le marcato plus fort et un peu plus court ; la pédale peut encore tenir une note détachée.
 - Écoute : boutons de lecture en icônes : début du morceau, section précédente (début de la section jouée, ou la section d'avant si l'on est dans sa première mesure ou au second clic rapproché), lecture et pause, section suivante, arrêt.
+- Lecture et édition : la lecture est le mode ordinaire, l'éditeur s'affiche à la demande (une languette sur le bord gauche, contre l'éditeur une fois ouvert, Affichage › Éditeur, Ctrl+E) et se retrouve d'une visite à l'autre ; un .ymn s'ouvre en lecture, une nouvelle partition, un MusicXML importé ou un .ymn qui ne se grave pas en édition. En lecture, les pages côte à côte, chacune de toute la hauteur de l'écran, qui défilent de côté (molette, flèches, Page précédente/suivante : une pédale tourne-pages s'en sert) ; à l'écoute, la page jouée vient à gauche, les suivantes se lisent d'avance. Menu Affichage : Éditeur, Plein écran (F11). Graver devient un bouton flottant en bas de l'éditeur, contre les pages : refaire les pages (actif seulement quand le texte a changé depuis la dernière gravure, sans gravure automatique) et sa flèche vers « Graver automatiquement ».
 
 ## À faire
 
-1. **Mode lecture** : masquer le panneau d'édition pour jouer plutôt qu'éditer ; les pages de la gravure côte à côte, avec un défilement horizontal.
-2. **Bibliothèque de partitions** (à concevoir) : retrouver et ouvrir ses morceaux depuis l'application.
-3. **Trouver un nom à la notation** : « ymn » est provisoire ; une fois le nom choisi, renommer tout ce qui le porte (extension `.ymn`, commande `ymn`, application, documentation, code).
-4. **Timbre par instrument** à l'écoute (importé du MusicXML quand il l'indique, sinon choisi au moment de l'écoute, d'une façon à définir).
+1. **Bibliothèque de partitions** (à concevoir) : retrouver et ouvrir ses morceaux depuis l'application.
+2. **Trouver un nom à la notation** : « ymn » est provisoire ; une fois le nom choisi, renommer tout ce qui le porte (extension `.ymn`, commande `ymn`, application, documentation, code). Dans le même mouvement, revoir le mot « graver » / « gravure » : c'est le terme du métier (*music engraving* en anglais, la gravure musicale en français), mais il parle peu à un pianiste qui n'édite pas de partitions ; trouver le mot qui dit ce que fait le bouton (par exemple « mettre à jour la partition ») pour l'interface, quitte à garder « gravure » dans la documentation.
+3. **Timbre par instrument** à l'écoute (importé du MusicXML quand il l'indique, sinon choisi au moment de l'écoute, d'une façon à définir).
 
 ## Hors v1 pour l'instant
 
