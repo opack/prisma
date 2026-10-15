@@ -36,6 +36,7 @@
    1. **Pédale** tenue ;
    2. plus tard : petites notes, trilles, arpèges, point d'orgue, articulations, un timbre par instrument (importé du MusicXML quand il l'indique, sinon choisi au moment de l'écoute, d'une façon à définir).
 2. **Bibliothèque de partitions** (à concevoir) : retrouver et ouvrir ses morceaux depuis l'application.
+3. **Mode lecture** : masquer le panneau d'édition pour jouer plutôt qu'éditer ; les pages de la gravure côte à côte, avec un défilement horizontal.
 
 ## Hors v1 pour l'instant
 
