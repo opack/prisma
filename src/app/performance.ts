@@ -117,6 +117,24 @@ export function clicks(score: Score, ps: Passage[], grid: ClickGrid = "beats"): 
   return out;
 }
 
+/**
+ * Le décompte avant de jouer depuis l'instant joué `played` : une mesure entière, temps par temps
+ * (le premier marqué), puis, si l'on part en cours de mesure (une levée), les temps qui l'y mènent.
+ * Partir sur le temps 4 d'une mesure à 4 temps : 1 2 3 4, 1 2 3, et l'on joue.
+ */
+export function countIn(score: Score, ps: Passage[], played: number): ClickLevel[] {
+  const tick = scoreTick(ps, played);
+  if (tick === null) return [];
+  const beat = score.beats[Math.floor(tick / TICKS_PER_BEAT)];
+  if (!beat) return [];
+  const barLength = (bar: number) => Math.max(0, ...score.beats.filter((b) => b.barIndex === bar).map((b) => b.label));
+  const first = score.beats.find((b) => b.barIndex === beat.barIndex)!;
+  // une levée n'a pas toute sa mesure : on compte celle qui la suit
+  const length = first.label > 1 ? barLength(beat.barIndex + 1) || barLength(beat.barIndex) : barLength(beat.barIndex);
+  const labels = [...Array.from({ length }, (_, k) => k + 1), ...Array.from({ length: Math.max(0, beat.label - 1) }, (_, k) => k + 1)];
+  return labels.map((l) => (l === 1 ? "downbeat" : "beat"));
+}
+
 /** Durée totale du déroulé, en ticks. */
 export const playedLength = (ps: Passage[]) => (ps.length ? ps[ps.length - 1].at + ps[ps.length - 1].to - ps[ps.length - 1].from : 0);
 

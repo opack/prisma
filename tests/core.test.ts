@@ -1674,3 +1674,19 @@ describe("écoute : métronome", () => {
     expect(at("attacks")).toBe("10 T1");
   });
 });
+
+describe("écoute : décompte", () => {
+  it("compte une mesure, puis les temps qui mènent à une levée", async () => {
+    const { passages, countIn } = await import("../src/app/performance.ts");
+    // une levée sur le temps 4, puis une mesure de 4 temps
+    const s: Score = {
+      ...parseYmn("m1 |1  ||\n0  |1  ||\n"),
+      beats: [{ bar: "0", barIndex: 0, label: 4, division: 2 }, ...[1, 2, 3, 4].map((label) => ({ bar: "1", barIndex: 1, label, division: 2 }))] as Score["beats"],
+    };
+    const ps = passages(s);
+    const short = (ls: string[]) => ls.map((l) => (l === "downbeat" ? "1" : "·")).join("");
+    expect(short(countIn(s, ps, 0))).toBe("1···1··");
+    expect(short(countIn(s, ps, T))).toBe("1···");
+    expect(short(countIn(s, ps, 3 * T))).toBe("1···1·");
+  });
+});

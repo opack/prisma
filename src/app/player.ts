@@ -11,9 +11,9 @@
 import type { SplendidGrandPiano } from "smplr";
 import { TICKS_PER_BEAT } from "../core/index.ts";
 import type { Score } from "../core/index.ts";
-import { clicks, entryAt, entryStart, holds, inFirstBar, passages, playedLength, playedNotes, playedTick, scoreTick, stretched, unstretched } from "./performance.ts";
+import { clicks, countIn, entryAt, entryStart, holds, inFirstBar, passages, playedLength, playedNotes, playedTick, scoreTick, stretched, unstretched } from "./performance.ts";
 import type { Click, ClickGrid, Hold, PlayedNote, Passage } from "./performance.ts";
-import { DEFAULT_CLICK_SOUNDS, click, loadClick } from "./metronome.ts";
+import { DEFAULT_CLICK_SOUNDS, click, clickVolume, loadClick } from "./metronome.ts";
 import type { ClickSounds } from "./metronome.ts";
 
 /** Tempo d'un morceau qui n'en indique pas. */
@@ -100,7 +100,7 @@ export type PlayerSnapshot = {
 };
 
 /** Ce que l'on entend : le métronome, les instruments, et si le premier temps de la mesure sonne autrement. */
-type Sound = { metronome: boolean; instruments: boolean; clickSounds: ClickSounds; clickGrid: ClickGrid };
+type Sound = { metronome: boolean; instruments: boolean; clickSounds: ClickSounds; clickGrid: ClickGrid; countIn: boolean; clickVolume: number };
 
 type Piano = Awaited<ReturnType<typeof SplendidGrandPiano>["load"]>;
 
@@ -121,7 +121,7 @@ class Player {
   private clicks: Click[] = [];
   private tick?: AudioBuffer;
   /** Ce que l'on entend : le métronome, les instruments (l'un, l'autre ou les deux), le son de chaque niveau du métronome. */
-  private sound: Sound = { metronome: false, instruments: true, clickSounds: DEFAULT_CLICK_SOUNDS, clickGrid: "cells" };
+  private sound: Sound = { metronome: false, instruments: true, clickSounds: DEFAULT_CLICK_SOUNDS, clickGrid: "cells", countIn: false, clickVolume: 1 };
   /** Instant joué de la pause (le curseur, lui, montre l'instant du morceau). */
   private pos = 0;
   private bpm = DEFAULT_BPM;
@@ -169,20 +169,24 @@ class Player {
         this.piano = await SplendidGrandPiano(this.context).load;
       }
       this.tick = await loadClick(this.context);
+      clickVolume(this.context, this.sound.clickVolume);
     } catch {
       if (run === this.run) this.set({ state: "idle", tick: null, entry: null, error: "Impossible de charger le son du piano (connexion internet ?)" });
       return;
     }
     if (run !== this.run) return; // arrêté pendant le chargement
-    this.start(from);
+    this.start(from, this.sound.countIn);
   }
 
   /** Métronome et instruments, chacun entendu ou non ; en cours de lecture, la suite repart ainsi. */
   setSound(sound: Sound) {
-    if (JSON.stringify(sound) === JSON.stringify(this.sound)) return;
+    if (this.context) clickVolume(this.context, sound.clickVolume);
+    // le volume s'applique aussitôt, le décompte au prochain départ : rien à reprogrammer
+    const heard = (s: Sound) => JSON.stringify([s.metronome, s.instruments, s.clickSounds, s.clickGrid]);
+    const restart = heard(sound) !== heard(this.sound);
     if (sound.clickGrid !== this.sound.clickGrid && this.score) this.clicks = clicks(this.score, this.passages, sound.clickGrid);
     this.sound = sound;
-    if (this.snapshot.state !== "playing") return;
+    if (!restart || this.snapshot.state !== "playing") return;
     const from = this.now();
     this.halt();
     this.start(from);
@@ -283,7 +287,8 @@ class Player {
     this.voices = [];
   }
 
-  private start(from: number) {
+  /** Joue depuis l'instant joué `from`, après le décompte s'il est demandé (au départ seulement). */
+  private start(from: number, counted = false) {
     const run = this.run;
     const context = this.context!, piano = this.piano!;
     const hs = this.holds;
@@ -293,7 +298,15 @@ class Player {
     const length = (stretched(hs, playedLength(this.passages)) - zero) * sec;
     // l'instant joué après `elapsed` secondes : pendant un point d'orgue, il avance deux fois moins vite
     const played = (elapsed: number) => unstretched(hs, zero + Math.max(0, elapsed) / sec);
-    const start = context.currentTime + LEAD_IN;
+    // le décompte : des temps au tempo de l'écoute, puis la musique ; un niveau sans son prend celui du bois
+    const count = counted && this.score ? countIn(this.score, this.passages, from) : [];
+    const beatSec = TICKS_PER_BEAT * sec;
+    const start = context.currentTime + LEAD_IN + count.length * beatSec;
+    count.forEach((level, k) => {
+      const chosen = this.sound.clickSounds[level];
+      const at = context.currentTime + LEAD_IN + k * beatSec;
+      this.voices.push({ end: at + 0.1, stop: click(context, this.tick!, at, level, chosen === "none" ? (level === "downbeat" ? "high" : "wood") : chosen) });
+    });
     this.now = () => played(context.currentTime - start);
     const sounds = this.sound.clickSounds;
     const beats = this.sound.metronome

@@ -42,13 +42,29 @@ export function loadClick(context: AudioContext): Promise<AudioBuffer> {
 }
 
 /** Programme un coup à l'instant `time` de l'horloge audio ; renvoie de quoi l'annuler. */
+/**
+ * Le volume du métronome, à part de celui des instruments : un réglage qui s'applique aussitôt,
+ * même aux coups déjà programmés.
+ */
+const buses = new WeakMap<AudioContext, GainNode>();
+export function clickVolume(context: AudioContext, volume?: number): GainNode {
+  let bus = buses.get(context);
+  if (!bus) {
+    bus = context.createGain();
+    bus.connect(context.destination);
+    buses.set(context, bus);
+  }
+  if (volume !== undefined) bus.gain.value = volume;
+  return bus;
+}
+
 export function click(context: AudioContext, buffer: AudioBuffer, time: number, level: ClickLevel, sound: Exclude<ClickSound, "none">): () => void {
   const source = context.createBufferSource();
   source.buffer = buffer;
   source.playbackRate.value = RATE[sound];
   const volume = context.createGain();
   volume.gain.value = GAIN[level];
-  source.connect(volume).connect(context.destination);
+  source.connect(volume).connect(clickVolume(context));
   source.start(time);
   source.onended = () => volume.disconnect();
   return () => {

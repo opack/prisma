@@ -301,8 +301,16 @@ export function App() {
   // écoute : le morceau gravé, avec le curseur sur la gravure ; arrêtée quand on regrave
   useEffect(() => player.load(score), [score]);
   useEffect(
-    () => player.setSound({ metronome: options.metronome, instruments: options.instruments, clickSounds: options.clickSounds, clickGrid: options.clickGrid }),
-    [options.metronome, options.instruments, options.clickSounds, options.clickGrid],
+    () =>
+      player.setSound({
+        metronome: options.metronome,
+        instruments: options.instruments,
+        clickSounds: options.clickSounds,
+        clickGrid: options.clickGrid,
+        countIn: options.countIn,
+        clickVolume: options.clickVolume,
+      }),
+    [options.metronome, options.instruments, options.clickSounds, options.clickGrid, options.countIn, options.clickVolume],
   );
 
   return (
@@ -453,6 +461,34 @@ export function App() {
                   </label>
                 ))}
                 <span className="sample">{GRID_HINTS[options.clickGrid]}</span>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Volume</legend>
+              <div className="choices">
+                <input
+                  type="range"
+                  className="click-sound"
+                  id="click-volume"
+                  min={0}
+                  max={2}
+                  step={0.1}
+                  value={options.clickVolume}
+                  onChange={(e) => setOptions({ clickVolume: Number(e.target.value) })}
+                  aria-valuetext={`${Math.round(options.clickVolume * 100)} %`}
+                />
+                <span className="click-sound-name">{Math.round(options.clickVolume * 100)} %</span>
+                <span className="sample">par rapport aux instruments</span>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Décompte</legend>
+              <div className="choices">
+                <label>
+                  <input type="checkbox" id="count-in" checked={options.countIn} onChange={(e) => setOptions({ countIn: e.target.checked })} />
+                  Une mesure avant de jouer
+                </label>
+                <span className="sample">au départ et à la reprise, même métronome coupé</span>
               </div>
             </fieldset>
             {CLICK_LEVELS.map((l) => (
