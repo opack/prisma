@@ -48,6 +48,7 @@
 - Place des notes, « Une ligne par note » : les notes alignées, et de plus deux notes jouées dans une même mesure jamais sur la même ligne, l'aiguë au-dessus ; on voit le dessin des arpèges et de la mélodie, et la note qui s'ajoute d'une case à l'autre (gravure seulement, le texte .ymn ne change pas).
 - Sections (option) : chacune commence une nouvelle ligne (par défaut), ou suit la précédente sur la même ligne : la double barre ferme la section, un blanc d'une case coupe les couloirs, puis la suivante s'ouvre comme une ligne, sa lettre en tête ; la partition est plus courte.
 - Gravure : en fin de système, la barre de mesure s'aligne sur le bord droit des couloirs, qui ne la dépassent plus.
+- Espacement compact : en plus des cases plus étroites, des lignes de notes moins hautes (4 mm au lieu de 4,5) et des systèmes plus serrés ; environ 10 % de hauteur en moins.
 
 ## À faire
 

@@ -89,7 +89,7 @@ function OctaveMark({ cx, cy, offset, style }: { cx: number; cy: number; offset:
 }
 
 /** Onglet vertical pâle couvrant les lignes d'un groupe d'octave ; numéro en haut ou au centre selon les options. */
-function OctaveTabs({ rows, top, style, position, tabFill }: { rows: SystemRow[]; top: number; style: OctaveStyle; position: OctavePosition; tabFill: (octave: number) => string }) {
+function OctaveTabs({ rows, top, style, position, tabFill, rowH }: { rows: SystemRow[]; top: number; style: OctaveStyle; position: OctavePosition; tabFill: (octave: number) => string; rowH: number }) {
   const groups: { octave: number; first: number; count: number }[] = [];
   rows.forEach((r, i) => {
     if (r.showOctave || !groups.length) groups.push({ octave: r.octave, first: i, count: 1 });
@@ -100,14 +100,14 @@ function OctaveTabs({ rows, top, style, position, tabFill }: { rows: SystemRow[]
   return (
     <g>
       {groups.map((g) => {
-        const y = top + g.first * G.rowH + 0.25;
-        const h = g.count * G.rowH - 0.5;
+        const y = top + g.first * rowH + 0.25;
+        const h = g.count * rowH - 0.5;
         return (
           <g key={g.first}>
             <rect x={x} y={y} width={w} height={h} rx={0.6} fill={tabFill(g.octave)} />
             <OctaveMark
               cx={x + w / 2}
-              cy={position === "top" ? top + g.first * G.rowH + G.rowH / 2 : y + h / 2}
+              cy={position === "top" ? top + g.first * rowH + rowH / 2 : y + h / 2}
               offset={octaveOffset(g.octave)}
               style={style}
             />
@@ -148,11 +148,11 @@ function Row({ ps, row, y, centered, articulations, reminders }: { ps: PlacedSys
   const { sys, xs, ws } = ps;
   const x0 = PAGE.marginX;
   const right = xs[xs.length - 1] + ws[ws.length - 1];
-  const base = y + G.rowH * 0.74;
+  const base = y + ps.rowH * 0.74;
   // petites notes : en petit, en exposant et en gris foncé, en tête de case, rang par rang
   const graces = row.graces.flatMap((list, a) => {
     let x = xs[sys.anchors[a]] + 0.4;
-    const dy = centered ? row.center[a] * G.rowH : 0;
+    const dy = centered ? row.center[a] * ps.rowH : 0;
     return sys.parts[row.part].graceDigits[a].map((d, k) => {
       const gx = x;
       x += graceSlotW(d);
@@ -169,13 +169,13 @@ function Row({ ps, row, y, centered, articulations, reminders }: { ps: PlacedSys
       {row.cells.map((c, a) => {
         if (!c) return null;
         // option « notes centrées » : le bloc de notes est centré dans son couloir
-        const dy = centered ? row.center[a] * G.rowH : 0;
+        const dy = centered ? row.center[a] * ps.rowH : 0;
         const ci = sys.anchors[a];
         // la note vient après les petites notes et l'arpège de sa case
         const extra = leadExtra(sys, a);
         const x = xs[ci] + extra;
         const w = ws[ci] - extra;
-        const mid = y + dy + G.rowH / 2;
+        const mid = y + dy + ps.rowH / 2;
         // trille : la note, sa voisine en petit, puis un trait ondulé sur toute sa durée
         if (row.trill[a] && c === "-") return <path key={a} d={wave(xs[ci], x + w, mid)} {...WAVE} />;
         // note annotée : son articulation au-dessus d'elle, la voisine de trille en petit (en haut à
@@ -227,12 +227,12 @@ function Row({ ps, row, y, centered, articulations, reminders }: { ps: PlacedSys
         }
         // sans rappel (option), une note commencée au système précédent n'est qu'un trait de tenue
         if (c === "-" || (c.startsWith("-") && !reminders)) {
-          return <line key={a} x1={x + w * 0.22} x2={x + w * 0.62} y1={y + dy + G.rowH / 2} y2={y + dy + G.rowH / 2} stroke={INK} strokeWidth={0.32} />;
+          return <line key={a} x1={x + w * 0.22} x2={x + w * 0.62} y1={y + dy + ps.rowH / 2} y2={y + dy + ps.rowH / 2} stroke={INK} strokeWidth={0.32} />;
         }
         if (c.startsWith("-")) {
           // note commencée au système précédent : le trait de tenue habituel, puis en petit et en
           // gris le rappel de la note tenue (« — 8 »), pour ne pas le lire comme un nombre négatif
-          const y1 = y + dy + G.rowH / 2;
+          const y1 = y + dy + ps.rowH / 2;
           const x1 = x + 0.5, x2 = x1 + G.holdW;
           return (
             <g key={a}>
@@ -666,7 +666,7 @@ function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; options:
     out.push([from, b]);
     return out;
   };
-  const rowY = (k: number, i: number) => ps.parts[k].rowsTop + i * G.rowH;
+  const rowY = (k: number, i: number) => ps.parts[k].rowsTop + i * ps.rowH;
 
   // bandes alternées par groupe d'octave, dans chaque partie
   const alternate = (rows: SystemRow[]) => {
@@ -778,14 +778,14 @@ function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; options:
       })}
 
       {sys.parts.map((p, k) => (
-        <OctaveTabs key={"ot" + k} rows={p.rows} top={ps.parts[k].rowsTop} style={options.octaveStyle} position={options.octavePosition} tabFill={tabFill} />
+        <OctaveTabs key={"ot" + k} rows={p.rows} top={ps.parts[k].rowsTop} style={options.octaveStyle} position={options.octavePosition} tabFill={tabFill} rowH={ps.rowH} />
       ))}
       {/* fonds des couloirs d'abord : les notes, dessinées ensuite, ne sont jamais recouvertes */}
       {sys.parts.map((p, k) => {
         const alt = alternate(p.rows);
         return p.rows.map((r, i) => {
           const fill = bandFill(r.octave, alt[i]);
-          return fill && spans(left, right).map(([a, b], j) => <rect key={`bd${k}-${i}-${j}`} x={a} y={rowY(k, i)} width={b - a} height={G.rowH} fill={fill} />);
+          return fill && spans(left, right).map(([a, b], j) => <rect key={`bd${k}-${i}-${j}`} x={a} y={rowY(k, i)} width={b - a} height={ps.rowH} fill={fill} />);
         });
       })}
       {sys.parts.map((p, k) => p.rows.map((r, i) => <Row key={`r${k}-${i}`} ps={ps} row={r} y={rowY(k, i)} centered={centered} articulations={articulationsOf(k, i)} reminders={options.holdReminders} />))}
@@ -801,7 +801,7 @@ function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; options:
         const ys = sys.parts.flatMap((p, k) => (arp.part === undefined || arp.part === k ? p.rows.flatMap((r, j) => (attack(r) ? [rowY(k, j)] : [])) : []));
         if (!ys.length) return null;
         const x = xs[sys.anchors[arp.anchor]] + graceExtra(sys, arp.anchor) + G.arpeggioW / 2 + 0.2;
-        return <path key={"arp" + i} d={vwave(x, Math.min(...ys) + 0.5, Math.max(...ys) + G.rowH - 0.5, arp.down)} {...WAVE} />;
+        return <path key={"arp" + i} d={vwave(x, Math.min(...ys) + 0.5, Math.max(...ys) + ps.rowH - 0.5, arp.down)} {...WAVE} />;
       })}
 
       {/* séparations verticales, instrument par instrument : temps fins, mesures épaisses, reprises */}

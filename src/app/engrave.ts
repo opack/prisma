@@ -24,6 +24,9 @@ export const G = {
   instrumentGap: 5, // espace entre deux instruments
   systemGap: 6.5,
   sectionGap: 5, // espace en plus avant une nouvelle section
+  compactRowH: 4, // espacement compact : des lignes de notes moins hautes
+  compactSystemGap: 3.5, // et les systèmes plus serrés
+  compactSectionGap: 2.5,
   sectionSep: 5.2, // sections à la suite : un blanc d'une case entre la fin d'une section et la suivante, sur la même ligne
   headerH: 17, // titre, en première page
   subtitleH: 5, // place en plus pour un sous-titre
@@ -147,6 +150,8 @@ export type PlacedSystem = {
   /** Place de chaque instrument : du haut de ses lignes au bas de sa dernière partie (pédale exclue). */
   instruments: { top: number; bottom: number; first: number; last: number; name?: string }[];
   height: number;
+  /** Hauteur d'une ligne de notes (moindre en espacement compact). */
+  rowH: number;
   /** Abscisse de chaque colonne (case ou séparateur), depuis le bord gauche de la page. */
   xs: number[];
   /** Largeur de chaque colonne. */
@@ -187,7 +192,7 @@ const voiceH = (v: Voice) => (v.marks.some((m) => m.kind !== "arpeggio" && m.kin
  * chaque partie. Deux parties d'un instrument sont séparées par un trait épais, deux
  * instruments par un espace ; la pédale d'un instrument passe sous sa dernière partie.
  */
-export function geometry(s: System, chords: ChordStyle, y: number) {
+export function geometry(s: System, chords: ChordStyle, y: number, rowH: number = G.rowH) {
   const textBand = s.marks.some((m) => m.kind === "text") ? G.markH : 0;
   const structBand = s.marks.some((m) => m.kind === "times" || m.kind === "marker" || m.kind === "fermata") ? G.markH : 0;
   const chordBand = chordH(s, chords);
@@ -204,7 +209,7 @@ export function geometry(s: System, chords: ChordStyle, y: number) {
     const slurBand = slurH(p.voice), lyricBand = lyricH(p.voice), voiceBand = voiceH(p.voice);
     const pedalBand = p.pedal.spans.length || p.pedal.texts.length ? G.pedalH : 0;
     const rowsTop = cur;
-    const slurTop = rowsTop + p.rows.length * G.rowH;
+    const slurTop = rowsTop + p.rows.length * rowH;
     const lyricTop = slurTop + slurBand;
     const voiceTop = lyricTop + lyricBand;
     const pedalTop = voiceTop + voiceBand;
@@ -215,10 +220,10 @@ export function geometry(s: System, chords: ChordStyle, y: number) {
     const first = firsts[i], last = first + x.parts - 1;
     return { top: i === 0 ? rulerTop : parts[first].rowsTop, bottom: parts[last].bottom, first, last, ...(x.name ? { name: x.name } : {}) };
   });
-  return { textBand, structBand, chordBand, rulerTop, parts, instruments, height: cur - y + 1 };
+  return { textBand, structBand, chordBand, rulerTop, parts, instruments, height: cur - y + 1, rowH };
 }
 
-export const systemHeight = (s: System, chords: ChordStyle = "both") => geometry(s, chords, 0).height;
+export const systemHeight = (s: System, chords: ChordStyle = "both", rowH: number = G.rowH) => geometry(s, chords, 0, rowH).height;
 
 /** Largeur d'une barre de mesure, selon ses signes de reprise (identique au calcul du moteur). */
 const barSepWidth = (c: Extract<System["columns"][number], { kind: "barSep" }>) =>
@@ -234,7 +239,7 @@ const barSepWidth = (c: Extract<System["columns"][number], { kind: "barSep" }>) 
  * dernière ligne d'une section (ou du morceau) le reprend, sans dépasser la largeur : ses
  * cases ont la même taille que celles du dessus, et une ligne courte reste courte.
  */
-function place(sys: System, isLast: boolean, y: number, cellW: number, chords: ChordStyle, prevStretch?: number, reminders = true): PlacedSystem {
+function place(sys: System, isLast: boolean, y: number, cellW: number, chords: ChordStyle, prevStretch?: number, reminders = true, rowH: number = G.rowH): PlacedSystem {
   const chordAt = new Map(sys.chords.map((c) => [c.anchor, chordW(c.text, chords)]));
   const anchorOf = (ci: number) => sys.anchors.indexOf(ci);
   const cells = sys.anchors.length;
@@ -253,7 +258,7 @@ function place(sys: System, isLast: boolean, y: number, cellW: number, chords: C
     ws.push(w);
     x += w;
   }
-  return { sys, stretch, y, xs, ws, ...geometry(sys, chords, 0) };
+  return { sys, stretch, y, xs, ws, ...geometry(sys, chords, 0, rowH) };
 }
 
 /**
@@ -264,6 +269,7 @@ function place(sys: System, isLast: boolean, y: number, cellW: number, chords: C
  */
 export function engrave(score: Score, { compact = false, chords = "both" as ChordStyle, align = undefined as Align | undefined, reminders = true, inlineSections = false } = {}): Page[] {
   const cellW = compact ? G.compactCell : G.cell;
+  const rowH = compact ? G.compactRowH : G.rowH;
   const systems = layout(score, {
     width: CONTENT_W,
     prefix: G.prefix,
@@ -290,8 +296,8 @@ export function engrave(score: Score, { compact = false, chords = "both" as Chor
   const bottom = PAGE.h - PAGE.marginBottom;
   let lastStretch: number | undefined;
   systems.forEach((sys, i) => {
-    const h = systemHeight(sys, chords);
-    if (sys.section && page.systems.length) y += G.sectionGap;
+    const h = systemHeight(sys, chords, rowH);
+    if (sys.section && page.systems.length) y += compact ? G.compactSectionGap : G.sectionGap;
     if (y + h > bottom && page.systems.length) {
       pages.push(page);
       page = { index: pages.length, systems: [], header: false, order };
@@ -299,10 +305,10 @@ export function engrave(score: Score, { compact = false, chords = "both" as Chor
     }
     // la ligne précédente, si elle est de la même section
     const prev = i > 0 && !sys.section && !systems[i - 1].endsSection ? lastStretch : undefined;
-    const placed = place(sys, i === systems.length - 1, y, cellW, chords, prev, reminders);
+    const placed = place(sys, i === systems.length - 1, y, cellW, chords, prev, reminders, rowH);
     lastStretch = placed.stretch;
     page.systems.push(placed);
-    y += h + G.systemGap;
+    y += h + (compact ? G.compactSystemGap : G.systemGap);
   });
   pages.push(page);
   return pages;
