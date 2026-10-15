@@ -37,8 +37,14 @@
 ## À faire
 
 1. **Compléter l'écoute** : arpèges, point d'orgue, articulations, un timbre par instrument (importé du MusicXML quand il l'indique, sinon choisi au moment de l'écoute, d'une façon à définir).
-2. **Bibliothèque de partitions** (à concevoir) : retrouver et ouvrir ses morceaux depuis l'application.
-3. **Mode lecture** : masquer le panneau d'édition pour jouer plutôt qu'éditer ; les pages de la gravure côte à côte, avec un défilement horizontal.
+2. **Métronome** à l'écoute, en itérations :
+   1. activable d'un bouton à côté de la lecture, sur les temps, le premier temps de la mesure marqué (levées comprises) ; lecture avec ou sans les instruments (le métronome seul) ;
+   2. les divisions du temps, sur la grille régulière (en 2 ou en 3 selon `division`, puis chaque division en deux) et non sur les cases écrites ; un son par niveau (premier temps, temps, division, subdivision), « aucun » pour ne pas marquer un niveau ; sons synthétisés, sans téléchargement ;
+   3. décompte d'une mesure avant le départ, en option, et volume du métronome par rapport aux instruments ;
+   4. plus tard : couper ou garder chaque partie séparément, pour travailler une main pendant que l'autre joue.
+3. **Bouton engrenage** en haut à droite pour afficher ou masquer le panneau d'options ; le panneau, de plus en plus fourni, devra peut-être changer de forme (une rubrique « Écoute » s'y ajoutera avec le métronome).
+4. **Mode lecture** : masquer le panneau d'édition pour jouer plutôt qu'éditer ; les pages de la gravure côte à côte, avec un défilement horizontal.
+5. **Bibliothèque de partitions** (à concevoir) : retrouver et ouvrir ses morceaux depuis l'application.
 
 ## Hors v1 pour l'instant
 
