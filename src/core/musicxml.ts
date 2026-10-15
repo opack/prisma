@@ -291,7 +291,11 @@ function readMeasures(partNode: XNode, base: Part, staves: number): RawMeasure[]
       } else if (t === "barline") {
         const b = kids(item);
         const rep = find(b, "repeat");
-        if (rep && attr(rep, "direction") === "forward") startRepeat = true;
+        if (rep && attr(rep, "direction") === "forward") {
+          startRepeat = true;
+          // une nouvelle reprise ferme la case restée ouverte (une 2e case sans fin écrite)
+          if (endings === openEnding) endings = openEnding = undefined;
+        }
         if (rep && attr(rep, "direction") === "backward") {
           endRepeat = true;
           times = Number(attr(rep, "times") ?? 2);

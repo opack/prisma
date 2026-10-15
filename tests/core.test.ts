@@ -281,6 +281,23 @@ describe("ordre de jeu du MusicXML", () => {
     expect(text).toContain("order: A A B C B D A");
     expect(parseYmn(text).order).toEqual(s.order);
   });
+
+  it("ferme à la reprise suivante une 2e case restée ouverte", () => {
+    const bar = (extra: object = {}) => ({ notes: [[{ midi: [C4], dur: 4 * q }]], ...extra });
+    // ||: 1 | 1re case :|| 2e case (jamais fermée) ||: 4 | 1re case :|| 2e case | 7
+    const xml = musicXml([
+      bar(),
+      bar({ barlineLeft: `<ending number="1" type="start"/>`, barline: `<ending number="1" type="stop"/><repeat direction="backward"/>` }),
+      bar({ barlineLeft: `<ending number="2" type="start"/>` }),
+      bar({ barlineLeft: `<repeat direction="forward"/>` }),
+      bar({ barlineLeft: `<ending number="1" type="start"/>`, barline: `<ending number="1" type="stop"/><repeat direction="backward"/>` }),
+      bar({ barlineLeft: `<ending number="2" type="start"/>`, barline: `<ending number="2" type="discontinue"/>` }),
+      bar(),
+    ]);
+    const s = importMusicXml(xml);
+    expect(s.markers.map((x) => `${x.label}@${x.barIndex}`)).toEqual(["A@0", "B@1", "C@2", "D@3", "E@4", "F@5"]);
+    expect(s.order.join(" ")).toBe("A B A C D E D F");
+  });
 });
 
 describe("sections", () => {
