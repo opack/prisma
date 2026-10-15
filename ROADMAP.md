@@ -34,7 +34,8 @@
    1. **Reprises et ordre des sections**, déroulés comme à la lecture ;
    2. **Nuances et soufflets** en intensité ;
    3. **Pédale** tenue ;
-   4. plus tard : petites notes, trilles, arpèges, point d'orgue, articulations, un timbre par instrument.
+   4. plus tard : petites notes, trilles, arpèges, point d'orgue, articulations, un timbre par instrument (importé du MusicXML quand il l'indique, sinon choisi au moment de l'écoute, d'une façon à définir).
+2. **Bibliothèque de partitions** (à concevoir) : retrouver et ouvrir ses morceaux depuis l'application.
 
 ## Hors v1 pour l'instant
 
