@@ -33,7 +33,8 @@ export function separatorText(c: Exclude<Column, { kind: "anchor" }>): string {
   return (c.endRepeat ? ":" : "") + "||" + (c.startRepeat ? ":" : "");
 }
 
-type Item = { col: number; text: string };
+/** t : l'instant d'un texte, qui déborde sur les cases suivantes (absent pour un signe). */
+type Item = { col: number; text: string; t?: number };
 
 /** Largeur des petites notes d'une case : chaque rang prend son numéro le plus long, plus « ' ». */
 const graceWidth = (digits: number[]) => digits.reduce((w, d) => w + d + GRACE_MARK.length, 0);
@@ -42,15 +43,17 @@ const graceWidth = (digits: number[]) => digits.reduce((w, d) => w + d + GRACE_M
  * Range des indications sur des lignes @ : chacune commence à sa colonne. Deux indications
  * voisines sont séparées par deux espaces quand une seule les réunirait en un même texte
  * (voir joinsText), par une seule sinon. Une indication qui ne tient pas passe sur une
- * ligne @ de plus.
+ * ligne @ de plus ; si c'est un texte qui l'en empêche sur la première, `collide` reçoit
+ * l'instant de ce texte, pour élargir sa case.
  */
-function stackLines(items: Item[]): string[] {
-  const lines: { text: string[]; end: number; last: string }[] = [];
+function stackLines(items: Item[], collide?: (t: number) => void): string[] {
+  const lines: { text: string[]; end: number; last: string; t?: number }[] = [];
   for (const m of [...items].sort((a, b) => a.col - b.col)) {
     const fits = (l: { end: number; last: string }) => {
       if (!l.last) return true;
       return m.col >= l.end + (joinsText(l.last, m.text) ? 2 : 1);
     };
+    if (lines[0] && !fits(lines[0]) && lines[0].t !== undefined) collide?.(lines[0].t);
     let line = lines.find(fits);
     if (!line) {
       line = { text: [], end: -1, last: "" };
@@ -60,14 +63,16 @@ function stackLines(items: Item[]): string[] {
     line.text.push(...m.text);
     line.end = m.col + m.text.length;
     line.last = m.text;
+    line.t = m.t;
   }
   return lines.map((l) => ("@" + l.text.join("").slice(1)).trimEnd());
 }
 
-export function renderSystemText(sys: System, cellAt: (t: number) => number, prefix: number): string[] {
+export function renderSystemText(sys: System, cellAt: (t: number) => number, prefix: number, collide?: (t: number) => void): string[] {
   const head = ("m" + sys.bar).padEnd(prefix - 1) + "|";
   // largeur de chaque case : la largeur de base, ou plus si une indication l'exige
-  const widths = sys.anchors.map((ci) => cellAt((sys.columns[ci] as { t: number }).t));
+  const tAt = (anchor: number) => (sys.columns[sys.anchors[anchor]] as { t: number }).t;
+  const widths = sys.anchors.map((_, a) => cellAt(tAt(a)));
   const anchorCol: number[] = [];
   const columnCol: number[] = []; // colonne de départ de chaque colonne du système
   const line = (pick: (anchorIdx: number) => string, record = false) => {
@@ -113,7 +118,7 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
       // deux articulations d'une même case se suivent sur la même ligne : « . ! »
       ...v.marks.map((m, i) => {
         const before = m.kind === "articulation" ? v.marks.slice(0, i).filter((x) => x.kind === "articulation" && x.anchor === m.anchor) : [];
-        return { col: anchorCol[m.anchor] + before.reduce((w, x) => w + x.text.length + 1, 0), text: m.text };
+        return { col: anchorCol[m.anchor] + before.reduce((w, x) => w + x.text.length + 1, 0), text: m.text, ...(m.kind === "text" ? { t: tAt(m.anchor) } : {}) };
       }),
       ...v.hairpins.map((h) => {
         const before = Math.max(0, ...v.marks.filter((m) => m.anchor === h.fromAnchor).map((m) => m.text.length + 1));
@@ -121,7 +126,7 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
         const last = Math.max(col, anchorCol[h.toAnchor] + widths[h.toAnchor] - 2);
         return { col, text: h.kind + "-".repeat(last - col) };
       }),
-    ]);
+    ], collide);
   // liaison : « ( » sur la case de la première note, « ) » dans celle de la dernière ;
   // coupée, elle va jusqu'au bout du système. Les suites de liaisons commencées plus tôt
   // s'écrivent de haut en bas dans l'ordre de leur début (v.slurs est trié ainsi), comme
@@ -156,7 +161,7 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
     ? [sys.chords.reduce((l, c) => l.padEnd(anchorCol[c.anchor]) + c.text, CHORD_LINE).trimEnd()]
     : [];
   return [
-    ...stackLines(sys.marks.map((m) => ({ col: colOf(m), text: m.text }))),
+    ...stackLines(sys.marks.map((m) => ({ col: colOf(m), text: m.text, ...(m.kind === "text" && m.anchor !== undefined ? { t: tAt(m.anchor) } : {}) })), collide),
     ...chordLine,
     ruler,
     // chaque partie sous son trait : double au début d'un instrument (avec son nom), simple sinon ;
@@ -169,7 +174,13 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
         ...phrasingLines(p.voice),
         ...lyricLines(p.voice),
         ...expressionLines(p.voice),
-        ...stackLines([...p.pedal.signs, ...p.pedal.texts].map((x) => ({ col: anchorCol[x.anchor], text: x.text }))),
+        ...stackLines(
+          [
+            ...p.pedal.signs.map((x): Item => ({ col: anchorCol[x.anchor], text: x.text })),
+            ...p.pedal.texts.map((x): Item => ({ col: anchorCol[x.anchor], text: x.text, t: tAt(x.anchor) })),
+          ],
+          collide,
+        ),
       ];
     }),
   ];
@@ -185,19 +196,26 @@ export function prefixWidth(score: Score): number {
 }
 
 /**
- * Largeur des cases qui doivent être élargies : une indication posée sur une case doit y
- * tenir, suivie de deux espaces (une seule réunirait deux textes voisins en un seul).
+ * Largeur des cases qui doivent être élargies : un signe posé sur une case doit y tenir, suivi
+ * de deux espaces (une seule réunirait deux textes voisins en un seul). Un texte, lui, déborde
+ * sur les cases suivantes ; sa case ne s'élargit (instants `widen`) que s'il buterait sinon sur
+ * l'indication suivante de sa ligne.
  * Un soufflet qui part de la même case qu'une nuance demande en plus sa place (« p <- »).
  * Les petites notes d'une case s'ajoutent à sa largeur de base.
  */
-function cellWidths(score: Score, cell: number): (t: number) => number {
+function cellWidths(score: Score, cell: number, widen: Set<number> = new Set()): (t: number) => number {
   const need = new Map<number, number>();
   const want = (t: number, w: number) => need.set(t, Math.max(need.get(t) ?? cell, w));
+  // un texte (« dolce », « rit. ») déborde sur les cases suivantes : sa longueur ne compte pas, il
+  // vaut pour l'instant de sa case ; seule une nuance, signe court, doit tenir dans la sienne
   for (const e of score.expressions) {
+    if (e.kind !== "dynamic") {
+      if (widen.has(e.t)) want(e.t, e.text.length + 2);
+      continue;
+    }
     const pin = score.hairpins.some((h) => h.part === e.part && h.start === e.t);
     want(e.t, e.text.length + (pin ? 3 : 2));
   }
-  for (const tm of score.texts) want(tm.t, tm.text.length + 2);
   // une articulation, suivie d'une espace (deux signes d'une même case : « . ! »)
   for (const t of new Set(score.articulations.map((x) => x.t))) {
     const here = score.articulations.filter((x) => x.t === t);
@@ -218,7 +236,8 @@ function cellWidths(score: Score, cell: number): (t: number) => number {
     const graces = Math.max(...Array.from({ length: partCount(score.instruments) }, (_, k) => graceWidth(graceDigits(score.graces, k, g.t))));
     want(g.t, graces + (trillNeed.get(g.t) ?? cell));
   }
-  for (const p of score.pedalTexts) want(p.t, p.text.length + 2);
+  for (const tm of score.texts) if (widen.has(tm.t)) want(tm.t, tm.text.length + 2);
+  for (const p of score.pedalTexts) if (widen.has(p.t)) want(p.t, p.text.length + 2);
   for (const p of score.pedals) {
     const change = score.pedals.some((q) => q.part === p.part && q.end === p.start);
     want(p.start, (change ? "*Ped." : "Ped.").length + 1);
@@ -230,16 +249,19 @@ function cellWidths(score: Score, cell: number): (t: number) => number {
 export function writeYmn(score: Score, opts: WriteOptions = {}): string {
   const cell = Number(score.meta.cell ?? DEFAULT_CELL);
   const prefix = prefixWidth(score);
-  const cellAt = cellWidths(score, cell);
-  const systems = layout(score, {
-    width: opts.width ?? DEFAULT_WIDTH,
-    prefix,
-    cell,
-    cellAt,
-    beatSep: 1,
-    barSep: 2,
-    repeatDots: 1,
-  });
+  // un texte déborde sur les cases suivantes ; s'il bute sur l'indication qui le suit, sa case
+  // s'élargit et l'on recompose (élargir peut en faire buter un autre : quelques passes au plus)
+  const widen = new Set<number>();
+  let cellAt = cellWidths(score, cell, widen);
+  const compose = () => layout(score, { width: opts.width ?? DEFAULT_WIDTH, prefix, cell, cellAt, beatSep: 1, barSep: 2, repeatDots: 1 });
+  let systems = compose();
+  for (let pass = 0; pass < 4; pass++) {
+    const before = widen.size;
+    for (const s of systems) renderSystemText(s, cellAt, prefix, (t) => widen.add(t));
+    if (widen.size === before) break;
+    cellAt = cellWidths(score, cell, widen);
+    systems = compose();
+  }
   const meta = { ...score.meta };
   const ternary = score.beats.filter((b) => b.division === 3).length;
   if (ternary * 2 > score.beats.length) meta.division = 3;

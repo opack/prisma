@@ -1612,3 +1612,14 @@ describe("écoute : articulations", () => {
     ]);
   });
 });
+
+describe("écriture : textes qui débordent", () => {
+  it("laisse un texte long déborder sur les cases suivantes, sans élargir sa case", () => {
+    const s = parseYmn("m1 |1  |2  |3  |4  ||\n0  |1  |3  |5  |8  ||\n---\n");
+    s.expressions.push({ part: 0, t: 0, text: "sempre pianissimo", kind: "text" });
+    const text = writeYmn(s);
+    expect(text).toMatch(/^m1 \|1  \|2  \|3  \|4  \|\|$/m);
+    expect(text).toMatch(/^@   sempre pianissimo$/m);
+    expect(parseYmn(text).expressions).toEqual(s.expressions);
+  });
+});
