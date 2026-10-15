@@ -5,7 +5,7 @@
  *
  * Les notes telles qu'écrites, toutes les parties ensemble, au tempo choisi (celui du morceau par
  * défaut), reprises et ordre des sections déroulés, nuances et soufflets en intensité, pédale de résonance,
- * petites notes.
+ * petites notes, trilles.
  */
 import type { SplendidGrandPiano } from "smplr";
 import { TICKS_PER_BEAT } from "../core/index.ts";
@@ -38,22 +38,42 @@ const GRACE = 0.07;
 /** Une petite note peut commencer avant le départ de l'écoute, pendant le délai du début. */
 const EARLIEST = -LEAD_IN;
 
+/** Durée d'une note de trille : une douzaine de notes par seconde, sans dépasser le quart d'un temps. */
+const TRILL = 0.08;
+
 /**
  * Les notes à jouer à partir de l'instant joué `from` (en ticks, reprises comprises), dans l'ordre
  * où elles commencent : celles qui sonnent encore à cet instant sont rejouées dès le départ, pour ce
- * qui leur reste. Les petites notes se jouent juste avant leur note.
+ * qui leur reste. Les petites notes se jouent juste avant leur note ; une trille alterne la note et
+ * sa voisine, en commençant et en finissant par la note, qui sonne ensuite jusqu'au bout.
  */
 export function playNotes(notes: PlayedNote[], bpm: number, from = 0): PlayNote[] {
   const sec = secondsPerTick(bpm);
   const grace = Math.min(GRACE, 60 / bpm / 6);
-  return notes
-    .filter((n) => (n.grace ? n.start >= from : n.end > from))
-    .map((n) =>
-      n.grace
-        ? { time: Math.max(EARLIEST, (n.start - from) * sec - n.grace * grace), midi: n.midi, duration: grace, velocity: n.velocity }
-        : { time: Math.max(0, n.start - from) * sec, midi: n.midi, duration: (n.end - Math.max(n.start, from)) * sec, velocity: n.velocity },
-    )
-    .sort((a, b) => a.time - b.time || a.midi - b.midi);
+  const out: PlayNote[] = [];
+  for (const n of notes) {
+    if (n.grace) {
+      if (n.start >= from) out.push({ time: Math.max(EARLIEST, (n.start - from) * sec - n.grace * grace), midi: n.midi, duration: grace, velocity: n.velocity });
+      continue;
+    }
+    if (n.end <= from) continue;
+    const begin = Math.max(n.start, from);
+    const time = (begin - from) * sec, end = (n.end - from) * sec;
+    const trill = n.trill && n.trill.until > begin ? n.trill : undefined;
+    if (!trill) {
+      out.push({ time, midi: n.midi, duration: end - time, velocity: n.velocity });
+      continue;
+    }
+    // un nombre impair de notes égales : la note, la voisine, la note… et la dernière est la note
+    const span = (trill.until - begin) * sec;
+    const count = Math.max(3, 2 * Math.round(span / Math.min(TRILL, 60 / bpm / 4) / 2) + 1);
+    const step = span / count;
+    for (let k = 0; k < count; k++) {
+      const last = k === count - 1;
+      out.push({ time: time + k * step, midi: k % 2 ? trill.midi : n.midi, duration: last ? end - time - k * step : step, velocity: n.velocity });
+    }
+  }
+  return out.sort((a, b) => a.time - b.time || a.midi - b.midi);
 }
 
 export type PlayerState = "idle" | "loading" | "playing" | "paused";

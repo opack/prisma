@@ -1529,3 +1529,17 @@ describe("écoute : première mesure d'une section", () => {
     expect([4, 5.5, 6, 7.5, 8].map((t) => inFirstBar(s, ps, t * T))).toEqual([true, true, true, true, false]);
   });
 });
+
+describe("écoute : trilles", () => {
+  it("alterne la note et sa voisine, en commençant et en finissant par la note", async () => {
+    const { passages, playedNotes } = await import("../src/app/performance.ts");
+    const { playNotes } = await import("../src/app/player.ts");
+    const s = parseYmn("m1 |1  |2  ||\n0  |5~7|1  ||\n");
+    const notes = playNotes(playedNotes(s, passages(s)), 60).filter((n) => n.time < 1 - 1e-9);
+    expect(notes.length % 2).toBe(1);
+    expect(notes.length).toBeGreaterThan(9);
+    expect(notes.map((n) => n.midi)).toEqual(notes.map((_, k) => (k % 2 ? 66 : 64)));
+    const last = notes[notes.length - 1];
+    expect(last.time + last.duration).toBeCloseTo(1);
+  });
+});

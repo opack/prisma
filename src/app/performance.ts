@@ -21,7 +21,10 @@ export type Passage = { from: number; to: number; at: number; entry: number };
  * grace : petite note, jouée `grace` crans avant l'instant `start` de sa note principale (start et
  * end sont alors cet instant) ; la durée d'un cran se décide au tempo de l'écoute.
  */
-export type PlayedNote = { start: number; end: number; midi: number; velocity: number; grace?: number };
+export type PlayedNote = { start: number; end: number; midi: number; velocity: number; grace?: number; trill?: Trill };
+
+/** Trille d'une note : sa voisine, alternée jusqu'à la fin écrite de la note (en instant joué) ; la pédale ne la prolonge pas. */
+export type Trill = { midi: number; until: number };
 
 /** Les mesures [first, last] d'une section, ou du morceau entier. */
 type Bars = { first: number; last: number };
@@ -90,7 +93,13 @@ export function playedNotes(score: Score, ps: Passage[]): PlayedNote[] {
   const out: PlayedNote[] = [];
   for (const p of runs)
     score.notes.forEach((n, i) => {
-      if (n.start >= p.from && n.start < p.to) out.push({ start: p.at + n.start - p.from, end: p.at + Math.min(ends[i], p.to) - p.from, midi: n.midi, velocity: velocity[i] });
+      if (n.start >= p.from && n.start < p.to) out.push({
+          start: p.at + n.start - p.from,
+          end: p.at + Math.min(ends[i], p.to) - p.from,
+          midi: n.midi,
+          velocity: velocity[i],
+          ...(n.trill !== undefined ? { trill: { midi: n.trill, until: p.at + Math.min(n.end, p.to) - p.from } } : {}),
+        });
     });
   // petites notes : rangées avant leur note, la première le plus tôt ; même rang, jouées ensemble
   const level = velocityAt(score);

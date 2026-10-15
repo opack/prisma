@@ -31,11 +31,12 @@
 - Écoute : nuances en intensité (de `ppp` à `fff`, mf par défaut), accents (`sf`, `sfz`, `fz`, `rfz`) sur la seule note attaquée, `fp` et `sfp` ; soufflets, `cresc.` et `dim.` menés jusqu'à la nuance suivante, ou d'une nuance sans elle ; une partie sans indication suit celles de son instrument.
 - Écoute : pédale de résonance, pour toutes les parties de son instrument : une note relâchée sonne jusqu'à ce que la pédale remonte, un changement de pédale efface l'harmonie précédente, une touche rejouée arrête sa note tenue ; après « Ped. simile », le motif de la dernière mesure pédalée est reproduit à chaque mesure, jusqu'au prochain signe de pédale ou à la section suivante.
 - Écoute : petites notes jouées brèves juste avant leur note, de gauche à droite dans la case, ensemble quand elles sont alignées.
+- Écoute : trilles, la note et sa voisine alternées une douzaine de fois par seconde, en commençant et en finissant par la note.
 - Écoute : boutons de lecture en icônes : début du morceau, section précédente (début de la section jouée, ou la section d'avant si l'on est dans sa première mesure ou au second clic rapproché), lecture et pause, section suivante, arrêt.
 
 ## À faire
 
-1. **Compléter l'écoute** : trilles, arpèges, point d'orgue, articulations, un timbre par instrument (importé du MusicXML quand il l'indique, sinon choisi au moment de l'écoute, d'une façon à définir).
+1. **Compléter l'écoute** : arpèges, point d'orgue, articulations, un timbre par instrument (importé du MusicXML quand il l'indique, sinon choisi au moment de l'écoute, d'une façon à définir).
 2. **Bibliothèque de partitions** (à concevoir) : retrouver et ouvrir ses morceaux depuis l'application.
 3. **Mode lecture** : masquer le panneau d'édition pour jouer plutôt qu'éditer ; les pages de la gravure côte à côte, avec un défilement horizontal.
 
