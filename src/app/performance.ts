@@ -77,6 +77,17 @@ export function passages(score: Score): Passage[] {
   return out;
 }
 
+/** Un temps du métronome, en instant joué ; strong : le premier temps de la mesure. */
+export type Click = { at: number; strong: boolean };
+
+/** Les temps du métronome sur le déroulé, reprises comprises ; une levée commence sur un temps faible. */
+export function clicks(score: Score, ps: Passage[]): Click[] {
+  const out: Click[] = [];
+  for (const p of ps)
+    for (let t = p.from; t < p.to; t += TICKS_PER_BEAT) out.push({ at: p.at + t - p.from, strong: score.beats[t / TICKS_PER_BEAT]?.label === 1 });
+  return out;
+}
+
 /** Durée totale du déroulé, en ticks. */
 export const playedLength = (ps: Passage[]) => (ps.length ? ps[ps.length - 1].at + ps[ps.length - 1].to - ps[ps.length - 1].from : 0);
 

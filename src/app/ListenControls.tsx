@@ -21,7 +21,9 @@ const MAX_BPM = 300;
  * arrêt ; et le tempo, celui de la partition
  * par défaut, qu'on peut changer (même en cours de lecture) puis rétablir.
  */
-export function ListenControls({ score, disabled }: { score?: Score; disabled: boolean }) {
+type Sound = { metronome: boolean; instruments: boolean };
+
+export function ListenControls({ score, disabled, metronome, instruments, onSound }: { score?: Score; disabled: boolean; onSound: (sound: Sound) => void } & Sound) {
   const { state, error, entry: playing, entries } = useSyncExternalStore(player.subscribe, player.getSnapshot);
   const entry = playing ?? 0;
   const written = score?.meta.bpm ?? DEFAULT_BPM;
@@ -83,6 +85,26 @@ export function ListenControls({ score, disabled }: { score?: Score; disabled: b
         </button>
         <button onClick={() => player.stop()} disabled={state === "idle"} title="Arrêter et revenir au début" aria-label="Arrêter">
           <Icon d="M3.5 3.5h9v9h-9z" />
+        </button>
+      </span>
+      <span className="transport toggles">
+        <button
+          className={metronome ? "on" : undefined}
+          aria-pressed={metronome}
+          onClick={() => onSound({ metronome: !metronome, instruments })}
+          title={metronome ? "Métronome : marque les temps" : "Métronome : coupé"}
+          aria-label="Métronome"
+        >
+          <Icon d="M6.2 1.5h3.6L13 14.5H3zM7 4.5l-.9 8h3.8l-.9-8zM8 11.8 12.6 3.6l.9.5-4.4 8z" />
+        </button>
+        <button
+          className={instruments ? "on" : undefined}
+          aria-pressed={instruments}
+          onClick={() => onSound({ metronome, instruments: !instruments })}
+          title={instruments ? "Instruments : joués" : "Instruments : coupés (le métronome seul)"}
+          aria-label="Instruments"
+        >
+          <Icon d="M6 2.5 13 1v9.2a2.3 2.3 0 1 1-1.5-2.15V4.1L7.5 5v6.7A2.3 2.3 0 1 1 6 9.55z" />
         </button>
       </span>
     </>

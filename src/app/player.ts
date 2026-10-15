@@ -5,13 +5,15 @@
  *
  * Les notes telles qu'écrites, toutes les parties ensemble, au tempo choisi (celui du morceau par
  * défaut), reprises et ordre des sections déroulés, nuances et soufflets en intensité, pédale de résonance,
- * petites notes, trilles, arpèges, points d'orgue, articulations.
+ * petites notes, trilles, arpèges, points d'orgue, articulations ; un métronome sur les temps, avec
+ * ou sans les instruments.
  */
 import type { SplendidGrandPiano } from "smplr";
 import { TICKS_PER_BEAT } from "../core/index.ts";
 import type { Score } from "../core/index.ts";
-import { entryAt, entryStart, holds, inFirstBar, passages, playedLength, playedNotes, playedTick, scoreTick, stretched, unstretched } from "./performance.ts";
-import type { Hold, PlayedNote, Passage } from "./performance.ts";
+import { clicks, entryAt, entryStart, holds, inFirstBar, passages, playedLength, playedNotes, playedTick, scoreTick, stretched, unstretched } from "./performance.ts";
+import type { Click, Hold, PlayedNote, Passage } from "./performance.ts";
+import { click, loadClick } from "./metronome.ts";
 
 /** Tempo d'un morceau qui n'en indique pas. */
 export const DEFAULT_BPM = 80;
@@ -96,6 +98,9 @@ export type PlayerSnapshot = {
   error?: string;
 };
 
+/** Ce que l'on entend : le métronome, les instruments, et si le premier temps de la mesure sonne autrement. */
+type Sound = { metronome: boolean; instruments: boolean; accentDownbeat: boolean };
+
 type Piano = Awaited<ReturnType<typeof SplendidGrandPiano>["load"]>;
 
 /** Lecteur unique de l'application : un état, et des abonnés (les boutons, le curseur). */
@@ -112,6 +117,10 @@ class Player {
   private passages: Passage[] = [];
   private notes: PlayedNote[] = [];
   private holds: Hold[] = [];
+  private clicks: Click[] = [];
+  private tick?: AudioBuffer;
+  /** Ce que l'on entend : le métronome, les instruments (l'un, l'autre ou les deux), le premier temps marqué ou non. */
+  private sound: Sound = { metronome: false, instruments: true, accentDownbeat: true };
   /** Instant joué de la pause (le curseur, lui, montre l'instant du morceau). */
   private pos = 0;
   private bpm = DEFAULT_BPM;
@@ -138,6 +147,7 @@ class Player {
     this.passages = score ? passages(score) : [];
     this.notes = score ? playedNotes(score, this.passages) : [];
     this.holds = score ? holds(score, this.passages) : [];
+    this.clicks = score ? clicks(score, this.passages) : [];
     this.set({ entries: this.passages.length ? this.passages[this.passages.length - 1].entry + 1 : 0 });
   }
 
@@ -157,11 +167,22 @@ class Player {
         const { SplendidGrandPiano } = await import("smplr");
         this.piano = await SplendidGrandPiano(this.context).load;
       }
+      this.tick = await loadClick(this.context);
     } catch {
       if (run === this.run) this.set({ state: "idle", tick: null, entry: null, error: "Impossible de charger le son du piano (connexion internet ?)" });
       return;
     }
     if (run !== this.run) return; // arrêté pendant le chargement
+    this.start(from);
+  }
+
+  /** Métronome et instruments, chacun entendu ou non ; en cours de lecture, la suite repart ainsi. */
+  setSound(sound: Sound) {
+    if (sound.metronome === this.sound.metronome && sound.instruments === this.sound.instruments && sound.accentDownbeat === this.sound.accentDownbeat) return;
+    this.sound = sound;
+    if (this.snapshot.state !== "playing") return;
+    const from = this.now();
+    this.halt();
     this.start(from);
   }
 
@@ -264,7 +285,7 @@ class Player {
     const run = this.run;
     const context = this.context!, piano = this.piano!;
     const hs = this.holds;
-    const notes = playNotes(this.notes, this.bpm, from, hs);
+    const notes = this.sound.instruments ? playNotes(this.notes, this.bpm, from, hs) : [];
     const sec = secondsPerTick(this.bpm);
     const zero = stretched(hs, from);
     const length = (stretched(hs, playedLength(this.passages)) - zero) * sec;
@@ -272,7 +293,8 @@ class Player {
     const played = (elapsed: number) => unstretched(hs, zero + Math.max(0, elapsed) / sec);
     const start = context.currentTime + LEAD_IN;
     this.now = () => played(context.currentTime - start);
-    let next = 0;
+    const beats = this.sound.metronome ? this.clicks.filter((c) => c.at >= from).map((c) => ({ time: (stretched(hs, c.at) - zero) * sec, strong: c.strong && this.sound.accentDownbeat })) : [];
+    let next = 0, nextBeat = 0;
     // programmation par tranches : interrompre coupe aussi ce qui n'a pas encore été programmé
     const schedule = () => {
       const now = context.currentTime;
@@ -281,6 +303,10 @@ class Player {
         const n = notes[next];
         const stop = piano.start({ note: n.midi, velocity: n.velocity, time: start + n.time, duration: n.duration });
         this.voices.push({ end: start + n.time + n.duration + RELEASE, stop });
+      }
+      for (; nextBeat < beats.length && beats[nextBeat].time < now - start + LOOKAHEAD; nextBeat++) {
+        const b = beats[nextBeat];
+        this.voices.push({ end: start + b.time + 0.1, stop: click(context, this.tick!, start + b.time, b.strong) });
       }
     };
     schedule();

@@ -27,6 +27,7 @@
 - Import : les indications d'octave (`8va`, `8vb`, `loco`…) sont ignorées, chaque note portant déjà son octave.
 - Import : une nuance écrite en toutes lettres dans un texte (« sempre pianissimo ») reçoit aussi son signe (`pp`) ; le texte est gardé en entier. L'écoute ne lit que les signes.
 - Écriture `.ymn` : un texte (« dolce », « sempre pianissimo… ») déborde sur les cases suivantes de sa ligne au lieu d'élargir sa case ; sa case ne s'élargit que s'il buterait sur l'indication suivante.
+- Métronome, premier temps : un bouton à côté de la lecture le fait battre les temps, le premier de la mesure plus aigu (levées comprises), reprises et points d'orgue suivis ; un second bouton coupe les instruments pour n'entendre que le métronome ; les deux réglages gardés dans le navigateur ; une option (rubrique « Écoute ») choisit si le premier temps sonne autrement ; le son est un coup de bloc de bois enregistré, inclus dans l'application (« Metronome.wav » de Druminfected sur freesound.org, licence CC0, raccourci à 90 ms), le premier temps joué plus haut.
 - Écoute, premier temps : bouton « Écouter » qui joue les notes de toutes les parties avec un piano échantillonné (bibliothèque smplr, sons téléchargés au premier clic), curseur sur la case jouée et défilement qui remonte le système en haut de l'écran ; pause qui reprend sur la case surlignée, arrêt, tempo celui de `bpm` par défaut, modifiable même en cours de lecture et rétabli d'un clic.
 - Écoute : un clic sur une colonne de la gravure y place le curseur, d'où la lecture démarre ou reprend (ou repart aussitôt si elle est en cours) ; les notes qui sonnent encore à cet endroit sont rejouées.
 - Écoute : reprises (`||:`, `:||`, `3×`) et ordre des sections déroulés comme à la lecture ; le curseur suit chaque passage, et la lettre de la section jouée est entourée dans l'ordre de jeu en tête de page ; un clic dans une mesure jouée plusieurs fois reste dans le passage en cours, ou revient au plus récent ; un clic sur une lettre de l'ordre de jeu va droit à cette section.
@@ -42,11 +43,10 @@
 
 ## À faire
 
-1. **Métronome** à l'écoute, en itérations :
-   1. activable d'un bouton à côté de la lecture, sur les temps, le premier temps de la mesure marqué (levées comprises) ; lecture avec ou sans les instruments (le métronome seul) ;
-   2. les divisions du temps, sur la grille régulière (en 2 ou en 3 selon `division`, puis chaque division en deux) et non sur les cases écrites ; un son par niveau (premier temps, temps, division, subdivision), « aucun » pour ne pas marquer un niveau ; sons synthétisés, sans téléchargement ;
-   3. décompte d'une mesure avant le départ, en option, et volume du métronome par rapport aux instruments ;
-   4. plus tard : couper ou garder chaque partie séparément, pour travailler une main pendant que l'autre joue.
+1. **Métronome** à l'écoute, suite des itérations :
+   1. les divisions du temps, sur la grille régulière (en 2 ou en 3 selon `division`, puis chaque division en deux) et non sur les cases écrites ; un son par niveau (premier temps, temps, division, subdivision), « aucun » pour ne pas marquer un niveau ; choix parmi quelques sons ;
+   2. décompte d'une mesure avant le départ, en option, et volume du métronome par rapport aux instruments ;
+   3. plus tard : couper ou garder chaque partie séparément, pour travailler une main pendant que l'autre joue.
 2. **Bouton engrenage** en haut à droite pour afficher ou masquer le panneau d'options ; le panneau, de plus en plus fourni, devra peut-être changer de forme (une rubrique « Écoute » s'y ajoutera avec le métronome).
 3. **Mode lecture** : masquer le panneau d'édition pour jouer plutôt qu'éditer ; les pages de la gravure côte à côte, avec un défilement horizontal.
 4. **Bibliothèque de partitions** (à concevoir) : retrouver et ouvrir ses morceaux depuis l'application.

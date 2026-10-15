@@ -1623,3 +1623,20 @@ describe("écriture : textes qui débordent", () => {
     expect(parseYmn(text).expressions).toEqual(s.expressions);
   });
 });
+
+describe("écoute : métronome", () => {
+  it("bat chaque temps du déroulé, le premier de la mesure marqué, levée comprise", async () => {
+    const { passages, clicks } = await import("../src/app/performance.ts");
+    // une levée sur le temps 2, puis une mesure de 2 temps, reprise
+    const s: Score = {
+      ...parseYmn("m1 |1  ||\n0  |1  ||\n"),
+      beats: [
+        { bar: "0", barIndex: 0, label: 2, division: 2 },
+        { bar: "1", barIndex: 1, label: 1, division: 2 },
+        { bar: "1", barIndex: 1, label: 2, division: 2 },
+      ] as Score["beats"],
+      repeats: [{ barIndex: 1, start: true, end: true }],
+    };
+    expect(clicks(s, passages(s)).map((c) => `${c.at / T}${c.strong ? "!" : ""}`).join(" ")).toBe("0 1! 2 3! 4");
+  });
+});

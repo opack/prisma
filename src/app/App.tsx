@@ -283,6 +283,10 @@ export function App() {
   const { problem, score } = engraved;
   // écoute : le morceau gravé, avec le curseur sur la gravure ; arrêtée quand on regrave
   useEffect(() => player.load(score), [score]);
+  useEffect(
+    () => player.setSound({ metronome: options.metronome, instruments: options.instruments, accentDownbeat: options.accentDownbeat }),
+    [options.metronome, options.instruments, options.accentDownbeat],
+  );
 
   return (
     <div className="app" onDragEnter={onDragEnter} onDragLeave={onDragLeave} onDragOver={onDragOver} onDrop={onDrop}>
@@ -336,7 +340,13 @@ export function App() {
             {notice}
           </span>
         )}
-        <ListenControls score={score} disabled={!score || !pages.length} />
+        <ListenControls
+          score={score}
+          disabled={!score || !pages.length}
+          metronome={options.metronome}
+          instruments={options.instruments}
+          onSound={(sound) => setOptions(sound)}
+        />
         <button className="primary" onClick={engraveNow} title="Ctrl+Entrée">
           Graver{dirty ? " •" : ""}
         </button>
@@ -411,6 +421,19 @@ export function App() {
                   </label>
                 ))}
                 <span className="sample">les pédales que demande « Ped. simile » ; le fichier garde la mention</span>
+              </div>
+            </fieldset>
+          </div>
+          <div className="group">
+            <h2>Écoute</h2>
+            <fieldset>
+              <legend>Métronome</legend>
+              <div className="choices">
+                <label>
+                  <input type="checkbox" id="accent-downbeat" checked={options.accentDownbeat} onChange={(e) => setOptions({ accentDownbeat: e.target.checked })} />
+                  Marquer le premier temps de la mesure
+                </label>
+                <span className="sample">plus aigu et plus fort que les autres ; sinon, tous les temps pareils</span>
               </div>
             </fieldset>
           </div>

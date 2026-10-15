@@ -1,4 +1,4 @@
-/** Options de rendu, choisies dans le panneau « Options » et gardées dans le navigateur. */
+/** Options de rendu et d'écoute, choisies dans le panneau « Options » et gardées dans le navigateur. */
 import type { OctavePalette } from "./colors.ts";
 import type { ChordStyle } from "./engrave.ts";
 import type { SimileDisplay } from "./pedal.ts";
@@ -36,9 +36,15 @@ export type RenderOptions = {
   chords: ChordStyle;
   /** « Ped. simile » : gravé en pédales comme les autres, en pédales atténuées, ou en mention seule. */
   simile: SimileDisplay;
+  /** Écoute : le métronome sur les temps (bouton à côté de la lecture). */
+  metronome: boolean;
+  /** Écoute : les instruments, sans eux le métronome seul (bouton à côté de la lecture). */
+  instruments: boolean;
+  /** Métronome : le premier temps de la mesure sonne autrement (plus aigu et plus fort). */
+  accentDownbeat: boolean;
 };
 
-export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal", fingerings: true, namesEverySystem: false, holdReminders: true, octavePalette: "rainbow", octaveMixed: false, chords: "both", simile: "pedals" };
+export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal", fingerings: true, namesEverySystem: false, holdReminders: true, octavePalette: "rainbow", octaveMixed: false, chords: "both", simile: "pedals", metronome: false, instruments: true, accentDownbeat: true };
 
 export const OCTAVE_STYLES: { value: OctaveStyle; label: string; sample: string }[] = [
   { value: "arrow", label: "Flèches", sample: "↑1  0  ↓1" },
@@ -99,7 +105,10 @@ export function loadOptions(): RenderOptions {
     const octaveMixed = typeof raw.octaveMixed === "boolean" ? raw.octaveMixed : DEFAULT_OPTIONS.octaveMixed;
     const chords = CHORD_STYLES.some((c) => c.value === raw.chords) ? raw.chords : DEFAULT_OPTIONS.chords;
     const simile = SIMILE_DISPLAYS.some((d) => d.value === raw.simile) ? raw.simile : DEFAULT_OPTIONS.simile;
-    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density, fingerings, namesEverySystem, holdReminders, octavePalette, octaveMixed, chords, simile };
+    const metronome = typeof raw.metronome === "boolean" ? raw.metronome : DEFAULT_OPTIONS.metronome;
+    const instruments = typeof raw.instruments === "boolean" ? raw.instruments : DEFAULT_OPTIONS.instruments;
+    const accentDownbeat = typeof raw.accentDownbeat === "boolean" ? raw.accentDownbeat : DEFAULT_OPTIONS.accentDownbeat;
+    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density, fingerings, namesEverySystem, holdReminders, octavePalette, octaveMixed, chords, simile, metronome, instruments, accentDownbeat };
   } catch {
     return DEFAULT_OPTIONS;
   }
