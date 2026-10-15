@@ -49,7 +49,8 @@
 1. **Parties muettes à l'écoute** : rendre muette une partie ou un instrument (une main, une voix), pour s'entraîner à la jouer pendant que l'app joue les autres.
 2. **Mode lecture** : masquer le panneau d'édition pour jouer plutôt qu'éditer ; les pages de la gravure côte à côte, avec un défilement horizontal.
 3. **Bibliothèque de partitions** (à concevoir) : retrouver et ouvrir ses morceaux depuis l'application.
-4. **Timbre par instrument** à l'écoute (importé du MusicXML quand il l'indique, sinon choisi au moment de l'écoute, d'une façon à définir).
+4. **Trouver un nom à la notation** : « ymn » est provisoire ; une fois le nom choisi, renommer tout ce qui le porte (extension `.ymn`, commande `ymn`, application, documentation, code).
+5. **Timbre par instrument** à l'écoute (importé du MusicXML quand il l'indique, sinon choisi au moment de l'écoute, d'une façon à définir).
 
 ## Hors v1 pour l'instant
 
