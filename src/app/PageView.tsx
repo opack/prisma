@@ -843,9 +843,43 @@ function PlayCursor({ page }: { page: Page }) {
     if ((sys.columns[ci] as { t: number }).t <= tick!) a = i;
   });
   const ci = sys.anchors[a];
-  const last = ps.parts[ps.parts.length - 1];
-  const top = ps.y + ps.rulerTop, bottom = ps.y + last.voiceTop + last.voiceBand;
+  const { top, bottom } = band(ps);
   return <rect ref={ref} x={ps.xs[ci]} y={top} width={ps.ws[ci]} height={bottom - top} rx={0.6} fill="rgba(255, 190, 40, 0.3)" style={{ pointerEvents: "none" }} />;
+}
+
+/** Hauteur d'un système, de sa règle au bas de sa dernière partie : celle du curseur. */
+function band(ps: PlacedSystem) {
+  const last = ps.parts[ps.parts.length - 1];
+  return { top: ps.y + ps.rulerTop, bottom: ps.y + last.voiceTop + last.voiceBand };
+}
+
+/**
+ * Zones cliquables, une par système : un clic sur une colonne y place le curseur de lecture, d'où
+ * la lecture démarre ou reprend (ou repart tout de suite si elle est en cours).
+ */
+function SeekAreas({ page }: { page: Page }) {
+  const seek = (ps: PlacedSystem, e: React.MouseEvent<SVGRectElement>) => {
+    const m = e.currentTarget.getScreenCTM();
+    if (!m) return;
+    const x = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse()).x;
+    const { sys } = ps;
+    // la colonne sous le clic, ou la plus proche quand on clique entre deux
+    let best = sys.anchors[0], dist = Infinity;
+    for (const ci of sys.anchors) {
+      const d = x < ps.xs[ci] ? ps.xs[ci] - x : x > ps.xs[ci] + ps.ws[ci] ? x - ps.xs[ci] - ps.ws[ci] : 0;
+      if (d < dist) (best = ci), (dist = d);
+    }
+    player.seek((sys.columns[best] as { t: number }).t);
+  };
+  return (
+    <g className="seek">
+      {page.systems.map((ps, k) => {
+        const { top, bottom } = band(ps);
+        const left = ps.xs[ps.sys.anchors[0]], last = ps.sys.anchors[ps.sys.anchors.length - 1];
+        return <rect key={k} x={left} y={top} width={ps.xs[last] + ps.ws[last] - left} height={bottom - top} fill="transparent" onClick={(e) => seek(ps, e)} />;
+      })}
+    </g>
+  );
 }
 
 export function PageView({ page, total, meta, options }: { page: Page; total: number; meta: Meta; options: RenderOptions }) {
@@ -891,6 +925,7 @@ export function PageView({ page, total, meta, options }: { page: Page; total: nu
       <text x={PAGE.w / 2} y={PAGE.h - 8} fontSize={2.6} textAnchor="middle" fill={GREY}>
         {page.index + 1} / {total}
       </text>
+      <SeekAreas page={page} />
       <PlayCursor page={page} />
     </svg>
   );

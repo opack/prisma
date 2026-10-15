@@ -26,15 +26,15 @@
 - Instruments transpositeurs : notés à la hauteur qui sonne, la hauteur écrite du MusicXML corrigée d'après `<transpose>`.
 - Import : les indications d'octave (`8va`, `8vb`, `loco`…) sont ignorées, chaque note portant déjà son octave.
 - Écoute, premier temps : bouton « Écouter » qui joue les notes de toutes les parties avec un piano échantillonné (bibliothèque smplr, sons téléchargés au premier clic), curseur sur la case jouée et défilement qui remonte le système en haut de l'écran ; pause qui reprend sur la case surlignée, arrêt, tempo celui de `bpm` par défaut, modifiable même en cours de lecture et rétabli d'un clic.
+- Écoute : un clic sur une colonne de la gravure y place le curseur, d'où la lecture démarre ou reprend (ou repart aussitôt si elle est en cours) ; les notes qui sonnent encore à cet endroit sont rejouées.
 
 ## À faire
 
 1. **Compléter l'écoute**, en itérations validées et commitées à part :
-   1. **Choisir où commence la lecture** : un clic sur une colonne de la gravure y place le curseur, d'où la lecture démarre ou reprend ;
-   2. **Reprises et ordre des sections**, déroulés comme à la lecture ;
-   3. **Nuances et soufflets** en intensité ;
-   4. **Pédale** tenue ;
-   5. plus tard : petites notes, trilles, arpèges, point d'orgue, articulations, un timbre par instrument.
+   1. **Reprises et ordre des sections**, déroulés comme à la lecture ;
+   2. **Nuances et soufflets** en intensité ;
+   3. **Pédale** tenue ;
+   4. plus tard : petites notes, trilles, arpèges, point d'orgue, articulations, un timbre par instrument.
 
 ## Hors v1 pour l'instant
 

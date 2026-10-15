@@ -30,12 +30,15 @@ export type PlayNote = { time: number; midi: number; duration: number };
 /** Durée d'un tick, en secondes, au tempo donné. */
 export const secondsPerTick = (bpm: number) => 60 / bpm / TICKS_PER_BEAT;
 
-/** Les notes du morceau attaquées à partir de l'instant `from` (en ticks), dans l'ordre où elles commencent. */
+/**
+ * Les notes à jouer à partir de l'instant `from` (en ticks), dans l'ordre où elles commencent :
+ * celles qui sonnent encore à cet instant sont rejouées dès le départ, pour ce qui leur reste.
+ */
 export function playNotes(score: Score, bpm: number, from = 0): PlayNote[] {
   const sec = secondsPerTick(bpm);
   return score.notes
-    .filter((n) => n.start >= from)
-    .map((n) => ({ time: (n.start - from) * sec, midi: n.midi, duration: (n.end - n.start) * sec }))
+    .filter((n) => n.end > from)
+    .map((n) => ({ time: Math.max(0, n.start - from) * sec, midi: n.midi, duration: (n.end - Math.max(n.start, from)) * sec }))
     .sort((a, b) => a.time - b.time || a.midi - b.midi);
 }
 
@@ -57,6 +60,8 @@ class Player {
   private bpm = DEFAULT_BPM;
   /** Notes confiées au piano, à couper à la pause : smplr garde les notes à venir dans sa propre file. */
   private voices: { end: number; stop: () => void }[] = [];
+  /** Instant joué selon l'horloge audio, plus juste que le dernier dessin du curseur. */
+  private now = () => 0;
 
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -70,7 +75,8 @@ class Player {
 
   /** Joue le morceau, depuis l'endroit de la pause s'il y en a une, sinon depuis le début. */
   async play(score: Score, bpm: number) {
-    const from = this.snapshot.state === "paused" && score === this.score ? this.snapshot.tick ?? 0 : 0;
+    // une pause ne survit pas à une nouvelle gravure : c'est donc bien le même morceau
+    const from = this.snapshot.state === "paused" ? this.snapshot.tick ?? 0 : 0;
     this.halt();
     this.score = score;
     this.bpm = bpm;
@@ -97,16 +103,27 @@ class Player {
     if (bpm === this.bpm) return;
     this.bpm = bpm;
     if (this.snapshot.state !== "playing") return;
-    const from = this.snapshot.tick ?? 0;
+    const from = this.now();
     this.halt();
     this.start(from);
+  }
+
+  /** Place la lecture à l'instant `tick` : elle y repart si elle est en cours, sinon elle y reprendra. */
+  seek(tick: number) {
+    if (this.snapshot.state === "loading") return;
+    if (this.snapshot.state === "playing") {
+      this.halt();
+      this.start(tick);
+    } else this.set({ state: "paused", tick, error: undefined });
   }
 
   /** Suspend la lecture, recalée sur la dernière attaque : la reprise rejoue la case surlignée. */
   pause() {
     if (this.snapshot.state !== "playing") return;
+    // l'horloge audio au moment du clic : une note déjà partie ne peut plus être retenue, elle
+    // s'entend ; la pause se cale donc sur elle, même si le curseur n'a pas encore eu le temps d'y passer
+    const tick = this.now();
     this.halt();
-    const tick = this.snapshot.tick ?? 0;
     const attack = this.score!.notes.reduce((t, n) => (n.start <= tick && n.start > t ? n.start : t), 0);
     this.set({ state: "paused", tick: attack });
   }
@@ -133,6 +150,7 @@ class Player {
     const sec = secondsPerTick(this.bpm);
     const length = (score.beats.length * TICKS_PER_BEAT - from) * sec;
     const start = context.currentTime + LEAD_IN;
+    this.now = () => from + Math.max(0, (context.currentTime - start) / sec);
     let next = 0;
     // programmation par tranches : interrompre coupe aussi ce qui n'a pas encore été programmé
     const schedule = () => {

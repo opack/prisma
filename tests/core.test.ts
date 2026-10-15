@@ -1304,7 +1304,10 @@ describe("écoute", () => {
     const { playNotes } = await import("../src/app/player.ts");
     const { TICKS_PER_BEAT } = await import("../src/core/index.ts");
     const s = parseYmn(["---", "bpm: 120", "---", "m1 |1  |2  ||", "0  |1  |-  ||", "---", "-1 |8  |3  ||", ""].join("\n"));
-    // à 60 : la note tenue depuis le début n'est pas réattaquée
-    expect(playNotes(s, 60, TICKS_PER_BEAT)).toEqual([{ time: 0, midi: 50, duration: 1 }]);
+    // à 60 : la note tenue depuis le début est rejouée pour ce qui lui reste
+    expect(playNotes(s, 60, TICKS_PER_BEAT)).toEqual([
+      { time: 0, midi: 50, duration: 1 },
+      { time: 0, midi: 60, duration: 1 },
+    ]);
   });
 });
