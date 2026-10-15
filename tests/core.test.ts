@@ -1311,17 +1311,17 @@ describe("écoute", () => {
   it("donne les notes en secondes, au tempo choisi", () => {
     const s = parseYmn(two);
     expect(playNotes(playedNotes(s, passages(s)), 120)).toEqual([
-      { time: 0, midi: 55, duration: 0.5 },
-      { time: 0, midi: 60, duration: 1 },
-      { time: 0.5, midi: 50, duration: 0.5 },
+      { time: 0, midi: 55, duration: 0.5, velocity: 70 },
+      { time: 0, midi: 60, duration: 1, velocity: 70 },
+      { time: 0.5, midi: 50, duration: 0.5, velocity: 70 },
     ]);
   });
 
   it("reprend à un instant donné, en rejouant ce qui sonne encore", () => {
     const s = parseYmn(two);
     expect(playNotes(playedNotes(s, passages(s)), 60, T)).toEqual([
-      { time: 0, midi: 50, duration: 1 },
-      { time: 0, midi: 60, duration: 1 },
+      { time: 0, midi: 50, duration: 1, velocity: 70 },
+      { time: 0, midi: 60, duration: 1, velocity: 70 },
     ]);
   });
 
@@ -1349,8 +1349,8 @@ describe("écoute", () => {
     s.notes = [{ part: 0, midi: 60, start: 0, end: 3 * T }];
     // après le retour en arrière la note s'arrête ; au dernier passage elle tient jusqu'au bout
     expect(playedNotes(s, passages(s))).toEqual([
-      { start: 0, end: T, midi: 60 },
-      { start: T, end: 4 * T, midi: 60 },
+      { start: 0, end: T, midi: 60, velocity: 70 },
+      { start: T, end: 4 * T, midi: 60, velocity: 70 },
     ]);
   });
 
@@ -1375,5 +1375,43 @@ describe("écoute", () => {
     expect(playedTick(ps, 2 * T, 1.5 * T)).toBe(4 * T); // C n'est pas encore joué : on y va
     expect(entryAt(ps, 2.5 * T)).toBe(2);
     expect(entryStart(ps, 3)).toBe(3 * T);
+  });
+});
+
+describe("écoute : nuances", () => {
+  let velocities: typeof import("../src/app/dynamics.ts").velocities;
+  beforeAll(async () => {
+    ({ velocities } = await import("../src/app/dynamics.ts"));
+  });
+  /** Un morceau d'une note par temps, sur une partie (ou deux, la seconde sans indication). */
+  const piece = (n: number, more: Partial<Score> = {}, parts = 1): Score => ({
+    ...parseYmn("m1 |1  ||\n0  |1  ||\n"),
+    instruments: [{ parts }],
+    notes: Array.from({ length: n * parts }, (_, i) => ({ part: i % parts, midi: 60, start: Math.floor(i / parts) * T, end: (Math.floor(i / parts) + 1) * T })),
+    ...more,
+  });
+  const dyn = (t: number, text: string, part = 0) => ({ part, t: t * T, text, kind: "dynamic" as const });
+
+  it("joue chaque nuance à son intensité, mf par défaut", () => {
+    expect(velocities(piece(3, { expressions: [dyn(1, "p"), dyn(2, "(ff)")] }))).toEqual([70, 42, 100]);
+  });
+
+  it("accentue la seule note d'un sf, et attaque fort un fp avant de jouer piano", () => {
+    expect(velocities(piece(3, { expressions: [dyn(0, "p"), dyn(1, "sf")] }))).toEqual([42, 100, 42]);
+    expect(velocities(piece(2, { expressions: [dyn(0, "fp")] }))).toEqual([86, 42]);
+  });
+
+  it("mène un soufflet jusqu'à la nuance qui le suit, ou d'un pas sans elle", () => {
+    const hairpins = [{ part: 0, kind: "<" as const, start: 0, end: 4 * T }];
+    expect(velocities(piece(5, { expressions: [dyn(0, "p"), dyn(4, "f")], hairpins }))).toEqual([42, 53, 64, 75, 86]);
+    expect(velocities(piece(5, { expressions: [dyn(0, "p")], hairpins }))).toEqual([42, 46, 49, 53, 56]);
+  });
+
+  it("lit « cresc. » et « dim. » comme des soufflets jusqu'à la nuance suivante", () => {
+    expect(velocities(piece(3, { expressions: [dyn(0, "f"), { part: 0, t: 0, text: "dim.", kind: "text" }, dyn(2, "p")] }))).toEqual([86, 64, 42]);
+  });
+
+  it("fait suivre à une partie sans indication celles de son instrument", () => {
+    expect(velocities(piece(2, { expressions: [dyn(1, "pp")] }, 2))).toEqual([70, 70, 28, 28]);
   });
 });

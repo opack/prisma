@@ -7,6 +7,7 @@
  */
 import { TICKS_PER_BEAT } from "../core/index.ts";
 import type { Score } from "../core/index.ts";
+import { velocities } from "./dynamics.ts";
 
 /**
  * Un passage joué d'une traite : les instants du morceau [from, to[, joués à partir de l'instant
@@ -14,8 +15,8 @@ import type { Score } from "../core/index.ts";
  */
 export type Passage = { from: number; to: number; at: number; entry: number };
 
-/** Une note sur le déroulé : son attaque et sa fin en instants joués. */
-export type PlayedNote = { start: number; end: number; midi: number };
+/** Une note sur le déroulé : son attaque et sa fin en instants joués, son intensité (vélocité MIDI). */
+export type PlayedNote = { start: number; end: number; midi: number; velocity: number };
 
 /** Les mesures [first, last] d'une section, ou du morceau entier. */
 type Bars = { first: number; last: number };
@@ -80,10 +81,12 @@ export function playedNotes(score: Score, ps: Passage[]): PlayedNote[] {
     if (prev && prev.to === p.from) runs[runs.length - 1] = { ...prev, to: p.to };
     else runs.push(p);
   }
+  const velocity = velocities(score);
   const out: PlayedNote[] = [];
   for (const p of runs)
-    for (const n of score.notes)
-      if (n.start >= p.from && n.start < p.to) out.push({ start: p.at + n.start - p.from, end: p.at + Math.min(n.end, p.to) - p.from, midi: n.midi });
+    score.notes.forEach((n, i) => {
+      if (n.start >= p.from && n.start < p.to) out.push({ start: p.at + n.start - p.from, end: p.at + Math.min(n.end, p.to) - p.from, midi: n.midi, velocity: velocity[i] });
+    });
   return out.sort((a, b) => a.start - b.start || a.midi - b.midi);
 }
 

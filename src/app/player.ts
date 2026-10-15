@@ -4,7 +4,7 @@
  * pour le curseur de la gravure.
  *
  * Les notes telles qu'écrites, toutes les parties ensemble, au tempo choisi (celui du morceau par
- * défaut), reprises et ordre des sections déroulés ; ni nuances ni pédale pour l'instant.
+ * défaut), reprises et ordre des sections déroulés, nuances et soufflets en intensité ; pas encore la pédale.
  */
 import type { SplendidGrandPiano } from "smplr";
 import { TICKS_PER_BEAT } from "../core/index.ts";
@@ -14,8 +14,6 @@ import type { PlayedNote, Passage } from "./performance.ts";
 
 /** Tempo d'un morceau qui n'en indique pas. */
 export const DEFAULT_BPM = 80;
-/** Intensité de toutes les notes (0 à 127), en attendant les nuances. */
-const VELOCITY = 80;
 /** Délai entre le clic et la première note, le temps de programmer le début. */
 const LEAD_IN = 0.15;
 /** Les notes sont programmées un peu à l'avance, par tranches. */
@@ -27,7 +25,7 @@ const RELEASE = 1;
 const TAIL = 1.5;
 
 /** Une note à jouer, en secondes depuis le départ de l'écoute. */
-export type PlayNote = { time: number; midi: number; duration: number };
+export type PlayNote = { time: number; midi: number; duration: number; velocity: number };
 
 /** Durée d'un tick, en secondes, au tempo donné. */
 export const secondsPerTick = (bpm: number) => 60 / bpm / TICKS_PER_BEAT;
@@ -41,7 +39,7 @@ export function playNotes(notes: PlayedNote[], bpm: number, from = 0): PlayNote[
   const sec = secondsPerTick(bpm);
   return notes
     .filter((n) => n.end > from)
-    .map((n) => ({ time: Math.max(0, n.start - from) * sec, midi: n.midi, duration: (n.end - Math.max(n.start, from)) * sec }))
+    .map((n) => ({ time: Math.max(0, n.start - from) * sec, midi: n.midi, duration: (n.end - Math.max(n.start, from)) * sec, velocity: n.velocity }))
     .sort((a, b) => a.time - b.time || a.midi - b.midi);
 }
 
@@ -200,7 +198,7 @@ class Player {
       this.voices = this.voices.filter((v) => v.end > now);
       for (; next < notes.length && notes[next].time < now - start + LOOKAHEAD; next++) {
         const n = notes[next];
-        const stop = piano.start({ note: n.midi, velocity: VELOCITY, time: start + n.time, duration: n.duration });
+        const stop = piano.start({ note: n.midi, velocity: n.velocity, time: start + n.time, duration: n.duration });
         this.voices.push({ end: start + n.time + n.duration + RELEASE, stop });
       }
     };

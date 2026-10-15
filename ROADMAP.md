@@ -28,13 +28,13 @@
 - Écoute, premier temps : bouton « Écouter » qui joue les notes de toutes les parties avec un piano échantillonné (bibliothèque smplr, sons téléchargés au premier clic), curseur sur la case jouée et défilement qui remonte le système en haut de l'écran ; pause qui reprend sur la case surlignée, arrêt, tempo celui de `bpm` par défaut, modifiable même en cours de lecture et rétabli d'un clic.
 - Écoute : un clic sur une colonne de la gravure y place le curseur, d'où la lecture démarre ou reprend (ou repart aussitôt si elle est en cours) ; les notes qui sonnent encore à cet endroit sont rejouées.
 - Écoute : reprises (`||:`, `:||`, `3×`) et ordre des sections déroulés comme à la lecture ; le curseur suit chaque passage, et la lettre de la section jouée est entourée dans l'ordre de jeu en tête de page ; un clic dans une mesure jouée plusieurs fois reste dans le passage en cours, ou revient au plus récent ; un clic sur une lettre de l'ordre de jeu va droit à cette section.
+- Écoute : nuances en intensité (de `ppp` à `fff`, mf par défaut), accents (`sf`, `sfz`, `fz`, `rfz`) sur la seule note attaquée, `fp` et `sfp` ; soufflets, `cresc.` et `dim.` menés jusqu'à la nuance suivante, ou d'une nuance sans elle ; une partie sans indication suit celles de son instrument.
 
 ## À faire
 
 1. **Compléter l'écoute**, en itérations validées et commitées à part :
-   1. **Nuances et soufflets** en intensité ;
-   2. **Pédale** tenue ;
-   3. plus tard : petites notes, trilles, arpèges, point d'orgue, articulations, un timbre par instrument (importé du MusicXML quand il l'indique, sinon choisi au moment de l'écoute, d'une façon à définir).
+   1. **Pédale** tenue ;
+   2. plus tard : petites notes, trilles, arpèges, point d'orgue, articulations, un timbre par instrument (importé du MusicXML quand il l'indique, sinon choisi au moment de l'écoute, d'une façon à définir).
 2. **Bibliothèque de partitions** (à concevoir) : retrouver et ouvrir ses morceaux depuis l'application.
 
 ## Hors v1 pour l'instant
