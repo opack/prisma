@@ -575,7 +575,8 @@ export function sectionsOf(seq: number[], n: number): { repeats: Repeat[]; marke
     }
   }
   // deux sections voisines toujours jouées l'une après l'autre : une seule section
-  const parts = new Map<Section, Section[]>(sections.map((s) => [s, [s]]));
+  // chaque section garde sa propre étendue pour ses reprises : la réunion allonge la section, pas ses morceaux
+  const parts = new Map<Section, Section[]>(sections.map((s) => [s, [{ ...s }]]));
   for (let merged = true; merged; ) {
     merged = false;
     for (let k = 0; k + 1 < sections.length; k++) {

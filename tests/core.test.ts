@@ -257,6 +257,13 @@ describe("ordre de jeu du MusicXML", () => {
     expect(s.repeats).toEqual([{ barIndex: 1, start: true }, { barIndex: 2, end: true }]);
   });
 
+  it("garde chaque reprise à sa place quand des reprises qui se suivent forment une seule section", () => {
+    // ||: 0 1 :||: 2 :|| 3, comme le début de la Marche turque
+    const s = sectionsOf([0, 1, 0, 1, 2, 2, 3], 4);
+    expect(s.markers).toEqual([]);
+    expect(s.repeats).toEqual([{ barIndex: 0, start: true }, { barIndex: 1, end: true }, { barIndex: 2, start: true, end: true }]);
+  });
+
   it("ne fait pas une reprise d'une section rejouée seule après un D.C.", () => {
     const s = sectionsOf([0, 0, 1, 0], 2);
     expect(s.order).toEqual(["A", "A", "B", "A"]);
