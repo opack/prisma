@@ -124,7 +124,8 @@ export type PedalLine = {
   signs: { anchor: number; text: string }[];
   /** Consignes de pédale (« Ped. simile »…). */
   texts: { anchor: number; text: string }[];
-  spans: { fromAnchor: number; toAnchor: number; opens: boolean; closes: boolean; changeStart: boolean; changeEnd: boolean }[];
+  /** implied : pédale déduite d'un « Ped. simile », gravée atténuée. */
+  spans: { fromAnchor: number; toAnchor: number; opens: boolean; closes: boolean; changeStart: boolean; changeEnd: boolean; implied?: boolean }[];
 };
 
 /**
@@ -684,6 +685,7 @@ export function layout(score: Score, m: Metrics): System[] {
             closes,
             changeStart: opens && change(p.start),
             changeEnd: closes && change(p.end),
+            ...(p.implied ? { implied: true } : {}),
           });
         }
       }

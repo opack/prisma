@@ -1480,7 +1480,7 @@ describe("écoute : Ped. simile", () => {
     notes: [],
     ...more,
   });
-  const ped = (start: number, end: number) => ({ part: 0, start: start * T, end: end * T });
+  const ped = (start: number, end: number) => ({ part: 0, start: start * T, end: end * T, implied: true });
   const sim = (t: number) => ({ part: 0, t: t * T, text: "Ped. simile" });
 
   it("reproduit le motif de la dernière mesure pédalée, mesure par mesure", () => {
@@ -1494,6 +1494,16 @@ describe("écoute : Ped. simile", () => {
     expect(playedPedals(s).slice(2)).toEqual([ped(2, 4), ped(4, 6)]);
     const t = piece(4, { pedals: [ped(0, 2)], pedalTexts: [sim(0)], markers: [{ label: "A", barIndex: 0 }, { label: "B", barIndex: 2 }] });
     expect(playedPedals(t).slice(1)).toEqual([ped(2, 4)]);
+  });
+
+  it("grave les pédales du simile comme les autres, atténuées, ou laisse la mention seule", async () => {
+    const { withSimile } = await import("../src/app/pedal.ts");
+    const s = piece(2, { pedals: [{ part: 0, start: 0, end: 2 * T }], pedalTexts: [sim(0)] });
+    const plain = withSimile(s, "pedals");
+    expect(plain.pedals).toEqual([{ part: 0, start: 0, end: 2 * T }, { part: 0, start: 2 * T, end: 4 * T }]);
+    expect(plain.pedalTexts).toEqual([]);
+    expect(withSimile(s, "faded").pedals[1]).toEqual(ped(2, 4));
+    expect(withSimile(s, "text")).toBe(s);
   });
 });
 

@@ -1,6 +1,7 @@
 /** Options de rendu, choisies dans le panneau « Options » et gardées dans le navigateur. */
 import type { OctavePalette } from "./colors.ts";
 import type { ChordStyle } from "./engrave.ts";
+import type { SimileDisplay } from "./pedal.ts";
 
 export type OctaveStyle = "arrow" | "sign" | "triangle";
 export type OctavePosition = "top" | "center";
@@ -33,9 +34,11 @@ export type RenderOptions = {
   octaveMixed: boolean;
   /** Accords : nom anglais, notes ymn empilées, ou les deux. */
   chords: ChordStyle;
+  /** « Ped. simile » : gravé en pédales comme les autres, en pédales atténuées, ou en mention seule. */
+  simile: SimileDisplay;
 };
 
-export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal", fingerings: true, namesEverySystem: false, holdReminders: true, octavePalette: "rainbow", octaveMixed: false, chords: "both" };
+export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal", fingerings: true, namesEverySystem: false, holdReminders: true, octavePalette: "rainbow", octaveMixed: false, chords: "both", simile: "pedals" };
 
 export const OCTAVE_STYLES: { value: OctaveStyle; label: string; sample: string }[] = [
   { value: "arrow", label: "Flèches", sample: "↑1  0  ↓1" },
@@ -66,6 +69,12 @@ export const CHORD_STYLES: { value: ChordStyle; label: string; sample: string }[
   { value: "both", label: "Les deux", sample: "Am + 10 1 5" },
 ];
 
+export const SIMILE_DISPLAYS: { value: SimileDisplay; label: string }[] = [
+  { value: "pedals", label: "Pédales" },
+  { value: "faded", label: "Pédales atténuées" },
+  { value: "text", label: "Mention seule" },
+];
+
 export const DENSITIES: { value: Density; label: string }[] = [
   { value: "normal", label: "Normal" },
   { value: "compact", label: "Compact" },
@@ -89,7 +98,8 @@ export function loadOptions(): RenderOptions {
     const octavePalette = OCTAVE_PALETTES.some((p) => p.value === raw.octavePalette) ? raw.octavePalette : DEFAULT_OPTIONS.octavePalette;
     const octaveMixed = typeof raw.octaveMixed === "boolean" ? raw.octaveMixed : DEFAULT_OPTIONS.octaveMixed;
     const chords = CHORD_STYLES.some((c) => c.value === raw.chords) ? raw.chords : DEFAULT_OPTIONS.chords;
-    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density, fingerings, namesEverySystem, holdReminders, octavePalette, octaveMixed, chords };
+    const simile = SIMILE_DISPLAYS.some((d) => d.value === raw.simile) ? raw.simile : DEFAULT_OPTIONS.simile;
+    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density, fingerings, namesEverySystem, holdReminders, octavePalette, octaveMixed, chords, simile };
   } catch {
     return DEFAULT_OPTIONS;
   }

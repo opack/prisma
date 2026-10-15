@@ -175,9 +175,10 @@ export const isSlur = (t: string) => /^\([-|]*\)?$/.test(t) || /^-[-|]*\)?$/.tes
 /**
  * Pédale de résonance enfoncée de start à end (fin exclue). Deux pédales qui se touchent
  * (end de l'une = start de la suivante) forment un changement de pédale. part : la partie
- * sous laquelle elle s'écrit, la dernière de son instrument.
+ * sous laquelle elle s'écrit, la dernière de son instrument. implied : pédale non écrite, déduite
+ * d'un « Ped. simile » pour la gravure (jamais lue ni écrite dans le fichier).
  */
-export type Pedal = { part: Part; start: number; end: number };
+export type Pedal = { part: Part; start: number; end: number; implied?: boolean };
 
 /** Consigne de pédale (« Ped. simile »…), sur la ligne de pédale d'une partie. */
 export type PedalText = TextMark & { part: Part };

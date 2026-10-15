@@ -553,8 +553,9 @@ function PedalBand({ ps, pedal, top }: { ps: PlacedSystem; pedal: PedalLine; top
   const hook = 1.5; // hauteur des crochets et des pointes
   const notch = 0.8; // demi-largeur d'une pointe de changement
   const px = (a: number) => xs[sys.anchors[a]] + 0.3;
-  const parts: string[] = [];
+  const written: string[] = [], implied: string[] = [];
   for (const s of pedal.spans) {
+    const parts = s.implied ? implied : written;
     let x1 = s.fromAnchor >= 0 ? px(s.fromAnchor) : left;
     let x2 = s.toAnchor >= 0 ? px(s.toAnchor) : right;
     if (s.changeStart) {
@@ -572,7 +573,9 @@ function PedalBand({ ps, pedal, top }: { ps: PlacedSystem; pedal: PedalLine; top
       <text x={PAGE.marginX + G.prefix - 1.2} y={y} fontSize={2.3} fill={GREY} textAnchor="end" fontStyle="italic">
         Ped.
       </text>
-      <path d={parts.join(" ")} fill="none" stroke={INK} strokeWidth={0.3} strokeLinejoin="round" />
+      <path d={written.join(" ")} fill="none" stroke={INK} strokeWidth={0.3} strokeLinejoin="round" />
+      {/* pédales déduites d'un « Ped. simile », atténuées */}
+      {implied.length > 0 && <path d={implied.join(" ")} fill="none" stroke={LIGHT} strokeWidth={0.3} strokeLinejoin="round" />}
       {/* consignes (« Ped. simile ») : sur la ligne de pédale, après un éventuel crochet */}
       {pedal.texts.map((p, i) => (
         <text key={i} x={px(p.anchor) + 0.8} y={y} fontSize={2.8} fontStyle="italic" fill={INK}>

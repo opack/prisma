@@ -34,6 +34,7 @@
 - Écoute : trilles, la note et sa voisine alternées une douzaine de fois par seconde, en commençant et en finissant par la note.
 - Écoute : arpèges égrenés à partir du temps, du grave à l'aigu (`/`) ou de l'aigu au grave (`\`), d'une partie ou de tout le système, les notes restant tenues.
 - Écoute : point d'orgue, ce qui commence là (note, accord ou silence) tenu deux fois plus longtemps (deux temps de plus au plus), le curseur restant sur sa case.
+- Gravure de « Ped. simile » (option) : les pédales qu'il demande, gravées comme les autres (par défaut), atténuées en gris clair, ou la seule mention ; le fichier garde la mention.
 - Écoute : boutons de lecture en icônes : début du morceau, section précédente (début de la section jouée, ou la section d'avant si l'on est dans sa première mesure ou au second clic rapproché), lecture et pause, section suivante, arrêt.
 
 ## À faire

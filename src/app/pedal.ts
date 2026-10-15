@@ -40,10 +40,23 @@ export function playedPedals(score: Score): Pedal[] {
     const motif = pedalled(model).map((p) => ({ start: Math.max(p.start, bars[model].from) - bars[model].from, end: Math.min(p.end, bars[model].to) - bars[model].from }));
     for (; bar < bars.length && !pedalled(bar).length && !(bar > at && sectionStarts.has(bar)); bar++) {
       const { from, to } = bars[bar];
-      for (const m of motif) if (from + m.start < to) out.push({ part: text.part, start: from + m.start, end: Math.min(from + m.end, to) });
+      for (const m of motif) if (from + m.start < to) out.push({ part: text.part, start: from + m.start, end: Math.min(from + m.end, to), implied: true });
     }
   }
   return out;
+}
+
+/** Gravure d'un « Ped. simile » : les pédales qu'il demande, atténuées ou non, ou la seule mention. */
+export type SimileDisplay = "pedals" | "faded" | "text";
+
+/**
+ * Le morceau tel qu'il se grave : avec les pédales d'un « Ped. simile » écrites comme les autres
+ * (la mention, devenue inutile, disparaît), atténuées, ou sans elles (la mention seule).
+ */
+export function withSimile(score: Score, display: SimileDisplay): Score {
+  if (display === "text" || !score.pedalTexts.some((p) => /simile/i.test(p.text))) return score;
+  const pedals = playedPedals(score).map((p) => (display === "pedals" && p.implied ? { part: p.part, start: p.start, end: p.end } : p));
+  return { ...score, pedals, pedalTexts: score.pedalTexts.filter((p) => !/simile/i.test(p.text)) };
 }
 
 /**

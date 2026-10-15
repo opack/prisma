@@ -4,11 +4,12 @@ import type { Score } from "../core/index.ts";
 import { engrave } from "./engrave.ts";
 import { Menu } from "./Menu.tsx";
 import { ListenControls } from "./ListenControls.tsx";
+import { withSimile } from "./pedal.ts";
 import { player } from "./player.ts";
 import { NoticeView } from "./NoticeView.tsx";
 import { PageView } from "./PageView.tsx";
 import { SAMPLE } from "./sample.ts";
-import { CHORD_STYLES, DENSITIES, NOTE_POSITIONS, OCTAVE_PALETTES, OCTAVE_POSITIONS, OCTAVE_STYLES, loadOptions, saveOptions } from "./options.ts";
+import { CHORD_STYLES, DENSITIES, NOTE_POSITIONS, OCTAVE_PALETTES, OCTAVE_POSITIONS, OCTAVE_STYLES, SIMILE_DISPLAYS, loadOptions, saveOptions } from "./options.ts";
 import type { RenderOptions } from "./options.ts";
 import { OPENABLE, canWriteInPlace, download, droppedFile, pickFile, pickSaveTarget, writeFile } from "./files.ts";
 
@@ -149,9 +150,11 @@ export function App() {
   const pages = useMemo(() => {
     if (!engraved.score) return [];
     // doigtés masqués : retirés avant la gravure, pour que les cases reprennent leur largeur
-    const score = options.fingerings ? engraved.score : { ...engraved.score, notes: engraved.score.notes.map(({ finger: _, ...n }) => n) };
+    const plain = options.fingerings ? engraved.score : { ...engraved.score, notes: engraved.score.notes.map(({ finger: _, ...n }) => n) };
+    // « Ped. simile » : les pédales qu'il demande, gravées comme les autres ou atténuées, ou la mention seule
+    const score = withSimile(plain, options.simile);
     return engrave(score, { compact: options.density === "compact", chords: options.chords, align: options.notePosition === "aligned", reminders: options.holdReminders });
-  }, [engraved, options.density, options.fingerings, options.chords, options.notePosition, options.holdReminders]);
+  }, [engraved, options.density, options.fingerings, options.chords, options.notePosition, options.holdReminders, options.simile]);
 
   const open = async (file: File, fileHandle: FileSystemFileHandle | null = null) => {
     const text = await file.text();
@@ -390,6 +393,24 @@ export function App() {
                   Répéter les noms à chaque système
                 </label>
                 <span className="sample">sinon, au premier système seulement</span>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Ped. simile</legend>
+              <div className="choices">
+                {SIMILE_DISPLAYS.map((d) => (
+                  <label key={d.value}>
+                    <input
+                      type="radio"
+                      name="simile"
+                      id={"simile-" + d.value}
+                      checked={options.simile === d.value}
+                      onChange={() => setOptions({ simile: d.value })}
+                    />
+                    {d.label}
+                  </label>
+                ))}
+                <span className="sample">les pédales que demande « Ped. simile » ; le fichier garde la mention</span>
               </div>
             </fieldset>
           </div>
