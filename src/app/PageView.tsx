@@ -407,16 +407,36 @@ function Marks({ ps }: { ps: PlacedSystem }) {
 }
 
 /** Ordre de jeu des sections, en tête de page : les mêmes lettres que sur la partition. */
-function OrderLine({ order, y, cx = PAGE.w / 2 }: { order: string[]; y: number; cx?: number }) {
+function OrderLine({ order, y, cx = PAGE.w / 2, live = false }: { order: string[]; y: number; cx?: number; live?: boolean }) {
   const step = 3.6 + 1.6;
   const x0 = cx - (order.length * step - 1.6) / 2;
   return (
     <g>
+      {live && <OrderPlaying x0={x0} step={step} y={y} />}
       {order.map((label, i) => (
         <SectionBox key={i} x={x0 + i * step} y={y} label={label} />
       ))}
+      {live && (
+        <g className="seek">
+          {order.map((label, i) => (
+            <rect key={i} x={x0 + i * step - 0.8} y={y - 0.8} width={step} height={4.9} fill="transparent" onClick={() => player.seekEntry(i)}>
+              <title>{`Écouter à partir de cette section ${label}`}</title>
+            </rect>
+          ))}
+        </g>
+      )}
     </g>
   );
+}
+
+/**
+ * Sur la page, l'ordre de jeu sert aussi à l'écoute : la section jouée y est entourée (on sait
+ * ainsi quel passage d'une section répétée on écoute), et un clic sur une lettre y lance la lecture.
+ */
+function OrderPlaying({ x0, step, y }: { x0: number; step: number; y: number }) {
+  const { entry } = useSyncExternalStore(player.subscribe, player.getSnapshot);
+  if (entry === null) return null;
+  return <rect x={x0 + entry * step - 0.8} y={y - 0.8} width={5.2} height={4.9} rx={0.9} fill="rgb(255, 200, 70)" />;
 }
 
 /**
@@ -917,7 +937,7 @@ export function PageView({ page, total, meta, options }: { page: Page; total: nu
           )}
         </g>
       )}
-      {page.order.length > 0 && <OrderLine order={page.order} y={page.header ? PAGE.marginTop + headerHeight(meta) - 1 : PAGE.marginTop - 2} />}
+      {page.order.length > 0 && <OrderLine order={page.order} y={page.header ? PAGE.marginTop + headerHeight(meta) - 1 : PAGE.marginTop - 2}  live />}
       {/* noms des instruments : au premier système du morceau, comme sur une partition, ou à chaque système (option) */}
       {page.systems.map((ps, i) => (
         <SystemView key={i} ps={ps} options={options} names={(page.index === 0 && i === 0) || options.namesEverySystem} />

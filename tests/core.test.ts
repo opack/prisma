@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { FORMAT_VERSION, TICKS_PER_BEAT as T, importMusicXml, layout, parseYmn, writeYmn } from "../src/core/index.ts";
 import type { Score } from "../src/core/index.ts";
 import { playOrder, sectionsOf } from "../src/core/musicxml.ts";
@@ -1291,23 +1291,89 @@ describe("instruments transpositeurs", () => {
 
 
 describe("écoute", () => {
-  it("donne les notes en secondes, au tempo du morceau", async () => {
-    const { playNotes } = await import("../src/app/player.ts");
-    const s = parseYmn(["---", "bpm: 120", "---", "m1 |1  |2  ||", "0  |1  |-  ||", "---", "-1 |8  |3  ||", ""].join("\n"));
-    expect(playNotes(s, 120)).toEqual([
+  const two = ["---", "bpm: 120", "---", "m1 |1  |2  ||", "0  |1  |-  ||", "---", "-1 |8  |3  ||", ""].join("\n");
+  /** Un morceau d'une mesure d'un temps par lettre, une note par mesure (1, 2, 3…), avec ses reprises et sections. */
+  const bars = (n: number, more: Partial<Score> = {}): Score => ({
+    ...parseYmn("m1 |1  ||\n0  |1  ||\n"),
+    beats: Array.from({ length: n }, (_, i) => ({ bar: String(i + 1), barIndex: i, label: 1, division: 2 }) as Score["beats"][number]),
+    notes: Array.from({ length: n }, (_, i) => ({ part: 0, midi: 60 + i, start: i * T, end: (i + 1) * T })),
+    ...more,
+  });
+  const order = (s: Score, ps: ReturnType<typeof passages>) => playedNotes(s, ps).map((n) => n.midi - 59).join(" ");
+  let passages: typeof import("../src/app/performance.ts").passages;
+  let playedNotes: typeof import("../src/app/performance.ts").playedNotes;
+  let playNotes: typeof import("../src/app/player.ts").playNotes;
+  beforeAll(async () => {
+    ({ passages, playedNotes } = await import("../src/app/performance.ts"));
+    ({ playNotes } = await import("../src/app/player.ts"));
+  });
+
+  it("donne les notes en secondes, au tempo choisi", () => {
+    const s = parseYmn(two);
+    expect(playNotes(playedNotes(s, passages(s)), 120)).toEqual([
       { time: 0, midi: 55, duration: 0.5 },
       { time: 0, midi: 60, duration: 1 },
       { time: 0.5, midi: 50, duration: 0.5 },
     ]);
   });
-  it("reprend à un instant donné, au tempo choisi", async () => {
-    const { playNotes } = await import("../src/app/player.ts");
-    const { TICKS_PER_BEAT } = await import("../src/core/index.ts");
-    const s = parseYmn(["---", "bpm: 120", "---", "m1 |1  |2  ||", "0  |1  |-  ||", "---", "-1 |8  |3  ||", ""].join("\n"));
-    // à 60 : la note tenue depuis le début est rejouée pour ce qui lui reste
-    expect(playNotes(s, 60, TICKS_PER_BEAT)).toEqual([
+
+  it("reprend à un instant donné, en rejouant ce qui sonne encore", () => {
+    const s = parseYmn(two);
+    expect(playNotes(playedNotes(s, passages(s)), 60, T)).toEqual([
       { time: 0, midi: 50, duration: 1 },
       { time: 0, midi: 60, duration: 1 },
     ]);
+  });
+
+  it("déroule les reprises, au nombre de passages indiqué", () => {
+    const s = parseYmn("m1 ||:1  |2  :||1  |2  ||\n0  ||:1  |-   ||5  |   ||\n---\n-1 || 1  |    ||1  |   ||\n");
+    expect(playedNotes(s, passages(s)).map((n) => [n.start / T, n.midi])).toEqual([[0, 48], [0, 60], [2, 48], [2, 60], [4, 48], [4, 64]]);
+    const three = bars(4, { repeats: [{ barIndex: 1, start: true }, { barIndex: 2, end: true, times: 3 }] });
+    expect(order(three, passages(three))).toBe("1 2 3 2 3 2 3 4");
+    // sans « ||: », on revient au début ; « :||: » enchaîne deux reprises
+    const r = bars(4, { repeats: [{ barIndex: 0, end: true }, { barIndex: 1, start: true }, { barIndex: 2, end: true }] });
+    expect(order(r, passages(r))).toBe("1 1 2 3 2 3 4");
+  });
+
+  it("suit l'ordre des sections, et chaque reprise reste dans la sienne", () => {
+    const s = bars(4, {
+      markers: [{ label: "A", barIndex: 0 }, { label: "B", barIndex: 2 }],
+      order: ["A", "B", "A"],
+      repeats: [{ barIndex: 3, end: true }],
+    });
+    expect(order(s, passages(s))).toBe("1 2 3 4 3 4 1 2");
+  });
+
+  it("garde liée une note qui passe d'un passage à la suite du morceau", () => {
+    const s = bars(3, { repeats: [{ barIndex: 0, end: true }] });
+    s.notes = [{ part: 0, midi: 60, start: 0, end: 3 * T }];
+    // après le retour en arrière la note s'arrête ; au dernier passage elle tient jusqu'au bout
+    expect(playedNotes(s, passages(s))).toEqual([
+      { start: 0, end: T, midi: 60 },
+      { start: T, end: 4 * T, midi: 60 },
+    ]);
+  });
+
+  it("place le curseur et le clic sur le bon passage d'une reprise", async () => {
+    const { scoreTick, playedTick } = await import("../src/app/performance.ts");
+    const s = bars(3, { repeats: [{ barIndex: 1, end: true }] }); // joué 1 2 1 2 3
+    const ps = passages(s);
+    expect(scoreTick(ps, 2.5 * T)).toBe(0.5 * T);
+    expect(playedTick(ps, 0, 0)).toBe(0); // au début : le premier passage
+    expect(playedTick(ps, 0, 3 * T)).toBe(2 * T); // pendant le second passage : on y reste
+    expect(playedTick(ps, 2 * T, 0)).toBe(4 * T); // la fin, jouée une seule fois
+  });
+
+  it("revient au passage le plus récent quand on clique en arrière, et va à une section par sa lettre", async () => {
+    const { playedTick, entryAt, entryStart } = await import("../src/app/performance.ts");
+    // A B B B C, une mesure chacune : joué 1 2 2 2 3
+    const s = bars(3, { markers: [{ label: "A", barIndex: 0 }, { label: "B", barIndex: 1 }, { label: "C", barIndex: 2 }], order: ["A", "B", "B", "B", "C"] });
+    const ps = passages(s);
+    expect(playedTick(ps, T, 0)).toBe(T); // à l'arrêt : le premier B
+    expect(playedTick(ps, T + T / 2, 2.2 * T)).toBe(2.5 * T); // dans le 2e B : on y reste
+    expect(playedTick(ps, T, 4.5 * T)).toBe(3 * T); // depuis C : le 3e B, juste avant
+    expect(playedTick(ps, 2 * T, 1.5 * T)).toBe(4 * T); // C n'est pas encore joué : on y va
+    expect(entryAt(ps, 2.5 * T)).toBe(2);
+    expect(entryStart(ps, 3)).toBe(3 * T);
   });
 });

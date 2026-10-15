@@ -279,7 +279,7 @@ export function App() {
 
   const { problem, score } = engraved;
   // écoute : le morceau gravé, avec le curseur sur la gravure ; arrêtée quand on regrave
-  useEffect(() => () => player.stop(), [engraved]);
+  useEffect(() => player.load(score), [score]);
 
   return (
     <div className="app" onDragEnter={onDragEnter} onDragLeave={onDragLeave} onDragOver={onDragOver} onDrop={onDrop}>
