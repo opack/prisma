@@ -26,10 +26,14 @@ export type Metrics = {
   repeatDots: number;
   /**
    * Notes alignées (gravure seulement) : une note rejouée ou qui revient garde la ligne
-   * de la précédente, au lieu de remonter en haut de son couloir.
+   * de la précédente, au lieu de remonter en haut de son couloir (replayed) ; de plus, deux
+   * notes jouées dans une même mesure ne partagent jamais une ligne, l'aiguë au-dessus (pitch) :
+   * une ligne par note, qui dessine la mélodie et les arpèges.
    */
-  align?: boolean;
+  align?: Align;
 };
+
+export type Align = "replayed" | "pitch";
 
 export type Column =
   | { kind: "anchor"; t: number; label: string; beatIndex: number; k: number; n: number }
@@ -337,7 +341,7 @@ type Group = { part: Part; octave: number; lanes: Lane[]; blocks: Block[] };
  * Dans chaque bloc, les notes sont rangées de haut en bas, la plus aiguë en premier :
  * une note seule est toujours sur la ligne du haut, quel que soit le reste du couloir.
  */
-function groups(notes: Note[], t0: number, align = false): Group[] {
+function groups(notes: Note[], t0: number, align?: Align, barOf?: (t: number) => number): Group[] {
   const byKey = new Map<string, Note[]>();
   for (const n of notes) {
     const key = n.part + ":" + octaveOf(n.midi);
@@ -350,7 +354,7 @@ function groups(notes: Note[], t0: number, align = false): Group[] {
     const sorted = [...list].sort((a, b) => s(a) - s(b) || b.midi - a.midi);
     const g: Group = { part: sorted[0].part, octave: octaveOf(sorted[0].midi), lanes: [], blocks: [] };
     if (align) {
-      g.lanes = alignedLanes(list, t0, g.part, g.octave);
+      g.lanes = alignedLanes(list, t0, g.part, g.octave, align === "pitch" ? barOf : undefined);
       out.push(g);
       continue;
     }
@@ -388,11 +392,12 @@ const ALIGN_GAP = TICKS_PER_BEAT;
 /**
  * Lignes d'un couloir, notes alignées : chaque note rejouée (après au plus un temps de
  * silence) reste sur la ligne de la précédente, ce qui forme des chaînes. Deux chaînes qui
- * sonnent ensemble à un instant se rangent l'aiguë au-dessus de la grave ; chacune prend la
- * première ligne sous toutes celles qui doivent être au-dessus d'elle. C'est le moins de
- * lignes possible pour ces chaînes : des lignes restent vides par endroits.
+ * sonnent ensemble à un instant (barOf donné : qui ont une note dans une même mesure) se rangent
+ * l'aiguë au-dessus de la grave ; chacune prend la première ligne sous toutes celles qui
+ * doivent être au-dessus d'elle. C'est le moins de lignes possible pour ces chaînes : des
+ * lignes restent vides par endroits.
  */
-function alignedLanes(list: Note[], t0: number, part: Part, octave: number): Lane[] {
+function alignedLanes(list: Note[], t0: number, part: Part, octave: number, barOf?: (t: number) => number): Lane[] {
   const s = (n: Note) => Math.max(n.start, t0);
   const chains: { midi: number; notes: Note[] }[] = [];
   const last = new Map<number, { midi: number; notes: Note[] }>();
@@ -406,7 +411,11 @@ function alignedLanes(list: Note[], t0: number, part: Part, octave: number): Lan
       last.set(n.midi, chain);
     }
   }
-  const overlap = (a: Note[], b: Note[]) => a.some((x) => b.some((y) => s(x) < y.end && s(y) < x.end));
+  // les mesures où sonne une note : de celle de son attaque à celle où elle s'arrête
+  const bars = (x: Note) => [barOf!(s(x)), barOf!(Math.max(s(x), x.end - 1))];
+  const overlap = barOf
+    ? (a: Note[], b: Note[]) => a.some((x) => b.some((y) => bars(x)[0] <= bars(y)[1] && bars(y)[0] <= bars(x)[1]))
+    : (a: Note[], b: Note[]) => a.some((x) => b.some((y) => s(x) < y.end && s(y) < x.end));
   // de l'aigu au grave : toutes les chaînes à ranger au-dessus d'une chaîne sont déjà placées
   const sorted = [...chains].sort((a, b) => b.midi - a.midi);
   const lane = new Map<(typeof chains)[number], number>();
@@ -487,8 +496,9 @@ export function layout(score: Score, m: Metrics): System[] {
     const inSystem = score.notes.filter((n) => n.start < t1 && n.end > t0);
     const anchorT = anchors.map((ci) => (columns[ci] as { t: number }).t);
     const digits = (part: Part) => anchorT.map((t) => graceDigits(score.graces, part, t));
+    const barOf = (t: number) => score.beats[Math.min(score.beats.length - 1, Math.floor(t / T))].barIndex;
     const toRows = (part: Part): SystemRow[] => {
-      const gs = groups(inSystem.filter((n) => n.part === part), t0, m.align);
+      const gs = groups(inSystem.filter((n) => n.part === part), t0, m.align, barOf);
       // petites notes : sur la première ligne libre de leur couloir d'octave (créé au besoin)
       const graces = score.graces.filter((g) => g.part === part && g.t >= t0 && g.t < t1);
       const slotsAt = digits(part);

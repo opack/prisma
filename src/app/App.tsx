@@ -12,7 +12,7 @@ import { player } from "./player.ts";
 import { NoticeView } from "./NoticeView.tsx";
 import { PageView } from "./PageView.tsx";
 import { SAMPLE } from "./sample.ts";
-import { loadOptions, saveOptions } from "./options.ts";
+import { alignOf, loadOptions, saveOptions } from "./options.ts";
 import type { RenderOptions } from "./options.ts";
 import { OPENABLE, canWriteInPlace, download, droppedFile, pickFile, pickSaveTarget, writeFile } from "./files.ts";
 
@@ -223,7 +223,7 @@ export function App() {
     const plain = options.fingerings ? engraved.score : { ...engraved.score, notes: engraved.score.notes.map(({ finger: _, ...n }) => n) };
     // « Ped. simile » : les pédales qu'il demande, gravées comme les autres ou atténuées, ou la mention seule
     const score = withSimile(plain, options.simile);
-    return engrave(score, { compact: options.density === "compact", chords: options.chords, align: options.notePosition === "aligned", reminders: options.holdReminders });
+    return engrave(score, { compact: options.density === "compact", chords: options.chords, align: alignOf(options.notePosition), reminders: options.holdReminders });
   }, [engraved, options.density, options.fingerings, options.chords, options.notePosition, options.holdReminders, options.simile]);
 
   const open = async (file: File, fileHandle: FileSystemFileHandle | null = null, keepMode = false) => {

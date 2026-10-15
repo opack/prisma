@@ -3,7 +3,7 @@
  * Toutes les dimensions sont en millimètres.
  */
 import { FINGER_MARK, firstParts, partCount, TRILL_MARK, chordName, chordNotes, graceDigits, layout, noteText } from "../core/index.ts";
-import type { Score, System, Voice } from "../core/index.ts";
+import type { Align, Score, System, Voice } from "../core/index.ts";
 
 export const PAGE = { w: 210, h: 297, marginX: 15, marginTop: 14, marginBottom: 16 };
 export const CONTENT_W = PAGE.w - 2 * PAGE.marginX;
@@ -252,10 +252,10 @@ function place(sys: System, isLast: boolean, y: number, cellW: number, chords: C
 
 /**
  * compact : cases plus étroites, donc plus de mesures par ligne ; chords : affichage des
- * accords ; align : une note rejouée garde sa ligne (voir layout) ; reminders : rappel, en début
+ * accords ; align : notes alignées, une note rejouée gardant sa ligne, ou une ligne par note (voir layout) ; reminders : rappel, en début
  * de système, de la note tenue depuis le système précédent.
  */
-export function engrave(score: Score, { compact = false, chords = "both" as ChordStyle, align = false, reminders = true } = {}): Page[] {
+export function engrave(score: Score, { compact = false, chords = "both" as ChordStyle, align = undefined as Align | undefined, reminders = true } = {}): Page[] {
   const cellW = compact ? G.compactCell : G.cell;
   const systems = layout(score, {
     width: CONTENT_W,

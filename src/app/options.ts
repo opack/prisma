@@ -5,10 +5,11 @@ import type { SimileDisplay } from "./pedal.ts";
 import { CLICK_SOUNDS, DEFAULT_CLICK_SOUNDS } from "./metronome.ts";
 import type { ClickSounds } from "./metronome.ts";
 import type { ClickGrid } from "./performance.ts";
+import type { Align } from "../core/index.ts";
 
 export type OctaveStyle = "arrow" | "sign" | "triangle";
 export type OctavePosition = "top" | "center";
-export type NotePosition = "top" | "center" | "aligned";
+export type NotePosition = "top" | "center" | "aligned" | "pitch";
 export type Density = "normal" | "compact";
 
 export type RenderOptions = {
@@ -19,8 +20,9 @@ export type RenderOptions = {
   /** Regraver automatiquement peu après la dernière frappe. */
   autoEngrave: boolean;
   /**
-   * Place des notes dans un couloir d'octave : en haut, chaque bloc centré verticalement, ou
-   * alignées (une note rejouée garde sa ligne, pour suivre des yeux une note qui revient).
+   * Place des notes dans un couloir d'octave : en haut, chaque bloc centré verticalement,
+   * alignées (une note rejouée garde sa ligne, pour suivre des yeux une note qui revient), ou une
+   * ligne par note (de plus, deux notes d'une même mesure sur deux lignes : le dessin de la mélodie).
    */
   notePosition: NotePosition;
   /** Espacement des cases : normal, ou compact pour gagner de la place sur les partitions chargées. */
@@ -64,10 +66,14 @@ export const OCTAVE_POSITIONS: { value: OctavePosition; label: string }[] = [
   { value: "center", label: "Au centre" },
 ];
 
+/** Les notes alignées à la gravure, selon la place des notes choisie. */
+export const alignOf = (p: NotePosition): Align | undefined => (p === "aligned" ? "replayed" : p === "pitch" ? "pitch" : undefined);
+
 export const NOTE_POSITIONS: { value: NotePosition; label: string }[] = [
   { value: "top", label: "En haut" },
   { value: "center", label: "Centrées" },
   { value: "aligned", label: "Alignées" },
+  { value: "pitch", label: "Une ligne par note" },
 ];
 
 export const OCTAVE_PALETTES: { value: OctavePalette; label: string }[] = [

@@ -10,6 +10,7 @@ import notice from "../../NOTICE.md?raw";
 import { parseYmn } from "../core/index.ts";
 import { engrave } from "./engrave.ts";
 import { Excerpt } from "./PageView.tsx";
+import { alignOf } from "./options.ts";
 import type { RenderOptions } from "./options.ts";
 
 /** HTML de la notice, avec une place réservée pour chaque exemple gravé. */
@@ -35,7 +36,7 @@ function render(markdown: string) {
 function Example({ text, options }: { text: string; options: RenderOptions }) {
   const result = useMemo(() => {
     try {
-      return { pages: engrave(parseYmn(text), { compact: options.density === "compact", chords: options.chords, align: options.notePosition === "aligned", reminders: options.holdReminders }) };
+      return { pages: engrave(parseYmn(text), { compact: options.density === "compact", chords: options.chords, align: alignOf(options.notePosition), reminders: options.holdReminders }) };
     } catch (e) {
       return { error: (e as Error).message };
     }

@@ -63,6 +63,7 @@ const NOTE_POSITIONS: Option<RenderOptions["notePosition"]>[] = [
   { value: "top", label: "En haut", hint: "les notes en haut de leur couloir d'octave" },
   { value: "center", label: "Centrées", hint: "chaque groupe de notes centré dans son couloir" },
   { value: "aligned", label: "Alignées", hint: "une note rejouée garde sa ligne, pour la suivre des yeux" },
+  { value: "pitch", label: "Une ligne par note", hint: "alignées, et deux notes d'une même mesure sur deux lignes, l'aiguë au-dessus : le dessin des arpèges et de la mélodie" },
 ];
 
 const DENSITIES: Option<RenderOptions["density"]>[] = [

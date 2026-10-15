@@ -3,7 +3,7 @@ export * from "./pitch.ts";
 export { FORMAT_VERSION, YmnError } from "./frontmatter.ts";
 export { importMusicXml } from "./musicxml.ts";
 export { beatGrids, layout, noteText } from "./layout.ts";
-export type { Column, HairpinSpan, Metrics, PedalLine, System, SystemPart, SystemRow, Voice, VoiceMark } from "./layout.ts";
+export type { Align, Column, HairpinSpan, Metrics, PedalLine, System, SystemPart, SystemRow, Voice, VoiceMark } from "./layout.ts";
 export { writeYmn, DEFAULT_WIDTH, DEFAULT_CELL } from "./ymn-write.ts";
 export { parseYmn } from "./ymn-parse.ts";
 export { CHORD_NOTE_SEPARATOR, chordName, chordNotes, chordYmnText } from "./chords.ts";
