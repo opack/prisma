@@ -10,7 +10,7 @@ Entre deux lignes `---`, une clé par ligne, sous la forme `clé: valeur`.
 |---|---|
 | `format` | Version du format ymn du fichier : `format: 1`. L'écriture la met toujours ; un fichier sans elle est lu comme la version courante. Le lecteur refuse un fichier d'une autre version en le disant (voir « Versions »). |
 | `title`, `subtitle`, `composer`, `source` | Informations affichées : le sous-titre (« Op. 9 n° 2 », « Suite bergamasque, 3ᵉ mouvement »…) sous le titre. |
-| `bpm` | Tempo de départ, en temps (*beats*) par minute : `bpm: 78`, gravé « 78 bpm ». Le temps est celui de la règle de comptage, donc la noire pointée d'un 6/8 : le nombre se lit sans ambiguïté, comme sur un métronome. Les indications en mots (`Andante`, `rit.`) vont sur la ligne `@` au-dessus de la règle. À l'import MusicXML, il vient du premier `<sound tempo>`, converti des noires en temps. |
+| `bpm` | Tempo de départ, en temps (*beats*) par minute : `bpm: 78`, gravé « 78 bpm ». Le temps est celui de la règle de comptage, donc la noire pointée d'un 6/8 : le nombre se lit sans ambiguïté, comme sur un métronome. Les indications en mots (`Andante`, `rit.`) vont sur la ligne `@` au-dessus de la règle. À l'import MusicXML, il vient du premier `<sound tempo>`, converti des noires en temps. Sans `bpm`, l'écoute joue à 80. |
 | `parts` | Noms des instruments, de haut en bas, séparés par des virgules : `parts: Chant, Piano` (voir « Parties et instruments »). |
 | `order` | Ordre de jeu des sections, par leur lettre : `order: A A B C B D A` (voir « Sections et ordre de jeu »). |
 | `cell` | Largeur de base d'une case en caractères, à l'écriture. Vaut 3 par défaut. |

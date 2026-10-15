@@ -25,14 +25,16 @@
 - Articulations : `.` staccato, `!` accent, `!!` marcato, sur la ligne d'expression de la partie, pour tout ce qu'elle attaque dans la case ; gravées comme les signes classiques en haut à droite de la note ; importées du MusicXML (le tenuto, déjà dans la durée, est ignoré).
 - Instruments transpositeurs : notés à la hauteur qui sonne, la hauteur écrite du MusicXML corrigée d'après `<transpose>`.
 - Import : les indications d'octave (`8va`, `8vb`, `loco`…) sont ignorées, chaque note portant déjà son octave.
+- Écoute, premier temps : bouton « Écouter » qui joue les notes de toutes les parties avec un piano échantillonné (bibliothèque smplr, sons téléchargés au premier clic), curseur sur la case jouée et défilement qui remonte le système en haut de l'écran ; pause qui reprend sur la case surlignée, arrêt, tempo celui de `bpm` par défaut, modifiable même en cours de lecture et rétabli d'un clic.
 
 ## À faire
 
-1. **Écouter la partition** (à concevoir) : un bouton « Écouter » qui joue le morceau dans le navigateur.
-   - **Premier temps, les notes** : hauteurs, durées et tempo (`bpm`), un son de piano, toutes les parties ensemble ; les reprises et l'ordre des sections déroulés comme à la lecture.
-   - **Ensuite, l'interprétation** : nuances et soufflets en intensité, pédale tenue, petites notes, trilles et arpèges joués, point d'orgue en suspens, un timbre par instrument.
-   - **Lecture suivie** : la case jouée surlignée sur la gravure.
-   - **Bibliothèque** : à choisir (synthèse Web Audio, ou échantillons de piano), selon la qualité du son et le poids à télécharger.
+1. **Compléter l'écoute**, en itérations validées et commitées à part :
+   1. **Choisir où commence la lecture** : un clic sur une colonne de la gravure y place le curseur, d'où la lecture démarre ou reprend ;
+   2. **Reprises et ordre des sections**, déroulés comme à la lecture ;
+   3. **Nuances et soufflets** en intensité ;
+   4. **Pédale** tenue ;
+   5. plus tard : petites notes, trilles, arpèges, point d'orgue, articulations, un timbre par instrument.
 
 ## Hors v1 pour l'instant
 

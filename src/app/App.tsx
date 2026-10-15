@@ -3,6 +3,8 @@ import { DEFAULT_WIDTH, YmnError, importMusicXml, parseYmn, writeYmn } from "../
 import type { Score } from "../core/index.ts";
 import { engrave } from "./engrave.ts";
 import { Menu } from "./Menu.tsx";
+import { ListenControls } from "./ListenControls.tsx";
+import { player } from "./player.ts";
 import { NoticeView } from "./NoticeView.tsx";
 import { PageView } from "./PageView.tsx";
 import { SAMPLE } from "./sample.ts";
@@ -276,6 +278,8 @@ export function App() {
   };
 
   const { problem, score } = engraved;
+  // écoute : le morceau gravé, avec le curseur sur la gravure ; arrêtée quand on regrave
+  useEffect(() => () => player.stop(), [engraved]);
 
   return (
     <div className="app" onDragEnter={onDragEnter} onDragLeave={onDragLeave} onDragOver={onDragOver} onDrop={onDrop}>
@@ -329,7 +333,7 @@ export function App() {
             {notice}
           </span>
         )}
-        <span className="spacer" />
+        <ListenControls score={score} disabled={!score || !pages.length} />
         <button className="primary" onClick={engraveNow} title="Ctrl+Entrée">
           Graver{dirty ? " •" : ""}
         </button>

@@ -4,6 +4,8 @@ import { FINGER, G, PAGE, chordParts, graceExtra, graceSlotW, headerHeight, lead
 import type { Page, PlacedSystem } from "./engrave.ts";
 import type { OctavePosition, OctaveStyle, RenderOptions } from "./options.ts";
 import { octaveTint } from "./colors.ts";
+import { player } from "./player.ts";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 
 const INK = "#1b1d1f";
 const GREY = "#8a8f94";
@@ -817,6 +819,35 @@ export function Excerpt({ pages, options, scale = 1 }: { pages: Page[]; options:
   );
 }
 
+/**
+ * Curseur de lecture : la case jouée, surlignée sur toute la hauteur de son système. Seul ce
+ * petit composant se redessine pendant l'écoute ; la page suit le système joué.
+ */
+function PlayCursor({ page }: { page: Page }) {
+  const { tick } = useSyncExternalStore(player.subscribe, player.getSnapshot);
+  const ref = useRef<SVGRectElement>(null);
+  const k = tick === null ? -1 : page.systems.findIndex((ps) => tick >= ps.sys.start && tick < ps.sys.end);
+  // un système qui sort de l'écran est remonté en haut : la page ne bouge plus jusqu'à ce que la lecture en sorte
+  useEffect(() => {
+    const el = ref.current, pane = el?.closest(".preview");
+    if (!el || !pane) return;
+    const box = el.getBoundingClientRect(), view = pane.getBoundingClientRect();
+    if (box.top >= view.top && box.bottom <= view.bottom) return;
+    pane.scrollTo({ top: pane.scrollTop + box.top - view.top - 16, behavior: "smooth" });
+  }, [k]);
+  if (k < 0) return null;
+  const ps = page.systems[k];
+  const { sys } = ps;
+  let a = 0;
+  sys.anchors.forEach((ci, i) => {
+    if ((sys.columns[ci] as { t: number }).t <= tick!) a = i;
+  });
+  const ci = sys.anchors[a];
+  const last = ps.parts[ps.parts.length - 1];
+  const top = ps.y + ps.rulerTop, bottom = ps.y + last.voiceTop + last.voiceBand;
+  return <rect ref={ref} x={ps.xs[ci]} y={top} width={ps.ws[ci]} height={bottom - top} rx={0.6} fill="rgba(255, 190, 40, 0.3)" style={{ pointerEvents: "none" }} />;
+}
+
 export function PageView({ page, total, meta, options }: { page: Page; total: number; meta: Meta; options: RenderOptions }) {
   return (
     <svg
@@ -860,6 +891,7 @@ export function PageView({ page, total, meta, options }: { page: Page; total: nu
       <text x={PAGE.w / 2} y={PAGE.h - 8} fontSize={2.6} textAnchor="middle" fill={GREY}>
         {page.index + 1} / {total}
       </text>
+      <PlayCursor page={page} />
     </svg>
   );
 }
