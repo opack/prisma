@@ -25,7 +25,7 @@ const GRACE = "#5a5f64"; // petites notes : gris foncé, entre les notes et les 
  *  - octaves : onglet pâle couvrant le groupe, chiffre gris foncé.
  */
 
-const FONT = `"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif`;
+export const FONT = `"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif`;
 /** Nuances en gras italique à empattements, comme sur une partition. */
 const DYNAMIC_FONT = `Georgia, "Times New Roman", serif`;
 /** Paroles : à empattements, droites, pour ne pas les confondre avec les chiffres des notes. */
@@ -435,7 +435,7 @@ function Marks({ ps }: { ps: PlacedSystem }) {
 }
 
 /** Ordre de jeu des sections, en tête de page : les mêmes lettres que sur la partition. */
-function OrderLine({ order, y, cx = PAGE.w / 2, live = false }: { order: string[]; y: number; cx?: number; live?: boolean }) {
+export function OrderLine({ order, y, cx = PAGE.w / 2, live = false }: { order: string[]; y: number; cx?: number; live?: boolean }) {
   const step = 3.6 + 1.6;
   const x0 = cx - (order.length * step - 1.6) / 2;
   return (
@@ -630,7 +630,7 @@ function Brace({ x, top, bottom }: { x: number; top: number; bottom: number }) {
   return <path d={d} fill={INK} stroke={INK} strokeWidth={0.1} />;
 }
 
-function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; options: RenderOptions; names: boolean }) {
+export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; options: RenderOptions; names: boolean }) {
   // la disposition verticale est calculée depuis le haut du système : on la place sur la page
   const Y = placed.y;
   const ps = {
@@ -898,12 +898,7 @@ function PlayCursor({ page, lookAhead }: { page: Page; lookAhead: boolean }) {
   const ref = useRef<SVGRectElement>(null);
   const k = tick === null ? -1 : page.systems.findIndex((ps) => tick >= ps.sys.start && tick < ps.sys.end);
   // la case jouée
-  let ci = -1;
-  if (k >= 0) {
-    const { sys } = page.systems[k];
-    ci = sys.anchors[0];
-    for (const c of sys.anchors) if ((sys.columns[c] as { t: number }).t <= tick!) ci = c;
-  }
+  const ci = k >= 0 ? columnAt(page.systems[k], tick!) : -1;
   // la descente vers le système suivant, une par système
   const ahead = useRef("");
   // la partition suit le curseur et montre d'avance la mesure suivante, quand l'écran le permet
@@ -932,7 +927,7 @@ function PlayCursor({ page, lookAhead }: { page: Page; lookAhead: boolean }) {
     // la suivante à sa droite ; si les deux n'y tiennent pas, la case jouée revient au premier
     // quart avant d'approcher du bord
     const pad = parseFloat(getComputedStyle(pane).scrollPaddingLeft || "0");
-    if (pane.closest(".reading.fit-height") && pageBox.width <= view.width - pad) g.to("left", x(pageBox.left) - pad);
+    if (pane.closest(".fit-height") && pageBox.width <= view.width - pad) g.to("left", x(pageBox.left) - pad);
     else {
       const start = left(bars[b]), end = right(bars[Math.min(b + 1, bars.length - 1)]);
       if (box.left < view.left || end > view.right - m) {
@@ -970,9 +965,21 @@ function PlayCursor({ page, lookAhead }: { page: Page; lookAhead: boolean }) {
     }
   }, [k, ci, following, lookAhead]);
   if (k < 0) return null;
-  const ps = page.systems[k];
+  return <CursorRect ps={page.systems[k]} ci={ci} rectRef={ref} />;
+}
+
+/** La colonne jouée d'un système à cet instant du morceau. */
+export function columnAt(ps: PlacedSystem, tick: number): number {
+  const { sys } = ps;
+  let ci = sys.anchors[0];
+  for (const c of sys.anchors) if ((sys.columns[c] as { t: number }).t <= tick) ci = c;
+  return ci;
+}
+
+/** La case jouée, surlignée sur toute la hauteur de son système. */
+export function CursorRect({ ps, ci, rectRef }: { ps: PlacedSystem; ci: number; rectRef?: React.Ref<SVGRectElement> }) {
   const { top, bottom } = band(ps);
-  return <rect ref={ref} x={ps.xs[ci]} y={top} width={ps.ws[ci]} height={bottom - top} rx={0.6} fill="rgba(255, 190, 40, 0.3)" style={{ pointerEvents: "none" }} />;
+  return <rect ref={rectRef} x={ps.xs[ci]} y={top} width={ps.ws[ci]} height={bottom - top} rx={0.6} fill="rgba(255, 190, 40, 0.3)" style={{ pointerEvents: "none" }} />;
 }
 
 /**
@@ -986,7 +993,7 @@ function extent(area: SVGRectElement) {
 }
 
 /** Les mesures d'un système : les colonnes de leurs cases, de gauche à droite. */
-function barsIn(ps: PlacedSystem): number[][] {
+export function barsIn(ps: PlacedSystem): number[][] {
   const bars: number[][] = [[]];
   ps.sys.columns.forEach((c, i) => {
     if (c.kind === "barSep") bars[bars.length - 1].length && bars.push([]);
@@ -1005,7 +1012,7 @@ function band(ps: PlacedSystem) {
  * Zones cliquables, une par système : un clic sur une colonne y place le curseur de lecture, d'où
  * la lecture démarre ou reprend (ou repart tout de suite si elle est en cours).
  */
-function SeekAreas({ page }: { page: Page }) {
+export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
   const seek = (ps: PlacedSystem, e: React.MouseEvent<SVGRectElement>) => {
     const m = e.currentTarget.getScreenCTM();
     if (!m) return;
@@ -1022,7 +1029,7 @@ function SeekAreas({ page }: { page: Page }) {
   };
   return (
     <g className="seek">
-      {page.systems.map((ps, k) => {
+      {systems.map((ps, k) => {
         const { top, bottom } = band(ps);
         const left = ps.xs[ps.sys.anchors[0]], last = ps.sys.anchors[ps.sys.anchors.length - 1];
         return <rect key={k} x={left} y={top} width={ps.xs[last] + ps.ws[last] - left} height={bottom - top} className="system-area" fill="transparent" data-start={ps.sys.start} data-end={ps.sys.end} data-top={ps.y} data-bottom={ps.y + ps.height} onClick={(e) => seek(ps, e)} />;
@@ -1075,7 +1082,7 @@ export function PageView({ page, total, meta, options, still = false }: { page: 
       <text x={PAGE.w / 2} y={PAGE.h - 8} fontSize={2.6} textAnchor="middle" fill={GREY}>
         {page.index + 1} / {total}
       </text>
-      {!still && <SeekAreas page={page} />}
+      {!still && <SeekAreas systems={page.systems} />}
       {!still && <PlayCursor page={page} lookAhead={options.lookAhead} />}
     </svg>
   );

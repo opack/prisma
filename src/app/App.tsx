@@ -9,6 +9,7 @@ import { OptionsDrawer } from "./OptionsDrawer.tsx";
 
 import { player } from "./player.ts";
 import { follow } from "./follow.ts";
+import { FocusView } from "./FocusView.tsx";
 import { NoticeView } from "./NoticeView.tsx";
 import { LibraryView } from "./LibraryView.tsx";
 import { engraveOptions, engravePages } from "./render.ts";
@@ -47,12 +48,15 @@ const loadEditing = (source: string) => {
 };
 /** Zoom de la partition : un facteur parmi ces crans, et en lecture, l'ajustement des pages. */
 const ZOOMS = [0.5, 0.67, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3];
-type View = { zoom: number; fit: "height" | "width" };
+/** Ajustement en lecture : pages à la hauteur de l'écran, à sa largeur, ou deux systèmes seuls (lecture focalisée). */
+type Fit = "height" | "width" | "focus";
+const FITS: Fit[] = ["height", "width", "focus"];
+type View = { zoom: number; fit: Fit };
 const VIEW_KEY = "prisma:view";
 const loadView = (): View => {
   try {
     const raw = JSON.parse(localStorage.getItem(VIEW_KEY) ?? "{}");
-    return { zoom: ZOOMS.includes(raw.zoom) ? raw.zoom : 1, fit: raw.fit === "width" ? "width" : "height" };
+    return { zoom: ZOOMS.includes(raw.zoom) ? raw.zoom : 1, fit: FITS.includes(raw.fit) ? raw.fit : "height" };
   } catch {
     return { zoom: 1, fit: "height" };
   }
@@ -127,10 +131,11 @@ export function App() {
   const reading = !editing;
   const preview = useRef<HTMLElement>(null);
   /**
-   * Zoom de la partition, retenu d'une visite à l'autre : un facteur, et en lecture, les pages
-   * ajustées à la hauteur de l'écran (côte à côte) ou à sa largeur (l'une sous l'autre, pour jouer
-   * en plus grand en faisant défiler de haut en bas). Choisir un ajustement remet le zoom à 100 % :
-   * la page tient alors exactement ; le zoom part de là.
+   * Zoom de la partition, retenu d'une visite à l'autre : un facteur, et l'ajustement des pages à
+   * la place laissée à la partition (la moitié de l'écran éditeur ouvert, tout l'écran sinon) : à
+   * sa hauteur (côte à côte), à sa largeur (l'une sous l'autre, pour jouer en plus grand en faisant
+   * défiler de haut en bas), ou deux systèmes seuls (lecture focalisée). Choisir un ajustement
+   * remet le zoom à 100 % : la page tient alors exactement ; le zoom part de là.
    */
   const [view, setViewState] = useState(loadView);
   const setView = (patch: Partial<View>) =>
@@ -145,6 +150,7 @@ export function App() {
     });
   const zoomBy = (dir: 1 | -1) =>
     setViewState((cur) => {
+      if (focusRef.current) return cur;
       const zoom = dir > 0 ? (ZOOMS.find((z) => z > cur.zoom + 1e-6) ?? cur.zoom) : ([...ZOOMS].reverse().find((z) => z < cur.zoom - 1e-6) ?? cur.zoom);
       const next = { ...cur, zoom };
       try {
@@ -154,6 +160,10 @@ export function App() {
       }
       return next;
     });
+  // en lecture focalisée, les deux systèmes remplissent l'écran : pas de zoom
+  const focused = view.fit === "focus";
+  const focusRef = useRef(false);
+  focusRef.current = focused;
   const zoomByRef = useRef(zoomBy);
   zoomByRef.current = zoomBy;
   // Ctrl + molette sur la partition : le zoom de la partition, pas celui de la page entière
@@ -189,7 +199,7 @@ export function App() {
       if (e.ctrlKey || e.metaKey || e.altKey || target.closest("input, select, textarea, .drawer")) return;
       const turn = { PageDown: 1, ArrowRight: 1, ArrowDown: 1, PageUp: -1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
       const pane = preview.current;
-      if (!turn || !pane) return;
+      if (!turn || !pane || view.fit === "focus") return;
       e.preventDefault();
       follow.hold();
       // ajustées à la largeur, les pages se suivent de haut en bas : on avance d'un écran
@@ -535,12 +545,13 @@ export function App() {
             { label: "Éditeur", onSelect: () => setEditing(!editing), checked: editing, shortcut: "Ctrl+E" },
             { label: "Plein écran", onSelect: toggleFullScreen, checked: fullScreen, shortcut: "F11" },
             "separator",
-            { label: "Zoom avant", onSelect: () => zoomBy(1), shortcut: "Ctrl++", disabled: view.zoom >= ZOOMS[ZOOMS.length - 1] },
-            { label: "Zoom arrière", onSelect: () => zoomBy(-1), shortcut: "Ctrl+−", disabled: view.zoom <= ZOOMS[0] },
-            { label: `Taille normale${view.zoom !== 1 ? ` (zoom ${Math.round(view.zoom * 100)} %)` : ""}`, onSelect: () => setView({ zoom: 1 }), shortcut: "Ctrl+0", disabled: view.zoom === 1 },
+            { label: "Zoom avant", onSelect: () => zoomBy(1), shortcut: "Ctrl++", disabled: view.zoom >= ZOOMS[ZOOMS.length - 1] || focused },
+            { label: "Zoom arrière", onSelect: () => zoomBy(-1), shortcut: "Ctrl+−", disabled: view.zoom <= ZOOMS[0] || focused },
+            { label: `Taille normale${view.zoom !== 1 ? ` (zoom ${Math.round(view.zoom * 100)} %)` : ""}`, onSelect: () => setView({ zoom: 1 }), shortcut: "Ctrl+0", disabled: view.zoom === 1 || focused },
             "separator",
-            { label: "Lecture : ajuster à la hauteur", onSelect: () => setView({ fit: "height", zoom: 1 }), checked: view.fit === "height" && view.zoom === 1, disabled: editing },
-            { label: "Lecture : ajuster à la largeur", onSelect: () => setView({ fit: "width", zoom: 1 }), checked: view.fit === "width" && view.zoom === 1, disabled: editing },
+            { label: "Ajuster à la hauteur", onSelect: () => setView({ fit: "height", zoom: 1 }), checked: view.fit === "height" && view.zoom === 1 },
+            { label: "Ajuster à la largeur", onSelect: () => setView({ fit: "width", zoom: 1 }), checked: view.fit === "width" && view.zoom === 1 },
+            { label: "Lecture focalisée : deux systèmes", onSelect: () => setView({ fit: "focus", zoom: 1 }), checked: view.fit === "focus" },
           ]}
         />
         <Menu label="Aide" items={[{ label: "Notice", onSelect: () => setShowGuide((v) => !v), checked: showGuide }]} />
@@ -601,7 +612,7 @@ export function App() {
         </main>
       )}
       {showLibrary && <LibraryView options={options} onOpen={openEntry} onClose={() => setShowLibrary(false)} />}
-      <main className={"split" + (reading ? ` reading fit-${view.fit}` : "") + (view.zoom > 1 ? " zoomed" : "")} hidden={showGuide || showLibrary}>
+      <main className={"split" + (reading ? " reading" : "") + ` fit-${view.fit}` + (view.zoom > 1 ? " zoomed" : "")} hidden={showGuide || showLibrary}>
         {/* la languette de l'éditeur, sur le bord où il apparaît : on le tire, on le repousse */}
         <button
           className="edge"
@@ -632,15 +643,25 @@ export function App() {
           className="preview"
           ref={preview}
           aria-label={reading ? "Partition" : "Aperçu"}
-          // en lecture, la molette fait défiler les pages côte à côte
+          // la molette fait défiler de côté les pages côte à côte
           // (ajustées à la hauteur et sans zoom : sinon la molette garde son sens, de haut en bas)
-          onWheel={(e) => reading && view.fit === "height" && view.zoom <= 1 && !e.ctrlKey && Math.abs(e.deltaY) > Math.abs(e.deltaX) && e.currentTarget.scrollBy({ left: e.deltaY })}
+          onWheel={(e) => view.fit === "height" && view.zoom <= 1 && !e.ctrlKey && Math.abs(e.deltaY) > Math.abs(e.deltaX) && e.currentTarget.scrollBy({ left: e.deltaY })}
           style={{ "--zoom": view.zoom } as React.CSSProperties}
         >
           {score && !pages.length && <p className="empty">Aucune mesure à mettre en page.</p>}
-          {pages.map((p) => (
-            <PageView key={p.index} page={p} total={pages.length} meta={score!.meta} options={options} />
-          ))}
+          {focused ? (
+            <>
+              <FocusView pages={pages} options={options} />
+              {/* à l'impression, les pages, comme dans les autres lectures */}
+              <div className="print-pages">
+                {pages.map((p) => (
+                  <PageView key={p.index} page={p} total={pages.length} meta={score!.meta} options={options} still />
+                ))}
+              </div>
+            </>
+          ) : (
+            pages.map((p) => <PageView key={p.index} page={p} total={pages.length} meta={score!.meta} options={options} />)
+          )}
         </section>
       </main>
       {showOptions && <OptionsDrawer options={options} setOptions={setOptions} onClose={() => setShowOptions(false)} />}

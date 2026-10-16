@@ -53,17 +53,32 @@ textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16p
   .split.reading { grid-template-columns: 1fr; }
   .split.reading .source[hidden] { display: none; }
   .split.reading .preview { padding: 12px 12px 12px 32px; gap: 12px; overflow: auto; }
-  /* ajustées à la hauteur : les pages côte à côte, qu'on fait défiler de côté une page à la fois */
-  .split.reading.fit-height .preview { flex-direction: row; scroll-snap-type: x mandatory; scroll-padding: 12px 12px 12px 32px; }
-  .split.reading.fit-height .page { height: calc(100% * var(--zoom, 1)); width: auto; margin: 0; scroll-snap-align: start; }
+  /* ajustement (éditeur ouvert ou non, dans la place laissée à la partition) ; à la hauteur : les
+     pages côte à côte, qu'on fait défiler de côté une page à la fois */
+  .split.fit-height .preview { flex-direction: row; scroll-snap-type: x mandatory; scroll-padding: 24px; }
+  .split.reading.fit-height .preview { scroll-padding: 12px 12px 12px 32px; }
+  .split.fit-height .page { height: calc(100% * var(--zoom, 1)); width: auto; margin: 0; scroll-snap-align: start; }
   /* une page de plus que l'écran ne montre pas en entier : la dernière se cale contre le bord */
-  .split.reading.fit-height .page:last-child { scroll-snap-align: end; }
+  .split.fit-height .page:last-child { scroll-snap-align: end; }
   /* zoomée, une page dépasse l'écran : on s'y promène librement, sans être ramené au début d'une page */
-  .split.reading.fit-height.zoomed .preview { scroll-snap-type: none; }
-  /* ajustées à la largeur : les pages l'une sous l'autre, aussi larges que l'écran */
-  .split.reading.fit-width .preview { flex-direction: column; }
-  .split.reading.fit-width .page { width: calc(100% * var(--zoom, 1)); height: auto; }
+  .split.fit-height.zoomed .preview { scroll-snap-type: none; }
+  /* ajustées à la largeur : les pages l'une sous l'autre, aussi larges que la place de la partition */
+  .split.fit-width .preview { flex-direction: column; }
+  .split.fit-width .page { width: calc(100% * var(--zoom, 1)); height: auto; }
+  /* lecture focalisée : deux places de même taille, qui se partagent l'écran ; les systèmes s'y
+     réduisent pour tenir, rien ne défile */
+  .split.fit-focus .preview { overflow: hidden; }
+  .focus { flex: 1; align-self: stretch; display: grid; grid-template-rows: 1fr 1fr; gap: 12px; min-height: 0; width: 100%; }
+  .focus-place { min-height: 0; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.18), 0 6px 18px rgba(0,0,0,.08); transition: opacity .3s; animation: focus-in .35s ease-out; }
+  .focus-place svg { display: block; width: 100%; height: 100%; }
+  .focus.with-order { grid-template-rows: auto 1fr 1fr; }
+  .focus-order { display: block; width: 100%; height: auto; max-height: 48px; }
+  /* l'autre place : le système à venir à peine atténué, celui qu'on vient de jouer effacé */
+  .focus-place.next { opacity: .8; }
+  .focus-place.past { opacity: .35; }
+  .print-pages { display: none; }
 }
+@keyframes focus-in { from { opacity: 0; } }
 
 /* glisser-déposer un fichier : un voile sur toute la fenêtre */
 .app { position: relative; }
@@ -140,7 +155,7 @@ textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16p
 @page { size: A4 portrait; margin: 0; }
 @media print {
   body { background: #fff; }
-  .bar, .source, .drawer, .edge { display: none !important; }
+  .bar, .source, .drawer, .edge, .focus { display: none !important; }
   .app, .split { display: block; height: auto; }
   .preview { overflow: visible; padding: 0; gap: 0; display: block; }
   /* La page gravée s'adapte à la zone imprimable réelle (marges du navigateur comprises)
