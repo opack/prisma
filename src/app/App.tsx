@@ -1,21 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_WIDTH, YmnError, importMusicXml, parseYmn, writeYmn } from "../core/index.ts";
 import type { Score } from "../core/index.ts";
-import { engrave } from "./engrave.ts";
 import { Menu } from "./Menu.tsx";
 import { ListenControls } from "./ListenControls.tsx";
 import { EngraveButton } from "./EngraveButton.tsx";
 import { OptionsDrawer } from "./OptionsDrawer.tsx";
-import { withSimile } from "./pedal.ts";
 
 import { player } from "./player.ts";
 import { NoticeView } from "./NoticeView.tsx";
 import { LibraryView } from "./LibraryView.tsx";
+import { engraveOptions, engravePages } from "./render.ts";
 import { markOpened } from "./library.ts";
 import type { LibraryEntry } from "./library.ts";
 import { PageView } from "./PageView.tsx";
 import { SAMPLE } from "./sample.ts";
-import { alignOf, loadOptions, saveOptions } from "./options.ts";
+import { loadOptions, saveOptions } from "./options.ts";
 import type { RenderOptions } from "./options.ts";
 import { OPENABLE, canWriteInPlace, download, droppedFile, pickFile, pickSaveTarget, targetIn, writeFile } from "./files.ts";
 
@@ -246,14 +245,8 @@ export function App() {
     return () => clearTimeout(t);
   }, [notice]);
 
-  const pages = useMemo(() => {
-    if (!engraved.score) return [];
-    // doigtés masqués : retirés avant la gravure, pour que les cases reprennent leur largeur
-    const plain = options.fingerings ? engraved.score : { ...engraved.score, notes: engraved.score.notes.map(({ finger: _, ...n }) => n) };
-    // « Ped. simile » : les pédales qu'il demande, gravées comme les autres ou atténuées, ou la mention seule
-    const score = withSimile(plain, options.simile);
-    return engrave(score, { compact: options.density === "compact", chords: options.chords, align: alignOf(options.notePosition), reminders: options.holdReminders, inlineSections: options.sections === "inline" });
-  }, [engraved, options.density, options.fingerings, options.chords, options.notePosition, options.holdReminders, options.simile, options.sections]);
+  const engraving = JSON.stringify(engraveOptions(options));
+  const pages = useMemo(() => (engraved.score ? engravePages(engraved.score, JSON.parse(engraving)) : []), [engraved, engraving]);
 
   const open = async (file: File, fileHandle: FileSystemFileHandle | null = null, keepMode = false, dir: FileSystemDirectoryHandle | null = null) => {
     const text = await file.text();
@@ -520,7 +513,7 @@ export function App() {
           <NoticeView options={options} />
         </main>
       )}
-      {showLibrary && <LibraryView onOpen={openEntry} onClose={() => setShowLibrary(false)} />}
+      {showLibrary && <LibraryView options={options} onOpen={openEntry} onClose={() => setShowLibrary(false)} />}
       <main className={"split" + (reading ? " reading" : "")} hidden={showGuide || showLibrary}>
         {/* la languette de l'éditeur, sur le bord où il apparaît : on le tire, on le repousse */}
         <button

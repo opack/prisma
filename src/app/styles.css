@@ -81,8 +81,8 @@ textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16p
 .library-note { color: var(--muted); line-height: 1.5; }
 .library-note p { margin: 0 0 12px; }
 .library-action { background: var(--accent); border-color: var(--accent); color: #fff; }
-.library-tools { display: flex; gap: 16px; align-items: center; margin: 0 0 20px; }
-.library-tools input { flex: 1; min-width: 0; font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 4px; }
+.library-tools { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin: 0 0 20px; }
+.library-tools input { flex: 1 1 100%; min-width: 0; font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 4px; }
 .library-tools label { display: flex; gap: 8px; align-items: center; color: var(--muted); white-space: nowrap; }
 .library-tools select { font: inherit; padding: 5px 6px; border: 1px solid var(--line); border-radius: 4px; background: #fff; }
 .library-group h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 24px 0 6px; }
@@ -95,6 +95,20 @@ textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16p
 .library-meta { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: 12px; }
 .library-badge { padding: 0 6px; border-radius: 3px; background: color-mix(in srgb, var(--accent) 12%, #fff); color: var(--accent); }
 .library-date { margin-left: auto; }
+.library-view { display: flex; margin-left: auto; }
+.library-view button { display: flex; align-items: center; padding: 6px 9px; color: var(--muted); }
+.library-view button:first-child { border-radius: 4px 0 0 4px; }
+.library-view button:last-child { border-radius: 0 4px 4px 0; margin-left: -1px; }
+.library-view button.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, #fff); border-color: var(--accent); position: relative; }
+/* vignettes : une grille de cartes, le haut de la première page, puis titre et compositeur */
+.library-group ul.library-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 18px; border-top: 0; padding-top: 4px; }
+.library-cards li { border-bottom: 0; }
+.library-group .library-cards li button { display: flex; flex-direction: column; gap: 2px; padding: 8px; border-radius: 6px; height: 100%; }
+.library-cards .library-composer { text-align: left; font-size: 13px; }
+.library-cards .library-meta { font-size: 11px; flex-wrap: wrap; }
+.thumb { display: block; position: relative; aspect-ratio: 210 / 150; overflow: hidden; margin-bottom: 6px; background: #fff; border: 1px solid var(--line); border-radius: 3px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); }
+.thumb .page { display: block; width: 100%; height: auto; box-shadow: none; pointer-events: none; }
+.thumb-note { position: absolute; inset: 0; display: grid; place-items: center; padding: 12px; text-align: center; color: var(--muted); font-size: 12px; }
 
 /* notice du pianiste : le texte, et sous chaque exemple sa gravure */
 .split[hidden] { display: none; }

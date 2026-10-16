@@ -956,7 +956,8 @@ function SeekAreas({ page }: { page: Page }) {
   );
 }
 
-export function PageView({ page, total, meta, options }: { page: Page; total: number; meta: Meta; options: RenderOptions }) {
+/** still : une page immobile (aperçu de la bibliothèque), sans curseur ni clic pour l'écoute. */
+export function PageView({ page, total, meta, options, still = false }: { page: Page; total: number; meta: Meta; options: RenderOptions; still?: boolean }) {
   return (
     <svg
       className="page"
@@ -991,7 +992,7 @@ export function PageView({ page, total, meta, options }: { page: Page; total: nu
           )}
         </g>
       )}
-      {page.order.length > 0 && <OrderLine order={page.order} y={page.header ? PAGE.marginTop + headerHeight(meta) - 1 : PAGE.marginTop - 2}  live />}
+      {page.order.length > 0 && <OrderLine order={page.order} y={page.header ? PAGE.marginTop + headerHeight(meta) - 1 : PAGE.marginTop - 2} live={!still} />}
       {/* noms des instruments : au premier système du morceau, comme sur une partition, ou à chaque système (option) */}
       {page.systems.map((ps, i) => (
         <SystemView key={i} ps={ps} options={options} names={(page.index === 0 && i === 0) || options.namesEverySystem} />
@@ -999,8 +1000,8 @@ export function PageView({ page, total, meta, options }: { page: Page; total: nu
       <text x={PAGE.w / 2} y={PAGE.h - 8} fontSize={2.6} textAnchor="middle" fill={GREY}>
         {page.index + 1} / {total}
       </text>
-      <SeekAreas page={page} />
-      <PlayCursor page={page} />
+      {!still && <SeekAreas page={page} />}
+      {!still && <PlayCursor page={page} />}
     </svg>
   );
 }

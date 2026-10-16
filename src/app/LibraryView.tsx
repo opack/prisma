@@ -1,8 +1,13 @@
 /**
  * La bibliothèque : les morceaux du dossier choisi, rangés par sous-dossier, à chercher et à
- * trier ; un clic ouvre le morceau.
+ * trier, en liste ou en vignettes (le haut de leur première page) ; un clic ouvre le morceau.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { PageView } from "./PageView.tsx";
+import type { RenderOptions } from "./options.ts";
+import { engraveOptions } from "./render.ts";
+import { thumbOf } from "./thumbs.ts";
+import type { Thumb } from "./thumbs.ts";
 import { access, canUseLibrary, pickFolder, recentOpenings, savedFolder, scan } from "./library.ts";
 import type { LibraryEntry } from "./library.ts";
 
@@ -34,6 +39,17 @@ const loadKinds = (): Kinds => {
   }
 };
 
+/** En liste, pour chercher vite ; en vignettes, pour retrouver un morceau à l'œil. */
+type View = "list" | "thumbs";
+const VIEW_KEY = "ymn:library-view";
+const loadView = (): View => {
+  try {
+    return localStorage.getItem(VIEW_KEY) === "list" ? "list" : "thumbs";
+  } catch {
+    return "thumbs";
+  }
+};
+
 type State =
   | { kind: "unsupported" }
   | { kind: "loading" }
@@ -47,7 +63,16 @@ const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
 const titleOf = (e: LibraryEntry) => e.title ?? e.name.replace(/\.[^.]+$/, "");
 const compare = (a: string, b: string) => a.localeCompare(b, "fr", { sensitivity: "base", numeric: true });
 
-export function LibraryView({ onOpen, onClose }: { onOpen: (entry: LibraryEntry) => void; onClose: () => void }) {
+export function LibraryView({ options, onOpen, onClose }: { options: RenderOptions; onOpen: (entry: LibraryEntry) => void; onClose: () => void }) {
+  const [view, setViewState] = useState<View>(loadView);
+  const setView = (v: View) => {
+    setViewState(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      /* stockage indisponible : sans conséquence */
+    }
+  };
   const [state, setState] = useState<State>(canUseLibrary ? { kind: "loading" } : { kind: "unsupported" });
   const [query, setQuery] = useState("");
   const [sort, setSortState] = useState<Sort>(loadSort);
@@ -178,6 +203,18 @@ export function LibraryView({ onOpen, onClose }: { onOpen: (entry: LibraryEntry)
                   ))}
                 </select>
               </label>
+              <span className="library-view" role="group" aria-label="Présentation">
+                <button className={view === "list" ? "on" : undefined} aria-pressed={view === "list"} onClick={() => setView("list")} title="En liste" aria-label="En liste">
+                  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
+                    <path fill="currentColor" d="M1.5 3h2v2h-2zM5.5 3.25h9v1.5h-9zM1.5 7h2v2h-2zM5.5 7.25h9v1.5h-9zM1.5 11h2v2h-2zM5.5 11.25h9v1.5h-9z" />
+                  </svg>
+                </button>
+                <button className={view === "thumbs" ? "on" : undefined} aria-pressed={view === "thumbs"} onClick={() => setView("thumbs")} title="En vignettes : le haut de la première page" aria-label="En vignettes">
+                  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
+                    <path fill="currentColor" d="M1.5 1.5h5.5v5.5h-5.5zM9 1.5h5.5v5.5H9zM1.5 9h5.5v5.5h-5.5zM9 9h5.5v5.5H9z" />
+                  </svg>
+                </button>
+              </span>
             </div>
             {!state.entries.length && <p className="library-note">Aucune partition (.ymn ou MusicXML) dans ce dossier.</p>}
             {state.entries.length > 0 && !count && (
@@ -186,6 +223,24 @@ export function LibraryView({ onOpen, onClose }: { onOpen: (entry: LibraryEntry)
             {groups.map((g) => (
               <section key={g.folder} className="library-group">
                 {g.folder && <h2>{g.folder}</h2>}
+                {view === "thumbs" ? (
+                  <ul className="library-cards">
+                    {g.entries.map((e) => (
+                      <li key={e.path}>
+                        <button onClick={() => onOpen(e)} title={e.path}>
+                          <ThumbView entry={e} options={options} />
+                          <span className="library-title">{titleOf(e)}</span>
+                          <span className="library-composer">{e.composer ?? "\u00a0"}</span>
+                          <span className="library-meta">
+                            {sort === "recent" && e.folder ? `${e.folder}/` : ""}
+                            {e.name}
+                            {e.kind === "musicxml" && <span className="library-badge">à importer</span>}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
                 <ul>
                   {g.entries.map((e) => (
                     <li key={e.path}>
@@ -202,11 +257,46 @@ export function LibraryView({ onOpen, onClose }: { onOpen: (entry: LibraryEntry)
                     </li>
                   ))}
                 </ul>
+                )}
               </section>
             ))}
           </>
         )}
       </div>
     </main>
+  );
+}
+
+/**
+ * Vignette d'un morceau : le haut de sa première page (titre, premiers systèmes), calculé quand
+ * la vignette paraît à l'écran.
+ */
+function ThumbView({ entry, options }: { entry: LibraryEntry; options: RenderOptions }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [result, setResult] = useState<{ thumb?: Thumb; error?: string }>();
+  const engraving = JSON.stringify(engraveOptions(options));
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || visible) return;
+    const seen = new IntersectionObserver(([e]) => e.isIntersecting && setVisible(true), { root: el.closest(".library-pane"), rootMargin: "300px" });
+    seen.observe(el);
+    return () => seen.disconnect();
+  }, [visible]);
+  useEffect(() => {
+    if (!visible) return;
+    let live = true;
+    setResult(undefined);
+    thumbOf(entry, JSON.parse(engraving)).then((r) => live && setResult(r));
+    return () => {
+      live = false;
+    };
+  }, [visible, entry, engraving]);
+  return (
+    <span className="thumb" ref={ref} aria-hidden>
+      {result?.thumb && <PageView page={result.thumb.page} total={result.thumb.total} meta={result.thumb.meta} options={options} still />}
+      {result?.error && <span className="thumb-note">Aperçu impossible : le fichier ne se lit pas</span>}
+      {result && !result.thumb && !result.error && <span className="thumb-note">Aucune mesure</span>}
+    </span>
   );
 }

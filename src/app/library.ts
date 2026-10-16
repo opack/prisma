@@ -29,22 +29,26 @@ export type LibraryEntry = {
   dir: FileSystemDirectoryHandle;
 };
 
-// l'accès au dossier se garde dans IndexedDB : un accès ne se range pas dans localStorage
+// l'accès au dossier se garde dans IndexedDB (un accès ne se range pas dans localStorage), avec
+// le cache des aperçus
 const DB = "ymn", STORE = "library", KEY = "folder";
+export const THUMBS = "thumbs";
 
 function db(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+    const req = indexedDB.open(DB, 2);
+    req.onupgradeneeded = () => {
+      for (const s of [STORE, THUMBS]) if (!req.result.objectStoreNames.contains(s)) req.result.createObjectStore(s);
+    };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
 }
 
-async function tx<T>(mode: IDBTransactionMode, run: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+export async function tx<T>(mode: IDBTransactionMode, run: (s: IDBObjectStore) => IDBRequest<T>, store = STORE): Promise<T> {
   const d = await db();
   return new Promise((resolve, reject) => {
-    const req = run(d.transaction(STORE, mode).objectStore(STORE));
+    const req = run(d.transaction(store, mode).objectStore(store));
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
