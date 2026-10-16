@@ -1739,3 +1739,14 @@ describe("écoute : parties", () => {
     expect(playedNotes(s, passages(s)).map((n) => [n.midi, n.part])).toEqual([[48, 1], [60, 0]]);
   });
 });
+
+describe("bibliothèque", () => {
+  it("lit le titre et le compositeur : l'en-tête d'un .ymn, les crédits d'un MusicXML", async () => {
+    const { describe: describeFile } = await import("../src/app/library.ts");
+    expect(describeFile('---\nformat: 1\ntitle: "Gymnopédie n°1"\ncomposer: Erik Satie\n---\nm1 |1  ||\n', "ymn")).toEqual({ title: "Gymnopédie n°1", composer: "Erik Satie" });
+    expect(describeFile("m1 |1  ||\n", "ymn")).toEqual({ title: undefined, composer: undefined });
+    const xml = `<score-partwise><work><work-title>Clair &amp; net</work-title></work><identification><creator type="composer">Anonyme</creator></identification>`;
+    expect(describeFile(xml, "musicxml")).toEqual({ title: "Clair & net", composer: "Anonyme" });
+    expect(describeFile("<movement-title>Mouvement</movement-title>", "musicxml").title).toBe("Mouvement");
+  });
+});

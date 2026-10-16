@@ -10,11 +10,14 @@ import { withSimile } from "./pedal.ts";
 
 import { player } from "./player.ts";
 import { NoticeView } from "./NoticeView.tsx";
+import { LibraryView } from "./LibraryView.tsx";
+import { markOpened } from "./library.ts";
+import type { LibraryEntry } from "./library.ts";
 import { PageView } from "./PageView.tsx";
 import { SAMPLE } from "./sample.ts";
 import { alignOf, loadOptions, saveOptions } from "./options.ts";
 import type { RenderOptions } from "./options.ts";
-import { OPENABLE, canWriteInPlace, download, droppedFile, pickFile, pickSaveTarget, writeFile } from "./files.ts";
+import { OPENABLE, canWriteInPlace, download, droppedFile, pickFile, pickSaveTarget, targetIn, writeFile } from "./files.ts";
 
 /** Délai sans frappe avant la gravure automatique. */
 const AUTO_ENGRAVE_DELAY = 600;
@@ -74,7 +77,24 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [showOptions]);
   /** Notice du pianiste, affichée à la place de l'éditeur et de l'aperçu. */
-  const [showGuide, setShowGuide] = useState(false);
+  const [showGuide, setShowGuideState] = useState(false);
+  /** Bibliothèque, affichée elle aussi à la place de l'éditeur et des pages. */
+  const [showLibrary, setShowLibraryState] = useState(false);
+  // l'une chasse l'autre
+  const setShowGuide = (v: boolean | ((v: boolean) => boolean)) =>
+    setShowGuideState((cur) => {
+      const next = typeof v === "function" ? v(cur) : v;
+      if (next) setShowLibraryState(false);
+      return next;
+    });
+  const setShowLibrary = (v: boolean | ((v: boolean) => boolean)) =>
+    setShowLibraryState((cur) => {
+      const next = typeof v === "function" ? v(cur) : v;
+      if (next) setShowGuideState(false);
+      return next;
+    });
+  /** Dossier d'un MusicXML ouvert depuis la bibliothèque : son .ymn s'y enregistre, à côté de lui. */
+  const [saveDir, setSaveDir] = useState<FileSystemDirectoryHandle | null>(null);
   /**
    * Lecture, le mode ordinaire : pour jouer. Sans l'éditeur, les pages côte à côte, chacune de toute
    * la hauteur de l'écran ; on tourne les pages au clavier ou avec une pédale tourne-pages.
@@ -149,6 +169,11 @@ export function App() {
   const saveFile = useCallback(async (as = false) => {
     try {
       let target = as ? null : handle;
+      if (!target && !as && saveDir) {
+        target = await targetIn(saveDir, fileName);
+        if (!target) return; // annulé
+        setHandle(target);
+      }
       if (!target && canWriteInPlace) {
         target = await pickSaveTarget(fileName);
         if (!target) return; // annulé
@@ -167,7 +192,7 @@ export function App() {
     } catch (e) {
       setNotice(`Enregistrement impossible : ${(e as Error).message}`);
     }
-  }, [handle, fileName, source]);
+  }, [handle, fileName, source, saveDir]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -182,6 +207,10 @@ export function App() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "o") {
         e.preventDefault();
         openFileRef.current();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setShowLibrary((v) => !v);
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "e") {
         e.preventDefault();
@@ -226,10 +255,11 @@ export function App() {
     return engrave(score, { compact: options.density === "compact", chords: options.chords, align: alignOf(options.notePosition), reminders: options.holdReminders, inlineSections: options.sections === "inline" });
   }, [engraved, options.density, options.fingerings, options.chords, options.notePosition, options.holdReminders, options.simile, options.sections]);
 
-  const open = async (file: File, fileHandle: FileSystemFileHandle | null = null, keepMode = false) => {
+  const open = async (file: File, fileHandle: FileSystemFileHandle | null = null, keepMode = false, dir: FileSystemDirectoryHandle | null = null) => {
     const text = await file.text();
     let ymn = text;
     const isXml = /\.(musicxml|xml)$/i.test(file.name);
+    setSaveDir(isXml ? dir : null);
     // un MusicXML n'est jamais réécrit : le premier enregistrement crée un nouveau .ymn
     setHandle(isXml ? null : fileHandle);
     setSavedText(isXml ? null : text);
@@ -267,6 +297,17 @@ export function App() {
     try {
       const picked = await pickFile();
       if (picked) await open(picked.file, picked.handle);
+    } catch (e) {
+      setNotice(`Ouverture impossible : ${(e as Error).message}`);
+    }
+  };
+  /** Ouvre un morceau de la bibliothèque. */
+  const openEntry = async (entry: LibraryEntry) => {
+    if (!confirmDiscard(`Ouvrir ${entry.name} ? Les modifications non enregistrées seront perdues.`)) return;
+    try {
+      await open(await entry.handle.getFile(), entry.kind === "ymn" ? entry.handle : null, false, entry.dir);
+      markOpened(entry.path);
+      setShowLibrary(false);
     } catch (e) {
       setNotice(`Ouverture impossible : ${(e as Error).message}`);
     }
@@ -329,6 +370,7 @@ export function App() {
     setEngravedSource("");
     setHandle(null);
     setSavedText(null);
+    setSaveDir(null);
     setFileName("morceau.ymn");
     persist("");
     setEditing(true);
@@ -396,6 +438,7 @@ export function App() {
           items={[
             { label: "Nouveau", onSelect: newFile },
             { label: "Ouvrir…", onSelect: openFile, shortcut: "Ctrl+O" },
+            { label: "Bibliothèque", onSelect: () => setShowLibrary((v) => !v), checked: showLibrary, shortcut: "Ctrl+B" },
             "separator",
             { label: "Enregistrer", onSelect: () => saveFile(), shortcut: "Ctrl+S" },
             { label: "Enregistrer sous…", onSelect: () => saveFile(true), shortcut: "Ctrl+Maj+S" },
@@ -410,7 +453,7 @@ export function App() {
             { label: "Graver automatiquement", onSelect: () => setOptions({ autoEngrave: !options.autoEngrave }), checked: options.autoEngrave },
             { label: "Options", onSelect: () => setShowOptions((v) => !v), checked: showOptions },
             "separator",
-            { label: "Imprimer…", onSelect: () => window.print(), shortcut: "Ctrl+P", disabled: !pages.length || showGuide },
+            { label: "Imprimer…", onSelect: () => window.print(), shortcut: "Ctrl+P", disabled: !pages.length || showGuide || showLibrary },
           ]}
         />
         <Menu
@@ -477,7 +520,8 @@ export function App() {
           <NoticeView options={options} />
         </main>
       )}
-      <main className={"split" + (reading ? " reading" : "")} hidden={showGuide}>
+      {showLibrary && <LibraryView onOpen={openEntry} onClose={() => setShowLibrary(false)} />}
+      <main className={"split" + (reading ? " reading" : "")} hidden={showGuide || showLibrary}>
         {/* la languette de l'éditeur, sur le bord où il apparaît : on le tire, on le repousse */}
         <button
           className="edge"

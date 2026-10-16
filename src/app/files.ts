@@ -59,6 +59,21 @@ export async function droppedFile(data: DataTransfer): Promise<{ file: File; han
   return { file, handle: handle?.kind === "file" ? (handle as FileSystemFileHandle) : null };
 }
 
+/**
+ * Le fichier « name » d'un dossier, à créer pour l'enregistrer : un MusicXML de la bibliothèque
+ * s'enregistre en .ymn à côté de lui. Un fichier de ce nom existe déjà : on demande avant de
+ * le remplacer (null si l'utilisateur refuse).
+ */
+export async function targetIn(dir: FileSystemDirectoryHandle, name: string): Promise<FileSystemFileHandle | null> {
+  try {
+    const existing = await dir.getFileHandle(name);
+    return window.confirm(`${name} existe déjà dans ce dossier. Le remplacer ?`) ? existing : null;
+  } catch (e) {
+    if ((e as Error)?.name !== "NotFoundError") throw e;
+    return dir.getFileHandle(name, { create: true });
+  }
+}
+
 export async function writeFile(handle: FileSystemFileHandle, text: string) {
   const out = await handle.createWritable();
   await out.write(text);
