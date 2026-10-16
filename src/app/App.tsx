@@ -441,10 +441,10 @@ export function App() {
           ]}
         />
         <Menu
-          label="Gravure"
+          label="Partition"
           items={[
-            { label: "Graver", onSelect: engraveNow, shortcut: "Ctrl+Entrée" },
-            { label: "Graver automatiquement", onSelect: () => setOptions({ autoEngrave: !options.autoEngrave }), checked: options.autoEngrave },
+            { label: "Mettre en page", onSelect: engraveNow, shortcut: "Ctrl+Entrée" },
+            { label: "Mettre en page automatiquement", onSelect: () => setOptions({ autoEngrave: !options.autoEngrave }), checked: options.autoEngrave },
             { label: "Options", onSelect: () => setShowOptions((v) => !v), checked: showOptions },
             "separator",
             { label: "Imprimer…", onSelect: () => window.print(), shortcut: "Ctrl+P", disabled: !pages.length || showGuide || showLibrary },
@@ -549,7 +549,7 @@ export function App() {
           // en lecture, la molette fait défiler les pages côte à côte
           onWheel={(e) => reading && Math.abs(e.deltaY) > Math.abs(e.deltaX) && e.currentTarget.scrollBy({ left: e.deltaY })}
         >
-          {score && !pages.length && <p className="empty">Aucune mesure à graver.</p>}
+          {score && !pages.length && <p className="empty">Aucune mesure à mettre en page.</p>}
           {pages.map((p) => (
             <PageView key={p.index} page={p} total={pages.length} meta={score!.meta} options={options} />
           ))}

@@ -26,7 +26,7 @@ La partie du haut (au piano, la main droite) monte la gamme de do (1, 3, 5, 6, 8
 
 De haut en bas : la **règle de comptage** (`m1` pour la mesure 1, puis les temps), un trait, les lignes de la partie du haut, un second trait qui sépare les deux parties, puis les lignes de la partie du bas. Le 12 de la fin dure jusqu'au bout du temps 4 : il n'a pas besoin d'autre case.
 
-Une partition Prisma existe sous deux formes : un **texte** (le fichier `.prisma`), qu'on tape au clavier, et une **gravure**, la page imprimable produite par l'application. Les deux disent exactement la même chose. Dans l'application (bouton « Notice »), chaque exemple de cette notice est montré sous ses deux formes : son texte, puis sa gravure.
+Un morceau Prisma existe sous deux formes : un **texte** (le fichier `.prisma`), qu'on tape au clavier, et une **partition**, la page imprimable produite par l'application. Les deux disent exactement la même chose. Dans l'application (bouton « Notice »), chaque exemple de cette notice est montré sous ses deux formes : son texte, puis sa gravure.
 
 ## 2. Les hauteurs
 
@@ -45,7 +45,7 @@ Chaque ligne de notes appartient à une octave, indiquée à gauche :
 - `0` : l'octave qui commence au do central (do3 en France, C4 ailleurs : c'est la même note) ;
 - `+1`, `+2`… : les octaves au-dessus ; `-1`, `-2`… : celles du dessous. Un piano de 88 touches va de `-4` à `+4`.
 
-La gravure les montre dans un onglet à gauche (▲1, 0, ▼1). Les lignes d'une même octave forment un **couloir** ; les couloirs sont rangés de l'aigu (en haut) au grave (en bas).
+La partition les montre dans un onglet à gauche (▲1, 0, ▼1). Les lignes d'une même octave forment un **couloir** ; les couloirs sont rangés de l'aigu (en haut) au grave (en bas).
 
 Pour apprendre à situer les octaves, l'application peut donner à chaque couloir une couleur pâle, toujours la même pour une octave donnée, dans tous les morceaux (options « Couleurs ») : on peut alors coller des pastilles de la même couleur sur l'instrument. Le numéro d'octave reste affiché, pour une impression en noir et blanc.
 
@@ -73,7 +73,7 @@ m1 |1    |2  |3  |4   ||
 @   Ped.          *
 ```
 
-La gravure réunit les parties d'un instrument par une accolade et écrit les noms à gauche du premier système.
+La partition réunit les parties d'un instrument par une accolade et écrit les noms à gauche du premier système.
 
 ### Les accords
 
@@ -91,7 +91,7 @@ m1 |1  |2  |3  |4  ||
 
 Les lignes sans numéro d'octave continuent le couloir du dessus.
 
-Dans le fichier, chaque accord se range depuis le haut de son couloir. À la gravure, l'option « Notes : alignées » garde sur sa ligne une note rejouée d'un temps à l'autre, quitte à laisser des lignes vides : après `8 5 1`, un accord `5 1` reste sur les deux lignes du bas au lieu de remonter, et l'on suit des yeux les notes qui reviennent. Le fichier ne change pas.
+Dans le fichier, chaque accord se range depuis le haut de son couloir. Sur la partition, l'option « Notes : alignées » garde sur sa ligne une note rejouée d'un temps à l'autre, quitte à laisser des lignes vides : après `8 5 1`, un accord `5 1` reste sur les deux lignes du bas au lieu de remonter, et l'on suit des yeux les notes qui reviennent. Le fichier ne change pas.
 
 ## 3. Le temps
 
@@ -132,7 +132,7 @@ Le premier est un 3/4 (3 temps de 2), le second un 6/8 (2 temps de 3). La clé `
 
 Chaque temps commence par son numéro, puis se coupe en **cases** de même durée. Les étiquettes de la règle disent où l'on en est :
 
-| Étiquette | Découpage | Gravure |
+| Étiquette | Découpage | Sur la partition |
 |---|---|---|
 | `1`, `2`… | début du temps | le numéro |
 | `*` | premier découpage : un `*` coupe le temps en 2, deux `*` en 3 | un astérisque |
@@ -172,7 +172,7 @@ On voit exactement quelle note du haut tombe avant ou après chaque note du bas.
 
 Les signes qui accompagnent une note se collent à elle, dans sa case. Chacun a un seul sens.
 
-| Signe | Exemple | Sens | Gravure |
+| Signe | Exemple | Sens | Sur la partition |
 |---|---|---|---|
 | `'` | `3'5` | petite note : un 3 très bref, puis le 5 sur le temps | en petit, en exposant, devant la note |
 | `~` | `5~6` | trille : le 5 (mi) alterne avec le 6 (fa) pendant toute sa durée | la voisine en petit, puis un trait ondulé |
@@ -207,7 +207,7 @@ Deux signes se posent sur une ligne `@`, au-dessus ou sous les notes :
 
 La partition classique multiplie les renvois : cases 1. et 2., D.C. (*da capo*, reprendre au début), D.S. (*dal segno*, reprendre au signe 𝄋), coda (𝄌), Fine. Il faut les repérer, les retenir et sauter dans la page en jouant.
 
-Prisma les remplace tous par un seul mécanisme, celui d'une chanson : le morceau est découpé en **sections**, marquées par une lettre (`[A]`, `[B]`…), et l'**ordre de jeu** est écrit une fois pour toutes en tête du fichier, et de chaque page gravée : `A A B A C`. On joue les sections dans cet ordre, et le morceau s'arrête à la fin de la liste. Chaque section commence une nouvelle ligne, comme un couplet.
+Prisma les remplace tous par un seul mécanisme, celui d'une chanson : le morceau est découpé en **sections**, marquées par une lettre (`[A]`, `[B]`…), et l'**ordre de jeu** est écrit une fois pour toutes en tête du fichier, et de chaque page de la partition : `A A B A C`. On joue les sections dans cet ordre, et le morceau s'arrête à la fin de la liste. Chaque section commence une nouvelle ligne, comme un couplet.
 
 ```prisma
 ---
@@ -253,11 +253,11 @@ m1 |1    |2  |3  |4  ||1     |2  |3  |4  ||
 @   Ped.               *Ped.          *
 ```
 
-- **Nuances** : `pp`, `p`, `mp`, `mf`, `f`, `ff`… comme sur une partition classique, gravées en gras italique.
+- **Nuances** : `pp`, `p`, `mp`, `mf`, `f`, `ff`… comme sur une partition classique, écrites en gras italique.
 - **Soufflets** : `<----` crescendo, `>----` decrescendo, de leur première case à la dernière.
-- **Liaisons d'expression** : `(-----)`, de la première à la dernière note liée. Elles dessinent les phrases ; la gravure les trace en arcs fins juste sous les lignes de la partie.
-- **Articulations**, sur la case de l'attaque, pour la note ou tout l'accord : `.` staccato (détaché, plus court), `!` accent (plus fort), `!!` marcato (plus fort et plus sec). La gravure dessine le point, le `>` ou le `^` classique en haut à droite de la note. Le tenuto n'a pas de signe : la durée écrite est déjà la durée jouée.
-- **Pédale** (piano), sous la partie du bas : `Ped.` enfonce, `*` relâche, `*Ped.` change. La gravure trace un trait sous le système, avec une pointe à chaque changement : on voit exactement ce qui est tenu. Une consigne comme `Ped. simile` (« continuer de même ») s'écrit sur la même ligne.
+- **Liaisons d'expression** : `(-----)`, de la première à la dernière note liée. Elles dessinent les phrases ; la partition les trace en arcs fins juste sous les lignes de la partie.
+- **Articulations**, sur la case de l'attaque, pour la note ou tout l'accord : `.` staccato (détaché, plus court), `!` accent (plus fort), `!!` marcato (plus fort et plus sec). La partition dessine le point, le `>` ou le `^` classique en haut à droite de la note. Le tenuto n'a pas de signe : la durée écrite est déjà la durée jouée.
+- **Pédale** (piano), sous la partie du bas : `Ped.` enfonce, `*` relâche, `*Ped.` change. La partition trace un trait sous le système, avec une pointe à chaque changement : on voit exactement ce qui est tenu. Une consigne comme `Ped. simile` (« continuer de même ») s'écrit sur la même ligne.
 
 ### Les accords d'accompagnement
 
@@ -274,7 +274,7 @@ m1 |1  *  |2  *  ||1   |2  ||
 
 Un accord s'écrit au choix par son **nom anglais** (`Am`, `G7`, `F#m7b5`, `G/B` pour un sol avec si à la basse), lu partout ailleurs par les accompagnateurs, ou par ses **notes Prisma** séparées par `;`, de la basse vers l'aigu : `Am` s'écrit aussi `10;1;5`. L'ordre compte : `Am7` (`10;1;5;8`) et `C6` (`1;5;8;10`) ont les mêmes notes, seule la basse les distingue. Les notes n'ont pas d'octave : un accord dit quelles notes jouer, pas où.
 
-La gravure montre le nom, les notes empilées (la basse en bas, comme sur les lignes d'octave), ou les deux (options « Accords ») : l'application calcule l'un à partir de l'autre.
+La partition montre le nom, les notes empilées (la basse en bas, comme sur les lignes d'octave), ou les deux (options « Accords ») : l'application calcule l'un à partir de l'autre.
 
 ### Les paroles
 
@@ -290,8 +290,8 @@ m1 |1  |2     |3     |4   ||1    |2  |3   |4  ||
 -1 |1  |-     |-     |-   ||8    |-  |-   |-  ||
 ```
 
-- Un `-` collé à la fin d'une syllabe la relie à la suivante, dans le même mot : `lu- ne`. La gravure trace le trait d'union entre les deux.
-- Une syllabe chantée sur plusieurs notes (un mélisme) est suivie de `---` jusqu'à sa dernière note, comme une note tenue ; la gravure la prolonge d'un trait bas :
+- Un `-` collé à la fin d'une syllabe la relie à la suivante, dans le même mot : `lu- ne`. La partition trace le trait d'union entre les deux.
+- Une syllabe chantée sur plusieurs notes (un mélisme) est suivie de `---` jusqu'à sa dernière note, comme une note tenue ; la partition la prolonge d'un trait bas :
 
 ```prisma
 m1 |1  |2   |3  |4  ||1  |2   |3  |4  ||

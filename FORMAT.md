@@ -10,7 +10,7 @@ Entre deux lignes `---`, une clé par ligne, sous la forme `clé: valeur`.
 |---|---|
 | `format` | Version du format Prisma du fichier : `format: 1`. L'écriture la met toujours ; un fichier sans elle est lu comme la version courante. Le lecteur refuse un fichier d'une autre version en le disant (voir « Versions »). |
 | `title`, `subtitle`, `composer`, `source` | Informations affichées : le sous-titre (« Op. 9 n° 2 », « Suite bergamasque, 3ᵉ mouvement »…) sous le titre. |
-| `bpm` | Tempo de départ, en temps (*beats*) par minute : `bpm: 78`, gravé « 78 bpm ». Le temps est celui de la règle de comptage, donc la noire pointée d'un 6/8 : le nombre se lit sans ambiguïté, comme sur un métronome. Les indications en mots (`Andante`, `rit.`) vont sur la ligne `@` au-dessus de la règle. À l'import MusicXML, il vient du premier `<sound tempo>`, converti des noires en temps. Sans `bpm`, l'écoute joue à 80. |
+| `bpm` | Tempo de départ, en temps (*beats*) par minute : `bpm: 78`, affiché « 78 bpm ». Le temps est celui de la règle de comptage, donc la noire pointée d'un 6/8 : le nombre se lit sans ambiguïté, comme sur un métronome. Les indications en mots (`Andante`, `rit.`) vont sur la ligne `@` au-dessus de la règle. À l'import MusicXML, il vient du premier `<sound tempo>`, converti des noires en temps. Sans `bpm`, l'écoute joue à 80. |
 | `parts` | Noms des instruments, de haut en bas, séparés par des virgules : `parts: Chant, Piano` (voir « Parties et instruments »). |
 | `order` | Ordre de jeu des sections, par leur lettre : `order: A A B C B D A` (voir « Sections et ordre de jeu »). |
 | `cell` | Largeur de base d'une case en caractères, à l'écriture. Vaut 3 par défaut. |
@@ -40,7 +40,7 @@ Les traits s'écrivent avec `─`, `-`, `+` ou `┼` (simple), ou avec `═`, `=
 
 Une **partie** est un groupe de lignes entre deux traits : une main au piano, une voix, une flûte. Un **instrument** réunit une ou plusieurs parties qui se suivent : le piano en a deux, le chant une. Il peut y avoir autant de parties et d'instruments que voulu, à partir d'une seule partie (sans aucun trait).
 
-- Un trait **simple** (`───┼───`) sépare deux parties d'un même instrument ; un trait **double** (`═══╪═══`) sépare deux instruments. La gravure trace un trait épais entre les parties d'un instrument, réunies par une accolade, et laisse un espace entre deux instruments.
+- Un trait **simple** (`───┼───`) sépare deux parties d'un même instrument ; un trait **double** (`═══╪═══`) sépare deux instruments. La partition trace un trait épais entre les parties d'un instrument, réunies par une accolade, et laisse un espace entre deux instruments.
 - Tous les systèmes ont les mêmes parties, dans le même ordre, même quand une partie ne joue pas.
 - Toutes les parties partagent la règle de comptage et ses cases : ce qui est aligné verticalement sonne ensemble.
 
@@ -61,7 +61,7 @@ m1 |1    |2  |3  |4   ||
 @   Ped.          *
 ```
 
-Le nom doit être celui que `parts` annonce à cette place : un nom non déclaré (`Pno.`), absent ou à la mauvaise place est une erreur. Sans `parts`, aucun nom ne s'écrit. La gravure écrit les noms à gauche du premier système (ou de chacun, en option).
+Le nom doit être celui que `parts` annonce à cette place : un nom non déclaré (`Pno.`), absent ou à la mauvaise place est une erreur. Sans `parts`, aucun nom ne s'écrit. La partition écrit les noms à gauche du premier système (ou de chacun, en option).
 
 Prisma note toujours la hauteur qui sonne : un instrument transpositeur (clarinette en si♭, cor en fa, saxophone) s'écrit comme il sonne, et ses parties s'alignent juste avec les autres. À l'import MusicXML, la hauteur écrite est corrigée d'après `<transpose>`.
 
@@ -82,7 +82,7 @@ Un temps de 4 cases s'écrit `1  .  *  .  `, un temps de 8 cases `1  ,  .  ,  * 
 
 Le `:` ne sert qu'aux reprises (`||:`, `:||`) : un signe, un seul sens.
 
-La largeur d'une case est libre : seul son nombre compte pour le temps. L'écriture leur donne la largeur `cell`, et élargit une case quand une indication posée dessus ne tient pas (`(mp)`, `cresc.`…) : `1      *  ` est un temps de deux cases dont la première est élargie. À la main, on ajoute simplement des espaces là où il faut de la place. La gravure, elle, garde des temps de largeur égale, et marque chaque case comme les graduations d'une règle, posées sur son trait du bas : comme dans le texte : un astérisque pour `*`, un point pour `.` et une virgule pour `,`.
+La largeur d'une case est libre : seul son nombre compte pour le temps. L'écriture leur donne la largeur `cell`, et élargit une case quand une indication posée dessus ne tient pas (`(mp)`, `cresc.`…) : `1      *  ` est un temps de deux cases dont la première est élargie. À la main, on ajoute simplement des espaces là où il faut de la place. La partition, elle, garde des temps de largeur égale, et marque chaque case comme les graduations d'une règle, posées sur son trait du bas : comme dans le texte : un astérisque pour `*`, un point pour `.` et une virgule pour `,`.
 
 Sur les lignes de notes :
 
@@ -112,19 +112,19 @@ m1 |1        |2  |
 - Elles se jouent de gauche à droite à l'intérieur de la case, quelle que soit leur ligne : ici 3 (octave du dessus), 7, 9, puis le 5. Deux petites notes alignées sur la même colonne se jouent ensemble.
 - Une petite note seule sur sa ligne n'y fait rien sonner ensuite : `3'` puis rien, c'est juste la petite note.
 - À l'écriture, le contenu des cases vient après les petites notes, sur toutes les lignes, pour que les notes jouées ensemble restent alignées.
-- La gravure les dessine en petit, en exposant et en gris foncé, en tête de case.
+- La partition les dessine en petit, en exposant et en gris foncé, en tête de case.
 
 Une seule sorte de petite note : barrée ou non, c'est au pianiste de la placer, comme sur une partition classique.
 
 ### Doigtés
 
-Le doigt suit la note dans sa case, après `_` : `5_3`. Chaque note d'un accord porte le sien, sur sa ligne. `'` et `_` vont par paire : la petite note est gravée en exposant, devant la note ; le doigt en indice, en bas à droite de la note, en chiffre blanc sur une pastille sombre : une forme qu'aucune note ne peut imiter, et qui s'imprime en noir et blanc. Le doigt se pose sur l'attaque, jamais sur une tenue. L'application peut masquer les doigtés, sans toucher au fichier. À l'import, une substitution (« 4-3 » : changer de doigt sur une note tenue) garde le premier doigt.
+Le doigt suit la note dans sa case, après `_` : `5_3`. Chaque note d'un accord porte le sien, sur sa ligne. `'` et `_` vont par paire : la petite note est écrite en exposant, devant la note ; le doigt en indice, en bas à droite de la note, en chiffre blanc sur une pastille sombre : une forme qu'aucune note ne peut imiter, et qui s'imprime en noir et blanc. Le doigt se pose sur l'attaque, jamais sur une tenue. L'application peut masquer les doigtés, sans toucher au fichier. À l'import, une substitution (« 4-3 » : changer de doigt sur une note tenue) garde le premier doigt.
 
 ### Ornements
 
 Un signe d'ornement classique ne dit pas quelles notes jouer : il faut l'armure, ou une petite altération dessinée sur le signe, pour connaître la note voisine. Ici, les notes sont écrites en clair.
 
-- **Trille** : la note, `~`, puis sa voisine, dans la case de la note : `5~7` alterne 5 et 7 pendant toute la durée de la note, prolongée par des `-` comme d'habitude. La voisine est la plus proche qui porte ce numéro : `12~1` alterne le si et le do juste au-dessus. La gravure écrit la voisine en petit après la note, puis un trait ondulé sur toute sa durée.
+- **Trille** : la note, `~`, puis sa voisine, dans la case de la note : `5~7` alterne 5 et 7 pendant toute la durée de la note, prolongée par des `-` comme d'habitude. La voisine est la plus proche qui porte ce numéro : `12~1` alterne le si et le do juste au-dessus. La partition écrit la voisine en petit après la note, puis un trait ondulé sur toute sa durée.
 - **Mordant et gruppetto** : écrits en petites notes, puisque leurs notes sont fixées par la convention. En do majeur, mordant sur 5 (mi) avec la voisine du dessus : `5'6'5` ; avec celle du dessous : `5'3'5`. Gruppetto sur 5 : `6'5'3'5` (dessus, note, dessous, note). Un gruppetto placé après une note se joue juste avant la note suivante : ses petites notes vont dans la case de celle-ci.
 - **Arpège** : voir « Ligne d'indications `@` » et « Nuances et soufflets ». Le signe `/` (`\` de l'aigu au grave) se pose sur la case de l'accord ; les notes égrenées restent tenues.
 
@@ -167,8 +167,8 @@ Une ou plusieurs lignes facultatives, **au-dessus** de la règle de comptage, qu
 |---|---|---|
 | `3×` (ou `3x`) | une case de la mesure qui se termine par `:||` | Le passage se joue 3 fois. |
 | `[A]` | le **dernier** `|` de la barre qui ouvre la mesure | Début de la section A (voir « Sections et ordre de jeu »). |
-| `^` | une case | Point d'orgue : la note, l'accord ou le silence qui commence là se tient plus longtemps que sa valeur, à l'appréciation du pianiste. Gravé 𝄐 au-dessus de la case. |
-| `/` | une case | Arpège de toutes les parties, d'un seul geste : de la note la plus grave du système à la plus aiguë. `\` : de l'aigu au grave. Gravé comme une vaguelette verticale devant l'accord. |
+| `^` | une case | Point d'orgue : la note, l'accord ou le silence qui commence là se tient plus longtemps que sa valeur, à l'appréciation du pianiste. Dessiné 𝄐 au-dessus de la case. |
+| `/` | une case | Arpège de toutes les parties, d'un seul geste : de la note la plus grave du système à la plus aiguë. `\` : de l'aigu au grave. Dessiné comme une vaguelette verticale devant l'accord. |
 | autre texte | une case | Indication pour tout le système : `rit.`, `a tempo`… (les nuances d'une partie vont sous ses lignes, voir plus bas) |
 
 Pour la première mesure d'un système, `[A]` se place sur le `|` de la colonne de gauche (ou sur celui de `|:` quand le système commence par une reprise).
@@ -186,7 +186,7 @@ Un accord s'écrit de deux façons :
 
 Qualités reconnues : `` (majeur), `m`, `dim`, `aug`, `sus2`, `sus4`, `5`, `6`, `m6`, `7`, `maj7`, `m7`, `mMaj7`, `dim7`, `m7b5`, `aug7`, `7sus4`, `7b5`, `add9`, `madd9`, `6/9`, `9`, `maj9`, `m9`, `7b9`, `7#9`, `11`, `m11`, `13`, `maj13`, `m13` (et leurs variantes usuelles : `min`, `-`, `M7`, `Δ`, `°`, `ø`, `+`). Un accord inconnu est une erreur.
 
-L'ordre des notes Prisma compte : `Am7` (`10;1;5;8`) et `C6` (`1;5;8;10`) ont les mêmes notes, seule la basse les distingue. Le fichier garde l'écriture choisie ; la gravure affiche le nom, les notes empilées (la basse en bas), ou les deux, en calculant l'un à partir de l'autre. À l'import MusicXML, les accords viennent de `<harmony>`, ou d'un simple texte dont tout le contenu est un nom d'accord (`A7` écrit au-dessus de la portée).
+L'ordre des notes Prisma compte : `Am7` (`10;1;5;8`) et `C6` (`1;5;8;10`) ont les mêmes notes, seule la basse les distingue. Le fichier garde l'écriture choisie ; la partition affiche le nom, les notes empilées (la basse en bas), ou les deux, en calculant l'un à partir de l'autre. À l'import MusicXML, les accords viennent de `<harmony>`, ou d'un simple texte dont tout le contenu est un nom d'accord (`A7` écrit au-dessus de la portée).
 
 ## Sections et ordre de jeu
 
@@ -196,7 +196,7 @@ Un morceau qui ne se joue pas d'un bout à l'autre se découpe en **sections**, 
 - `order: A B A C` dans le frontmatter donne l'ordre de jeu. Sans `order`, les sections se jouent l'une après l'autre.
 - Le lecteur signale une section posée deux fois, un ordre qui nomme une section absente, un morceau qui commence avant sa première section, et une reprise à cheval sur deux sections.
 
-Chaque section commence un nouveau système, dans le texte comme à la gravure, à la manière des couplets et du refrain d'une chanson ; la précédente se termine par une double barre. À la gravure, la section porte sa lettre en blanc sur fond noir, un peu d'espace la sépare de la précédente, et l'ordre de jeu est gravé avec les mêmes lettres en tête de chaque page.
+Chaque section commence un nouveau système, dans le texte comme sur la partition, à la manière des couplets et du refrain d'une chanson ; la précédente se termine par une double barre. Sur la partition, la section porte sa lettre en blanc sur fond noir, un peu d'espace la sépare de la précédente, et l'ordre de jeu est gravé avec les mêmes lettres en tête de chaque page.
 
 Un morceau en quatre mesures, A (mesures 1 et 2), B (3) et C (4), joué A, B, A puis C : l'équivalent d'une reprise à deux cases.
 
@@ -235,21 +235,21 @@ Une ou plusieurs lignes `@` placées **sous les lignes d'une partie** portent se
 
 | Indication | Sens |
 |---|---|
-| `ppp` `pp` `p` `mp` `mf` `f` `ff` `fff` `sf` `sfz` `sfp` `fp` `fz` `rfz` | Nuance, gravée en gras italique. Entre parenthèses (`(mp)`), c'est une nuance ajoutée par l'éditeur. |
+| `ppp` `pp` `p` `mp` `mf` `f` `ff` `fff` `sf` `sfz` `sfp` `fp` `fz` `rfz` | Nuance, écrite en gras italique. Entre parenthèses (`(mp)`), c'est une nuance ajoutée par l'éditeur. |
 | `<----` | Crescendo, de sa première case à la case qui contient son dernier caractère. |
 | `>----` | Decrescendo, de même. |
 | `(-----)` | Liaison d'expression : de la note de la case du `(` à celle de la case du `)`, jouées liées. |
 | `/` | Arpège de l'accord de cette partie, du grave à l'aigu (`\` : de l'aigu au grave). |
-| `.` | Staccato : ce que la partie attaque dans cette case (une note ou tout l'accord) se joue détaché, plus court. Gravé comme un point en haut à droite de la note la plus aiguë. |
-| `!` | Accent : l'attaque est plus forte que ses voisines. Gravé `>`. |
-| `!!` | Marcato : un accent plus fort et plus sec. Gravé `^`. |
+| `.` | Staccato : ce que la partie attaque dans cette case (une note ou tout l'accord) se joue détaché, plus court. Dessiné comme un point en haut à droite de la note la plus aiguë. |
+| `!` | Accent : l'attaque est plus forte que ses voisines. Dessiné `>`. |
+| `!!` | Marcato : un accent plus fort et plus sec. Dessiné `^`. |
 | autre texte | Indication pour cette partie : `cresc.`, `dim.`, `dolce`, `sempre legato`, `più f`… |
 
-Une liaison relie des notes différentes, à jouer liées (legato), et dessine les phrases. Ce n'est pas la liaison de prolongation entre deux notes identiques : celle-là n'existe pas ici, la note se tient avec `-`. Comme un soufflet, une liaison coupée par un changement de système s'écrit `(-----` en fin de système et `-----)` au début du suivant (`------` pour un système qu'elle traverse tout entier). Les liaisons imbriquées ou qui se chevauchent vont chacune sur sa ligne `@` ; quand plusieurs liaisons d'une partie continuent au système suivant, leurs suites s'écrivent de haut en bas dans l'ordre où elles ont commencé. La gravure les trace comme des arcs fins dans une bande juste sous les lignes de la partie, la plus courte au plus près des notes.
+Une liaison relie des notes différentes, à jouer liées (legato), et dessine les phrases. Ce n'est pas la liaison de prolongation entre deux notes identiques : celle-là n'existe pas ici, la note se tient avec `-`. Comme un soufflet, une liaison coupée par un changement de système s'écrit `(-----` en fin de système et `-----)` au début du suivant (`------` pour un système qu'elle traverse tout entier). Les liaisons imbriquées ou qui se chevauchent vont chacune sur sa ligne `@` ; quand plusieurs liaisons d'une partie continuent au système suivant, leurs suites s'écrivent de haut en bas dans l'ordre où elles ont commencé. La partition les trace comme des arcs fins dans une bande juste sous les lignes de la partie, la plus courte au plus près des notes.
 
-À la main, les indications d'une partie se répartissent librement sur ses lignes `@`. L'écriture, elle, les range toujours par famille, dans l'ordre de la gravure : d'abord les liaisons, puis les paroles (`@l`), puis les nuances, soufflets, textes et arpèges, enfin la pédale. Une famille n'occupe une ligne que si elle a quelque chose dans le système.
+À la main, les indications d'une partie se répartissent librement sur ses lignes `@`. L'écriture, elle, les range toujours par famille, dans l'ordre de la partition : d'abord les liaisons, puis les paroles (`@l`), puis les nuances, soufflets, textes et arpèges, enfin la pédale. Une famille n'occupe une ligne que si elle a quelque chose dans le système.
 
-Un soufflet est toujours lu à part : une seule espace suffit entre lui et sa voisine. Il peut commencer dans la case d'une nuance, juste après elle : `p <----` part de la case du `p`. Il peut traverser les barres (avec des `-` ou des `|`). Coupé par un changement de système, il se réécrit au début du système suivant et se lit comme un seul soufflet ; la gravure le laisse ouvert au point de coupure.
+Un soufflet est toujours lu à part : une seule espace suffit entre lui et sa voisine. Il peut commencer dans la case d'une nuance, juste après elle : `p <----` part de la case du `p`. Il peut traverser les barres (avec des `-` ou des `|`). Coupé par un changement de système, il se réécrit au début du système suivant et se lit comme un seul soufflet ; la partition le laisse ouvert au point de coupure.
 
 ```
 m1 |1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||
@@ -277,7 +277,7 @@ Comme sur la ligne `@c`, chaque mot est à part : une seule espace sépare deux 
 
 La prolongation suit sa syllabe, après au moins une espace, et doit dépasser la case de la syllabe ; une syllabe suivie d'un trait d'union ne se prolonge pas (le trait d'union mène déjà à la suivante). Coupée par un changement de système, elle reprend au début du suivant par `---` sur la ligne du même couplet. Les `|` recopiés dans une prolongation (`----|---`) sont ignorés.
 
-La gravure écrit les paroles en caractères droits à empattements, pour ne pas les confondre avec les chiffres des notes, sous le début de chaque note ; le trait d'union se place entre les deux syllabes, la prolongation est un trait bas jusqu'à la fin de la dernière note. Une syllabe trop longue élargit sa case.
+La partition écrit les paroles en caractères droits à empattements, pour ne pas les confondre avec les chiffres des notes, sous le début de chaque note ; le trait d'union se place entre les deux syllabes, la prolongation est un trait bas jusqu'à la fin de la dernière note. Une syllabe trop longue élargit sa case.
 
 À l'import MusicXML, chaque `<lyric>` donne une syllabe, sous la partie de sa portée ; les couplets suivent l'ordre de leur numéro (`number`). `<syllabic>` `begin` ou `middle` donne le trait d'union ; `<extend>` une prolongation jusqu'à la fin de la dernière note de la voix avant la syllabe suivante du couplet, si elle couvre plusieurs notes.
 
@@ -293,7 +293,7 @@ La pédale de résonance se note sur une ligne `@` **sous la dernière partie de
 
 Une consigne qui commence par `Ped.` (`Ped. simile` : « continue à pédaler de même », `Ped. sempre`…) se place sur la même ligne : c'est un texte, pas un signe, qui se lit dans la continuité du trait de pédale.
 
-Une pédale enfoncée le reste d'un système au suivant sans rien réécrire. Sans `*`, elle tient jusqu'à la fin du morceau. La remise en page écrit la pédale sur sa propre ligne, sous les autres lignes de sa partie ; la gravure la trace comme un trait sous l'instrument, dont la longueur montre exactement ce qui est tenu, avec une pointe à chaque changement.
+Une pédale enfoncée le reste d'un système au suivant sans rien réécrire. Sans `*`, elle tient jusqu'à la fin du morceau. La remise en page écrit la pédale sur sa propre ligne, sous les autres lignes de sa partie ; la partition la trace comme un trait sous l'instrument, dont la longueur montre exactement ce qui est tenu, avec une pointe à chaque changement.
 
 ```
 m1 |1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||1  |2  |3  ||

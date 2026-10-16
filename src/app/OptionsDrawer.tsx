@@ -41,7 +41,7 @@ const SECTIONS: Option<RenderOptions["sections"]>[] = [
 ];
 
 const SIMILE: Option<RenderOptions["simile"]>[] = [
-  { value: "pedals", label: "Pédales", hint: "les pédales qu'il demande, gravées comme les autres ; le fichier garde la mention" },
+  { value: "pedals", label: "Pédales", hint: "les pédales qu'il demande, dessinées comme les autres ; le fichier garde la mention" },
   { value: "faded", label: "Pédales atténuées", hint: "les mêmes, en gris clair, pour alléger la page" },
   { value: "text", label: "Mention seule", hint: "« Ped. simile », sans les pédales qu'il demande" },
 ];
@@ -186,11 +186,11 @@ export function OptionsDrawer({ options, setOptions, onClose }: { options: Rende
           <>
             <Check
               id="auto-engrave"
-              label="Gravure"
-              text="Graver automatiquement"
+              label="Mise en page"
+              text="Mettre en page automatiquement"
               checked={options.autoEngrave}
               onChange={(autoEngrave) => setOptions({ autoEngrave })}
-              hint={options.autoEngrave ? "la gravure suit la saisie, peu après la dernière frappe" : "on grave d'un clic sur le bouton Graver, en bas de l'éditeur (Ctrl+Entrée)"}
+              hint={options.autoEngrave ? "la mise en page suit la saisie, peu après la dernière frappe" : "on met en page d'un clic sur le bouton en bas de l'éditeur (Ctrl+Entrée)"}
             />
             <Choice id="note-names" label="Noms des notes" value={options.noteNames} options={NOTE_NAMES} onChange={(noteNames) => setOptions({ noteNames })} />
           </>
