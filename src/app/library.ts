@@ -15,23 +15,23 @@ export const canUseLibrary = typeof w.showDirectoryPicker === "function" && type
 
 /** Un morceau de la bibliothèque. */
 export type LibraryEntry = {
-  /** Chemin depuis le dossier de la bibliothèque, nom du fichier compris : « Satie/gymnopedie.ymn ». */
+  /** Chemin depuis le dossier de la bibliothèque, nom du fichier compris : « Satie/gymnopedie.prisma ». */
   path: string;
   /** Sous-dossier, vide à la racine. */
   folder: string;
   name: string;
-  kind: "ymn" | "musicxml";
+  kind: "prisma" | "musicxml";
   title?: string;
   composer?: string;
   modified: number;
   handle: FileSystemFileHandle;
-  /** Dossier du fichier : un MusicXML importé s'y enregistre en .ymn, à côté de lui. */
+  /** Dossier du fichier : un MusicXML importé s'y enregistre en .prisma, à côté de lui. */
   dir: FileSystemDirectoryHandle;
 };
 
 // l'accès au dossier se garde dans IndexedDB (un accès ne se range pas dans localStorage), avec
 // le cache des aperçus
-const DB = "ymn", STORE = "library", KEY = "folder";
+const DB = "prisma", STORE = "library", KEY = "folder";
 export const THUMBS = "thumbs";
 
 function db(): Promise<IDBDatabase> {
@@ -66,7 +66,7 @@ export async function savedFolder(): Promise<FileSystemDirectoryHandle | null> {
 /** Choisit le dossier de la bibliothèque et le retient. Renvoie null si l'utilisateur annule. */
 export async function pickFolder(): Promise<FileSystemDirectoryHandle | null> {
   try {
-    const dir = await w.showDirectoryPicker!({ id: "ymn-library", mode: "readwrite" });
+    const dir = await w.showDirectoryPicker!({ id: "prisma-library", mode: "readwrite" });
     await tx("readwrite", (s) => s.put(dir, KEY));
     return dir;
   } catch (e) {
@@ -86,7 +86,7 @@ export async function access(dir: FileSystemDirectoryHandle, ask = false): Promi
 }
 
 const KINDS: [RegExp, LibraryEntry["kind"]][] = [
-  [/\.ymn$/i, "ymn"],
+  [/\.prisma$/i, "prisma"],
   [/\.(musicxml|xml)$/i, "musicxml"],
 ];
 
@@ -112,9 +112,9 @@ export async function scan(dir: FileSystemDirectoryHandle): Promise<LibraryEntry
   return out;
 }
 
-/** Titre et compositeur, lus au début du fichier : l'en-tête d'un .ymn, les crédits d'un MusicXML. */
+/** Titre et compositeur, lus au début du fichier : l'en-tête d'un .prisma, les crédits d'un MusicXML. */
 export function describe(head: string, kind: LibraryEntry["kind"]): { title?: string; composer?: string } {
-  if (kind === "ymn") {
+  if (kind === "prisma") {
     const fm = head.match(/^\s*---\r?\n([\s\S]*?)\r?\n---/);
     const value = (key: string) => {
       const m = fm?.[1].match(new RegExp(`^\\s*${key}\\s*:\\s*(.+?)\\s*$`, "m"));
@@ -135,7 +135,7 @@ export function describe(head: string, kind: LibraryEntry["kind"]): { title?: st
 const decode = (s: string) => s.replace(/&(amp|lt|gt|quot|apos|#\d+);/g, (_, e: string) => ({ amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" })[e] ?? String.fromCharCode(Number(e.slice(1))));
 
 /** Dernière ouverture de chaque morceau, par chemin : pour les ranger du plus récent au plus ancien. */
-const RECENT_KEY = "ymn:recent";
+const RECENT_KEY = "prisma:recent";
 export function recentOpenings(): Record<string, number> {
   try {
     return JSON.parse(localStorage.getItem(RECENT_KEY) ?? "{}");

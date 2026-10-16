@@ -1,11 +1,11 @@
 export * from "./model.ts";
 export * from "./pitch.ts";
-export { FORMAT_VERSION, YmnError } from "./frontmatter.ts";
+export { FORMAT_VERSION, PrismaError } from "./frontmatter.ts";
 export { importMusicXml } from "./musicxml.ts";
 export { inspect, noteName } from "./inspect.ts";
 export type { Inspection, NoteNames } from "./inspect.ts";
 export { beatGrids, layout, noteText } from "./layout.ts";
 export type { Align, Column, HairpinSpan, Metrics, PedalLine, System, SystemPart, SystemRow, Voice, VoiceMark } from "./layout.ts";
-export { writeYmn, DEFAULT_WIDTH, DEFAULT_CELL } from "./ymn-write.ts";
-export { parseYmn } from "./ymn-parse.ts";
-export { CHORD_NOTE_SEPARATOR, chordName, chordNotes, chordYmnText } from "./chords.ts";
+export { writePrisma, DEFAULT_WIDTH, DEFAULT_CELL } from "./prisma-write.ts";
+export { parsePrisma } from "./prisma-parse.ts";
+export { CHORD_NOTE_SEPARATOR, chordName, chordNotes, chordPrismaText } from "./chords.ts";

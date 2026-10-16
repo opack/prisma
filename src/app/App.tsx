@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { DEFAULT_WIDTH, YmnError, importMusicXml, parseYmn, writeYmn } from "../core/index.ts";
+import { DEFAULT_WIDTH, PrismaError, importMusicXml, parsePrisma, writePrisma } from "../core/index.ts";
 import type { Score } from "../core/index.ts";
 import { Menu } from "./Menu.tsx";
 import { ListenControls } from "./ListenControls.tsx";
@@ -22,7 +22,7 @@ import { OPENABLE, canWriteInPlace, download, droppedFile, pickFile, pickSaveTar
 /** Délai sans frappe avant la gravure automatique. */
 const AUTO_ENGRAVE_DELAY = 600;
 
-const STORAGE_KEY = "ymn:source";
+const STORAGE_KEY = "prisma:source";
 const load = () => {
   try {
     return localStorage.getItem(STORAGE_KEY) ?? SAMPLE;
@@ -34,7 +34,7 @@ const load = () => {
  * Édition : l'éditeur à gauche, les pages empilées à droite ; sinon la lecture, les pages seules,
  * côte à côte. Le mode se retrouve d'une visite à l'autre.
  */
-const EDITING_KEY = "ymn:editing";
+const EDITING_KEY = "prisma:editing";
 const loadEditing = (source: string) => {
   try {
     const stored = localStorage.getItem(EDITING_KEY);
@@ -58,9 +58,9 @@ function tryParse(text: string): { score?: Score; problem?: Problem } {
   // texte vide (nouvelle partition) : rien à graver, ce n'est pas une erreur
   if (!text.trim()) return {};
   try {
-    return { score: parseYmn(text) };
+    return { score: parsePrisma(text) };
   } catch (e) {
-    if (e instanceof YmnError) return { problem: { message: e.message, line: e.line, column: e.column } };
+    if (e instanceof PrismaError) return { problem: { message: e.message, line: e.line, column: e.column } };
     return { problem: { message: (e as Error).message } };
   }
 }
@@ -93,13 +93,13 @@ export function App() {
       if (next) setShowGuideState(false);
       return next;
     });
-  /** Dossier d'un MusicXML ouvert depuis la bibliothèque : son .ymn s'y enregistre, à côté de lui. */
+  /** Dossier d'un MusicXML ouvert depuis la bibliothèque : son .prisma s'y enregistre, à côté de lui. */
   const [saveDir, setSaveDir] = useState<FileSystemDirectoryHandle | null>(null);
   /**
    * Lecture, le mode ordinaire : pour jouer. Sans l'éditeur, les pages côte à côte, chacune de toute
    * la hauteur de l'écran ; on tourne les pages au clavier ou avec une pédale tourne-pages.
-   * Édition : l'éditeur à côté des pages. Une nouvelle partition, un MusicXML importé ou un .ymn
-   * qui ne se grave pas s'ouvrent en édition, un .ymn en lecture.
+   * Édition : l'éditeur à côté des pages. Une nouvelle partition, un MusicXML importé ou un .prisma
+   * qui ne se grave pas s'ouvrent en édition, un .prisma en lecture.
    */
   const [editing, setEditingState] = useState(() => loadEditing(source) || !!tryParse(source).problem);
   const setEditing = (on: boolean) => {
@@ -146,8 +146,8 @@ export function App() {
     saveOptions(next);
   };
   const [engraved, setEngraved] = useState(() => tryParse(source));
-  const [fileName, setFileName] = useState("morceau.ymn");
-  /** Fichier .ymn ouvert ou enregistré, réécrit en place par « Enregistrer » (Chrome, Edge). */
+  const [fileName, setFileName] = useState("morceau.prisma");
+  /** Fichier .prisma ouvert ou enregistré, réécrit en place par « Enregistrer » (Chrome, Edge). */
   const [handle, setHandle] = useState<FileSystemFileHandle | null>(null);
   /** Texte tel qu'il est sur le disque, pour savoir s'il reste des modifications à enregistrer. */
   const [savedText, setSavedText] = useState<string | null>(null);
@@ -251,29 +251,29 @@ export function App() {
 
   const open = async (file: File, fileHandle: FileSystemFileHandle | null = null, keepMode = false, dir: FileSystemDirectoryHandle | null = null) => {
     const text = await file.text();
-    let ymn = text;
+    let prisma = text;
     const isXml = /\.(musicxml|xml)$/i.test(file.name);
     setSaveDir(isXml ? dir : null);
-    // un MusicXML n'est jamais réécrit : le premier enregistrement crée un nouveau .ymn
+    // un MusicXML n'est jamais réécrit : le premier enregistrement crée un nouveau .prisma
     setHandle(isXml ? null : fileHandle);
     setSavedText(isXml ? null : text);
     if (isXml) {
       try {
-        ymn = writeYmn(importMusicXml(text, file.name), { width: DEFAULT_WIDTH });
+        prisma = writePrisma(importMusicXml(text, file.name), { width: DEFAULT_WIDTH });
       } catch (e) {
         setEngraved({ problem: { message: `Import MusicXML impossible : ${(e as Error).message}` } });
         setEditing(true);
         return;
       }
-      setFileName(file.name.replace(/\.(musicxml|xml)$/i, ".ymn"));
+      setFileName(file.name.replace(/\.(musicxml|xml)$/i, ".prisma"));
     } else {
       setFileName(file.name);
     }
-    setSource(ymn);
-    const parsed = tryParse(ymn);
+    setSource(prisma);
+    const parsed = tryParse(prisma);
     setEngraved(parsed);
-    setEngravedSource(ymn);
-    persist(ymn);
+    setEngravedSource(prisma);
+    persist(prisma);
     // un import est presque toujours à retoucher ; un texte qui ne se grave pas montre son erreur ;
     // un fichier rechargé garde le mode en cours
     if (isXml || parsed.problem) setEditing(true);
@@ -299,7 +299,7 @@ export function App() {
   const openEntry = async (entry: LibraryEntry) => {
     if (!confirmDiscard(`Ouvrir ${entry.name} ? Les modifications non enregistrées seront perdues.`)) return;
     try {
-      await open(await entry.handle.getFile(), entry.kind === "ymn" ? entry.handle : null, false, entry.dir);
+      await open(await entry.handle.getFile(), entry.kind === "prisma" ? entry.handle : null, false, entry.dir);
       markOpened(entry.path);
       setShowLibrary(false);
     } catch (e) {
@@ -344,7 +344,7 @@ export function App() {
     const dropped = await droppedFile(e.dataTransfer);
     if (!dropped) return;
     if (!OPENABLE.test(dropped.file.name)) {
-      setNotice(`« ${dropped.file.name} » : format non pris en charge (.ymn ou .musicxml non compressé)`);
+      setNotice(`« ${dropped.file.name} » : format non pris en charge (.prisma ou .musicxml non compressé)`);
       return;
     }
     if (!confirmDiscard(`Ouvrir ${dropped.file.name} ? Les modifications non enregistrées seront perdues.`)) return;
@@ -365,7 +365,7 @@ export function App() {
     setHandle(null);
     setSavedText(null);
     setSaveDir(null);
-    setFileName("morceau.ymn");
+    setFileName("morceau.prisma");
     persist("");
     setEditing(true);
     setTimeout(() => editor.current?.focus());
@@ -422,11 +422,11 @@ export function App() {
       {dragging && (
         <div className="drop" aria-hidden>
           <p>Déposer pour ouvrir</p>
-          <span>.ymn ou .musicxml</span>
+          <span>.prisma ou .musicxml</span>
         </div>
       )}
       <header className="bar">
-        <span className="brand">ymn</span>
+        <span className="brand">Prisma</span>
         <Menu
           label="Fichier"
           items={[
@@ -461,7 +461,7 @@ export function App() {
         <input
           ref={fileInput}
           type="file"
-          accept=".ymn,.txt,.musicxml,.xml"
+          accept=".prisma,.txt,.musicxml,.xml"
           hidden
           onChange={(e) => {
             const f = e.target.files?.[0];

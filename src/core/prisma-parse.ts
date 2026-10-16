@@ -1,11 +1,11 @@
 /**
- * Lecture du format texte .ymn vers le modèle.
+ * Lecture du format texte .prisma vers le modèle.
  *
  * Les sauts de ligne sont libres : le temps absolu est reconstitué à partir des règles
  * de comptage. Voir FORMAT.md pour la grammaire complète.
  */
 import { chordNotes } from "./chords.ts";
-import { YmnError, parseFrontmatter } from "./frontmatter.ts";
+import { PrismaError, parseFrontmatter } from "./frontmatter.ts";
 import { ARPEGGIO_DOWN, FERMATA, articulationOf, isArticulationSign, HYPHEN, LYRIC_LINE, isExtender, sortLyrics, FINGER_MARK, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isSlur, isPedalText, joinsText, sortArticulations, sortGraces, sortNotes } from "./model.ts";
 import type { Arpeggio, Articulation, Beat, Division, Expression, Grace, Hairpin, Instrument, Lyric, Marker, Note, Part, Pedal, PedalText, Repeat, Score, Slur, TextMark } from "./model.ts";
 import { midiOf, parseOctaveLabel } from "./pitch.ts";
@@ -36,7 +36,7 @@ export function parseRule(line: string, lineNo: number): Rule | undefined {
   }
   if (t.length < 3 || !HORIZONTAL.test(body)) return undefined;
   const double = /[═=╪]/.test(body);
-  if (double && /[─━\-]/.test(body)) throw new YmnError("trait mélangé : simple (─) entre deux parties d'un instrument, double (═) entre deux instruments", lineNo, 1);
+  if (double && /[─━\-]/.test(body)) throw new PrismaError("trait mélangé : simple (─) entre deux parties d'un instrument, double (═) entre deux instruments", lineNo, 1);
   return { double, ...(name ? { name } : {}) };
 }
 export const isRuler = (line: string) => /^m[^|\s]*\s*\|/.test(line);
@@ -63,13 +63,13 @@ function parseRuler(ruler: string, lineNo: number, pipe: number) {
     } else i++;
   }
   const trailing = ruler.slice(seps[seps.length - 1].from + seps[seps.length - 1].text.length);
-  if (trailing.trim()) throw new YmnError("la règle de comptage doit se terminer par une barre (« | », « || » ou « :|| »)", lineNo, ruler.length - trailing.length + 1);
+  if (trailing.trim()) throw new PrismaError("la règle de comptage doit se terminer par une barre (« | », « || » ou « :|| »)", lineNo, ruler.length - trailing.length + 1);
 
   // la première barre fait partie de la colonne de gauche : « | » ou « ||: »
   const lead = seps[0].text;
-  if (lead !== "|" && lead !== "||:") throw new YmnError(`début de règle invalide « ${lead} » : attendu « | » ou « ||: »`, lineNo, pipe + 1);
+  if (lead !== "|" && lead !== "||:") throw new PrismaError(`début de règle invalide « ${lead} » : attendu « | » ou « ||: »`, lineNo, pipe + 1);
   for (const s of seps.slice(1)) {
-    if (!SEPARATORS.has(s.text)) throw new YmnError(`barre invalide « ${s.text} » : attendu |, ||, :||, ||: ou :||:`, lineNo, s.from + 1);
+    if (!SEPARATORS.has(s.text)) throw new PrismaError(`barre invalide « ${s.text} » : attendu |, ||, :||, ||: ou :||:`, lineNo, s.from + 1);
   }
   const segs: Segment[] = [];
   for (let k = 0; k + 1 < seps.length; k++) {
@@ -78,7 +78,7 @@ function parseRuler(ruler: string, lineNo: number, pipe: number) {
     const t = seps[k + 1].text;
     segs.push({ from, to, barEnd: t !== "|", endRepeat: t.startsWith(":"), startRepeatAfter: t.endsWith(":") });
   }
-  if (!segs.length) throw new YmnError("règle de comptage sans aucun temps", lineNo);
+  if (!segs.length) throw new PrismaError("règle de comptage sans aucun temps", lineNo);
   const spans: SepSpan[] = seps.map((s) => ({ from: s.from, to: s.from + s.text.length, text: s.text }));
   return { segs, spans, leadRepeat: lead === "||:" };
 }
@@ -119,7 +119,7 @@ export function markTokens(line: string) {
   return out;
 }
 
-export function parseYmn(text: string): Score {
+export function parsePrisma(text: string): Score {
   const lines = text.replace(/\t/g, "    ").split(/\r?\n/);
   const { meta, bodyStartLine } = parseFrontmatter(lines);
   // instruments déclarés : « parts: Chant, Piano », chacun nommé sur le trait au-dessus de sa première partie
@@ -127,9 +127,9 @@ export function parseYmn(text: string): Score {
   const declared = meta.parts === undefined ? undefined : String(meta.parts).split(",").map((x) => x.trim());
   delete meta.parts;
   if (declared) {
-    if (declared.some((x) => !x)) throw new YmnError("« parts » : les noms des instruments, séparés par des virgules (parts: Chant, Piano)", partsLine);
+    if (declared.some((x) => !x)) throw new PrismaError("« parts » : les noms des instruments, séparés par des virgules (parts: Chant, Piano)", partsLine);
     const twice = declared.find((x, i) => declared.indexOf(x) !== i);
-    if (twice) throw new YmnError(`« parts » : l'instrument « ${twice} » est nommé deux fois`, partsLine);
+    if (twice) throw new PrismaError(`« parts » : l'instrument « ${twice} » est nommé deux fois`, partsLine);
   }
   let instruments: Instrument[] | undefined; // fixés par le premier système
   const defaultDivision = (Number(meta.division ?? 2) === 3 ? 3 : 2) as Division;
@@ -157,12 +157,12 @@ export function parseYmn(text: string): Score {
       continue;
     }
     const last = blocks[blocks.length - 1];
-    if (!last || pendingMarks.length) throw new YmnError("une règle de comptage (« m1 |1 … ») doit précéder les lignes de notes", i + 1);
-    if (last.lines.includes(-1)) throw new YmnError("ligne de notes séparée de sa règle de comptage par une ligne vide", i + 1);
+    if (!last || pendingMarks.length) throw new PrismaError("une règle de comptage (« m1 |1 … ») doit précéder les lignes de notes", i + 1);
+    if (last.lines.includes(-1)) throw new PrismaError("ligne de notes séparée de sa règle de comptage par une ligne vide", i + 1);
     last.lines.push(i);
   }
-  if (pendingMarks.length) throw new YmnError("ligne @ sans règle de comptage en dessous", pendingMarks[0] + 1);
-  if (!blocks.length) throw new YmnError("aucune règle de comptage trouvée", bodyStartLine + 1);
+  if (pendingMarks.length) throw new PrismaError("ligne @ sans règle de comptage en dessous", pendingMarks[0] + 1);
+  if (!blocks.length) throw new PrismaError("aucune règle de comptage trouvée", bodyStartLine + 1);
 
   const beats: Beat[] = [];
   const notes: Note[] = [];
@@ -183,7 +183,7 @@ export function parseYmn(text: string): Score {
   /** Arpège posé une seule fois par instant et par partie (ou pour toutes les parties). */
   const addArpeggio = (x: Arpeggio, line: number, col: number) => {
     const clash = arpeggios.find((y) => y.t === x.t && (y.part === undefined || x.part === undefined || y.part === x.part));
-    if (clash) throw new YmnError("un seul arpège par accord : sur la ligne @ d'une partie, ou sur celle du haut pour toutes les parties", line, col);
+    if (clash) throw new PrismaError("un seul arpège par accord : sur la ligne @ d'une partie, ou sur celle du haut pour toutes les parties", line, col);
     arpeggios.push(x);
   };
   const expressions: Expression[] = [];
@@ -226,13 +226,13 @@ export function parseYmn(text: string): Score {
       const body = rulerLine.slice(s.from, s.to);
       for (let re = /\S+/g, w = re.exec(body); w; w = re.exec(body)) labels.push({ from: s.from + w.index, text: w[0] });
       if (!labels.length || labels[0].from !== s.from || !/^\d+$/.test(labels[0].text) || Number(labels[0].text) < 1) {
-        throw new YmnError("chaque temps commence par son numéro, collé à la barre", L, s.from + 1);
+        throw new PrismaError("chaque temps commence par son numéro, collé à la barre", L, s.from + 1);
       }
       for (const lb of labels.slice(1)) {
-        if (!SUB_LABELS.has(lb.text)) throw new YmnError(`étiquette de case « ${lb.text} » inconnue : attendu « * », « . » ou « , »`, L, lb.from + 1);
+        if (!SUB_LABELS.has(lb.text)) throw new PrismaError(`étiquette de case « ${lb.text} » inconnue : attendu « * », « . » ou « , »`, L, lb.from + 1);
       }
       const n = labels.length;
-      if (TICKS_PER_BEAT % n) throw new YmnError(`découpage en ${n} cases non pris en charge`, L, s.from + 1);
+      if (TICKS_PER_BEAT % n) throw new PrismaError(`découpage en ${n} cases non pris en charge`, L, s.from + 1);
       const cells = labels.map((lb) => lb.text);
       const label = Number(cells[0]);
       const stars = cells.filter((c) => c === "*").length;
@@ -240,9 +240,9 @@ export function parseYmn(text: string): Score {
       // nouvelle mesure ? (début de bloc après une mesure fermée, ou après une barre de mesure)
       const newBar = si === 0 ? lastBarClosed || label === 1 : segs[si - 1].barEnd;
       if (si === 0 && !newBar && barLabel && barLabel !== lastBar) {
-        throw new YmnError(`la mesure ${lastBar} n'est pas terminée : ce système devrait commencer par « m${lastBar} »`, L, 1);
+        throw new PrismaError(`la mesure ${lastBar} n'est pas terminée : ce système devrait commencer par « m${lastBar} »`, L, 1);
       }
-      if (si === 0 && !newBar && leadRepeat) throw new YmnError("« ||: » ne peut pas couper une mesure en deux", L, pipe + 1);
+      if (si === 0 && !newBar && leadRepeat) throw new PrismaError("« ||: » ne peut pas couper une mesure en deux", L, pipe + 1);
       if (si === 0 && !newBar) bar = lastBar;
       if (si > 0 && newBar) bar = nextBar(bar);
       if (newBar) {
@@ -267,7 +267,7 @@ export function parseYmn(text: string): Score {
 
     // ligne(s) @ au-dessus de la règle : débuts de section, nombre de passages, textes
     for (const li of block.marks) {
-      if (isLyricLine(lines[li])) throw new YmnError("les paroles se placent sous les lignes de leur partie, comme ses nuances", li + 1, 1);
+      if (isLyricLine(lines[li])) throw new PrismaError("les paroles se placent sous les lignes de leur partie, comme ses nuances", li + 1, 1);
       if (isChordLine(lines[li])) {
         // accords : chaque mot est un accord, posé sur une case (pas de texte de plusieurs mots)
         const line = lines[li];
@@ -276,11 +276,11 @@ export function parseYmn(text: string): Score {
         for (let w = re.exec(line); w; w = re.exec(line)) {
           const col = w.index;
           const a = anchors.find((x) => x.from === col);
-          if (!a) throw new YmnError(`accord « ${w[0]} » : il doit commencer exactement sur une case de la règle de comptage`, li + 1, col + 1);
+          if (!a) throw new PrismaError(`accord « ${w[0]} » : il doit commencer exactement sur une case de la règle de comptage`, li + 1, col + 1);
           if (!chordNotes(w[0])) {
-            throw new YmnError(`accord inconnu « ${w[0]} » : nom anglais (Am, G7, F#m7b5, G/B…) ou notes ymn séparées par « ; », de la basse vers l'aigu (10;1;5)`, li + 1, col + 1);
+            throw new PrismaError(`accord inconnu « ${w[0]} » : nom anglais (Am, G7, F#m7b5, G/B…) ou notes Prisma séparées par « ; », de la basse vers l'aigu (10;1;5)`, li + 1, col + 1);
           }
-          if (chords.some((c) => c.t === a.t)) throw new YmnError("deux accords sur une même case", li + 1, col + 1);
+          if (chords.some((c) => c.t === a.t)) throw new PrismaError("deux accords sur une même case", li + 1, col + 1);
           chords.push({ t: a.t, text: w[0] });
         }
         continue;
@@ -292,16 +292,16 @@ export function parseYmn(text: string): Score {
           const j = spans.findIndex((sp) => tok.col >= sp.from && tok.col < sp.to);
           const sp = spans[j];
           if (j < 0 || j >= segs.length || !segOpensBar[j]) {
-            throw new YmnError(`« ${tok.text} » doit être placé sur la barre qui ouvre une mesure`, li + 1, tok.col + 1);
+            throw new PrismaError(`« ${tok.text} » doit être placé sur la barre qui ouvre une mesure`, li + 1, tok.col + 1);
           }
           if (tok.col !== sp.from + sp.text.lastIndexOf("|")) {
-            throw new YmnError(`« ${tok.text} » doit être placé sur le dernier « | » de la barre`, li + 1, tok.col + 1);
+            throw new PrismaError(`« ${tok.text} » doit être placé sur le dernier « | » de la barre`, li + 1, tok.col + 1);
           }
           markers.push({ label: marker[1], barIndex: segBar[j], line: li + 1, col: tok.col + 1 });
           continue;
         }
         const a = anchors.find((x) => x.from === tok.col);
-        if (!a) throw new YmnError(`« ${tok.text} » doit commencer exactement sur une case de la règle de comptage`, li + 1, tok.col + 1);
+        if (!a) throw new PrismaError(`« ${tok.text} » doit commencer exactement sur une case de la règle de comptage`, li + 1, tok.col + 1);
         const times = tok.text.match(/^(\d+)\s*[×xX]$/);
         if (times) timesMarks.push({ bar: a.barIndex, times: Number(times[1]), line: li + 1, col: tok.col + 1 });
         else if (tok.text === FERMATA) {
@@ -309,7 +309,7 @@ export function parseYmn(text: string): Score {
         } else if (isArpeggioSign(tok.text)) {
           addArpeggio({ t: a.t, ...(tok.text === ARPEGGIO_DOWN ? { down: true } : {}) }, li + 1, tok.col + 1);
         } else if (isArticulationSign(tok.text)) {
-          throw new YmnError(`« ${tok.text} » : une articulation se place sur une ligne @ sous sa partie`, li + 1, tok.col + 1);
+          throw new PrismaError(`« ${tok.text} » : une articulation se place sur une ligne @ sous sa partie`, li + 1, tok.col + 1);
         } else texts.push({ t: a.t, text: tok.text });
       }
     }
@@ -327,7 +327,7 @@ export function parseYmn(text: string): Score {
       const r = rules.get(li);
       if (!r) return partOfLine.set(li, blockParts.length - 1);
       if (k === 0) {
-        if (r.double) throw new YmnError("le trait sous la règle est simple (─) : le double (═) sépare deux instruments", li + 1, 1);
+        if (r.double) throw new PrismaError("le trait sous la règle est simple (─) : le double (═) sépare deux instruments", li + 1, 1);
         blockParts[0] = { rule: r, line: li + 1 };
       } else blockParts.push({ rule: r, line: li + 1 });
     });
@@ -336,26 +336,26 @@ export function parseYmn(text: string): Score {
     blockParts.forEach((bp, k) => {
       if (k === 0 || bp.rule!.double) here.push({ ...(bp.rule?.name ? { name: bp.rule.name } : {}), parts: 1, line: bp.line });
       else {
-        if (bp.rule!.name) throw new YmnError(`« ${bp.rule!.name} » : le nom d'un instrument s'écrit sur le trait double (═) qui le commence`, bp.line, 1);
+        if (bp.rule!.name) throw new PrismaError(`« ${bp.rule!.name} » : le nom d'un instrument s'écrit sur le trait double (═) qui le commence`, bp.line, 1);
         here[here.length - 1].parts++;
       }
     });
     here.forEach((x, k) => {
       if (!declared) {
-        if (x.name) throw new YmnError(`instrument « ${x.name} » non déclaré : nomme les instruments dans le frontmatter (parts: …)`, x.line, 1);
+        if (x.name) throw new PrismaError(`instrument « ${x.name} » non déclaré : nomme les instruments dans le frontmatter (parts: …)`, x.line, 1);
         return;
       }
-      if (k >= declared.length) throw new YmnError(`instrument de trop : « parts » en déclare ${declared.length} (${declared.join(", ")})`, x.line, 1);
-      if (!x.name) throw new YmnError(`il manque le nom de l'instrument « ${declared[k]} » sur le trait au-dessus de sa première partie`, x.line, 1);
+      if (k >= declared.length) throw new PrismaError(`instrument de trop : « parts » en déclare ${declared.length} (${declared.join(", ")})`, x.line, 1);
+      if (!x.name) throw new PrismaError(`il manque le nom de l'instrument « ${declared[k]} » sur le trait au-dessus de sa première partie`, x.line, 1);
       if (x.name !== declared[k]) {
-        throw new YmnError(declared.includes(x.name) ? `« ${x.name} » à la place de « ${declared[k]} » : les instruments se suivent dans l'ordre de « parts »` : `instrument « ${x.name} » non déclaré dans « parts » (${declared.join(", ")})`, x.line, 1);
+        throw new PrismaError(declared.includes(x.name) ? `« ${x.name} » à la place de « ${declared[k]} » : les instruments se suivent dans l'ordre de « parts »` : `instrument « ${x.name} » non déclaré dans « parts » (${declared.join(", ")})`, x.line, 1);
       }
     });
-    if (declared && here.length < declared.length) throw new YmnError(`il manque des instruments : « parts » en déclare ${declared.length} (${declared.join(", ")})`, L, 1);
+    if (declared && here.length < declared.length) throw new PrismaError(`il manque des instruments : « parts » en déclare ${declared.length} (${declared.join(", ")})`, L, 1);
     if (!instruments) instruments = here.map(({ name, parts }) => ({ ...(name ? { name } : {}), parts }));
     else if (here.length !== instruments.length || here.some((x, k) => x.parts !== instruments![k].parts)) {
       const shape = (xs: { parts: number }[]) => xs.map((x) => x.parts).join(" + ");
-      throw new YmnError(`ce système n'a pas les mêmes parties que le premier (${shape(here)} au lieu de ${shape(instruments)}) : chaque système écrit toutes les parties, même vides`, L, 1);
+      throw new PrismaError(`ce système n'a pas les mêmes parties que le premier (${shape(here)} au lieu de ${shape(instruments)}) : chaque système écrit toutes les parties, même vides`, L, 1);
     }
     const partTotal = blockParts.length;
     // dernière partie de chaque instrument : celle qui porte la pédale
@@ -372,16 +372,16 @@ export function parseYmn(text: string): Score {
         const ai = isHairpin(tok.text) || isSlur(tok.text) || isArticulationSign(tok.text)
           ? anchors.findIndex((x) => tok.col >= x.from && tok.col < x.to)
           : anchors.findIndex((x) => x.from === tok.col);
-        if (ai < 0) throw new YmnError(`« ${tok.text} » doit commencer exactement sur une case de la règle de comptage`, R, tok.col + 1);
+        if (ai < 0) throw new PrismaError(`« ${tok.text} » doit commencer exactement sur une case de la règle de comptage`, R, tok.col + 1);
         const a = anchors[ai];
         if (isArpeggioSign(tok.text)) {
           addArpeggio({ t: a.t, part, ...(tok.text === ARPEGGIO_DOWN ? { down: true } : {}) }, R, tok.col + 1);
         } else if (isArticulationSign(tok.text)) {
           const kind = articulationOf(tok.text)!;
-          if (articulations.some((x) => x.part === part && x.t === a.t && x.kind === kind)) throw new YmnError(`« ${tok.text} » posé deux fois sur la même case`, R, tok.col + 1);
+          if (articulations.some((x) => x.part === part && x.t === a.t && x.kind === kind)) throw new PrismaError(`« ${tok.text} » posé deux fois sur la même case`, R, tok.col + 1);
           articulations.push({ part, t: a.t, kind });
         } else if (isPedalSign(tok.text) || isPedalText(tok.text)) {
-          if (!lastParts.has(part)) throw new YmnError(`« ${tok.text} » : la pédale se note sur une ligne @ sous la dernière partie de son instrument`, R, tok.col + 1);
+          if (!lastParts.has(part)) throw new PrismaError(`« ${tok.text} » : la pédale se note sur une ligne @ sous la dernière partie de son instrument`, R, tok.col + 1);
           if (isPedalText(tok.text)) pedalTexts.push({ part, t: a.t, text: tok.text });
           else pedalSigns.push({ part, t: a.t, text: tok.text, line: R, col: tok.col + 1 });
         } else if (isSlur(tok.text)) {
@@ -391,7 +391,7 @@ export function parseYmn(text: string): Score {
             ? undefined
             : pendingSlurs.filter((o) => o.slur.part === part).sort((x, y) => x.slur.start - y.slur.start)[0];
           if (!tok.text.startsWith("(") && (!cont || ai !== 0)) {
-            throw new YmnError("« ---) » sans liaison ouverte : une liaison commence par « ( »", R, tok.col + 1);
+            throw new PrismaError("« ---) » sans liaison ouverte : une liaison commence par « ( »", R, tok.col + 1);
           }
           const slur = cont ? cont.slur : { part, start: a.t, end: -1 };
           if (cont) pendingSlurs = pendingSlurs.filter((o) => o !== cont);
@@ -437,12 +437,12 @@ export function parseYmn(text: string): Score {
           if (!last) {
             // suite de la prolongation d'une syllabe du système précédent
             const prev = col === anchors[0].from ? lyrics.find((l) => l.part === part && l.verse === verse && l.extend === t0) : undefined;
-            if (!prev) throw new YmnError("« --- » prolonge la syllabe qui le précède sur la ligne : écris d'abord la syllabe", R, col + 1);
+            if (!prev) throw new PrismaError("« --- » prolonge la syllabe qui le précède sur la ligne : écris d'abord la syllabe", R, col + 1);
             prev.extend = end;
             last = prev;
           } else {
-            if (last.hyphen) throw new YmnError(`« ${last.text}${HYPHEN} » continue sur la syllabe suivante : elle ne se prolonge pas`, R, col + 1);
-            if (extended) throw new YmnError("une seule prolongation par syllabe", R, col + 1);
+            if (last.hyphen) throw new PrismaError(`« ${last.text}${HYPHEN} » continue sur la syllabe suivante : elle ne se prolonge pas`, R, col + 1);
+            if (extended) throw new PrismaError("une seule prolongation par syllabe", R, col + 1);
             // une syllabe sur la dernière case d'un système se prolonge au suivant : vérifié à la fin
             const ai = anchors.findIndex((x) => x.t === last!.t);
             lyricCell.set(last, { end: anchors[ai + 1]?.t ?? t1, line: R, col: col + 1 });
@@ -452,7 +452,7 @@ export function parseYmn(text: string): Score {
           continue;
         }
         const a = anchors.find((x) => x.from === col);
-        if (!a) throw new YmnError(`syllabe « ${tok} » : elle doit commencer exactement sur une case de la règle de comptage`, R, col + 1);
+        if (!a) throw new PrismaError(`syllabe « ${tok} » : elle doit commencer exactement sur une case de la règle de comptage`, R, col + 1);
         const hyphen = tok.length > 1 && tok.endsWith(HYPHEN);
         last = { part, verse, t: a.t, text: hyphen ? tok.slice(0, -HYPHEN.length) : tok, ...(hyphen ? { hyphen: true } : {}) };
         extended = false;
@@ -471,7 +471,7 @@ export function parseYmn(text: string): Score {
       const row = lines[li];
       const R = li + 1;
       const part = partOfLine.get(li)!;
-      if (isChordLine(row)) throw new YmnError("les accords se placent au-dessus de la règle de comptage", R, 1);
+      if (isChordLine(row)) throw new PrismaError("les accords se placent au-dessus de la règle de comptage", R, 1);
       if (isLyricLine(row)) {
         voiceLine[part] = true;
         readLyricLine(row, R, part, ++verses[part]);
@@ -483,29 +483,29 @@ export function parseYmn(text: string): Score {
         continue;
       }
       if (voiceLine[part]) {
-        throw new YmnError("ligne de notes sous une ligne @ : les lignes @ d'une partie se placent après toutes ses lignes de notes", R, 1);
+        throw new PrismaError("ligne de notes sous une ligne @ : les lignes @ d'une partie se placent après toutes ses lignes de notes", R, 1);
       }
-      if (row[pipe] !== "|") throw new YmnError("le « | » de début de ligne doit être aligné sur celui de la règle", R, Math.min(row.length, pipe) + 1);
+      if (row[pipe] !== "|") throw new PrismaError("le « | » de début de ligne doit être aligné sur celui de la règle", R, Math.min(row.length, pipe) + 1);
       // les barres (et leurs deux points de reprise, facultatifs) sont alignées sur la règle
       for (let c = pipe; c < row.length; c++) {
         const rc = rulerLine[c], ch = row[c];
         if (inSpan(c)) {
-          if (rc === "|" && ch !== "|") throw new YmnError("barre attendue ici, alignée sur la règle de comptage", R, c + 1);
-          if (rc === ":" && ch !== ":" && ch !== " ") throw new YmnError("« : » de reprise ou espace attendu ici", R, c + 1);
+          if (rc === "|" && ch !== "|") throw new PrismaError("barre attendue ici, alignée sur la règle de comptage", R, c + 1);
+          if (rc === ":" && ch !== ":" && ch !== " ") throw new PrismaError("« : » de reprise ou espace attendu ici", R, c + 1);
         } else if (ch === "|") {
-          throw new YmnError("« | » mal placé : il ne tombe pas sur une barre de la règle", R, c + 1);
+          throw new PrismaError("« | » mal placé : il ne tombe pas sur une barre de la règle", R, c + 1);
         }
       }
       const lab = row.slice(0, pipe).trim();
       if (lab) {
         const oct = parseOctaveLabel(lab);
         if (oct === undefined) {
-          throw new YmnError(`octave invalide : « ${lab} » (attendu 0 pour l'octave du do central, +1, -1, +2…)`, R, 1);
+          throw new PrismaError(`octave invalide : « ${lab} » (attendu 0 pour l'octave du do central, +1, -1, +2…)`, R, 1);
         }
         lastOctave[part] = oct;
       }
       const octave = lastOctave[part];
-      if (octave === undefined) throw new YmnError("la première ligne de chaque partie doit indiquer son octave", R, 1);
+      if (octave === undefined) throw new PrismaError("la première ligne de chaque partie doit indiquer son octave", R, 1);
 
       let open: Note | undefined;
       const close = (t: number) => {
@@ -519,7 +519,7 @@ export function parseYmn(text: string): Score {
         for (const g of raw.matchAll(/(\d+)'/g)) {
           const gc = a.from + g.index! + 1;
           const k = Number(g[1]);
-          if (k < 1 || k > 12) throw new YmnError(`petite note invalide « ${g[0]} » : attendu un numéro de 1 à 12 suivi de « ${GRACE_MARK} »`, R, gc);
+          if (k < 1 || k > 12) throw new PrismaError(`petite note invalide « ${g[0]} » : attendu un numéro de 1 à 12 suivi de « ${GRACE_MARK} »`, R, gc);
           const key = part + ":" + a.t;
           if (!blockGraces.has(key)) blockGraces.set(key, []);
           blockGraces.get(key)!.push({ part, t: a.t, col: gc, midi: midiOf(octave, k) });
@@ -527,7 +527,7 @@ export function parseYmn(text: string): Score {
         }
         if (graceEnd) {
           const before = raw.slice(0, graceEnd).replace(/\d+'/g, (x) => " ".repeat(x.length));
-          if (before.trim()) throw new YmnError("une petite note se place avant la note de sa case", R, a.from + before.search(/\S/) + 1);
+          if (before.trim()) throw new PrismaError("une petite note se place avant la note de sa case", R, a.from + before.search(/\S/) + 1);
           raw = " ".repeat(graceEnd) + raw.slice(graceEnd);
         }
         const c = raw.trim();
@@ -536,7 +536,7 @@ export function parseYmn(text: string): Score {
         const bad = (k?: string) => !!k && (Number(k) < 1 || Number(k) > 12);
         const badFinger = m && m[4] && (Number(m[4]) < 1 || Number(m[4]) > 5 || m[1] || !m[2]);
         if (!m || bad(m[2]) || bad(m[3]) || (!m[1] && !m[2] && c) || (m[3] && (m[1] || !m[2])) || badFinger) {
-          throw new YmnError(
+          throw new PrismaError(
             `case invalide « ${c} » : attendu un numéro de 1 à 12, « - », « -N », une trille « N${TRILL_MARK}N », un doigté « N${FINGER_MARK}D » (doigt de 1 à 5), des petites notes « N' » ou une case vide`,
             R, col,
           );
@@ -546,7 +546,7 @@ export function parseYmn(text: string): Score {
         if (!dash) {
           close(a.t);
           const midi = midiOf(octave, Number(digits));
-          if (aux && Number(aux) === Number(digits)) throw new YmnError("une trille alterne avec une autre note", R, col);
+          if (aux && Number(aux) === Number(digits)) throw new PrismaError("une trille alterne avec une autre note", R, col);
           open = { part, midi, start: a.t, end: t1, ...(aux ? { trill: trillAux(midi, Number(aux)) } : {}), ...(finger ? { finger: Number(finger) } : {}) };
           notes.push(open);
           return;
@@ -554,14 +554,14 @@ export function parseYmn(text: string): Score {
         // tenue
         if (!digits) {
           if (open) return;
-          throw new YmnError(
+          throw new PrismaError(
             ai === 0 ? "tenue en début de système : écris le numéro de la note, par exemple « -7 »" : "« - » sans note à prolonger",
             R, col,
           );
         }
         const midi = midiOf(octave, Number(digits));
         if (open) {
-          if (open.midi !== midi) throw new YmnError(`« -${digits} » prolonge une note différente (${(open.midi % 12) + 1})`, R, col);
+          if (open.midi !== midi) throw new PrismaError(`« -${digits} » prolonge une note différente (${(open.midi % 12) + 1})`, R, col);
           return;
         }
         const prev = ai === 0 ? pending.find((p) => p.part === part && p.midi === midi && p.end === t0) : undefined;
@@ -592,13 +592,13 @@ export function parseYmn(text: string): Score {
       const down = pedalDown.get(p.part);
       if (p.text !== PEDAL_DOWN) {
         if (!down) {
-          throw new YmnError(p.text === PEDAL_UP ? "« * » sans pédale enfoncée" : "« *Ped. » sans pédale enfoncée : écris « Ped. »", p.line, p.col);
+          throw new PrismaError(p.text === PEDAL_UP ? "« * » sans pédale enfoncée" : "« *Ped. » sans pédale enfoncée : écris « Ped. »", p.line, p.col);
         }
         down.end = p.t;
         pedalDown.delete(p.part);
       }
       if (p.text !== PEDAL_UP) {
-        if (pedalDown.has(p.part)) throw new YmnError("« Ped. » alors que la pédale est déjà enfoncée : écris « *Ped. » pour la changer", p.line, p.col);
+        if (pedalDown.has(p.part)) throw new PrismaError("« Ped. » alors que la pédale est déjà enfoncée : écris « *Ped. » pour la changer", p.line, p.col);
         const pedal = { part: p.part, start: p.t, end: -1 };
         pedalDown.set(p.part, pedal);
         pedals.push(pedal);
@@ -606,17 +606,17 @@ export function parseYmn(text: string): Score {
     }
     if (pendingSlurs.length) {
       const o = pendingSlurs[0];
-      throw new YmnError("liaison coupée en fin de système : reprends-la au début du suivant par « ---) »", o.line, o.col);
+      throw new PrismaError("liaison coupée en fin de système : reprends-la au début du suivant par « ---) »", o.line, o.col);
     }
   }
-  if (openSlurs.length) throw new YmnError("liaison jamais refermée : termine-la par « ) »", openSlurs[0].line, openSlurs[0].col);
+  if (openSlurs.length) throw new PrismaError("liaison jamais refermée : termine-la par « ) »", openSlurs[0].line, openSlurs[0].col);
   for (const s of slurs) {
     if (s.end <= s.start) {
-      throw new YmnError("une liaison relie au moins deux notes : « ( » et « ) » dans deux cases différentes", slurAt.get(s)!.line, slurAt.get(s)!.col);
+      throw new PrismaError("une liaison relie au moins deux notes : « ( » et « ) » dans deux cases différentes", slurAt.get(s)!.line, slurAt.get(s)!.col);
     }
   }
   for (const [l, c] of lyricCell) {
-    if (l.extend! <= c.end) throw new YmnError("la prolongation doit dépasser la case de sa syllabe", c.line, c.col);
+    if (l.extend! <= c.end) throw new PrismaError("la prolongation doit dépasser la case de sa syllabe", c.line, c.col);
   }
   // une pédale jamais relâchée tient jusqu'à la fin du morceau
   for (const p of pedalDown.values()) p.end = beats.length * TICKS_PER_BEAT;
@@ -624,7 +624,7 @@ export function parseYmn(text: string): Score {
   // nombre de passages : porté par une mesure qui finit une reprise
   for (const tm of timesMarks) {
     const r = repeats.get(tm.bar);
-    if (!r?.end) throw new YmnError(`« ${tm.times}× » doit être placé dans une mesure qui se termine par « :|| »`, tm.line, tm.col);
+    if (!r?.end) throw new PrismaError(`« ${tm.times}× » doit être placé dans une mesure qui se termine par « :|| »`, tm.line, tm.col);
     if (tm.times !== 2) r.times = tm.times;
   }
 
@@ -632,17 +632,17 @@ export function parseYmn(text: string): Score {
   // à cheval sur deux sections (une reprise reste locale)
   markers.sort((a, b) => a.barIndex - b.barIndex);
   for (const m of markers) {
-    if (markers.find((x) => x.label === m.label) !== m) throw new YmnError(`section « [${m.label}] » posée deux fois`, m.line, m.col);
+    if (markers.find((x) => x.label === m.label) !== m) throw new PrismaError(`section « [${m.label}] » posée deux fois`, m.line, m.col);
   }
   if (markers.length && markers[0].barIndex !== 0) {
-    throw new YmnError(`le morceau commence avant la première section « [${markers[0].label}] » : pose une section sur la première mesure`, markers[0].line, markers[0].col);
+    throw new PrismaError(`le morceau commence avant la première section « [${markers[0].label}] » : pose une section sur la première mesure`, markers[0].line, markers[0].col);
   }
   let repeatStart = 0;
   for (const r of [...repeats.values()].sort((a, b) => a.barIndex - b.barIndex)) {
     if (r.start) repeatStart = r.barIndex;
     if (!r.end) continue;
     const inside = markers.find((m) => m.barIndex > repeatStart && m.barIndex <= r.barIndex);
-    if (inside) throw new YmnError(`la reprise passe le début de la section « [${inside.label}] » : une reprise reste dans sa section`, inside.line, inside.col);
+    if (inside) throw new PrismaError(`la reprise passe le début de la section « [${inside.label}] » : une reprise reste dans sa section`, inside.line, inside.col);
     repeatStart = r.barIndex + 1;
   }
 
@@ -651,8 +651,8 @@ export function parseYmn(text: string): Score {
   const order = meta.order === undefined ? [] : String(meta.order).trim().split(/\s+/).filter(Boolean);
   delete meta.order;
   for (const label of order) {
-    if (!/^[A-Z]$/.test(label)) throw new YmnError(`ordre de jeu : « ${label} » n'est pas une lettre de section (A à Z)`, orderLine);
-    if (!markers.some((m) => m.label === label)) throw new YmnError(`ordre de jeu : aucune section « [${label}] » dans le morceau`, orderLine);
+    if (!/^[A-Z]$/.test(label)) throw new PrismaError(`ordre de jeu : « ${label} » n'est pas une lettre de section (A à Z)`, orderLine);
+    if (!markers.some((m) => m.label === label)) throw new PrismaError(`ordre de jeu : aucune section « [${label}] » dans le morceau`, orderLine);
   }
 
   return {

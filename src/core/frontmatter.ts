@@ -6,7 +6,7 @@ import type { Meta } from "./model.ts";
  */
 export type FrontmatterResult = { meta: Meta; bodyStartLine: number };
 
-export class YmnError extends Error {
+export class PrismaError extends Error {
   line: number;
   column: number;
   constructor(message: string, line: number, column = 1) {
@@ -17,7 +17,7 @@ export class YmnError extends Error {
 }
 
 /**
- * Version du format .ymn. Elle change à chaque modification qui rend un ancien fichier
+ * Version du format .prisma. Elle change à chaque modification qui rend un ancien fichier
  * illisible ; un fichier l'indique par « format: N » dans son frontmatter (sans elle, il est
  * lu comme la version courante).
  */
@@ -36,18 +36,18 @@ export function parseFrontmatter(lines: string[]): FrontmatterResult {
     if (raw.trim() === "---") return { meta, bodyStartLine: i + 1 };
     if (raw.trim() === "" || raw.trim().startsWith("#")) continue;
     const m = raw.match(/^\s*([A-Za-zÀ-ÿ_][\wÀ-ÿ-]*)\s*:\s*(.*)$/);
-    if (!m) throw new YmnError("ligne de frontmatter attendue sous la forme « clé: valeur »", i + 1);
+    if (!m) throw new PrismaError("ligne de frontmatter attendue sous la forme « clé: valeur »", i + 1);
     const key = m[1];
     let value = m[2].trim();
     if (/^(["']).*\1$/.test(value)) value = value.slice(1, -1);
     if (key === "format") {
       const n = Number(value);
-      if (!Number.isInteger(n) || n < 0) throw new YmnError("« format » est le numéro de version du format ymn : un entier, par exemple « format: 1 »", i + 1);
+      if (!Number.isInteger(n) || n < 0) throw new PrismaError("« format » est le numéro de version du format Prisma : un entier, par exemple « format: 1 »", i + 1);
       if (n > FORMAT_VERSION) {
-        throw new YmnError(`ce fichier utilise la version ${n} du format ymn, plus récente que celle de cette application (${FORMAT_VERSION}) : mets l'application à jour`, i + 1);
+        throw new PrismaError(`ce fichier utilise la version ${n} du format Prisma, plus récente que celle de cette application (${FORMAT_VERSION}) : mets l'application à jour`, i + 1);
       }
       if (n < FORMAT_VERSION) {
-        throw new YmnError(`ce fichier utilise l'ancienne version ${n} du format ymn ; cette application lit la version ${FORMAT_VERSION} (voir FORMAT.md)`, i + 1);
+        throw new PrismaError(`ce fichier utilise l'ancienne version ${n} du format Prisma ; cette application lit la version ${FORMAT_VERSION} (voir FORMAT.md)`, i + 1);
       }
       continue; // la version n'est pas une information du morceau : l'écriture la remet toujours
     }
@@ -55,21 +55,21 @@ export function parseFrontmatter(lines: string[]): FrontmatterResult {
       // en temps par minute : le temps est celui de la règle de comptage (la noire pointée d'un 6/8)
       const n = Number(value);
       if (!value || !(n > 0)) {
-        throw new YmnError("« bpm » est un nombre de temps par minute, par exemple « bpm: 78 » ; une indication comme « Andante » se place sur la ligne @ au-dessus de la règle", i + 1);
+        throw new PrismaError("« bpm » est un nombre de temps par minute, par exemple « bpm: 78 » ; une indication comme « Andante » se place sur la ligne @ au-dessus de la règle", i + 1);
       }
       meta.bpm = n;
       continue;
     }
     if (NUMERIC_KEYS.has(key)) {
       const n = Number(value);
-      if (!Number.isInteger(n) || n < 2) throw new YmnError(`« ${key} » doit être un entier ≥ 2`, i + 1);
-      if (key === "division" && n !== 2 && n !== 3) throw new YmnError("« division » vaut 2 (binaire) ou 3 (ternaire)", i + 1);
+      if (!Number.isInteger(n) || n < 2) throw new PrismaError(`« ${key} » doit être un entier ≥ 2`, i + 1);
+      if (key === "division" && n !== 2 && n !== 3) throw new PrismaError("« division » vaut 2 (binaire) ou 3 (ternaire)", i + 1);
       meta[key] = n;
     } else {
       meta[key] = value;
     }
   }
-  throw new YmnError("frontmatter non fermé : il manque la ligne « --- » de fin", lines.length);
+  throw new PrismaError("frontmatter non fermé : il manque la ligne « --- » de fin", lines.length);
 }
 
 const ORDER = ["format", "title", "subtitle", "composer", "bpm", "parts", "source", "order", "division", "cell"];

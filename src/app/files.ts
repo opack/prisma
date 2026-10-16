@@ -14,15 +14,15 @@ const w = (typeof window !== "undefined" ? window : {}) as Picker;
 
 export const canWriteInPlace = typeof w.showOpenFilePicker === "function" && typeof w.showSaveFilePicker === "function";
 
-const YMN: PickerType = { description: "Partition ymn", accept: { "text/plain": [".ymn"] } };
+const PRISMA: PickerType = { description: "Partition Prisma", accept: { "text/plain": [".prisma"] } };
 const XML: PickerType = { description: "MusicXML", accept: { "application/xml": [".musicxml", ".xml"] } };
 
 const isAbort = (e: unknown) => (e as Error)?.name === "AbortError";
 
-/** Ouvre un fichier .ymn ou .musicxml. Renvoie null si l'utilisateur annule. */
+/** Ouvre un fichier .prisma ou .musicxml. Renvoie null si l'utilisateur annule. */
 export async function pickFile(): Promise<{ file: File; handle: FileSystemFileHandle } | null> {
   try {
-    const [handle] = await w.showOpenFilePicker!({ types: [YMN, XML], multiple: false });
+    const [handle] = await w.showOpenFilePicker!({ types: [PRISMA, XML], multiple: false });
     return { file: await handle.getFile(), handle };
   } catch (e) {
     if (isAbort(e)) return null;
@@ -30,10 +30,10 @@ export async function pickFile(): Promise<{ file: File; handle: FileSystemFileHa
   }
 }
 
-/** Demande où enregistrer un nouveau fichier .ymn. Renvoie null si l'utilisateur annule. */
+/** Demande où enregistrer un nouveau fichier .prisma. Renvoie null si l'utilisateur annule. */
 export async function pickSaveTarget(suggestedName: string): Promise<FileSystemFileHandle | null> {
   try {
-    return await w.showSaveFilePicker!({ suggestedName, types: [YMN] });
+    return await w.showSaveFilePicker!({ suggestedName, types: [PRISMA] });
   } catch (e) {
     if (isAbort(e)) return null;
     throw e;
@@ -41,7 +41,7 @@ export async function pickSaveTarget(suggestedName: string): Promise<FileSystemF
 }
 
 /** Formats ouverts par l'application. */
-export const OPENABLE = /\.(ymn|txt|musicxml|xml)$/i;
+export const OPENABLE = /\.(prisma|txt|musicxml|xml)$/i;
 
 /**
  * Fichier déposé sur la fenêtre, avec son accès en écriture quand le navigateur le donne
@@ -61,7 +61,7 @@ export async function droppedFile(data: DataTransfer): Promise<{ file: File; han
 
 /**
  * Le fichier « name » d'un dossier, à créer pour l'enregistrer : un MusicXML de la bibliothèque
- * s'enregistre en .ymn à côté de lui. Un fichier de ce nom existe déjà : on demande avant de
+ * s'enregistre en .prisma à côté de lui. Un fichier de ce nom existe déjà : on demande avant de
  * le remplacer (null si l'utilisateur refuse).
  */
 export async function targetIn(dir: FileSystemDirectoryHandle, name: string): Promise<FileSystemFileHandle | null> {

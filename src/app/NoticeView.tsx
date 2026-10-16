@@ -1,5 +1,5 @@
 /**
- * Notice du pianiste (NOTICE.md), affichée dans l'application : chaque exemple ` ```ymn `
+ * Notice du pianiste (NOTICE.md), affichée dans l'application : chaque exemple ` ```prisma `
  * y est gravé par le vrai moteur de gravure, sous son texte. La notice suit donc toujours
  * la gravure, sans images à régénérer.
  */
@@ -7,7 +7,7 @@ import { Marked } from "marked";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import notice from "../../NOTICE.md?raw";
-import { parseYmn } from "../core/index.ts";
+import { parsePrisma } from "../core/index.ts";
 import { engrave } from "./engrave.ts";
 import { Excerpt } from "./PageView.tsx";
 import { alignOf } from "./options.ts";
@@ -19,7 +19,7 @@ function render(markdown: string) {
   const marked = new Marked({
     renderer: {
       code({ text, lang }) {
-        if (lang !== "ymn") return false;
+        if (lang !== "prisma") return false;
         examples.push(text);
         return `<div class="example" data-example="${examples.length - 1}"></div>`;
       },
@@ -36,7 +36,7 @@ function render(markdown: string) {
 function Example({ text, options }: { text: string; options: RenderOptions }) {
   const result = useMemo(() => {
     try {
-      return { pages: engrave(parseYmn(text), { compact: options.density === "compact", chords: options.chords, align: alignOf(options.notePosition), reminders: options.holdReminders, inlineSections: options.sections === "inline" }) };
+      return { pages: engrave(parsePrisma(text), { compact: options.density === "compact", chords: options.chords, align: alignOf(options.notePosition), reminders: options.holdReminders, inlineSections: options.sections === "inline" }) };
     } catch (e) {
       return { error: (e as Error).message };
     }

@@ -1,4 +1,4 @@
-/** Écriture d'un morceau au format texte .ymn, pour une largeur donnée en caractères. */
+/** Écriture d'un morceau au format texte .prisma, pour une largeur donnée en caractères. */
 import { writeFrontmatter } from "./frontmatter.ts";
 import { layout, noteText } from "./layout.ts";
 import type { Column, Mark, System, SystemRow, Voice } from "./layout.ts";
@@ -186,7 +186,7 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
   ];
 }
 
-/** Ligne des accords, au-dessus de la règle de comptage (voir ymn-parse). */
+/** Ligne des accords, au-dessus de la règle de comptage (voir prisma-parse). */
 const CHORD_LINE = "@c";
 
 /** Largeur de la colonne de gauche : le numéro de mesure le plus long. */
@@ -246,7 +246,7 @@ function cellWidths(score: Score, cell: number, widen: Set<number> = new Set()):
   return (t) => need.get(t) ?? cell;
 }
 
-export function writeYmn(score: Score, opts: WriteOptions = {}): string {
+export function writePrisma(score: Score, opts: WriteOptions = {}): string {
   const cell = Number(score.meta.cell ?? DEFAULT_CELL);
   const prefix = prefixWidth(score);
   // un texte déborde sur les cases suivantes ; s'il bute sur l'indication qui le suit, sa case

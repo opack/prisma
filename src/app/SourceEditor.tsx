@@ -1,5 +1,5 @@
 /**
- * L'éditeur du texte .ymn : les numéros de ligne en marge (celui de la ligne du curseur en
+ * L'éditeur du texte .prisma : les numéros de ligne en marge (celui de la ligne du curseur en
  * évidence, celui d'une erreur en rouge), le texte, puis une barre de statut : la place du
  * curseur dans le texte et dans la musique, et le sens du signe qu'il pointe.
  */
@@ -74,7 +74,7 @@ export function SourceEditor({ value, onChange, textarea, errorLine, noteNames, 
           value={value}
           spellCheck={false}
           wrap="off"
-          aria-label="Source .ymn"
+          aria-label="Source .prisma"
           onChange={(e) => {
             onChange(e.target.value);
             setCaret(e.target.selectionStart);

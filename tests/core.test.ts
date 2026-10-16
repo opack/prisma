@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
-import { FORMAT_VERSION, TICKS_PER_BEAT as T, importMusicXml, layout, parseYmn, writeYmn } from "../src/core/index.ts";
+import { FORMAT_VERSION, TICKS_PER_BEAT as T, importMusicXml, layout, parsePrisma, writePrisma } from "../src/core/index.ts";
 import type { Align, Score } from "../src/core/index.ts";
 import { playOrder, sectionsOf } from "../src/core/musicxml.ts";
 import { chordName, chordNameNotes, chordNotes } from "../src/core/chords.ts";
@@ -10,10 +10,10 @@ const C4 = 60;
 const notesKey = (s: Score) => s.notes.map((n) => `${n.part}:${n.midi}@${n.start}-${n.end}`).join(" ");
 const beatsKey = (s: Score) => s.beats.map((b) => `${b.bar}.${b.label}`).join(" ");
 
-/** L'aller-retour .ymn doit retrouver exactement les mêmes notes et les mêmes temps. */
+/** L'aller-retour .prisma doit retrouver exactement les mêmes notes et les mêmes temps. */
 function roundTrip(score: Score, width = 96) {
-  const text = writeYmn(score, { width });
-  const back = parseYmn(text);
+  const text = writePrisma(score, { width });
+  const back = parsePrisma(text);
   expect(notesKey(back)).toBe(notesKey(score));
   expect(beatsKey(back)).toBe(beatsKey(score));
   return { text, back };
@@ -188,29 +188,29 @@ describe("reprises", () => {
   });
 
   it("lit une reprise écrite à la main, sans les deux points sur les lignes de notes", () => {
-    const s = parseYmn("m1 ||:1  |2  :||1  |2  ||\n0  ||:1  |-   ||5  |   ||\n---\n-1 || 1  |    ||1  |   ||\n");
+    const s = parsePrisma("m1 ||:1  |2  :||1  |2  ||\n0  ||:1  |-   ||5  |   ||\n---\n-1 || 1  |    ||1  |   ||\n");
     expect(s.repeats).toEqual([{ barIndex: 0, start: true, end: true }]);
   });
 
   it("marque la dernière barre du morceau comme barre de fin", () => {
-    const s = parseYmn("m1 |1  ||1  ||1  ||1  ||\n0  |1  ||1  ||1  ||1  ||\n---\n");
+    const s = parsePrisma("m1 |1  ||1  ||1  ||1  ||\n0  |1  ||1  ||1  ||1  ||\n---\n");
     const sys = layout(s, { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 })[0];
     const bars = sys.columns.filter((c) => c.kind === "barSep");
     expect(bars.map((c) => !!(c as { final?: boolean }).final)).toEqual([false, false, false, true]);
   });
 
   it("garde les textes de la ligne @", () => {
-    const s = parseYmn("@   rit.     a tempo\nm1 |1  |2  ||1  ||\n0  |1  |   ||1  ||\n---\n");
+    const s = parsePrisma("@   rit.     a tempo\nm1 |1  |2  ||1  ||\n0  |1  |   ||1  ||\n---\n");
     expect(s.texts.map((t) => t.text)).toEqual(["rit.", "a tempo"]);
-    expect(writeYmn(s)).toMatch(/^@ +rit\. +a tempo$/m);
+    expect(writePrisma(s)).toMatch(/^@ +rit\. +a tempo$/m);
   });
 
   it("refuse une indication qui ne commence pas sur une case", () => {
-    expect(() => parseYmn("@     rit.\nm1 |1  |2  ||\n0  |1  |   ||\n---\n")).toThrow(/doit commencer exactement sur une case/);
+    expect(() => parsePrisma("@     rit.\nm1 |1  |2  ||\n0  |1  |   ||\n---\n")).toThrow(/doit commencer exactement sur une case/);
   });
 
   it("refuse « 3× » hors d'une fin de reprise", () => {
-    expect(() => parseYmn("@   3×\nm1 |1  ||\n0  |1  ||\n---\n")).toThrow(/:\|\|/);
+    expect(() => parsePrisma("@   3×\nm1 |1  ||\n0  |1  ||\n---\n")).toThrow(/:\|\|/);
   });
 });
 
@@ -286,7 +286,7 @@ describe("ordre de jeu du MusicXML", () => {
     expect(s.texts).toEqual([]);
     const { text } = roundTrip(s);
     expect(text).toContain("order: A A B C B D A");
-    expect(parseYmn(text).order).toEqual(s.order);
+    expect(parsePrisma(text).order).toEqual(s.order);
   });
 
   it("ferme à la reprise suivante une 2e case restée ouverte", () => {
@@ -319,25 +319,25 @@ describe("sections", () => {
     `${order ? `---\norder: ${order}\n---\n` : ""}${top}\n${r}\n${notes}\n---\n`;
 
   it("lit les sections et l'ordre de jeu", () => {
-    const s = parseYmn(piece("A B A", at([3, "[A]"], [bar[1] + 1, "[B]"])));
+    const s = parsePrisma(piece("A B A", at([3, "[A]"], [bar[1] + 1, "[B]"])));
     expect(s.markers).toEqual([{ label: "A", barIndex: 0 }, { label: "B", barIndex: 2 }]);
     expect(s.order).toEqual(["A", "B", "A"]);
     expect(s.meta.order).toBeUndefined();
   });
 
   it("commence chaque section sur un nouveau système, et ferme la précédente d'une double barre", () => {
-    const s = parseYmn(piece("A B A", at([3, "[A]"], [bar[1] + 1, "[B]"])));
+    const s = parsePrisma(piece("A B A", at([3, "[A]"], [bar[1] + 1, "[B]"])));
     const systems = layout(s, { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 });
     expect(systems.map((x) => x.section)).toEqual(["A", "B"]);
     expect(systems.map((x) => x.endsSection)).toEqual([true, false]);
     const bars = systems[0].columns.filter((c) => c.kind === "barSep") as { section?: boolean }[];
     expect(bars.map((c) => !!c.section)).toEqual([false, true]);
     // à l'écriture aussi : la section B ouvre le second système
-    expect(writeYmn(s)).toMatch(/\n\n@  \[B\]\nm3 \|/);
+    expect(writePrisma(s)).toMatch(/\n\n@  \[B\]\nm3 \|/);
   });
 
   it("à la suite : une section suit la précédente sur la même ligne, séparée par un blanc", () => {
-    const s = parseYmn(piece("A B A", at([3, "[A]"], [bar[1] + 1, "[B]"])));
+    const s = parsePrisma(piece("A B A", at([3, "[A]"], [bar[1] + 1, "[B]"])));
     const metrics = { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 };
     const [one, ...rest] = layout(s, { ...metrics, sectionSep: 4 });
     expect(rest).toEqual([]);
@@ -347,23 +347,23 @@ describe("sections", () => {
     // la lettre de B contre la barre qui l'ouvre ; 4 de plus que la ligne ordinaire
     const opening = one.columns.findIndex((c) => c.kind === "barSep" && c.spaced);
     expect(one.marks.filter((m) => m.kind === "marker").map((m) => [m.label, m.column])).toEqual([["A", -1], ["B", opening]]);
-    const plain = layout(parseYmn(piece("", "", ruler)), metrics)[0];
+    const plain = layout(parsePrisma(piece("", "", ruler)), metrics)[0];
     expect(one.width - plain.width).toBe(4);
   });
 
   it("refuse un ordre de jeu qui nomme une section absente", () => {
-    expect(() => parseYmn(piece("A C", at([3, "[A]"], [bar[1] + 1, "[B]"])))).toThrow(/aucune section « \[C\] »/);
+    expect(() => parsePrisma(piece("A C", at([3, "[A]"], [bar[1] + 1, "[B]"])))).toThrow(/aucune section « \[C\] »/);
   });
 
   it("refuse un morceau qui commence avant sa première section", () => {
-    expect(() => parseYmn(piece("B", at([bar[1] + 1, "[B]"])))).toThrow(/première mesure/);
+    expect(() => parsePrisma(piece("B", at([bar[1] + 1, "[B]"])))).toThrow(/première mesure/);
   });
 
   it("refuse une reprise à cheval sur deux sections", () => {
     const r = "m1 ||:1  ||1  ||1  :||1  ||";
     const b = [...r.matchAll(/\|\|/g)].map((m) => m.index!);
     const notes = "0  ||:1  ||1  ||1  :||1  ||";
-    expect(() => parseYmn(piece("A B", at([4, "[A]"], [b[1] + 1, "[B]"]), r, notes))).toThrow(/reprise passe le début de la section « \[B\] »/);
+    expect(() => parsePrisma(piece("A B", at([4, "[A]"], [b[1] + 1, "[B]"]), r, notes))).toThrow(/reprise passe le début de la section « \[B\] »/);
   });
 });
 
@@ -371,7 +371,7 @@ describe("erreurs de saisie", () => {
   const base = (body: string) => `m1 |1  |2  ||\n───┼───┼───┼┼\n${body}`;
   const err = (txt: string) => {
     try {
-      parseYmn(txt);
+      parsePrisma(txt);
     } catch (e) {
       return (e as Error).message;
     }
@@ -379,7 +379,7 @@ describe("erreurs de saisie", () => {
   };
 
   it("accepte une seule partie, sans aucun trait", () => {
-    const s = parseYmn("m1 |1  |2  ||\n0  |1  |-  ||\n");
+    const s = parsePrisma("m1 |1  |2  ||\n0  |1  |-  ||\n");
     expect(s.instruments).toEqual([{ parts: 1 }]);
     expect(s.notes).toEqual([{ part: 0, midi: 60, start: 0, end: 2 * T }]);
   });
@@ -396,11 +396,11 @@ describe("erreurs de saisie", () => {
     expect(err(base("   |1  |   ||\n───┼───┼───┼┼"))).toMatch(/indiquer son octave/);
   });
   it("lit les octaves relatives au do central", () => {
-    const s = parseYmn("m1 |1  ||\n+1 |1  ||\n0  |1  ||\n---\n-1 |1  ||\n-2 |1  ||\n");
+    const s = parsePrisma("m1 |1  ||\n+1 |1  ||\n0  |1  ||\n---\n-1 |1  ||\n-2 |1  ||\n");
     expect(s.notes.map((n) => n.midi)).toEqual([72, 60, 48, 36]);
   });
   it("écrit les octaves relatives au do central", () => {
-    const text = writeYmn(parseYmn("m1 |1  ||\n+1 |1  ||\n---\n-1 |1  ||\n"));
+    const text = writePrisma(parsePrisma("m1 |1  ||\n+1 |1  ||\n---\n-1 |1  ||\n"));
     expect(text).toContain("+1 |1  ||");
     expect(text).toContain("-1 |1  ||");
   });
@@ -411,14 +411,14 @@ describe("erreurs de saisie", () => {
     expect(err("m1 |1  ||\n+a |1  ||\n---\n")).toMatch(/octave invalide/);
   });
   it("lit et écrit le frontmatter en anglais", () => {
-    const s = parseYmn("---\ntitle: Essai\ncomposer: Moi\ncell: 3\n---\nm1 |1  ||\n0  |1  ||\n---\n");
+    const s = parsePrisma("---\ntitle: Essai\ncomposer: Moi\ncell: 3\n---\nm1 |1  ||\n0  |1  ||\n---\n");
     expect(s.meta).toMatchObject({ title: "Essai", composer: "Moi", cell: 3 });
-    const text = writeYmn(s);
+    const text = writePrisma(s);
     expect(text).toContain("title: Essai");
     expect(text).toContain("composer: Moi");
   });
   it("accepte une saisie minimale à la main", () => {
-    const s = parseYmn("m1 |1  |2  ||\n0  |5  |-  ||\n---\n-1 |1  |   ||\n");
+    const s = parsePrisma("m1 |1  |2  ||\n0  |5  |-  ||\n---\n-1 |1  |   ||\n");
     expect(notesKey(s)).toBe(`0:64@0-${2 * T} 1:48@0-${T}`);
   });
 });
@@ -437,20 +437,20 @@ describe("nuances et soufflets", () => {
   ].join("\n");
 
   it("lit les lignes @ sous chaque partie", () => {
-    const s = parseYmn(piece);
+    const s = parsePrisma(piece);
     expect(expr(s)).toBe("0:dynamic:p@0 1:dynamic:mf@0");
     // le soufflet finit avec la case qui contient son dernier caractère
     expect(pins(s)).toBe("0:<1-3 1:>2-3");
   });
 
   it("écrit nuances et soufflets sous leur partie, et les relit à l'identique", () => {
-    const s = parseYmn(piece);
-    const text = writeYmn(s);
+    const s = parsePrisma(piece);
+    const text = writePrisma(s);
     const lines = text.split("\n");
     const sep = lines.findIndex((l, i) => i > 2 && /^─/.test(l) && lines[i - 1].startsWith("@"));
     expect(lines[sep - 1]).toMatch(/^@ +p +<-+$/);
     expect(lines.filter((l) => l.startsWith("@")).pop()).toMatch(/^@ +mf +>-+$/);
-    const back = parseYmn(text);
+    const back = parsePrisma(text);
     expect(expr(back)).toBe(expr(s));
     expect(pins(back)).toBe(pins(s));
   });
@@ -458,11 +458,11 @@ describe("nuances et soufflets", () => {
   it("garde un soufflet qui passe d'un système au suivant", () => {
     const bars = Array.from({ length: 8 }, () => "1  |2  |3  ||").join("");
     const notes = Array.from({ length: 8 }, () => "1  |   |   ||").join("");
-    const s = parseYmn(`m1 |${bars}\n0  |${notes}\n@   <\n---\n`);
+    const s = parsePrisma(`m1 |${bars}\n0  |${notes}\n@   <\n---\n`);
     s.hairpins[0].end = 20 * T; // de la mesure 1 au milieu de la mesure 7
-    const text = writeYmn(s, { width: 40 });
+    const text = writePrisma(s, { width: 40 });
     expect(text.split("\n").filter((l) => /^@ +<-*$/.test(l)).length).toBeGreaterThan(1);
-    const back = parseYmn(text);
+    const back = parsePrisma(text);
     expect(pins(back)).toBe("0:<0-20");
     // un soufflet coupé reste ouvert au point de coupure
     const spans = layout(back, { width: 40, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 }).flatMap((x) => x.parts[0].voice.hairpins);
@@ -472,16 +472,16 @@ describe("nuances et soufflets", () => {
   });
 
   it("garde « più f » comme un seul texte", () => {
-    const s = parseYmn("m1 |1  |2  ||\n0  |1  |   ||\n@   più f\n---\n");
+    const s = parsePrisma("m1 |1  |2  ||\n0  |1  |   ||\n@   più f\n---\n");
     expect(expr(s)).toBe("0:text:più f@0");
   });
 
   it("refuse une ligne de notes sous la ligne @ de sa partie", () => {
-    expect(() => parseYmn("m1 |1  ||\n0  |1  ||\n@   p\n   |3  ||\n---\n")).toThrow(/sous une ligne @/);
+    expect(() => parsePrisma("m1 |1  ||\n0  |1  ||\n@   p\n   |3  ||\n---\n")).toThrow(/sous une ligne @/);
   });
 
   it("refuse une nuance qui ne commence pas sur une case", () => {
-    expect(() => parseYmn("m1 |1  |2  ||\n0  |1  |   ||\n@    p\n---\n")).toThrow(/doit commencer exactement sur une case/);
+    expect(() => parsePrisma("m1 |1  |2  ||\n0  |1  |   ||\n@    p\n---\n")).toThrow(/doit commencer exactement sur une case/);
   });
 
   it("importe nuances, soufflets et textes du MusicXML", () => {
@@ -504,7 +504,7 @@ describe("nuances et soufflets", () => {
     expect(expr(s)).toBe("0:dynamic:p@0 1:text:dolce@0 0:dynamic:f@3");
     expect(pins(s)).toBe("0:<1-3");
     roundTrip(s);
-    expect(expr(parseYmn(writeYmn(s)))).toBe("0:dynamic:p@0 1:text:dolce@0 0:dynamic:f@3");
+    expect(expr(parsePrisma(writePrisma(s)))).toBe("0:dynamic:p@0 1:text:dolce@0 0:dynamic:f@3");
   });
 });
 
@@ -520,32 +520,32 @@ describe("pédale", () => {
   const body = (pedal: string) => [ruler, "0  |1  |   |   ||3  |   |   ||", "---", "-1 |1  |-  |-  ||8  |-  |-  ||", pedal, ""].join("\n");
 
   it("lit Ped., *Ped. et * sous la main gauche", () => {
-    const s = parseYmn(body(at([4, "Ped."], [17, "*Ped."], [25, "*"])));
+    const s = parsePrisma(body(at([4, "Ped."], [17, "*Ped."], [25, "*"])));
     expect(pk(s)).toBe("0-3 3-5");
   });
 
   it("écrit la pédale sur sa propre ligne, tout en bas, et la relit à l'identique", () => {
-    const s = parseYmn(body(at([4, "Ped."], [17, "*Ped."], [25, "*"])));
-    const text = writeYmn(s);
+    const s = parsePrisma(body(at([4, "Ped."], [17, "*Ped."], [25, "*"])));
+    const text = writePrisma(s);
     expect(text.trimEnd().split("\n").pop()).toMatch(/^@ +Ped\. +\*Ped\. +\*$/);
-    expect(pk(parseYmn(text))).toBe(pk(s));
+    expect(pk(parsePrisma(text))).toBe(pk(s));
   });
 
   it("tient la pédale d'un système au suivant sans la réécrire", () => {
     const bars = Array.from({ length: 8 }, () => "1  |2  |3  ||").join("");
     const notes = Array.from({ length: 8 }, () => "1  |   |   ||").join("");
-    const s = parseYmn(`m1 |${bars}\n---\n-1 |${notes}\n${at([4, "Ped."])}\n`);
+    const s = parsePrisma(`m1 |${bars}\n---\n-1 |${notes}\n${at([4, "Ped."])}\n`);
     expect(pk(s)).toBe("0-24"); // jamais relâchée : jusqu'à la fin du morceau
-    const text = writeYmn(s, { width: 40 });
+    const text = writePrisma(s, { width: 40 });
     expect(text.match(/Ped\./g)?.length).toBe(1);
-    expect(pk(parseYmn(text))).toBe("0-24");
+    expect(pk(parsePrisma(text))).toBe("0-24");
   });
 
   it("refuse les signes de pédale incohérents", () => {
-    expect(() => parseYmn(body(at([4, "*"])))).toThrow(/sans pédale enfoncée/);
-    expect(() => parseYmn(body(at([4, "Ped."], [12, "Ped."])))).toThrow(/déjà enfoncée/);
+    expect(() => parsePrisma(body(at([4, "*"])))).toThrow(/sans pédale enfoncée/);
+    expect(() => parsePrisma(body(at([4, "Ped."], [12, "Ped."])))).toThrow(/déjà enfoncée/);
     const rh = [ruler, "0  |1  |   |   ||3  |   |   ||", at([4, "Ped."]), "---", "-1 |1  |   |   ||8  |   |   ||", ""].join("\n");
-    expect(() => parseYmn(rh)).toThrow(/sous la dernière partie de son instrument/);
+    expect(() => parsePrisma(rh)).toThrow(/sous la dernière partie de son instrument/);
   });
 
   it("importe la pédale du MusicXML", () => {
@@ -566,7 +566,7 @@ describe("pédale", () => {
     ]);
     const s = importMusicXml(xml);
     expect(pk(s)).toBe("0-2 2-3");
-    expect(pk(parseYmn(writeYmn(s)))).toBe("0-2 2-3");
+    expect(pk(parsePrisma(writePrisma(s)))).toBe("0-2 2-3");
   });
 });
 
@@ -574,23 +574,23 @@ describe("cases de largeur libre", () => {
   const expr = (s: Score) => s.expressions.map((e) => `${e.part}:${e.kind}:${e.text}@${e.t / T}`).join(" ");
 
   it("lit une case élargie : une case va d'une étiquette à la suivante", () => {
-    const s = parseYmn("m1 |1      *  |2  ||\n0  |1      3  |5  ||\n---\n");
+    const s = parsePrisma("m1 |1      *  |2  ||\n0  |1      3  |5  ||\n---\n");
     expect(notesKey(s)).toBe(`0:60@0-${T / 2} 0:62@${T / 2}-${T} 0:64@${T}-${2 * T}`);
   });
 
   it("nomme « , » les cases plus fines que « . »", () => {
-    const s = parseYmn("m1 |1  ,  .  ,  *  ,  .  ,  ||\n0  |1  2  3  4  5  6  7  8  ||\n---\n");
+    const s = parsePrisma("m1 |1  ,  .  ,  *  ,  .  ,  ||\n0  |1  2  3  4  5  6  7  8  ||\n---\n");
     expect(s.notes.length).toBe(8);
-    expect(writeYmn(s)).toContain("|1  ,  .  ,  *  ,  .  ,  ||");
+    expect(writePrisma(s)).toContain("|1  ,  .  ,  *  ,  .  ,  ||");
   });
 
   it("élargit la case d'une indication trop longue, plutôt que d'empiler les lignes @", () => {
-    const s = parseYmn("m1 |1  *  |2  *  ||\n0  |1  3  |5  7  ||\n@   (mp)\n---\n");
+    const s = parsePrisma("m1 |1  *  |2  *  ||\n0  |1  3  |5  7  ||\n@   (mp)\n---\n");
     s.expressions.push({ part: 0, t: T / 2, text: "dolce", kind: "text" }, { part: 0, t: T, text: "cresc.", kind: "text" });
-    const text = writeYmn(s);
+    const text = writePrisma(s);
     expect(text.split("\n").filter((l) => l.startsWith("@")).length).toBe(1);
     expect(text).toMatch(/^@ +\(mp\) +dolce +cresc\.$/m);
-    expect(expr(parseYmn(text))).toBe("0:dynamic:(mp)@0 0:text:dolce@0.5 0:text:cresc.@1");
+    expect(expr(parsePrisma(text))).toBe("0:dynamic:(mp)@0 0:text:dolce@0.5 0:text:cresc.@1");
   });
 
   it("réunit une nuance et ses parenthèses écrites à part dans le MusicXML", () => {
@@ -601,10 +601,10 @@ describe("cases de largeur libre", () => {
   });
 
   it("garde « Ped. simile » comme un seul texte", () => {
-    const s = parseYmn("m1 |1  |2  ||\n0  |1  |   ||\n---\n-1 |1  |   ||\n@   Ped. simile\n");
+    const s = parsePrisma("m1 |1  |2  ||\n0  |1  |   ||\n---\n-1 |1  |   ||\n@   Ped. simile\n");
     expect(s.pedalTexts.map((e) => e.text)).toEqual(["Ped. simile"]);
     expect(s.pedals).toEqual([]);
-    expect(parseYmn(writeYmn(s)).pedalTexts.map((e) => e.text)).toEqual(["Ped. simile"]);
+    expect(parsePrisma(writePrisma(s)).pedalTexts.map((e) => e.text)).toEqual(["Ped. simile"]);
   });
 
   it("cale un septolet sur 8 cases plutôt que sur 48", () => {
@@ -625,18 +625,18 @@ describe("cases de largeur libre", () => {
   });
 
   it("écrit un soufflet juste après la nuance de la même case", () => {
-    const s = parseYmn("m1 |1  |2  |3  ||\n0  |1  |3  |5  ||\n@   p <-------\n---\n");
+    const s = parsePrisma("m1 |1  |2  |3  ||\n0  |1  |3  |5  ||\n@   p <-------\n---\n");
     expect(s.hairpins).toEqual([{ part: 0, kind: "<", start: 0, end: 3 * T }]);
-    const text = writeYmn(s);
+    const text = writePrisma(s);
     expect(text.split("\n").filter((l) => l.startsWith("@")).length).toBe(1);
     expect(text).toMatch(/^@ +p <-+$/m);
-    expect(parseYmn(text).hairpins).toEqual(s.hairpins);
+    expect(parsePrisma(text).hairpins).toEqual(s.hairpins);
   });
 });
 
 describe("point d'orgue", () => {
   it("lit « ^ » sur la ligne @ du haut, sans le coller à un texte voisin", () => {
-    const s = parseYmn("@   dolce ^\nm1 |1    |2    |3    |4    ||\n0  |1    |     |     |5    ||\n---\n");
+    const s = parsePrisma("@   dolce ^\nm1 |1    |2    |3    |4    ||\n0  |1    |     |     |5    ||\n---\n");
     expect(s.fermatas).toEqual([T]);
     expect(s.texts).toEqual([{ t: 0, text: "dolce" }]);
   });
@@ -689,23 +689,23 @@ describe("petites notes", () => {
   ].join("\n");
 
   it("lit les petites notes de gauche à droite dans la case, chacune dans son octave", () => {
-    const s = parseYmn(piece);
+    const s = parsePrisma(piece);
     expect(gk(s)).toBe("0:74@0#0 0:66@0#1 0:68@0#2 0:69@2#0 0:71@2#1 1:52@2#0 1:52@2#1");
     // les petites notes ne comptent pas dans le temps
     expect(notesKey(s)).toBe("0:64@0-5760 1:48@0-2880 1:55@2880-5760 0:66@5760-8640 1:52@5760-8640 0:60@8640-11520 1:48@8640-11520");
   });
 
   it("joue ensemble deux petites notes alignées", () => {
-    const s = parseYmn("m1 |1     |2  ||\n+1 |3'    |   ||\n0  |7'5   |   ||\n---\n");
+    const s = parsePrisma("m1 |1     |2  ||\n+1 |3'    |   ||\n0  |7'5   |   ||\n---\n");
     expect(gk(s)).toBe("0:74@0#0 0:66@0#0");
   });
 
   it("refuse une petite note placée après la note de sa case", () => {
-    expect(() => parseYmn("m1 |1     |2  ||\n0  |5 3'  |   ||\n---\n")).toThrow(/avant la note de sa case/);
+    expect(() => parsePrisma("m1 |1     |2  ||\n0  |5 3'  |   ||\n---\n")).toThrow(/avant la note de sa case/);
   });
 
   it("garde les petites notes à l'aller-retour, en alignant les notes de la case", () => {
-    const s = parseYmn(piece);
+    const s = parsePrisma(piece);
     const { text, back } = roundTrip(s);
     expect(gk(back)).toBe(gk(s));
     expect(text).toContain("|3'      ");
@@ -739,16 +739,16 @@ describe("consignes de pédale", () => {
   const piece = (rh: string, lh: string) => [ruler, "0  |1  |   |   ||3  |   |   ||", rh, "---", "-1 |1  |-  |-  ||8  |-  |-  ||", lh, ""].join("\n");
 
   it("lit « Ped. simile » comme une consigne de pédale, et l'écrit sur la ligne de pédale", () => {
-    const s = parseYmn(piece("", "@   Ped.         *   Ped. simile").replace("\n\n---", "\n---"));
+    const s = parsePrisma(piece("", "@   Ped.         *   Ped. simile").replace("\n\n---", "\n---"));
     expect(s.pedalTexts).toEqual([{ part: 1, t: 4 * T, text: "Ped. simile" }]);
     expect(s.expressions).toEqual([]);
-    const text = writeYmn(s);
+    const text = writePrisma(s);
     expect(text.trimEnd().split("\n").pop()).toMatch(/^@ +Ped\. +\* +Ped\. simile$/);
-    expect(parseYmn(text).pedalTexts).toEqual(s.pedalTexts);
+    expect(parsePrisma(text).pedalTexts).toEqual(s.pedalTexts);
   });
 
   it("refuse une consigne de pédale sous la main droite", () => {
-    expect(() => parseYmn(piece("@   Ped. simile", ""))).toThrow(/sous la dernière partie de son instrument/);
+    expect(() => parsePrisma(piece("@   Ped. simile", ""))).toThrow(/sous la dernière partie de son instrument/);
   });
 
   it("donne son signe à une nuance écrite en toutes lettres, et garde le texte", () => {
@@ -774,7 +774,7 @@ describe("ornements", () => {
   const ruler = "m1 |1    |2    |3    |4    ||";
 
   it("lit une trille « 5~7 » : la note et sa voisine la plus proche", () => {
-    const s = parseYmn([ruler, "0  |5~7  |-    |12~1 |-    ||", "---", ""].join("\n"));
+    const s = parsePrisma([ruler, "0  |5~7  |-    |12~1 |-    ||", "---", ""].join("\n"));
     expect(tk(s)).toBe("64~66 71~72");
     expect(notesKey(s)).toBe(`0:64@0-${2 * T} 0:71@${2 * T}-${4 * T}`);
     const { text, back } = roundTrip(s);
@@ -783,12 +783,12 @@ describe("ornements", () => {
   });
 
   it("refuse une trille sur une tenue ou sans voisine", () => {
-    expect(() => parseYmn([ruler, "0  |5    |-5~7 |     |     ||", "---", ""].join("\n"))).toThrow(/case invalide/);
-    expect(() => parseYmn([ruler, "0  |5~5  |     |     |     ||", "---", ""].join("\n"))).toThrow(/autre note/);
+    expect(() => parsePrisma([ruler, "0  |5    |-5~7 |     |     ||", "---", ""].join("\n"))).toThrow(/case invalide/);
+    expect(() => parsePrisma([ruler, "0  |5~5  |     |     |     ||", "---", ""].join("\n"))).toThrow(/autre note/);
   });
 
   it("lit les arpèges : d'une partie sur sa ligne @, de toutes sur celle du haut", () => {
-    const s = parseYmn(
+    const s = parsePrisma(
       ["@         \\", ruler, "0  |5    |5    |     |     ||", "   |1    |1    |     |     ||", "@   /", "---", "-1 |1    |1    |     |     ||", ""].join("\n"),
     );
     expect(s.arpeggios).toEqual([{ t: 0, part: 0 }, { t: T, down: true }]);
@@ -798,7 +798,7 @@ describe("ornements", () => {
   });
 
   it("refuse deux arpèges sur un même accord", () => {
-    expect(() => parseYmn(["@   /", ruler, "0  |5    |     |     |     ||", "@   /", "---", ""].join("\n"))).toThrow(/un seul arpège/);
+    expect(() => parsePrisma(["@   /", ruler, "0  |5    |     |     |     ||", "@   /", "---", ""].join("\n"))).toThrow(/un seul arpège/);
   });
 
   it("importe trilles, mordants et gruppettos avec les voisines de la gamme", () => {
@@ -849,30 +849,30 @@ describe("liaisons d'expression", () => {
   const piece = (slurLine: string) => [ruler, rh, slurLine, "---", ""].join("\n");
 
   it("lit une liaison de la case de sa première note à celle de sa dernière", () => {
-    const s = parseYmn(piece("@   (-------)   (-------------)"));
+    const s = parsePrisma(piece("@   (-------)   (-------------)"));
     expect(sk(s)).toBe("0:0-2 0:3-6");
     expect(s.expressions).toEqual([]);
   });
 
   it("garde les liaisons imbriquées, coupées et reprises à l'aller-retour", () => {
-    const s = parseYmn(piece("@   (-------------------------)\n@       (---)        (---)"));
+    const s = parsePrisma(piece("@   (-------------------------)\n@       (---)        (---)"));
     expect(sk(s)).toBe("0:0-6 0:1-2 0:4-5");
     // un système par mesure : la grande liaison est coupée puis reprise
-    const text = writeYmn(s, { width: 24 });
+    const text = writePrisma(s, { width: 24 });
     expect(text).toMatch(/^@ +\(-+$/m);
     expect(text).toMatch(/^@ +-+\)/m);
-    expect(sk(parseYmn(text))).toBe(sk(s));
+    expect(sk(parsePrisma(text))).toBe(sk(s));
   });
 
   it("range les liaisons imbriquées par étages, la plus courte au plus près des notes", () => {
-    const s = parseYmn(piece("@   (-------------------------)\n@       (---)        (---)"));
+    const s = parsePrisma(piece("@   (-------------------------)\n@       (---)        (---)"));
     const v = layout(s, { width: 999, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 })[0].parts[0].voice;
     expect(v.slurs.map((x) => `${x.fromAnchor}-${x.toAnchor}:${x.level}`).sort()).toEqual(["0-6:1", "1-2:0", "4-5:0"]);
   });
 
   it("refuse une liaison jamais refermée, ou reprise sans avoir été ouverte", () => {
-    expect(() => parseYmn(piece("@   (-----"))).toThrow(/jamais refermée/);
-    expect(() => parseYmn(piece("@   ------)"))).toThrow(/sans liaison ouverte/);
+    expect(() => parsePrisma(piece("@   (-----"))).toThrow(/jamais refermée/);
+    expect(() => parsePrisma(piece("@   ------)"))).toThrow(/sans liaison ouverte/);
   });
 
   it("importe les liaisons du MusicXML par numéro, même d'une voix à l'autre, sans les prolongations", () => {
@@ -902,9 +902,9 @@ describe("sous-titre", () => {
   const withHead = (head: string) => musicXml(one).replace("<part-list>", head + "<part-list>");
 
   it("lit et écrit le sous-titre du frontmatter, juste après le titre", () => {
-    const s = parseYmn("---\ncomposer: Chopin\nsubtitle: Op. 9 n° 2\ntitle: Nocturne\n---\nm1 |1  ||\n0  |1  ||\n---\n");
+    const s = parsePrisma("---\ncomposer: Chopin\nsubtitle: Op. 9 n° 2\ntitle: Nocturne\n---\nm1 |1  ||\n0  |1  ||\n---\n");
     expect(s.meta.subtitle).toBe("Op. 9 n° 2");
-    expect(writeYmn(s).split("\n").slice(0, 6)).toEqual(["---", "format: 1", "title: Nocturne", "subtitle: Op. 9 n° 2", "composer: Chopin", "---"]);
+    expect(writePrisma(s).split("\n").slice(0, 6)).toEqual(["---", "format: 1", "title: Nocturne", "subtitle: Op. 9 n° 2", "composer: Chopin", "---"]);
   });
 
   it("importe le sous-titre des textes de page, en recollant ses morceaux", () => {
@@ -929,7 +929,7 @@ describe("doigtés", () => {
   const ruler = "m1 |1      |2      |3  |4  ||";
 
   it("lit un doigté « 5_3 », seul ou avec une trille, et le garde à l'aller-retour", () => {
-    const s = parseYmn([ruler, "0  |5_1    |7~9_3  |8  |   ||", "   |1_5    |       |   |   ||", "---", ""].join("\n"));
+    const s = parsePrisma([ruler, "0  |5_1    |7~9_3  |8  |   ||", "   |1_5    |       |   |   ||", "---", ""].join("\n"));
     expect(fk(s)).toBe("64_1 60_5 66_3");
     expect(s.notes.find((n) => n.midi === 66)!.trill).toBe(68);
     const { text, back } = roundTrip(s);
@@ -938,8 +938,8 @@ describe("doigtés", () => {
   });
 
   it("refuse un doigt hors de 1 à 5, ou posé sur une tenue", () => {
-    expect(() => parseYmn([ruler, "0  |5_6    |       |   |   ||", "---", ""].join("\n"))).toThrow(/doigt de 1 à 5/);
-    expect(() => parseYmn([ruler, "0  |5      |-_2    |   |   ||", "---", ""].join("\n"))).toThrow(/case invalide/);
+    expect(() => parsePrisma([ruler, "0  |5_6    |       |   |   ||", "---", ""].join("\n"))).toThrow(/doigt de 1 à 5/);
+    expect(() => parsePrisma([ruler, "0  |5      |-_2    |   |   ||", "---", ""].join("\n"))).toThrow(/case invalide/);
   });
 
   it("importe les doigtés du MusicXML, le premier doigt d'une substitution", () => {
@@ -954,19 +954,19 @@ describe("version du format", () => {
   const withFormat = (v: string) => `---\nformat: ${v}\n---\n${body}`;
 
   it("écrit toujours la version du format en tête, et relit le fichier", () => {
-    const text = writeYmn(parseYmn(body));
+    const text = writePrisma(parsePrisma(body));
     expect(text.split("\n").slice(0, 3)).toEqual(["---", `format: ${FORMAT_VERSION}`, "---"]);
-    expect(parseYmn(text).meta.format).toBeUndefined();
+    expect(parsePrisma(text).meta.format).toBeUndefined();
   });
 
   it("lit un fichier sans version comme la version courante", () => {
-    expect(parseYmn(body).notes).toHaveLength(1);
+    expect(parsePrisma(body).notes).toHaveLength(1);
   });
 
   it("refuse une version plus récente ou plus ancienne, en le disant", () => {
-    expect(() => parseYmn(withFormat(String(FORMAT_VERSION + 1)))).toThrow(/plus récente/);
-    expect(() => parseYmn(withFormat(String(FORMAT_VERSION - 1)))).toThrow(/ancienne version/);
-    expect(() => parseYmn(withFormat("un"))).toThrow(/numéro de version/);
+    expect(() => parsePrisma(withFormat(String(FORMAT_VERSION + 1)))).toThrow(/plus récente/);
+    expect(() => parsePrisma(withFormat(String(FORMAT_VERSION - 1)))).toThrow(/ancienne version/);
+    expect(() => parsePrisma(withFormat("un"))).toThrow(/numéro de version/);
   });
 });
 
@@ -996,8 +996,8 @@ describe("accords", () => {
 
   const piece = (chords: string) => [chords, "m1      |1  |2  |3  |4  ||", "0       |1  |-  |5  |-  ||", "---", ""].join("\n");
 
-  it("lit la ligne @c, en nom anglais ou en notes ymn, et l'écrit au-dessus de la règle", () => {
-    const s = parseYmn(piece("@c       C       10;1;5"));
+  it("lit la ligne @c, en nom anglais ou en notes Prisma, et l'écrit au-dessus de la règle", () => {
+    const s = parsePrisma(piece("@c       C       10;1;5"));
     expect(s.chords).toEqual([{ t: 0, text: "C" }, { t: 2 * T, text: "10;1;5" }]);
     const { text, back } = roundTrip(s);
     expect(back.chords).toEqual(s.chords);
@@ -1006,15 +1006,15 @@ describe("accords", () => {
   });
 
   it("tient dans la colonne de gauche la plus étroite", () => {
-    const s = parseYmn(piece("@c       Am"));
-    expect(writeYmn(s)).toMatch(/^@c  Am$/m);
-    expect(writeYmn(s)).toMatch(/^m1 \|1/m);
+    const s = parsePrisma(piece("@c       Am"));
+    expect(writePrisma(s)).toMatch(/^@c  Am$/m);
+    expect(writePrisma(s)).toMatch(/^m1 \|1/m);
   });
 
   it("refuse un accord inconnu, mal placé ou sous les notes", () => {
-    expect(() => parseYmn(piece("@c       Hm"))).toThrow(/accord inconnu/);
-    expect(() => parseYmn(piece("@c        C"))).toThrow(/exactement sur une case/);
-    expect(() => parseYmn(["m1 |1  ||", "0  |1  ||", "@c  C", "---", ""].join("\n"))).toThrow(/au-dessus de la règle/);
+    expect(() => parsePrisma(piece("@c       Hm"))).toThrow(/accord inconnu/);
+    expect(() => parsePrisma(piece("@c        C"))).toThrow(/exactement sur une case/);
+    expect(() => parsePrisma(["m1 |1  ||", "0  |1  ||", "@c  C", "---", ""].join("\n"))).toThrow(/au-dessus de la règle/);
   });
 
   it("importe les accords du MusicXML (<harmony>), basse comprise", () => {
@@ -1069,7 +1069,7 @@ describe("paroles", () => {
   ].join("\n");
 
   it("lit une syllabe par case, le trait d'union, la prolongation et les couplets", () => {
-    const s = parseYmn(piece);
+    const s = parsePrisma(piece);
     expect(s.lyrics.filter((l) => l.verse === 1)).toEqual([
       { part: 0, verse: 1, t: 0, text: "A", hyphen: true },
       { part: 0, verse: 1, t: T, text: "men", extend: 4 * T },
@@ -1080,34 +1080,34 @@ describe("paroles", () => {
   });
 
   it("réécrit les paroles telles quelles", () => {
-    const written = writeYmn(parseYmn(piece)).split("\n");
+    const written = writePrisma(parsePrisma(piece)).split("\n");
     for (const l of piece.split("\n").slice(0, 7).filter((x) => x !== "---")) expect(written).toContain(l);
   });
 
   it("prolonge une syllabe d'un système au suivant", () => {
-    const s = parseYmn(piece);
-    const text = writeYmn(s, { width: 26 });
+    const s = parsePrisma(piece);
+    const text = writePrisma(s, { width: 26 });
     expect(text.match(/^@l  A-  men -------$/gm)).toHaveLength(2);
-    expect(parseYmn(text).lyrics).toEqual(s.lyrics);
+    expect(parsePrisma(text).lyrics).toEqual(s.lyrics);
     // une syllabe tenue jusque dans le système suivant y reprend par « --- » en tête
-    const long = parseYmn(["m1 |1  |2  ||1  |2  ||", "0  |1  |3  ||5  |-  ||", "@l  oh ------------", "---", "-1 |   |   ||   |   ||", ""].join("\n"));
+    const long = parsePrisma(["m1 |1  |2  ||1  |2  ||", "0  |1  |3  ||5  |-  ||", "@l  oh ------------", "---", "-1 |   |   ||   |   ||", ""].join("\n"));
     expect(long.lyrics).toEqual([{ part: 0, verse: 1, t: 0, text: "oh", extend: 4 * T }]);
-    const split = writeYmn(long, { width: 14 });
+    const split = writePrisma(long, { width: 14 });
     expect(split).toMatch(/^@l  ---/m);
-    expect(parseYmn(split).lyrics).toEqual(long.lyrics);
+    expect(parsePrisma(split).lyrics).toEqual(long.lyrics);
     // syllabe sur la dernière case d'un système, prolongée au suivant
-    const late = parseYmn(["m1 |1  |2  ||1  |2  ||", "0  |1  |3  ||5  |-  ||", "@l      oh --------", "---", "-1 |   |   ||   |   ||", ""].join("\n"));
+    const late = parsePrisma(["m1 |1  |2  ||1  |2  ||", "0  |1  |3  ||5  |-  ||", "@l      oh --------", "---", "-1 |   |   ||   |   ||", ""].join("\n"));
     expect(late.lyrics).toEqual([{ part: 0, verse: 1, t: T, text: "oh", extend: 4 * T }]);
-    expect(parseYmn(writeYmn(late, { width: 14 })).lyrics).toEqual(late.lyrics);
+    expect(parsePrisma(writePrisma(late, { width: 14 })).lyrics).toEqual(late.lyrics);
   });
 
   it("refuse des paroles mal placées", () => {
     const one = (l: string) => ["m1 |1  |2  |3  ||", "0  |1  |3  |5  ||", l, "---", "-1 |   |   |   ||", ""].join("\n");
-    expect(() => parseYmn(one("@l   la"))).toThrow(/exactement sur une case/);
-    expect(() => parseYmn(one("@l  ---"))).toThrow(/écris d'abord la syllabe/);
-    expect(() => parseYmn(one("@l  la- --"))).toThrow(/ne se prolonge pas/);
-    expect(() => parseYmn(one("@l  la -"))).toThrow(/dépasser la case/);
-    expect(() => parseYmn(["@l  la", "m1 |1  ||", "0  |1  ||", "---", ""].join("\n"))).toThrow(/sous les lignes de leur partie/);
+    expect(() => parsePrisma(one("@l   la"))).toThrow(/exactement sur une case/);
+    expect(() => parsePrisma(one("@l  ---"))).toThrow(/écris d'abord la syllabe/);
+    expect(() => parsePrisma(one("@l  la- --"))).toThrow(/ne se prolonge pas/);
+    expect(() => parsePrisma(one("@l  la -"))).toThrow(/dépasser la case/);
+    expect(() => parsePrisma(["@l  la", "m1 |1  ||", "0  |1  ||", "---", ""].join("\n"))).toThrow(/sous les lignes de leur partie/);
   });
 
   it("importe les paroles du MusicXML : syllabes, couplets, mélismes", () => {
@@ -1134,13 +1134,13 @@ describe("paroles", () => {
       { part: 0, verse: 2, t: T, text: "la" },
       { part: 0, verse: 1, t: 5 * T, text: "oui" },
     ]);
-    expect(parseYmn(writeYmn(s)).lyrics).toEqual(s.lyrics);
+    expect(parsePrisma(writePrisma(s)).lyrics).toEqual(s.lyrics);
   });
 });
 
 describe("notes alignées", () => {
   const metrics = { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 };
-  const rows = (text: string, align?: Align) => layout(parseYmn(text), { ...metrics, align })[0].parts[0].rows.map((r) => r.cells);
+  const rows = (text: string, align?: Align) => layout(parsePrisma(text), { ...metrics, align })[0].parts[0].rows.map((r) => r.cells);
   const piece = ["m1 |1  |2  |3  |4  ||", "0  |8  |   |8  |10 ||", "   |5  |5  |5  |5  ||", "   |1  |1  |   |   ||", "---", "-1 |1  |-  |-  |-  ||", ""].join("\n");
 
   it("range par défaut chaque accord depuis le haut du couloir", () => {
@@ -1159,8 +1159,8 @@ describe("notes alignées", () => {
     ]);
   });
 
-  it("ne touche pas au texte .ymn", () => {
-    expect(writeYmn(parseYmn(piece))).toContain("0  |8  |5  |8  |10 ||");
+  it("ne touche pas au texte .prisma", () => {
+    expect(writePrisma(parsePrisma(piece))).toContain("0  |8  |5  |8  |10 ||");
   });
 
   it("ajoute une ligne quand des chaînes se croisent, et seulement alors", () => {
@@ -1196,13 +1196,13 @@ describe("notes alignées", () => {
 describe("bpm", () => {
   const body = "m1 |1  ||\n0  |1  ||\n---\n-1 |   ||\n";
   it("se lit en temps par minute, et se réécrit tel quel", () => {
-    const s = parseYmn(`---\nbpm: 78\n---\n${body}`);
+    const s = parsePrisma(`---\nbpm: 78\n---\n${body}`);
     expect(s.meta.bpm).toBe(78);
-    expect(writeYmn(s)).toMatch(/^bpm: 78$/m);
+    expect(writePrisma(s)).toMatch(/^bpm: 78$/m);
   });
 
   it("refuse un tempo en mots", () => {
-    expect(() => parseYmn(`---\nbpm: Andante\n---\n${body}`)).toThrow(/temps par minute/);
+    expect(() => parsePrisma(`---\nbpm: Andante\n---\n${body}`)).toThrow(/temps par minute/);
   });
 
   it("importe le tempo du MusicXML, converti en temps de la règle (noire pointée en 6/8)", () => {
@@ -1233,7 +1233,7 @@ describe("parties et instruments", () => {
   const swap = (from: string, to: string) => song.replace(from, to);
 
   it("lit les parties de chaque instrument, nommés sur leur trait", () => {
-    const s = parseYmn(song);
+    const s = parsePrisma(song);
     expect(s.instruments).toEqual([{ name: "Chant", parts: 1 }, { name: "Piano", parts: 2 }]);
     expect(s.meta.parts).toBeUndefined();
     expect(s.notes.filter((n) => n.start === 0).map((n) => n.part)).toEqual([0, 1, 2]);
@@ -1242,29 +1242,29 @@ describe("parties et instruments", () => {
   });
 
   it("réécrit le texte tel quel", () => {
-    expect(writeYmn(parseYmn(song))).toBe("---\nformat: 1\n" + song.slice(4).replace("---\nm1", "---\n\nm1"));
+    expect(writePrisma(parsePrisma(song))).toBe("---\nformat: 1\n" + song.slice(4).replace("---\nm1", "---\n\nm1"));
   });
 
   it("lit le nom n'importe où sur son trait, entre des espaces", () => {
-    expect(parseYmn(swap("═══╪═ Piano ═╪═══╪════╪╪", "═══╪═════╪═══╪═  Piano  ═╪╪")).instruments[1].name).toBe("Piano");
+    expect(parsePrisma(swap("═══╪═ Piano ═╪═══╪════╪╪", "═══╪═════╪═══╪═  Piano  ═╪╪")).instruments[1].name).toBe("Piano");
   });
 
   it("refuse un nom d'instrument non déclaré, déplacé ou manquant", () => {
-    expect(() => parseYmn(swap("═ Piano ═", "═ Pno. ══"))).toThrow(/« Pno\. » non déclaré/);
-    expect(() => parseYmn(swap("─ Chant ─", "─ Piano ─"))).toThrow(/à la place de « Chant »/);
-    expect(() => parseYmn(swap("───┼─ Chant ─┼", "───┼───────┼"))).toThrow(/il manque le nom de l'instrument « Chant »/);
-    expect(() => parseYmn(swap("parts: Chant, Piano\n", ""))).toThrow(/non déclaré : nomme les instruments/);
-    expect(() => parseYmn(swap("parts: Chant, Piano", "parts: Chant, Piano, Flûte"))).toThrow(/il manque des instruments/);
-    expect(() => parseYmn(swap("───┼─────┼───┼───┼────┼┼", "───┼─ Main ┼───┼───┼────┼┼"))).toThrow(/trait double/);
+    expect(() => parsePrisma(swap("═ Piano ═", "═ Pno. ══"))).toThrow(/« Pno\. » non déclaré/);
+    expect(() => parsePrisma(swap("─ Chant ─", "─ Piano ─"))).toThrow(/à la place de « Chant »/);
+    expect(() => parsePrisma(swap("───┼─ Chant ─┼", "───┼───────┼"))).toThrow(/il manque le nom de l'instrument « Chant »/);
+    expect(() => parsePrisma(swap("parts: Chant, Piano\n", ""))).toThrow(/non déclaré : nomme les instruments/);
+    expect(() => parsePrisma(swap("parts: Chant, Piano", "parts: Chant, Piano, Flûte"))).toThrow(/il manque des instruments/);
+    expect(() => parsePrisma(swap("───┼─────┼───┼───┼────┼┼", "───┼─ Main ┼───┼───┼────┼┼"))).toThrow(/trait double/);
   });
 
   it("refuse un système qui n'a pas les mêmes parties que le premier", () => {
     const two = ["m1 |1  ||", "0  |1  ||", "───┼───┼┼", "0  |1  ||", "", "m2 |1  ||", "0  |1  ||", ""].join("\n");
-    expect(() => parseYmn(two)).toThrow(/pas les mêmes parties que le premier \(1 au lieu de 2\)/);
+    expect(() => parsePrisma(two)).toThrow(/pas les mêmes parties que le premier \(1 au lieu de 2\)/);
   });
 
   it("met la pédale sous la dernière partie d'un instrument seulement", () => {
-    expect(() => parseYmn(swap("0  |5    |   |5  |    ||", "0  |5    |   |5  |    ||\n@   Ped."))).toThrow(/sous la dernière partie de son instrument/);
+    expect(() => parsePrisma(swap("0  |5    |   |5  |    ||", "0  |5    |   |5  |    ||\n@   Ped."))).toThrow(/sous la dernière partie de son instrument/);
   });
 
   it("importe chaque <part> comme un instrument, et chaque portée comme une partie", () => {
@@ -1281,7 +1281,7 @@ describe("parties et instruments", () => {
     expect(s.notes.map((n) => `${n.part}:${n.midi}`)).toEqual(["0:72", "1:64", "2:48"]);
     expect(s.lyrics).toEqual([{ part: 0, verse: 1, t: 0, text: "Ah" }]);
     expect(s.pedals).toEqual([{ part: 2, start: 0, end: 4 * T }]);
-    expect(parseYmn(writeYmn(s)).instruments).toEqual(s.instruments);
+    expect(parsePrisma(writePrisma(s)).instruments).toEqual(s.instruments);
   });
 });
 
@@ -1289,7 +1289,7 @@ describe("articulations", () => {
   const piece = ["m1 |1  |2  |3  |4  ||", "0  |8  |10 |12 |8  ||", "   |5  |   |   |   ||", "@   .   .   !   !!", "---", "-1 |1  |-  |-  |-  ||", ""].join("\n");
 
   it("lit staccato, accent et marcato sur la ligne @ de la partie", () => {
-    expect(parseYmn(piece).articulations).toEqual([
+    expect(parsePrisma(piece).articulations).toEqual([
       { part: 0, t: 0, kind: "staccato" },
       { part: 0, t: T, kind: "staccato" },
       { part: 0, t: 2 * T, kind: "accent" },
@@ -1298,16 +1298,16 @@ describe("articulations", () => {
   });
 
   it("les réécrit telles quelles, et garde deux articulations d'une même case", () => {
-    expect(writeYmn(parseYmn(piece))).toContain("@   .   .   !   !!");
+    expect(writePrisma(parsePrisma(piece))).toContain("@   .   .   !   !!");
     const two = piece.replace("@   .   .   !   !!", "@   . !");
-    const s = parseYmn(two);
+    const s = parsePrisma(two);
     expect(s.articulations.map((x) => x.kind)).toEqual(["staccato", "accent"]);
-    expect(parseYmn(writeYmn(s)).articulations).toEqual(s.articulations);
+    expect(parsePrisma(writePrisma(s)).articulations).toEqual(s.articulations);
   });
 
   it("refuse une articulation au-dessus de la règle, ou deux fois la même", () => {
-    expect(() => parseYmn("@   .\n" + piece)).toThrow(/sous sa partie/);
-    expect(() => parseYmn(piece.replace("@   .   .   !   !!", "@   . ."))).toThrow(/deux fois/);
+    expect(() => parsePrisma("@   .\n" + piece)).toThrow(/sous sa partie/);
+    expect(() => parsePrisma(piece.replace("@   .   .   !   !!", "@   . ."))).toThrow(/deux fois/);
   });
 
   it("importe les articulations du MusicXML, une fois par accord, sans le tenuto", () => {
@@ -1361,7 +1361,7 @@ describe("écoute", () => {
   const two = ["---", "bpm: 120", "---", "m1 |1  |2  ||", "0  |1  |-  ||", "---", "-1 |8  |3  ||", ""].join("\n");
   /** Un morceau d'une mesure d'un temps par lettre, une note par mesure (1, 2, 3…), avec ses reprises et sections. */
   const bars = (n: number, more: Partial<Score> = {}): Score => ({
-    ...parseYmn("m1 |1  ||\n0  |1  ||\n"),
+    ...parsePrisma("m1 |1  ||\n0  |1  ||\n"),
     beats: Array.from({ length: n }, (_, i) => ({ bar: String(i + 1), barIndex: i, label: 1, division: 2 }) as Score["beats"][number]),
     notes: Array.from({ length: n }, (_, i) => ({ part: 0, midi: 60 + i, start: i * T, end: (i + 1) * T })),
     ...more,
@@ -1376,7 +1376,7 @@ describe("écoute", () => {
   });
 
   it("donne les notes en secondes, au tempo choisi", () => {
-    const s = parseYmn(two);
+    const s = parsePrisma(two);
     expect(playNotes(playedNotes(s, passages(s)), 120)).toEqual([
       { time: 0, midi: 55, duration: 0.5, velocity: 70 },
       { time: 0, midi: 60, duration: 1, velocity: 70 },
@@ -1385,7 +1385,7 @@ describe("écoute", () => {
   });
 
   it("reprend à un instant donné, en rejouant ce qui sonne encore", () => {
-    const s = parseYmn(two);
+    const s = parsePrisma(two);
     expect(playNotes(playedNotes(s, passages(s)), 60, T)).toEqual([
       { time: 0, midi: 50, duration: 1, velocity: 70 },
       { time: 0, midi: 60, duration: 1, velocity: 70 },
@@ -1393,7 +1393,7 @@ describe("écoute", () => {
   });
 
   it("déroule les reprises, au nombre de passages indiqué", () => {
-    const s = parseYmn("m1 ||:1  |2  :||1  |2  ||\n0  ||:1  |-   ||5  |   ||\n---\n-1 || 1  |    ||1  |   ||\n");
+    const s = parsePrisma("m1 ||:1  |2  :||1  |2  ||\n0  ||:1  |-   ||5  |   ||\n---\n-1 || 1  |    ||1  |   ||\n");
     expect(playedNotes(s, passages(s)).map((n) => [n.start / T, n.midi])).toEqual([[0, 48], [0, 60], [2, 48], [2, 60], [4, 48], [4, 64]]);
     const three = bars(4, { repeats: [{ barIndex: 1, start: true }, { barIndex: 2, end: true, times: 3 }] });
     expect(order(three, passages(three))).toBe("1 2 3 2 3 2 3 4");
@@ -1452,7 +1452,7 @@ describe("écoute : nuances", () => {
   });
   /** Un morceau d'une note par temps, sur une partie (ou deux, la seconde sans indication). */
   const piece = (n: number, more: Partial<Score> = {}, parts = 1): Score => ({
-    ...parseYmn("m1 |1  ||\n0  |1  ||\n"),
+    ...parsePrisma("m1 |1  ||\n0  |1  ||\n"),
     instruments: [{ parts }],
     notes: Array.from({ length: n * parts }, (_, i) => ({ part: i % parts, midi: 60, start: Math.floor(i / parts) * T, end: (Math.floor(i / parts) + 1) * T })),
     ...more,
@@ -1492,7 +1492,7 @@ describe("écoute : pédale", () => {
   beforeAll(async () => {
     ({ soundingEnds } = await import("../src/app/pedal.ts"));
   });
-  const base = parseYmn("m1 |1  ||\n0  |1  ||\n");
+  const base = parsePrisma("m1 |1  ||\n0  |1  ||\n");
   const score = (notes: Score["notes"], pedals: Score["pedals"], parts = 1): Score => ({ ...base, instruments: [{ parts }], notes, pedals });
   const n = (start: number, end: number, midi = 60, part = 0) => ({ part, midi, start: start * T, end: end * T });
   const ped = (start: number, end: number, part = 0) => ({ part, start: start * T, end: end * T });
@@ -1522,7 +1522,7 @@ describe("écoute : Ped. simile", () => {
   });
   /** Un morceau de n mesures de 2 temps, sur une partie. */
   const piece = (n: number, more: Partial<Score>): Score => ({
-    ...parseYmn("m1 |1  ||\n0  |1  ||\n"),
+    ...parsePrisma("m1 |1  ||\n0  |1  ||\n"),
     beats: Array.from({ length: 2 * n }, (_, i) => ({ bar: String((i >> 1) + 1), barIndex: i >> 1, label: (i % 2) + 1, division: 2 }) as Score["beats"][number]),
     notes: [],
     ...more,
@@ -1559,7 +1559,7 @@ describe("écoute : petites notes", () => {
     const { passages, playedNotes } = await import("../src/app/performance.ts");
     const { playNotes } = await import("../src/app/player.ts");
     // l'exemple de FORMAT.md, sur le 2e temps : 3 (octave du dessus), 7, 9, puis le 5 sur le temps
-    const s = parseYmn(["m1 |1  |2        ||", "+1 |   |3'       ||", "0  |1  |  7'9'5  ||", ""].join("\n"));
+    const s = parsePrisma(["m1 |1  |2        ||", "+1 |   |3'       ||", "0  |1  |  7'9'5  ||", ""].join("\n"));
     const notes = playNotes(playedNotes(s, passages(s)), 60);
     expect(notes.map((n) => [n.midi, +n.time.toFixed(2), +n.duration.toFixed(2)])).toEqual([
       [60, 0, 1],
@@ -1576,7 +1576,7 @@ describe("écoute : première mesure d'une section", () => {
     const { passages, inFirstBar } = await import("../src/app/performance.ts");
     // A B A, des mesures de 2 temps : A = mesures 1 et 2, B = mesure 3
     const s: Score = {
-      ...parseYmn("m1 |1  ||\n0  |1  ||\n"),
+      ...parsePrisma("m1 |1  ||\n0  |1  ||\n"),
       beats: Array.from({ length: 6 }, (_, i) => ({ bar: String((i >> 1) + 1), barIndex: i >> 1, label: (i % 2) + 1, division: 2 }) as Score["beats"][number]),
       markers: [{ label: "A", barIndex: 0 }, { label: "B", barIndex: 2 }],
       order: ["A", "B", "A"],
@@ -1591,7 +1591,7 @@ describe("écoute : trilles", () => {
   it("alterne la note et sa voisine, en commençant et en finissant par la note", async () => {
     const { passages, playedNotes } = await import("../src/app/performance.ts");
     const { playNotes } = await import("../src/app/player.ts");
-    const s = parseYmn("m1 |1  |2  ||\n0  |5~7|1  ||\n");
+    const s = parsePrisma("m1 |1  |2  ||\n0  |5~7|1  ||\n");
     const notes = playNotes(playedNotes(s, passages(s)), 60).filter((n) => n.time < 1 - 1e-9);
     expect(notes.length % 2).toBe(1);
     expect(notes.length).toBeGreaterThan(9);
@@ -1605,7 +1605,7 @@ describe("écoute : arpèges", () => {
   it("égrène l'accord à partir du temps, du grave à l'aigu ou de l'aigu au grave", async () => {
     const { passages, playedNotes } = await import("../src/app/performance.ts");
     const { playNotes } = await import("../src/app/player.ts");
-    const s = parseYmn(["m1 |1    |2    ||", "0  |8    |8    ||", "   |5    |5    ||", "   |1    |1    ||", "@   /     \\", ""].join("\n"));
+    const s = parsePrisma(["m1 |1    |2    ||", "0  |8    |8    ||", "   |5    |5    ||", "   |1    |1    ||", "@   /     \\", ""].join("\n"));
     const notes = playNotes(playedNotes(s, passages(s)), 60);
     const at = (t: number) => notes.filter((n) => n.time >= t && n.time < t + 0.5).map((n) => [n.midi, +n.time.toFixed(2)]);
     expect(at(0)).toEqual([[60, 0], [64, 0.04], [67, 0.08]]);
@@ -1619,7 +1619,7 @@ describe("écoute : point d'orgue", () => {
   it("tient deux fois plus longtemps ce qui commence sous le point d'orgue, et décale la suite", async () => {
     const { passages, playedNotes, holds, stretched, unstretched } = await import("../src/app/performance.ts");
     const { playNotes } = await import("../src/app/player.ts");
-    const s = parseYmn(["@       ^", "m1 |1  |2  |3  ||", "0  |1  |5  |8  ||", ""].join("\n"));
+    const s = parsePrisma(["@       ^", "m1 |1  |2  |3  ||", "0  |1  |5  |8  ||", ""].join("\n"));
     const ps = passages(s);
     const hs = holds(s, ps);
     expect(hs).toEqual([{ at: T, length: T }]);
@@ -1637,7 +1637,7 @@ describe("écoute : point d'orgue", () => {
 describe("écoute : articulations", () => {
   it("raccourcit le staccato, renforce l'accent, et les deux pour le marcato", async () => {
     const { passages, playedNotes } = await import("../src/app/performance.ts");
-    const s = parseYmn(["m1 |1  |2  |3  |4  ||", "0  |8  |10 |12 |8  ||", "@   .   !   !!", ""].join("\n"));
+    const s = parsePrisma(["m1 |1  |2  |3  |4  ||", "0  |8  |10 |12 |8  ||", "@   .   !   !!", ""].join("\n"));
     expect(playedNotes(s, passages(s)).map((n) => [n.midi, (n.end - n.start) / T, n.velocity])).toEqual([
       [67, 0.5, 70],
       [69, 1, 90],
@@ -1649,12 +1649,12 @@ describe("écoute : articulations", () => {
 
 describe("écriture : textes qui débordent", () => {
   it("laisse un texte long déborder sur les cases suivantes, sans élargir sa case", () => {
-    const s = parseYmn("m1 |1  |2  |3  |4  ||\n0  |1  |3  |5  |8  ||\n---\n");
+    const s = parsePrisma("m1 |1  |2  |3  |4  ||\n0  |1  |3  |5  |8  ||\n---\n");
     s.expressions.push({ part: 0, t: 0, text: "sempre pianissimo", kind: "text" });
-    const text = writeYmn(s);
+    const text = writePrisma(s);
     expect(text).toMatch(/^m1 \|1  \|2  \|3  \|4  \|\|$/m);
     expect(text).toMatch(/^@   sempre pianissimo$/m);
-    expect(parseYmn(text).expressions).toEqual(s.expressions);
+    expect(parsePrisma(text).expressions).toEqual(s.expressions);
   });
 });
 
@@ -1663,7 +1663,7 @@ describe("écoute : métronome", () => {
     const { passages, clicks } = await import("../src/app/performance.ts");
     // une levée sur le temps 2, puis une mesure de 2 temps, reprise
     const s: Score = {
-      ...parseYmn("m1 |1  ||\n0  |1  ||\n"),
+      ...parsePrisma("m1 |1  ||\n0  |1  ||\n"),
       beats: [
         { bar: "0", barIndex: 0, label: 2, division: 2 },
         { bar: "1", barIndex: 1, label: 1, division: 2 },
@@ -1678,7 +1678,7 @@ describe("écoute : métronome", () => {
   it("divise chaque temps sur sa grille régulière, en 2 ou en 3, puis en deux", async () => {
     const { passages, clicks } = await import("../src/app/performance.ts");
     const s: Score = {
-      ...parseYmn("m1 |1  ||\n0  |1  ||\n"),
+      ...parsePrisma("m1 |1  ||\n0  |1  ||\n"),
       beats: [
         { bar: "1", barIndex: 0, label: 1, division: 2 },
         { bar: "1", barIndex: 0, label: 2, division: 3 },
@@ -1693,7 +1693,7 @@ describe("écoute : métronome", () => {
   it("bat les cases écrites, chacune à son niveau, pour faire entendre quand jouer", async () => {
     const { passages, clicks } = await import("../src/app/performance.ts");
     // une noire, deux croches, quatre doubles croches
-    const s = parseYmn("m1 |1  |2  *  |3  .  *  .  ||\n0  |1  |3  5  |8  10 12 1  ||\n");
+    const s = parsePrisma("m1 |1  |2  *  |3  .  *  .  ||\n0  |1  |3  5  |8  10 12 1  ||\n");
     const short = { downbeat: "1", beat: "T", division: "d", subdivision: "s" };
     expect(clicks(s, passages(s), "cells").map((c) => `${short[c.level]}${c.at / T}`).join(" ")).toBe("10 T1 d1.5 T2 s2.25 d2.5 s2.75");
   });
@@ -1701,7 +1701,7 @@ describe("écoute : métronome", () => {
   it("bat les seules attaques, temps compris : ni les tenues, ni les cases d'un soufflet", async () => {
     const { passages, clicks } = await import("../src/app/performance.ts");
     // la case « * » du premier temps n'existe que pour le soufflet ; le 3e temps n'est qu'une tenue
-    const s = parseYmn("m1 |1  *  |2  |3  ||\n0  |1  -  |3  |-  ||\n@      <----\n");
+    const s = parsePrisma("m1 |1  *  |2  |3  ||\n0  |1  -  |3  |-  ||\n@      <----\n");
     const short = { downbeat: "1", beat: "T", division: "d", subdivision: "s" };
     const at = (grid: "cells" | "attacks") => clicks(s, passages(s), grid).map((c) => `${short[c.level]}${c.at / T}`).join(" ");
     expect(at("cells")).toBe("10 d0.5 T1 T2");
@@ -1714,7 +1714,7 @@ describe("écoute : décompte", () => {
     const { passages, countIn } = await import("../src/app/performance.ts");
     // une levée sur le temps 4, puis une mesure de 4 temps
     const s: Score = {
-      ...parseYmn("m1 |1  ||\n0  |1  ||\n"),
+      ...parsePrisma("m1 |1  ||\n0  |1  ||\n"),
       beats: [{ bar: "0", barIndex: 0, label: 4, division: 2 }, ...[1, 2, 3, 4].map((label) => ({ bar: "1", barIndex: 1, label, division: 2 }))] as Score["beats"],
     };
     const ps = passages(s);
@@ -1735,16 +1735,16 @@ describe("écoute : parties", () => {
 
   it("garde la partie de chaque note jouée, pour pouvoir la rendre muette", async () => {
     const { passages, playedNotes } = await import("../src/app/performance.ts");
-    const s = parseYmn("m1 |1  ||\n0  |1  ||\n---\n-1 |1  ||\n");
+    const s = parsePrisma("m1 |1  ||\n0  |1  ||\n---\n-1 |1  ||\n");
     expect(playedNotes(s, passages(s)).map((n) => [n.midi, n.part])).toEqual([[48, 1], [60, 0]]);
   });
 });
 
 describe("bibliothèque", () => {
-  it("lit le titre et le compositeur : l'en-tête d'un .ymn, les crédits d'un MusicXML", async () => {
+  it("lit le titre et le compositeur : l'en-tête d'un .prisma, les crédits d'un MusicXML", async () => {
     const { describe: describeFile } = await import("../src/app/library.ts");
-    expect(describeFile('---\nformat: 1\ntitle: "Gymnopédie n°1"\ncomposer: Erik Satie\n---\nm1 |1  ||\n', "ymn")).toEqual({ title: "Gymnopédie n°1", composer: "Erik Satie" });
-    expect(describeFile("m1 |1  ||\n", "ymn")).toEqual({ title: undefined, composer: undefined });
+    expect(describeFile('---\nformat: 1\ntitle: "Gymnopédie n°1"\ncomposer: Erik Satie\n---\nm1 |1  ||\n', "prisma")).toEqual({ title: "Gymnopédie n°1", composer: "Erik Satie" });
+    expect(describeFile("m1 |1  ||\n", "prisma")).toEqual({ title: undefined, composer: undefined });
     const xml = `<score-partwise><work><work-title>Clair &amp; net</work-title></work><identification><creator type="composer">Anonyme</creator></identification>`;
     expect(describeFile(xml, "musicxml")).toEqual({ title: "Clair & net", composer: "Anonyme" });
     expect(describeFile("<movement-title>Mouvement</movement-title>", "musicxml").title).toBe("Mouvement");

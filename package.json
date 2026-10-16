@@ -1,5 +1,5 @@
 {
-  "name": "ymn",
+  "name": "prisma",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "ymn": "node src/cli.ts",
+    "prisma": "node src/cli.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

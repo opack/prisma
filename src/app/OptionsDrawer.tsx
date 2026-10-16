@@ -25,9 +25,9 @@ const TABS = [
 type Tab = (typeof TABS)[number]["id"];
 
 const CHORDS: Option<RenderOptions["chords"]>[] = [
-  { value: "both", label: "Nom et notes", hint: "le nom anglais (Am), avec les notes ymn dessous (10 1 5)" },
+  { value: "both", label: "Nom et notes", hint: "le nom anglais (Am), avec les notes Prisma dessous (10 1 5)" },
   { value: "name", label: "Nom", hint: "le nom anglais : Am, G/B" },
-  { value: "notes", label: "Notes", hint: "les notes ymn empilées, la basse en bas : 10 1 5" },
+  { value: "notes", label: "Notes", hint: "les notes Prisma empilées, la basse en bas : 10 1 5" },
 ];
 
 const NOTE_NAMES: Option<RenderOptions["noteNames"]>[] = [
@@ -153,14 +153,14 @@ function Flag({ colors }: { colors: Colors }) {
 export function OptionsDrawer({ options, setOptions, onClose }: { options: RenderOptions; setOptions: (patch: Partial<RenderOptions>) => void; onClose: () => void }) {
   const [tab, setTab] = useState<Tab>(() => {
     try {
-      return (TABS.find((t) => t.id === localStorage.getItem("ymn:options-tab"))?.id ?? "score") as Tab;
+      return (TABS.find((t) => t.id === localStorage.getItem("prisma:options-tab"))?.id ?? "score") as Tab;
     } catch {
       return "score";
     }
   });
   useEffect(() => {
     try {
-      localStorage.setItem("ymn:options-tab", tab);
+      localStorage.setItem("prisma:options-tab", tab);
     } catch {
       /* stockage indisponible : sans conséquence */
     }

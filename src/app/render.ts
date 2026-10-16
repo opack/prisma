@@ -1,8 +1,8 @@
 /**
- * Du texte aux pages : la partition lue (un .ymn, ou un MusicXML importé comme à l'ouverture),
+ * Du texte aux pages : la partition lue (un .prisma, ou un MusicXML importé comme à l'ouverture),
  * puis gravée selon les options. Partagé par l'éditeur et par les aperçus de la bibliothèque.
  */
-import { DEFAULT_WIDTH, importMusicXml, parseYmn, writeYmn } from "../core/index.ts";
+import { DEFAULT_WIDTH, importMusicXml, parsePrisma, writePrisma } from "../core/index.ts";
 import type { Score } from "../core/index.ts";
 import { engrave } from "./engrave.ts";
 import type { Page } from "./engrave.ts";
@@ -29,7 +29,7 @@ export function engravePages(score: Score, o: EngraveOptions): Page[] {
   return engrave(withSimile(plain, o.simile), { compact: o.density === "compact", chords: o.chords, align: alignOf(o.notePosition), reminders: o.holdReminders, inlineSections: o.sections === "inline" });
 }
 
-/** La partition d'un fichier : un .ymn lu, ou un MusicXML importé puis relu, comme à l'ouverture. */
-export function scoreOf(text: string, kind: "ymn" | "musicxml", name: string): Score {
-  return parseYmn(kind === "ymn" ? text : writeYmn(importMusicXml(text, name), { width: DEFAULT_WIDTH }));
+/** La partition d'un fichier : un .prisma lu, ou un MusicXML importé puis relu, comme à l'ouverture. */
+export function scoreOf(text: string, kind: "prisma" | "musicxml", name: string): Score {
+  return parsePrisma(kind === "prisma" ? text : writePrisma(importMusicXml(text, name), { width: DEFAULT_WIDTH }));
 }

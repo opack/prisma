@@ -1,13 +1,13 @@
 /**
  * Accords d'accompagnement (ligne `@c`) : un accord s'écrit soit par son nom anglais
- * (« Am », « G7 », « F#m7b5 », « G/B »), soit par ses notes ymn séparées par « ; », du grave
+ * (« Am », « G7 », « F#m7b5 », « G/B »), soit par ses notes Prisma séparées par « ; », du grave
  * à l'aigu à partir de la basse (« 10;1;5 »). Les notes n'ont pas d'octave : un accord dit
  * quelles notes jouer, pas où.
  *
- * Les notes sont des numéros ymn de 1 (do) à 12 (si).
+ * Les notes sont des numéros Prisma de 1 (do) à 12 (si).
  */
 
-/** Séparateur des notes d'un accord écrit en ymn. */
+/** Séparateur des notes d'un accord écrit en Prisma. */
 export const CHORD_NOTE_SEPARATOR = ";";
 
 const STEP: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
@@ -57,8 +57,8 @@ const QUALITIES: [string[], number[]][] = [
 const SUFFIXES = QUALITIES.flatMap(([names, iv]) => names.map((n) => ({ n, iv }))).sort((a, b) => b.n.length - a.n.length);
 
 const pc = (s: number) => ((s % 12) + 12) % 12;
-/** Numéro ymn (1 à 12) d'une classe de hauteur (0 = do). */
-const ymn = (p: number) => pc(p) + 1;
+/** Numéro Prisma (1 à 12) d'une classe de hauteur (0 = do). */
+const numero = (p: number) => pc(p) + 1;
 
 /** Fondamentale ou basse : une lettre, éventuellement suivie de « # » ou « b ». */
 function readNote(s: string): { pitch: number; rest: string } | undefined {
@@ -68,7 +68,7 @@ function readNote(s: string): { pitch: number; rest: string } | undefined {
   return { pitch: pc(STEP[m[1]] + alter), rest: s.slice(m[0].length) };
 }
 
-/** Notes (numéros ymn) d'un accord écrit par son nom, de la basse vers l'aigu ; undefined s'il est inconnu. */
+/** Notes (numéros Prisma) d'un accord écrit par son nom, de la basse vers l'aigu ; undefined s'il est inconnu. */
 export function chordNameNotes(name: string): number[] | undefined {
   const root = readNote(name);
   if (!root) return undefined;
@@ -87,11 +87,11 @@ export function chordNameNotes(name: string): number[] | undefined {
   // dans l'ordre où elles montent au-dessus d'elle, au plus serré
   const low = bass ?? root.pitch;
   const above = notes.filter((n) => n !== low).sort((a, b) => pc(a - low) - pc(b - low));
-  return [low, ...above].map(ymn);
+  return [low, ...above].map(numero);
 }
 
-/** Notes d'un accord écrit en ymn (« 10;1;5 ») ; undefined si l'écriture n'en est pas une. */
-export function chordYmnNotes(text: string): number[] | undefined {
+/** Notes d'un accord écrit en Prisma (« 10;1;5 ») ; undefined si l'écriture n'en est pas une. */
+export function chordPrismaNotes(text: string): number[] | undefined {
   if (!/^\d{1,2}(;\d{1,2})+$/.test(text)) return undefined;
   const notes = text.split(CHORD_NOTE_SEPARATOR).map(Number);
   if (notes.some((n) => n < 1 || n > 12) || new Set(notes).size !== notes.length) return undefined;
@@ -99,7 +99,7 @@ export function chordYmnNotes(text: string): number[] | undefined {
 }
 
 /** Notes d'un accord, quelle que soit son écriture ; undefined s'il n'est pas reconnu. */
-export const chordNotes = (text: string) => chordYmnNotes(text) ?? chordNameNotes(text);
+export const chordNotes = (text: string) => chordPrismaNotes(text) ?? chordNameNotes(text);
 
 /**
  * Nom anglais d'un accord donné par ses notes (de la basse vers l'aigu). La basse est d'abord
@@ -118,5 +118,5 @@ export function chordName(notes: number[]): string | undefined {
   return undefined;
 }
 
-/** Écriture ymn d'un accord : ses notes séparées par « ; ». */
-export const chordYmnText = (notes: number[]) => notes.join(CHORD_NOTE_SEPARATOR);
+/** Écriture Prisma d'un accord : ses notes séparées par « ; ». */
+export const chordPrismaText = (notes: number[]) => notes.join(CHORD_NOTE_SEPARATOR);

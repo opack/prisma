@@ -738,7 +738,7 @@ function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; options:
       {spans(left, right).map(([a, b], j) => (
         <line key={"rl" + j} x1={a} x2={b} y1={y + G.rulerH} y2={y + G.rulerH} stroke={LIGHT} strokeWidth={0.25} />
       ))}
-      {/* accords : le nom en haut, les notes ymn empilées dessous, la basse en bas */}
+      {/* accords : le nom en haut, les notes Prisma empilées dessous, la basse en bas */}
       {sys.chords.map((c, i) => {
         const { notes, name } = chordParts(c.text);
         const x = xs[sys.anchors[c.anchor]] + leadExtra(sys, c.anchor) + 0.5;

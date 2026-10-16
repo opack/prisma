@@ -1,6 +1,6 @@
-# Lire et jouer en ymn
+# Lire et jouer en Prisma
 
-Cette notice s'adresse au musicien. Elle explique comment lire une partition ymn et pourquoi elle est faite ainsi, en partant de ce que vous connaissez peut-être de la partition classique. Elle ne remplace pas [FORMAT.md](FORMAT.md), qui décrit le format exactement.
+Cette notice s'adresse au musicien. Elle explique comment lire une partition Prisma et pourquoi elle est faite ainsi, en partant de ce que vous connaissez peut-être de la partition classique. Elle ne remplace pas [FORMAT.md](FORMAT.md), qui décrit le format exactement.
 
 Si vous ne lisez pas la partition classique, ignorez simplement les comparaisons : tout ce qu'il faut savoir pour jouer est dit ici.
 
@@ -14,7 +14,7 @@ Trois idées suffisent :
 2. **La position, c'est le temps.** Une note se lit de gauche à droite sur une règle de comptage, comme sur une frise. Sa place dit quand elle commence, sa longueur combien de temps elle dure.
 3. **Ce qui est aligné verticalement se joue ensemble.** Toutes les parties partagent la même règle.
 
-```ymn
+```prisma
 m1 |1  *  |2  *  |3  *  |4  ||
 ───┼──────┼──────┼──────┼───┼┼
 0  |1  3  |5  6  |8  10 |12 ||
@@ -26,7 +26,7 @@ La partie du haut (au piano, la main droite) monte la gamme de do (1, 3, 5, 6, 8
 
 De haut en bas : la **règle de comptage** (`m1` pour la mesure 1, puis les temps), un trait, les lignes de la partie du haut, un second trait qui sépare les deux parties, puis les lignes de la partie du bas. Le 12 de la fin dure jusqu'au bout du temps 4 : il n'a pas besoin d'autre case.
 
-Une partition ymn existe sous deux formes : un **texte** (le fichier `.ymn`), qu'on tape au clavier, et une **gravure**, la page imprimable produite par l'application. Les deux disent exactement la même chose. Dans l'application (bouton « Notice »), chaque exemple de cette notice est montré sous ses deux formes : son texte, puis sa gravure.
+Une partition Prisma existe sous deux formes : un **texte** (le fichier `.prisma`), qu'on tape au clavier, et une **gravure**, la page imprimable produite par l'application. Les deux disent exactement la même chose. Dans l'application (bouton « Notice »), chaque exemple de cette notice est montré sous ses deux formes : son texte, puis sa gravure.
 
 ## 2. Les hauteurs
 
@@ -57,7 +57,7 @@ Une **partie** est un groupe de lignes de notes : au piano, chaque main est une 
 
 Un trait simple sépare les parties d'un même **instrument** (les deux mains du piano), un trait double deux instruments. Leurs noms sont annoncés en tête du fichier (`parts:`) et écrits sur le trait qui ouvre chacun :
 
-```ymn
+```prisma
 ---
 parts: Chant, Piano
 ---
@@ -79,7 +79,7 @@ La gravure réunit les parties d'un instrument par une accolade et écrit les no
 
 Une ligne ne porte qu'une note à la fois. Un accord occupe une ligne par note, la plus aiguë en haut :
 
-```ymn
+```prisma
 m1 |1  |2  |3  |4  ||
 ───┼───┼───┼───┼───┼┼
 0  |8  |-  |8  |-  ||
@@ -106,16 +106,16 @@ Une indication de mesure X/Y se lit ainsi : le chiffre du **bas** donne l'unité
 
 Quand le chiffre du haut vaut 6, 9 ou 12, la mesure est dite **composée** : le vrai temps vaut trois unités. Sinon, elle est **simple**.
 
-ymn ne garde que ce qui sert à jouer : **le nombre de temps** et **le découpage naturel du temps**, en 2 ou en 3. Le 3/4 et le 6/8 ont tous deux 6 croches par mesure, mais ce sont deux mesures différentes, et ici la différence se voit :
+Prisma ne garde que ce qui sert à jouer : **le nombre de temps** et **le découpage naturel du temps**, en 2 ou en 3. Le 3/4 et le 6/8 ont tous deux 6 croches par mesure, mais ce sont deux mesures différentes, et ici la différence se voit :
 
-```ymn
+```prisma
 m1 |1  *  |2  *  |3  *  ||
 ───┼──────┼──────┼──────┼┼
 0  |1  3  |5  6  |8  6  ||
 ───┼──────┼──────┼──────┼┼
 ```
 
-```ymn
+```prisma
 ---
 division: 3
 ---
@@ -145,7 +145,7 @@ En 4/4 : `1  *` pour des croches, `1  .  *  .` pour des doubles croches. En 6/8 
 
 - **Les figures de note** (ronde, blanche, croche…) et **les points** : une note dure jusqu'à la fin de son trait `-`. Une croche pointée suivie d'une double croche, c'est une note sur trois cases et une sur la quatrième :
 
-  ```ymn
+  ```prisma
   m1 |1  .  *  .  |2  ||
   ───┼────────────┼───┼┼
   0  |5  -  -  7  |8  ||
@@ -158,7 +158,7 @@ En 4/4 : `1  *` pour des croches, `1  .  *  .` pour des doubles croches. En 6/8 
 
 Quand les deux parties ne coupent pas le temps de la même façon, la règle porte les deux découpages à la fois. Trois notes contre deux donnent six cases : la partie du haut joue toutes les deux cases, celle du bas toutes les trois.
 
-```ymn
+```prisma
 m1 |1  ,  ,  *  ,  ,  |2  ||
 ───┼──────────────────┼───┼┼
 0  |5  -  8  -  12 -  |1  ||
@@ -178,7 +178,7 @@ Les signes qui accompagnent une note se collent à elle, dans sa case. Chacun a 
 | `~` | `5~6` | trille : le 5 (mi) alterne avec le 6 (fa) pendant toute sa durée | la voisine en petit, puis un trait ondulé |
 | `_` | `5_3` | doigté : le 5 se joue avec le doigt 3 (au piano, 1 = pouce) | un chiffre blanc sur une pastille sombre, en bas à droite |
 
-```ymn
+```prisma
 m1 |1        |2  |3     |4   ||
 ───┼─────────┼───┼──────┼────┼┼
 +1 |3'       |   |      |    ||
@@ -207,9 +207,9 @@ Deux signes se posent sur une ligne `@`, au-dessus ou sous les notes :
 
 La partition classique multiplie les renvois : cases 1. et 2., D.C. (*da capo*, reprendre au début), D.S. (*dal segno*, reprendre au signe 𝄋), coda (𝄌), Fine. Il faut les repérer, les retenir et sauter dans la page en jouant.
 
-ymn les remplace tous par un seul mécanisme, celui d'une chanson : le morceau est découpé en **sections**, marquées par une lettre (`[A]`, `[B]`…), et l'**ordre de jeu** est écrit une fois pour toutes en tête du fichier, et de chaque page gravée : `A A B A C`. On joue les sections dans cet ordre, et le morceau s'arrête à la fin de la liste. Chaque section commence une nouvelle ligne, comme un couplet.
+Prisma les remplace tous par un seul mécanisme, celui d'une chanson : le morceau est découpé en **sections**, marquées par une lettre (`[A]`, `[B]`…), et l'**ordre de jeu** est écrit une fois pour toutes en tête du fichier, et de chaque page gravée : `A A B A C`. On joue les sections dans cet ordre, et le morceau s'arrête à la fin de la liste. Chaque section commence une nouvelle ligne, comme un couplet.
 
-```ymn
+```prisma
 ---
 order: A B A C
 ---
@@ -242,7 +242,7 @@ Ce morceau se joue A (mesures 1 et 2), B (3), A de nouveau, puis C (4) : c'est u
 
 Ces indications s'écrivent sur des lignes `@`, placées sous les lignes de la partie qu'elles concernent. Chacune commence sur la case où elle prend effet.
 
-```ymn
+```prisma
 m1 |1    |2  |3  |4  ||1     |2  |3  |4  ||
 ───┼─────┼───┼───┼───┼┼──────┼───┼───┼───┼┼
 0  |5    |7  |8  |10 ||8     |7  |5  |3  ||
@@ -263,7 +263,7 @@ m1 |1    |2  |3  |4  ||1     |2  |3  |4  ||
 
 Les accords à jouer par un accompagnateur (guitare, ou un pianiste qui improvise) s'écrivent sur une ligne `@c` (*chords*), au-dessus de la règle, chacun sur la case où il commence :
 
-```ymn
+```prisma
 @c  Am             G/B
 m1 |1  *  |2  *  ||1   |2  ||
 ───┼──────┼──────┼┼────┼───┼┼
@@ -272,7 +272,7 @@ m1 |1  *  |2  *  ||1   |2  ||
 -1 |10 -  |-  -  ||12  |-  ||
 ```
 
-Un accord s'écrit au choix par son **nom anglais** (`Am`, `G7`, `F#m7b5`, `G/B` pour un sol avec si à la basse), lu partout ailleurs par les accompagnateurs, ou par ses **notes ymn** séparées par `;`, de la basse vers l'aigu : `Am` s'écrit aussi `10;1;5`. L'ordre compte : `Am7` (`10;1;5;8`) et `C6` (`1;5;8;10`) ont les mêmes notes, seule la basse les distingue. Les notes n'ont pas d'octave : un accord dit quelles notes jouer, pas où.
+Un accord s'écrit au choix par son **nom anglais** (`Am`, `G7`, `F#m7b5`, `G/B` pour un sol avec si à la basse), lu partout ailleurs par les accompagnateurs, ou par ses **notes Prisma** séparées par `;`, de la basse vers l'aigu : `Am` s'écrit aussi `10;1;5`. L'ordre compte : `Am7` (`10;1;5;8`) et `C6` (`1;5;8;10`) ont les mêmes notes, seule la basse les distingue. Les notes n'ont pas d'octave : un accord dit quelles notes jouer, pas où.
 
 La gravure montre le nom, les notes empilées (la basse en bas, comme sur les lignes d'octave), ou les deux (options « Accords ») : l'application calcule l'un à partir de l'autre.
 
@@ -280,7 +280,7 @@ La gravure montre le nom, les notes empilées (la basse en bas, comme sur les li
 
 Les paroles s'écrivent sur une ligne `@l` (*lyrics*) sous les lignes de la partie qui chante, chaque syllabe sur la case de sa note. Un couplet par ligne, le premier en haut :
 
-```ymn
+```prisma
 m1 |1  |2     |3     |4   ||1    |2  |3   |4  ||
 ───┼───┼──────┼──────┼────┼┼─────┼───┼────┼───┼┼
 0  |1  |1     |1     |3   ||5    |-  |3   |-  ||
@@ -293,7 +293,7 @@ m1 |1  |2     |3     |4   ||1    |2  |3   |4  ||
 - Un `-` collé à la fin d'une syllabe la relie à la suivante, dans le même mot : `lu- ne`. La gravure trace le trait d'union entre les deux.
 - Une syllabe chantée sur plusieurs notes (un mélisme) est suivie de `---` jusqu'à sa dernière note, comme une note tenue ; la gravure la prolonge d'un trait bas :
 
-```ymn
+```prisma
 m1 |1  |2   |3  |4  ||1  |2   |3  |4  ||
 ───┼───┼────┼───┼───┼┼───┼────┼───┼───┼┼
 +1 |   |    |   |1  ||   |    |   |   ||
@@ -307,7 +307,7 @@ Les indications de caractère et de tempo (`dolce`, `rit.`, `a tempo`…) garden
 
 ## 7. Récapitulatif
 
-| Partition classique | ymn |
+| Partition classique | Prisma |
 |---|---|
 | noms de notes, dièses, bémols, bécarres | numéros de 1 à 12, un par hauteur |
 | armure | rien : chaque numéro est la note jouée |

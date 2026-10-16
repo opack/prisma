@@ -1,6 +1,6 @@
-# Format .ymn — version 1
+# Format .prisma — version 1
 
-Un fichier `.ymn` est un texte brut en UTF-8, à lire et à écrire dans une police à chasse fixe. Il contient un frontmatter facultatif, puis des **systèmes** séparés par des lignes vides.
+Un fichier `.prisma` est un texte brut en UTF-8, à lire et à écrire dans une police à chasse fixe. Il contient un frontmatter facultatif, puis des **systèmes** séparés par des lignes vides.
 
 ## Frontmatter
 
@@ -8,7 +8,7 @@ Entre deux lignes `---`, une clé par ligne, sous la forme `clé: valeur`.
 
 | Clé | Rôle |
 |---|---|
-| `format` | Version du format ymn du fichier : `format: 1`. L'écriture la met toujours ; un fichier sans elle est lu comme la version courante. Le lecteur refuse un fichier d'une autre version en le disant (voir « Versions »). |
+| `format` | Version du format Prisma du fichier : `format: 1`. L'écriture la met toujours ; un fichier sans elle est lu comme la version courante. Le lecteur refuse un fichier d'une autre version en le disant (voir « Versions »). |
 | `title`, `subtitle`, `composer`, `source` | Informations affichées : le sous-titre (« Op. 9 n° 2 », « Suite bergamasque, 3ᵉ mouvement »…) sous le titre. |
 | `bpm` | Tempo de départ, en temps (*beats*) par minute : `bpm: 78`, gravé « 78 bpm ». Le temps est celui de la règle de comptage, donc la noire pointée d'un 6/8 : le nombre se lit sans ambiguïté, comme sur un métronome. Les indications en mots (`Andante`, `rit.`) vont sur la ligne `@` au-dessus de la règle. À l'import MusicXML, il vient du premier `<sound tempo>`, converti des noires en temps. Sans `bpm`, l'écoute joue à 80. |
 | `parts` | Noms des instruments, de haut en bas, séparés par des virgules : `parts: Chant, Piano` (voir « Parties et instruments »). |
@@ -63,7 +63,7 @@ m1 |1    |2  |3  |4   ||
 
 Le nom doit être celui que `parts` annonce à cette place : un nom non déclaré (`Pno.`), absent ou à la mauvaise place est une erreur. Sans `parts`, aucun nom ne s'écrit. La gravure écrit les noms à gauche du premier système (ou de chacun, en option).
 
-ymn note toujours la hauteur qui sonne : un instrument transpositeur (clarinette en si♭, cor en fa, saxophone) s'écrit comme il sonne, et ses parties s'alignent juste avec les autres. À l'import MusicXML, la hauteur écrite est corrigée d'après `<transpose>`.
+Prisma note toujours la hauteur qui sonne : un instrument transpositeur (clarinette en si♭, cor en fa, saxophone) s'écrit comme il sonne, et ses parties s'alignent juste avec les autres. À l'import MusicXML, la hauteur écrite est corrigée d'après `<transpose>`.
 
 À l'import MusicXML, chaque `<part>` devient un instrument et chacune de ses portées une partie ; les instruments sont nommés d'après `<part-name>` quand il y en a plusieurs. Un arpège qui traverse les portées s'égrène d'un seul geste (`/` sur la ligne du haut) quand le morceau n'a qu'un instrument, et sinon partie par partie.
 
@@ -182,11 +182,11 @@ Un accord s'écrit de deux façons :
 | Écriture | Exemple | Sens |
 |---|---|---|
 | nom anglais | `Am`, `G7`, `Cmaj7`, `F#m7b5`, `Bb`, `Dsus4`, `C6/9`, `G/B` | la fondamentale (`A` à `G`, suivie de `#` ou `b`), la qualité, puis `/` et la basse si elle diffère |
-| notes ymn | `10;1;5`, `12;3;8` | les notes séparées par `;`, **de la basse vers l'aigu**, sans octave |
+| notes Prisma | `10;1;5`, `12;3;8` | les notes séparées par `;`, **de la basse vers l'aigu**, sans octave |
 
 Qualités reconnues : `` (majeur), `m`, `dim`, `aug`, `sus2`, `sus4`, `5`, `6`, `m6`, `7`, `maj7`, `m7`, `mMaj7`, `dim7`, `m7b5`, `aug7`, `7sus4`, `7b5`, `add9`, `madd9`, `6/9`, `9`, `maj9`, `m9`, `7b9`, `7#9`, `11`, `m11`, `13`, `maj13`, `m13` (et leurs variantes usuelles : `min`, `-`, `M7`, `Δ`, `°`, `ø`, `+`). Un accord inconnu est une erreur.
 
-L'ordre des notes ymn compte : `Am7` (`10;1;5;8`) et `C6` (`1;5;8;10`) ont les mêmes notes, seule la basse les distingue. Le fichier garde l'écriture choisie ; la gravure affiche le nom, les notes empilées (la basse en bas), ou les deux, en calculant l'un à partir de l'autre. À l'import MusicXML, les accords viennent de `<harmony>`, ou d'un simple texte dont tout le contenu est un nom d'accord (`A7` écrit au-dessus de la portée).
+L'ordre des notes Prisma compte : `Am7` (`10;1;5;8`) et `C6` (`1;5;8;10`) ont les mêmes notes, seule la basse les distingue. Le fichier garde l'écriture choisie ; la gravure affiche le nom, les notes empilées (la basse en bas), ou les deux, en calculant l'un à partir de l'autre. À l'import MusicXML, les accords viennent de `<harmony>`, ou d'un simple texte dont tout le contenu est un nom d'accord (`A7` écrit au-dessus de la portée).
 
 ## Sections et ordre de jeu
 
@@ -321,9 +321,9 @@ La version change à chaque modification qui rend un ancien fichier illisible.
 ## Outil en ligne de commande
 
 ```
-npm run ymn -- import morceau.musicxml -o morceau.ymn --largeur 96
-npm run ymn -- format morceau.ymn -o morceau.ymn --largeur 120
-npm run ymn -- check morceau.ymn
+npm run prisma -- import morceau.musicxml -o morceau.prisma --largeur 96
+npm run prisma -- format morceau.prisma -o morceau.prisma --largeur 120
+npm run prisma -- check morceau.prisma
 ```
 
 `format` relit un fichier et le remet en page à la largeur demandée. `check` signale la première erreur, avec sa ligne et sa colonne.

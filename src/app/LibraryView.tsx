@@ -17,7 +17,7 @@ const SORTS: { value: Sort; label: string }[] = [
   { value: "composer", label: "Compositeur" },
   { value: "recent", label: "Ouverts récemment" },
 ];
-const SORT_KEY = "ymn:library-sort";
+const SORT_KEY = "prisma:library-sort";
 const loadSort = (): Sort => {
   try {
     const s = localStorage.getItem(SORT_KEY);
@@ -27,13 +27,13 @@ const loadSort = (): Sort => {
   }
 };
 
-/** Les morceaux montrés : tous, les partitions .ymn seules, ou les MusicXML à importer seuls. */
-type Kinds = "all" | "ymn" | "musicxml";
-const KINDS_KEY = "ymn:library-kinds";
+/** Les morceaux montrés : tous, les partitions .prisma seules, ou les MusicXML à importer seuls. */
+type Kinds = "all" | "prisma" | "musicxml";
+const KINDS_KEY = "prisma:library-kinds";
 const loadKinds = (): Kinds => {
   try {
     const k = localStorage.getItem(KINDS_KEY);
-    return k === "ymn" || k === "musicxml" ? k : "all";
+    return k === "prisma" || k === "musicxml" ? k : "all";
   } catch {
     return "all";
   }
@@ -41,7 +41,7 @@ const loadKinds = (): Kinds => {
 
 /** En liste, pour chercher vite ; en vignettes, pour retrouver un morceau à l'œil. */
 type View = "list" | "thumbs";
-const VIEW_KEY = "ymn:library-view";
+const VIEW_KEY = "prisma:library-view";
 const loadView = (): View => {
   try {
     return localStorage.getItem(VIEW_KEY) === "list" ? "list" : "thumbs";
@@ -158,7 +158,7 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
         {state.kind === "loading" && <p className="library-note">Lecture du dossier…</p>}
         {state.kind === "none" && (
           <div className="library-note">
-            <p>Choisissez le dossier où vous rangez vos partitions (.ymn et MusicXML) : la bibliothèque les montre toutes, sous-dossiers compris. Les fichiers restent où ils sont.</p>
+            <p>Choisissez le dossier où vous rangez vos partitions (.prisma et MusicXML) : la bibliothèque les montre toutes, sous-dossiers compris. Les fichiers restent où ils sont.</p>
             <button className="library-action" onClick={choose}>
               Choisir un dossier
             </button>
@@ -189,7 +189,7 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
                 Afficher
                 <select value={kinds} onChange={(e) => setKinds(e.target.value as Kinds)}>
                   <option value="all">Tout ({total("all")})</option>
-                  <option value="ymn">Partitions ymn ({total("ymn")})</option>
+                  <option value="prisma">Partitions Prisma ({total("prisma")})</option>
                   <option value="musicxml">MusicXML à importer ({total("musicxml")})</option>
                 </select>
               </label>
@@ -216,9 +216,9 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
                 </button>
               </span>
             </div>
-            {!state.entries.length && <p className="library-note">Aucune partition (.ymn ou MusicXML) dans ce dossier.</p>}
+            {!state.entries.length && <p className="library-note">Aucune partition (.prisma ou MusicXML) dans ce dossier.</p>}
             {state.entries.length > 0 && !count && (
-              <p className="library-note">{query.trim() ? `Aucun morceau ne correspond à « ${query.trim()} ».` : kinds === "ymn" ? "Aucune partition ymn dans ce dossier." : "Aucun MusicXML à importer dans ce dossier."}</p>
+              <p className="library-note">{query.trim() ? `Aucun morceau ne correspond à « ${query.trim()} ».` : kinds === "prisma" ? "Aucune partition Prisma dans ce dossier." : "Aucun MusicXML à importer dans ce dossier."}</p>
             )}
             {groups.map((g) => (
               <section key={g.folder} className="library-group">

@@ -5,7 +5,7 @@
 import { engravePages, scoreOf } from "./render.ts";
 import type { EngraveOptions } from "./render.ts";
 
-export type ThumbRequest = { id: number; text: string; kind: "ymn" | "musicxml"; name: string; options: EngraveOptions };
+export type ThumbRequest = { id: number; text: string; kind: "prisma" | "musicxml"; name: string; options: EngraveOptions };
 
 self.onmessage = (e: MessageEvent<ThumbRequest>) => {
   const { id, text, kind, name, options } = e.data;

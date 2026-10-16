@@ -432,7 +432,7 @@ function readMeasures(partNode: XNode, base: Part, staves: number): RawMeasure[]
     }
     // petites notes sans note principale dans la mesure : jouées juste avant la mesure suivante
     for (const list of waiting.values()) graces.push(...list.map((g) => ({ ...g, on: maxCursor })));
-    // ymn note ce qui sonne : la hauteur écrite d'un instrument transpositeur est décalée (armure,
+    // Prisma note ce qui sonne : la hauteur écrite d'un instrument transpositeur est décalée (armure,
     // altérations et voisines d'ornement se lisent d'abord sur la partition écrite)
     if (transpose) {
       for (const n of notes) {

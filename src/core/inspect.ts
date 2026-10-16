@@ -1,13 +1,13 @@
 /**
- * Ce que montre le curseur dans un texte .ymn : sa place dans la musique (section, mesure, temps,
+ * Ce que montre le curseur dans un texte .prisma : sa place dans la musique (section, mesure, temps,
  * case, partie, octave) et le sens du signe qu'il pointe (une note, une nuance, une clé de
  * l'en-tête…), pour la barre de statut de l'éditeur. La lecture est indulgente : un texte en
  * cours d'écriture, même faux, se décrit au mieux.
  */
-import { chordName, chordNotes, chordYmnText } from "./chords.ts";
+import { chordName, chordNotes, chordPrismaText } from "./chords.ts";
 import { ARPEGGIO_DOWN, FERMATA, FINGER_MARK, GRACE_MARK, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TRILL_MARK, isDynamic, isExtender, isHairpin, isPedalText, isSlur, trillAux } from "./model.ts";
 import { midiOf, octaveOf, parseOctaveLabel } from "./pitch.ts";
-import { CHORD_LINE, isRuler, markTokens, parseRule } from "./ymn-parse.ts";
+import { CHORD_LINE, isRuler, markTokens, parseRule } from "./prisma-parse.ts";
 
 /** Noms des notes : do ré mi (do central = do3), ou anglais (C4). */
 export type NoteNames = "latin" | "english";
@@ -49,7 +49,7 @@ const pitchClass = (n: number, names: NoteNames) => (names === "latin" ? LATIN :
 const FINGERS = ["", "pouce", "index", "majeur", "annulaire", "auriculaire"];
 
 const FRONTMATTER: Record<string, string> = {
-  format: "version du format ymn du fichier",
+  format: "version du format Prisma du fichier",
   title: "titre du morceau",
   subtitle: "sous-titre, gravé sous le titre",
   composer: "compositeur",
@@ -331,9 +331,9 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
     const notes = chordNotes(word);
     if (!notes) return void symbol(word, "accord inconnu");
     const list = notes.map((n) => pitchClass(n, names)).join(" ");
-    // au plus près du signe, son autre écriture : les chiffres ymn d'un accord nommé, le nom d'un
+    // au plus près du signe, son autre écriture : les chiffres Prisma d'un accord nommé, le nom d'un
     // accord écrit en chiffres (s'il en a un) ; puis ses notes
-    const other = /^\d/.test(word) ? chordName(notes) : chordYmnText(notes);
+    const other = /^\d/.test(word) ? chordName(notes) : chordPrismaText(notes);
     symbol(word, `${other ? `(${other}) ` : ""}accord ${list}`);
   }
 

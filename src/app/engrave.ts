@@ -39,7 +39,7 @@ export const G = {
   noteDigit: 2.05, // largeur d'un chiffre de note (Atkinson Hyperlegible en gras, 3,3 mm)
   slurLevel: 1.3, // hauteur d'un étage de liaisons
   chordNameH: 4.6, // bande du nom d'un accord (« Am »)
-  chordNoteH: 2.4, // hauteur d'une note dans un accord écrit en notes ymn empilées
+  chordNoteH: 2.4, // hauteur d'une note dans un accord écrit en notes Prisma empilées
   chordChar: 1.9, // largeur d'un caractère du nom d'un accord
   lyricH: 4.2, // une ligne de paroles (un couplet)
   lyricChar: 1.6, // largeur d'un caractère de paroles
@@ -56,7 +56,7 @@ const lyricW = (text: string, hyphen: boolean) => 0.5 + lyricTextW(text) + (hyph
 const lyricExtra = (sys: System, a: number, cellW: number) =>
   Math.max(0, ...sys.parts.flatMap((p) => p.voice.lyrics.flatMap((l) => l.syllables.filter((x) => x.anchor === a).map((x) => lyricW(x.text, x.hyphen) - cellW))));
 
-/** Affichage des accords : nom anglais, notes ymn empilées, ou les deux. */
+/** Affichage des accords : nom anglais, notes Prisma empilées, ou les deux. */
 export type ChordStyle = "name" | "notes" | "both";
 
 /** Notes d'un accord (de la basse vers l'aigu) et nom à graver : celui écrit, ou celui reconnu. */

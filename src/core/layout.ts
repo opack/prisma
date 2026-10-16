@@ -17,7 +17,7 @@ export type Metrics = {
   cell: number;
   /**
    * Largeur de la case qui commence à l'instant t, si elle doit être plus large que cell
-   * (texte .ymn : une indication trop longue élargit sa case). Par défaut : cell.
+   * (texte .prisma : une indication trop longue élargit sa case). Par défaut : cell.
    */
   cellAt?: (t: number) => number;
   beatSep: number;
@@ -130,7 +130,7 @@ export type LyricLine = {
 export type Voice = { marks: VoiceMark[]; hairpins: HairpinSpan[]; slurs: SlurSpan[]; lyrics: LyricLine[] };
 
 /**
- * Pédale dans un système : ses signes (pour le texte .ymn) et ses traits (pour la gravure).
+ * Pédale dans un système : ses signes (pour le texte .prisma) et ses traits (pour la gravure).
  * Un trait va de l'ancre où la pédale s'enfonce (-1 : bord gauche, pédale déjà enfoncée)
  * à l'ancre où elle se relâche (-1 : bord droit du système).
  */
@@ -692,7 +692,7 @@ export function layout(score: Score, m: Metrics): System[] {
       lyrics: lyricLines(part),
     });
 
-    // pédale d'une partie : ses signes (pour le texte .ymn) et ses traits (pour la gravure)
+    // pédale d'une partie : ses signes (pour le texte .prisma) et ses traits (pour la gravure)
     const pedalLine = (part: Part): PedalLine => {
       const pedals = score.pedals.filter((p) => p.part === part);
       const signs: PedalLine["signs"] = [];

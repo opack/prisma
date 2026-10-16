@@ -7,7 +7,7 @@ export const numberOf = (midi: number) => (midi % 12) + 1;
 export const midiOf = (octave: number, number: number) => (octave + 1) * 12 + (number - 1);
 
 /**
- * Dans le format .ymn, l'octave est comptée depuis celle du do central :
+ * Dans le format .prisma, l'octave est comptée depuis celle du do central :
  * « 0 » pour l'octave qui commence au do central, « +1 » au-dessus, « -1 » en dessous.
  * Le rendu graphique les affiche avec des flèches (↑1, ↓1).
  * Cette référence ne dépend d'aucune convention nationale (do3 en France, C4 ailleurs).

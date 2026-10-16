@@ -37,7 +37,7 @@ export type RenderOptions = {
   octavePalette: OctavePalette;
   /** Couleurs dans un ordre mélangé (fixe) plutôt que progressif : plus de contraste entre voisines. */
   octaveMixed: boolean;
-  /** Accords : nom anglais, notes ymn empilées, ou les deux. */
+  /** Accords : nom anglais, notes Prisma empilées, ou les deux. */
   chords: ChordStyle;
   /** Sections : chacune commence une nouvelle ligne, ou suit la précédente sur la même ligne, séparée par un blanc. */
   sections: SectionLayout;
@@ -115,7 +115,7 @@ export const DENSITIES: { value: Density; label: string }[] = [
   { value: "compact", label: "Compact" },
 ];
 
-const KEY = "ymn:options";
+const KEY = "prisma:options";
 
 export function loadOptions(): RenderOptions {
   try {

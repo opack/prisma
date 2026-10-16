@@ -119,7 +119,7 @@ export type Meta = {
   /** Tempo, en temps par minute : le temps de la règle de comptage (la noire pointée d'un 6/8). */
   bpm?: number;
   source?: string;
-  /** Largeur d'une case dans le texte .ymn (3 par défaut). */
+  /** Largeur d'une case dans le texte .prisma (3 par défaut). */
   cell?: number;
   /** Autres clés du frontmatter, conservées telles quelles. */
   [key: string]: string | number | undefined;
@@ -257,7 +257,7 @@ export type Score = {
   /** Consignes de pédale (« Ped. simile »…), sur la ligne de pédale. */
   pedalTexts: PedalText[];
   markers: Marker[];
-  /** Accords d'accompagnement (ligne `@c`), tels qu'écrits : nom anglais ou notes ymn. */
+  /** Accords d'accompagnement (ligne `@c`), tels qu'écrits : nom anglais ou notes Prisma. */
   chords: TextMark[];
   /** Paroles, par instant, partie et couplet. */
   lyrics: Lyric[];
