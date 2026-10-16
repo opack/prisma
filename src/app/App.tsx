@@ -4,6 +4,7 @@ import type { Score } from "../core/index.ts";
 import { Menu } from "./Menu.tsx";
 import { ListenControls } from "./ListenControls.tsx";
 import { EngraveButton } from "./EngraveButton.tsx";
+import { SourceEditor } from "./SourceEditor.tsx";
 import { OptionsDrawer } from "./OptionsDrawer.tsx";
 
 import { player } from "./player.ts";
@@ -531,19 +532,9 @@ export function App() {
           </svg>
         </button>
         <section className="source" hidden={reading}>
-          <div className="editor">
-          <textarea
-            ref={editor}
-            value={source}
-            spellCheck={false}
-            wrap="off"
-            aria-label="Source .ymn"
-            onChange={(e) => {
-              setSource(e.target.value);
-            }}
-          />
-          <EngraveButton dirty={dirty} auto={options.autoEngrave} onEngrave={engraveNow} onAuto={(autoEngrave) => setOptions({ autoEngrave })} />
-          </div>
+          <SourceEditor value={source} onChange={setSource} textarea={editor} errorLine={problem?.line} noteNames={options.noteNames}>
+            <EngraveButton dirty={dirty} auto={options.autoEngrave} onEngrave={engraveNow} onAuto={(autoEngrave) => setOptions({ autoEngrave })} />
+          </SourceEditor>
           {problem && (
             <button className="problem" onClick={() => goTo(problem.line, problem.column)}>
               {problem.message}

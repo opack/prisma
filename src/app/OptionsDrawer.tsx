@@ -16,6 +16,7 @@ import type { RenderOptions } from "./options.ts";
 type Option<T> = { value: T; label: string; hint: string };
 
 const TABS = [
+  { id: "editing", label: "Édition" },
   { id: "score", label: "Partition" },
   { id: "octaves", label: "Octaves" },
   { id: "notes", label: "Notes" },
@@ -27,6 +28,11 @@ const CHORDS: Option<RenderOptions["chords"]>[] = [
   { value: "both", label: "Nom et notes", hint: "le nom anglais (Am), avec les notes ymn dessous (10 1 5)" },
   { value: "name", label: "Nom", hint: "le nom anglais : Am, G/B" },
   { value: "notes", label: "Notes", hint: "les notes ymn empilées, la basse en bas : 10 1 5" },
+];
+
+const NOTE_NAMES: Option<RenderOptions["noteNames"]>[] = [
+  { value: "latin", label: "Do ré mi", hint: "dans la barre de statut de l'éditeur ; le do central est do3" },
+  { value: "english", label: "C D E", hint: "dans la barre de statut de l'éditeur, en notation anglaise ; le do central est C4" },
 ];
 
 const SECTIONS: Option<RenderOptions["sections"]>[] = [
@@ -176,7 +182,7 @@ export function OptionsDrawer({ options, setOptions, onClose }: { options: Rende
         ))}
       </nav>
       <div className="drawer-body" role="tabpanel">
-        {tab === "score" && (
+        {tab === "editing" && (
           <>
             <Check
               id="auto-engrave"
@@ -186,6 +192,11 @@ export function OptionsDrawer({ options, setOptions, onClose }: { options: Rende
               onChange={(autoEngrave) => setOptions({ autoEngrave })}
               hint={options.autoEngrave ? "la gravure suit la saisie, peu après la dernière frappe" : "on grave d'un clic sur le bouton Graver, en bas de l'éditeur (Ctrl+Entrée)"}
             />
+            <Choice id="note-names" label="Noms des notes" value={options.noteNames} options={NOTE_NAMES} onChange={(noteNames) => setOptions({ noteNames })} />
+          </>
+        )}
+        {tab === "score" && (
+          <>
             <Choice id="chords" label="Accompagnement" value={options.chords} options={CHORDS} onChange={(chords) => setOptions({ chords })} />
             <Check
               id="names-every-system"

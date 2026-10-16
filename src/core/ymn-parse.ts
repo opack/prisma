@@ -23,7 +23,7 @@ type SepSpan = { from: number; to: number; text: string };
 type Rule = { double: boolean; name?: string };
 const RULE_CHARS = /^[─━\-=═+┼╪|]+$/;
 const HORIZONTAL = /[─━\-=═]/;
-function parseRule(line: string, lineNo: number): Rule | undefined {
+export function parseRule(line: string, lineNo: number): Rule | undefined {
   const t = line.trim();
   let body = t;
   let name: string | undefined;
@@ -39,7 +39,7 @@ function parseRule(line: string, lineNo: number): Rule | undefined {
   if (double && /[─━\-]/.test(body)) throw new YmnError("trait mélangé : simple (─) entre deux parties d'un instrument, double (═) entre deux instruments", lineNo, 1);
   return { double, ...(name ? { name } : {}) };
 }
-const isRuler = (line: string) => /^m[^|\s]*\s*\|/.test(line);
+export const isRuler = (line: string) => /^m[^|\s]*\s*\|/.test(line);
 const isMarkLine = (line: string) => line.startsWith("@");
 /** Ligne des accords : « @c », puis chaque accord sur sa case. */
 export const CHORD_LINE = "@c";
@@ -90,7 +90,7 @@ const nextBar = (bar: string) => (/^\d+$/.test(bar) ? String(Number(bar) + 1) : 
  * à une seule espace forment un seul texte (« a tempo », « più f ») ; les signes (soufflets
  * « <--- », signes de pédale, débuts de section « [A] ») restent à part (voir joinsText).
  */
-function markTokens(line: string) {
+export function markTokens(line: string) {
   const out: { col: number; text: string }[] = [];
   const body = " " + line.slice(1); // seul le « @ » est retiré
   // morceaux : les mots

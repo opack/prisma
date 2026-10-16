@@ -2,6 +2,8 @@ export * from "./model.ts";
 export * from "./pitch.ts";
 export { FORMAT_VERSION, YmnError } from "./frontmatter.ts";
 export { importMusicXml } from "./musicxml.ts";
+export { inspect, noteName } from "./inspect.ts";
+export type { Inspection, NoteNames } from "./inspect.ts";
 export { beatGrids, layout, noteText } from "./layout.ts";
 export type { Align, Column, HairpinSpan, Metrics, PedalLine, System, SystemPart, SystemRow, Voice, VoiceMark } from "./layout.ts";
 export { writeYmn, DEFAULT_WIDTH, DEFAULT_CELL } from "./ymn-write.ts";

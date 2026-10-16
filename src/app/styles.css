@@ -31,7 +31,7 @@ button:disabled { opacity: .5; cursor: default; }
 
 .workspace { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 0; }
 .split { flex: 1; display: grid; grid-template-columns: minmax(360px, 42%) 1fr; min-height: 0; }
-.source { display: grid; grid-template-rows: 1fr auto; min-height: 0; border-right: 1px solid var(--line); background: #fff; }
+.source { display: grid; grid-template-rows: 1fr auto auto; min-height: 0; border-right: 1px solid var(--line); background: #fff; }
 textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16px; font-family: var(--mono); font-size: 13px; line-height: 1.45; white-space: pre; overflow: auto; color: var(--ink); background: #fff; font-variant-ligatures: none; }
 .problem { margin: 0; border: 0; border-top: 1px solid var(--error); border-radius: 0; background: var(--error-bg); color: var(--error); text-align: left; padding: 10px 16px; }
 
@@ -207,8 +207,18 @@ textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16p
 .popover-hint { margin: 2px 0 0; color: var(--muted); font-size: 0.85em; line-height: 1.35; white-space: normal; }
 /* graver : un bouton flottant en bas de l'éditeur, contre les pages, et sa flèche vers les réglages
    de la gravure */
-.editor { position: relative; min-height: 0; }
-.editor textarea { padding-bottom: 76px; }
+.editor { position: relative; min-height: 0; display: grid; grid-template-columns: auto 1fr; }
+.editor textarea { padding: 12px 16px 76px 10px; }
+/* numéros de ligne : ils défilent avec le texte ; la ligne du curseur en évidence, une erreur en rouge */
+.gutter { overflow: hidden; min-width: 3.2em; padding: 12px 0; background: var(--panel); border-right: 1px solid var(--line); font-family: var(--mono); font-size: 13px; line-height: 1.45; color: var(--muted); text-align: right; user-select: none; }
+.gutter > div > div { padding: 0 8px 0 10px; }
+.gutter .current { color: var(--ink); font-weight: 600; }
+.gutter .error { color: var(--error); background: var(--error-bg); font-weight: 600; }
+/* barre de statut : la place du curseur, puis le sens du signe qu'il pointe */
+.status { display: flex; gap: 16px; align-items: baseline; min-width: 0; padding: 5px 12px; border-top: 1px solid var(--line); background: var(--panel); font-size: 12px; color: var(--muted); white-space: nowrap; }
+.status-where { flex: none; }
+.status-what { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
+.status-what code { font-family: var(--mono); font-weight: 600; padding: 0 4px; border-radius: 3px; background: #fff; border: 1px solid var(--line); }
 .engrave { position: absolute; right: 24px; bottom: 20px; z-index: 2; display: flex; border-radius: 6px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18), 0 6px 16px rgba(0, 0, 0, 0.1); }
 .engrave > button { position: relative; display: flex; align-items: center; justify-content: center; height: 40px; border: 0; background: var(--accent); color: #fff; }
 .engrave > button:first-child { width: 44px; padding: 0; border-radius: 6px 0 0 6px; }
