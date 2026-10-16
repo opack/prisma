@@ -370,7 +370,8 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
         continue;
       }
       const n = c.match(/^-?(\d+)/);
-      return n ? `${noteName(midiOf(octave!, Number(n[1])), names)} qui continue` : undefined;
+      // la tenue ne montre pas sa note : son numéro, puis son nom
+      return n ? `${n[1]} (${noteName(midiOf(octave!, Number(n[1])), names)}) qui continue` : undefined;
     }
     return undefined;
   }

@@ -1795,7 +1795,7 @@ describe("ce que montre le curseur", () => {
   });
 
   it("traduit les notes : tenue, trille et doigté, petites notes, octave", async () => {
-    expect((await at(9, 12)).symbol?.meaning).toBe("la3 qui continue");
+    expect((await at(9, 12)).symbol?.meaning).toBe("10 (la3) qui continue");
     expect((await at(9, 21)).symbol?.meaning).toBe("si3, en trille avec do4, doigt 3 (majeur)");
     expect((await at(12, 5)).symbol?.meaning).toBe("petite note : ré4, puis mi4");
     expect((await at(12, 1)).symbol?.meaning).toBe("octave +1 : de do4 à si4");
