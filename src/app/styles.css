@@ -46,12 +46,23 @@ textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16p
 /* mode lecture : sans l'éditeur, les pages côte à côte, chacune de toute la hauteur, qu'on fait
    défiler de côté une page à la fois */
 @media screen {
+  /* zoom de la partition (--zoom) : la page s'agrandit, l'aperçu défile ; une page plus large que
+     l'aperçu se cale à gauche plutôt que de déborder des deux côtés */
+  .preview { align-items: flex-start; }
+  .preview .page { width: calc(min(100%, 210mm) * var(--zoom, 1)); max-width: none; margin-inline: auto; }
   .split.reading { grid-template-columns: 1fr; }
   .split.reading .source[hidden] { display: none; }
-  .split.reading .preview { flex-direction: row; align-items: stretch; padding: 12px 12px 12px 32px; gap: 12px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scroll-padding: 12px 12px 12px 32px; }
-  .split.reading .page { height: 100%; width: auto; max-width: none; scroll-snap-align: start; }
+  .split.reading .preview { padding: 12px 12px 12px 32px; gap: 12px; overflow: auto; }
+  /* ajustées à la hauteur : les pages côte à côte, qu'on fait défiler de côté une page à la fois */
+  .split.reading.fit-height .preview { flex-direction: row; scroll-snap-type: x mandatory; scroll-padding: 12px 12px 12px 32px; }
+  .split.reading.fit-height .page { height: calc(100% * var(--zoom, 1)); width: auto; margin: 0; scroll-snap-align: start; }
   /* une page de plus que l'écran ne montre pas en entier : la dernière se cale contre le bord */
-  .split.reading .page:last-child { scroll-snap-align: end; }
+  .split.reading.fit-height .page:last-child { scroll-snap-align: end; }
+  /* zoomée, une page dépasse l'écran : on s'y promène librement, sans être ramené au début d'une page */
+  .split.reading.fit-height.zoomed .preview { scroll-snap-type: none; }
+  /* ajustées à la largeur : les pages l'une sous l'autre, aussi larges que l'écran */
+  .split.reading.fit-width .preview { flex-direction: column; }
+  .split.reading.fit-width .page { width: calc(100% * var(--zoom, 1)); height: auto; }
 }
 
 /* glisser-déposer un fichier : un voile sur toute la fenêtre */
@@ -160,6 +171,7 @@ textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16p
 .bar .transport button { display: flex; align-items: center; justify-content: center; width: 2.4em; padding-left: 0; padding-right: 0; border-radius: 0; margin-left: -1px; }
 .bar .transport button:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
 .bar .transport button:last-child { border-radius: 0 4px 4px 0; }
+.bar .transport button:only-child { border-radius: 4px; }
 .bar .transport .listen { width: 3em; }
 .bar .transport .loading { line-height: 14px; }
 /* métronome et instruments : allumés ou éteints */
@@ -178,8 +190,9 @@ textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16p
 .drawer-head h2 { margin: 0; font-size: 1rem; }
 .drawer .close { width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 20px; line-height: 1; }
 .drawer .close:hover { background: var(--line); color: inherit; }
-.drawer .tabs { display: flex; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--line); }
-.drawer .tabs button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 8px 10px; color: var(--muted); margin-bottom: -1px; }
+.drawer .tabs { display: flex; padding: 0 8px; border-bottom: 1px solid var(--line); }
+/* six onglets dans la largeur du panneau : ils se partagent la place */
+.drawer .tabs button { flex: 1 1 auto; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 8px 4px; white-space: nowrap; color: var(--muted); margin-bottom: -1px; }
 .drawer .tabs button.active { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
 .drawer-body { overflow: auto; padding: 8px 16px 16px; }
 .setting { display: grid; grid-template-columns: 8.5em 1fr; gap: 2px 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid #ecece8; }

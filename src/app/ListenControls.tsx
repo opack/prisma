@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Score } from "../core/index.ts";
 import { DEFAULT_BPM, player } from "./player.ts";
+import { follow } from "./follow.ts";
 import { partNames } from "./parts.ts";
 import { usePopover } from "./popover.ts";
 
@@ -10,7 +11,7 @@ const labels = { idle: "Écouter", loading: "Chargement du piano… (cliquer pou
 function Icon({ d }: { d: string }) {
   return (
     <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
-      <path d={d} fill="currentColor" />
+      <path d={d} fill="currentColor" fillRule="evenodd" />
     </svg>
   );
 }
@@ -35,6 +36,7 @@ type Props = {
 
 export function ListenControls({ score, disabled, metronome, onMetronome, muted, onMuted }: Props) {
   const { state, error, entry: playing, entries } = useSyncExternalStore(player.subscribe, player.getSnapshot);
+  const following = useSyncExternalStore(follow.subscribe, follow.enabled);
   const entry = playing ?? 0;
   const written = score?.meta.bpm ?? DEFAULT_BPM;
   const [chosen, setChosen] = useState<number | null>(null);
@@ -52,7 +54,15 @@ export function ListenControls({ score, disabled, metronome, onMetronome, muted,
   const toggle = () => {
     if (state === "playing") player.pause();
     else if (state === "loading") player.stop();
-    else if (score) player.play(score, bpm);
+    else if (score) {
+      follow.release();
+      player.play(score, bpm);
+    }
+  };
+  /** Revenir au début, à une section : la partition y retourne sans attendre. */
+  const go = (move: () => void) => () => {
+    follow.release();
+    move();
   };
 
   return (
@@ -81,20 +91,31 @@ export function ListenControls({ score, disabled, metronome, onMetronome, muted,
         <span className="unit">bpm</span>
       </span>
       <span className="transport">
-        <button onClick={() => player.rewind()} disabled={disabled} title="Revenir au début du morceau" aria-label="Revenir au début">
+        <button onClick={go(() => player.rewind())} disabled={disabled} title="Revenir au début du morceau" aria-label="Revenir au début">
           <Icon d="M2 3h2v10H2zM9 3v10L4 8zM14 3v10L9 8z" />
         </button>
-        <button onClick={() => player.previous()} disabled={disabled} title="Début de la section (deux clics : section précédente)" aria-label="Section précédente">
+        <button onClick={go(() => player.previous())} disabled={disabled} title="Début de la section (deux clics : section précédente)" aria-label="Section précédente">
           <Icon d="M3 3h2v10H3zM13 3v10L5 8z" />
         </button>
         <button className="listen" onClick={toggle} disabled={disabled} title={labels[state]} aria-label={labels[state]}>
           {state === "loading" ? <span className="loading">…</span> : <Icon d={state === "playing" ? "M4 3h3v10H4zM9 3h3v10H9z" : "M4 2.5v11L13 8z"} />}
         </button>
-        <button onClick={() => player.next()} disabled={disabled || entry + 1 >= entries} title="Section suivante" aria-label="Section suivante">
+        <button onClick={go(() => player.next())} disabled={disabled || entry + 1 >= entries} title="Section suivante" aria-label="Section suivante">
           <Icon d="M11 3h2v10h-2zM3 3v10l8-5z" />
         </button>
         <button onClick={() => player.stop()} disabled={state === "idle"} title="Arrêter et revenir au début" aria-label="Arrêter">
           <Icon d="M3.5 3.5h9v9h-9z" />
+        </button>
+      </span>
+      <span className="transport toggles">
+        <button
+          className={following ? "on" : undefined}
+          aria-pressed={following}
+          onClick={() => follow.set(!following)}
+          title={following ? "Suivre la lecture : la partition suit le curseur, et y revient une seconde après qu'on l'a fait défiler à la main" : "Suivre la lecture : arrêté"}
+          aria-label="Suivre la lecture"
+        >
+          <Icon d="M8 2.5a5.5 5.5 0 1 0 0 11a5.5 5.5 0 1 0 0-11zM8 4a4 4 0 1 1 0 8a4 4 0 1 1 0-8zM8 6.3a1.7 1.7 0 1 1 0 3.4a1.7 1.7 0 1 1 0-3.4zM7.25 .5h1.5v2h-1.5zM7.25 13.5h1.5v2h-1.5zM.5 7.25h2v1.5h-2zM13.5 7.25h2v1.5h-2z" />
         </button>
       </span>
       <span className="transport toggles">

@@ -20,6 +20,7 @@ const TABS = [
   { id: "score", label: "Partition" },
   { id: "octaves", label: "Octaves" },
   { id: "notes", label: "Notes" },
+  { id: "playback", label: "Lecture" },
   { id: "metronome", label: "Métronome" },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
@@ -236,6 +237,18 @@ export function OptionsDrawer({ options, setOptions, onClose }: { options: Rende
               checked={options.fingerings}
               onChange={(fingerings) => setOptions({ fingerings })}
               hint={options.fingerings ? "en chiffre blanc sur une pastille, en bas à droite de la note" : "masqués : la page s'allège, le fichier les garde"}
+            />
+          </>
+        )}
+        {tab === "playback" && (
+          <>
+            <Check
+              id="look-ahead"
+              label="Système suivant"
+              text="Le montrer d'avance"
+              checked={options.lookAhead}
+              onChange={(lookAhead) => setOptions({ lookAhead })}
+              hint={options.lookAhead ? "à l'écoute, dans la dernière mesure d'un système, la page glisse peu à peu pour le montrer" : "à l'écoute, la page ne bouge qu'en arrivant au système suivant"}
             />
           </>
         )}

@@ -1431,6 +1431,16 @@ describe("écoute", () => {
     expect(playedTick(ps, 2 * T, 0)).toBe(4 * T); // la fin, jouée une seule fois
   });
 
+  it("sait ce qu'on jouera après un système : la suite, ou le retour d'une reprise", async () => {
+    const { nextTick } = await import("../src/app/performance.ts");
+    const s = bars(3, { repeats: [{ barIndex: 1, end: true }] }); // joué 1 2 1 2 3
+    const ps = passages(s);
+    expect(nextTick(ps, 0.5 * T, T)).toBe(T); // dans la mesure 1 : la mesure 2
+    expect(nextTick(ps, 1.5 * T, 3 * T)).toBe(0); // dans la mesure 2, la reprise : retour à la 1
+    expect(nextTick(ps, 3.5 * T, 3 * T)).toBe(2 * T); // la seconde fois : la mesure 3
+    expect(nextTick(ps, 4.5 * T, 3 * T)).toBeNull(); // la fin du morceau
+  });
+
   it("revient au passage le plus récent quand on clique en arrière, et va à une section par sa lettre", async () => {
     const { playedTick, entryAt, entryStart } = await import("../src/app/performance.ts");
     // A B B B C, une mesure chacune : joué 1 2 2 2 3

@@ -8,6 +8,7 @@ import { SourceEditor } from "./SourceEditor.tsx";
 import { OptionsDrawer } from "./OptionsDrawer.tsx";
 
 import { player } from "./player.ts";
+import { follow } from "./follow.ts";
 import { NoticeView } from "./NoticeView.tsx";
 import { LibraryView } from "./LibraryView.tsx";
 import { engraveOptions, engravePages } from "./render.ts";
@@ -43,6 +44,18 @@ const loadEditing = (source: string) => {
     /* stockage indisponible : le mode se déduit du texte */
   }
   return !source.trim();
+};
+/** Zoom de la partition : un facteur parmi ces crans, et en lecture, l'ajustement des pages. */
+const ZOOMS = [0.5, 0.67, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3];
+type View = { zoom: number; fit: "height" | "width" };
+const VIEW_KEY = "prisma:view";
+const loadView = (): View => {
+  try {
+    const raw = JSON.parse(localStorage.getItem(VIEW_KEY) ?? "{}");
+    return { zoom: ZOOMS.includes(raw.zoom) ? raw.zoom : 1, fit: raw.fit === "width" ? "width" : "height" };
+  } catch {
+    return { zoom: 1, fit: "height" };
+  }
 };
 const persist = (s: string) => {
   try {
@@ -113,6 +126,62 @@ export function App() {
   };
   const reading = !editing;
   const preview = useRef<HTMLElement>(null);
+  /**
+   * Zoom de la partition, retenu d'une visite à l'autre : un facteur, et en lecture, les pages
+   * ajustées à la hauteur de l'écran (côte à côte) ou à sa largeur (l'une sous l'autre, pour jouer
+   * en plus grand en faisant défiler de haut en bas). Choisir un ajustement remet le zoom à 100 % :
+   * la page tient alors exactement ; le zoom part de là.
+   */
+  const [view, setViewState] = useState(loadView);
+  const setView = (patch: Partial<View>) =>
+    setViewState((cur) => {
+      const next = { ...cur, ...patch };
+      try {
+        localStorage.setItem(VIEW_KEY, JSON.stringify(next));
+      } catch {
+        /* stockage indisponible : sans conséquence */
+      }
+      return next;
+    });
+  const zoomBy = (dir: 1 | -1) =>
+    setViewState((cur) => {
+      const zoom = dir > 0 ? (ZOOMS.find((z) => z > cur.zoom + 1e-6) ?? cur.zoom) : ([...ZOOMS].reverse().find((z) => z < cur.zoom - 1e-6) ?? cur.zoom);
+      const next = { ...cur, zoom };
+      try {
+        localStorage.setItem(VIEW_KEY, JSON.stringify(next));
+      } catch {
+        /* stockage indisponible : sans conséquence */
+      }
+      return next;
+    });
+  const zoomByRef = useRef(zoomBy);
+  zoomByRef.current = zoomBy;
+  // Ctrl + molette sur la partition : le zoom de la partition, pas celui de la page entière
+  useEffect(() => {
+    const pane = preview.current;
+    if (!pane) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return follow.hold();
+      e.preventDefault();
+      zoomByRef.current(e.deltaY < 0 ? 1 : -1);
+    };
+    // défiler à la main (molette, doigt, barre de défilement) suspend le suivi de la lecture ;
+    // pendant la promenade, tout défilement est le sien (le suivi, lui, ne fait plus défiler) et
+    // la prolonge, jusqu'à une seconde sans geste
+    const hold = () => follow.hold();
+    const onBar = (e: PointerEvent) => e.target === pane && (e.offsetX > pane.clientWidth || e.offsetY > pane.clientHeight) && hold();
+    const onScroll = () => !follow.active() && follow.enabled() && hold();
+    pane.addEventListener("wheel", onWheel, { passive: false });
+    pane.addEventListener("touchmove", hold, { passive: true });
+    pane.addEventListener("pointerdown", onBar);
+    pane.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      pane.removeEventListener("wheel", onWheel);
+      pane.removeEventListener("touchmove", hold);
+      pane.removeEventListener("pointerdown", onBar);
+      pane.removeEventListener("scroll", onScroll);
+    };
+  }, []);
   useEffect(() => {
     if (!reading) return;
     const onKey = (e: KeyboardEvent) => {
@@ -122,13 +191,16 @@ export function App() {
       const pane = preview.current;
       if (!turn || !pane) return;
       e.preventDefault();
+      follow.hold();
+      // ajustées à la largeur, les pages se suivent de haut en bas : on avance d'un écran
+      if (view.fit === "width") return pane.scrollBy({ top: turn * pane.clientHeight * 0.9, behavior: "smooth" });
       const page = pane.querySelector<SVGSVGElement>(".page");
       const step = page ? page.getBoundingClientRect().width + parseFloat(getComputedStyle(pane).columnGap || "0") : pane.clientWidth;
       pane.scrollBy({ left: turn * step, behavior: "smooth" });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [reading]);
+  }, [reading, view.fit]);
   /** Plein écran, celui du navigateur (F11 y mène aussi) : la coche du menu le suit. */
   const [fullScreen, setFullScreen] = useState(() => !!document.fullscreenElement);
   useEffect(() => {
@@ -215,6 +287,11 @@ export function App() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "e") {
         e.preventDefault();
         toggleEditingRef.current();
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "+" || e.key === "=" || e.key === "-" || e.key === "0")) {
+        e.preventDefault();
+        if (e.key === "0") setViewRef.current({ zoom: 1 });
+        else zoomByRef.current(e.key === "-" ? -1 : 1);
       }
       if (e.key === "F11") {
         e.preventDefault();
@@ -312,6 +389,8 @@ export function App() {
   toggleEditingRef.current = () => setEditing(!editing);
   const toggleFullScreenRef = useRef(toggleFullScreen);
   toggleFullScreenRef.current = toggleFullScreen;
+  const setViewRef = useRef(setView);
+  setViewRef.current = setView;
 
   // glisser-déposer un fichier sur la fenêtre pour l'ouvrir ; le compteur suit les entrées et
   // sorties successives au-dessus des éléments de la page
@@ -455,6 +534,13 @@ export function App() {
           items={[
             { label: "Éditeur", onSelect: () => setEditing(!editing), checked: editing, shortcut: "Ctrl+E" },
             { label: "Plein écran", onSelect: toggleFullScreen, checked: fullScreen, shortcut: "F11" },
+            "separator",
+            { label: "Zoom avant", onSelect: () => zoomBy(1), shortcut: "Ctrl++", disabled: view.zoom >= ZOOMS[ZOOMS.length - 1] },
+            { label: "Zoom arrière", onSelect: () => zoomBy(-1), shortcut: "Ctrl+−", disabled: view.zoom <= ZOOMS[0] },
+            { label: `Taille normale${view.zoom !== 1 ? ` (zoom ${Math.round(view.zoom * 100)} %)` : ""}`, onSelect: () => setView({ zoom: 1 }), shortcut: "Ctrl+0", disabled: view.zoom === 1 },
+            "separator",
+            { label: "Lecture : ajuster à la hauteur", onSelect: () => setView({ fit: "height", zoom: 1 }), checked: view.fit === "height" && view.zoom === 1, disabled: editing },
+            { label: "Lecture : ajuster à la largeur", onSelect: () => setView({ fit: "width", zoom: 1 }), checked: view.fit === "width" && view.zoom === 1, disabled: editing },
           ]}
         />
         <Menu label="Aide" items={[{ label: "Notice", onSelect: () => setShowGuide((v) => !v), checked: showGuide }]} />
@@ -515,7 +601,7 @@ export function App() {
         </main>
       )}
       {showLibrary && <LibraryView options={options} onOpen={openEntry} onClose={() => setShowLibrary(false)} />}
-      <main className={"split" + (reading ? " reading" : "")} hidden={showGuide || showLibrary}>
+      <main className={"split" + (reading ? ` reading fit-${view.fit}` : "") + (view.zoom > 1 ? " zoomed" : "")} hidden={showGuide || showLibrary}>
         {/* la languette de l'éditeur, sur le bord où il apparaît : on le tire, on le repousse */}
         <button
           className="edge"
@@ -547,7 +633,9 @@ export function App() {
           ref={preview}
           aria-label={reading ? "Partition" : "Aperçu"}
           // en lecture, la molette fait défiler les pages côte à côte
-          onWheel={(e) => reading && Math.abs(e.deltaY) > Math.abs(e.deltaX) && e.currentTarget.scrollBy({ left: e.deltaY })}
+          // (ajustées à la hauteur et sans zoom : sinon la molette garde son sens, de haut en bas)
+          onWheel={(e) => reading && view.fit === "height" && view.zoom <= 1 && !e.ctrlKey && Math.abs(e.deltaY) > Math.abs(e.deltaX) && e.currentTarget.scrollBy({ left: e.deltaY })}
+          style={{ "--zoom": view.zoom } as React.CSSProperties}
         >
           {score && !pages.length && <p className="empty">Aucune mesure à mettre en page.</p>}
           {pages.map((p) => (

@@ -246,6 +246,15 @@ export function scoreTick(ps: Passage[], played: number): number | null {
   return p ? p.from + played - p.at : null;
 }
 
+/**
+ * L'instant du morceau joué juste après until (la fin d'un système), depuis un instant joué : la
+ * suite, ou le retour d'une reprise, ou la section suivante de l'ordre de jeu. null en fin de morceau.
+ */
+export function nextTick(ps: Passage[], played: number, until: number): number | null {
+  const p = passageAt(ps, played);
+  return p ? scoreTick(ps, p.at + Math.min(until, p.to) - p.from) : null;
+}
+
 /** Le rang, dans l'ordre de jeu, de la section jouée à cet instant. */
 export const entryAt = (ps: Passage[], played: number) => passageAt(ps, played)?.entry ?? null;
 

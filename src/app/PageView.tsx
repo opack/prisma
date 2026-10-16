@@ -5,6 +5,8 @@ import type { Page, PlacedSystem } from "./engrave.ts";
 import type { OctavePosition, OctaveStyle, RenderOptions } from "./options.ts";
 import { octaveTint } from "./colors.ts";
 import { player } from "./player.ts";
+import { follow } from "./follow.ts";
+import { glide, timed } from "./glide.ts";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 
 const INK = "#1b1d1f";
@@ -890,35 +892,107 @@ export function Excerpt({ pages, options, scale = 1 }: { pages: Page[]; options:
  * Curseur de lecture : la case jouée, surlignée sur toute la hauteur de son système. Seul ce
  * petit composant se redessine pendant l'écoute ; la page suit le système joué.
  */
-function PlayCursor({ page }: { page: Page }) {
+function PlayCursor({ page, lookAhead }: { page: Page; lookAhead: boolean }) {
   const { tick } = useSyncExternalStore(player.subscribe, player.getSnapshot);
+  const following = useSyncExternalStore(follow.subscribe, follow.active);
   const ref = useRef<SVGRectElement>(null);
   const k = tick === null ? -1 : page.systems.findIndex((ps) => tick >= ps.sys.start && tick < ps.sys.end);
-  // un système qui sort de l'écran est remonté en haut : la page ne bouge plus jusqu'à ce que la lecture en sorte ;
-  // en mode lecture, les pages côte à côte, la page jouée vient à gauche : les suivantes se lisent d'avance
+  // la case jouée
+  let ci = -1;
+  if (k >= 0) {
+    const { sys } = page.systems[k];
+    ci = sys.anchors[0];
+    for (const c of sys.anchors) if ((sys.columns[c] as { t: number }).t <= tick!) ci = c;
+  }
+  // la descente vers le système suivant, une par système
+  const ahead = useRef("");
+  // la partition suit le curseur et montre d'avance la mesure suivante, quand l'écran le permet
   useEffect(() => {
-    const el = ref.current, pane = el?.closest(".preview");
-    if (!el || !pane) return;
+    const el = ref.current, pane = el?.closest<HTMLElement>(".preview");
+    if (!following) ahead.current = "";
+    if (!el || !pane || !following) return;
+    const g = glide(pane);
     const view = pane.getBoundingClientRect();
-    if (pane.closest(".reading")) {
-      const left = el.ownerSVGElement!.getBoundingClientRect().left - view.left - parseFloat(getComputedStyle(pane).scrollPaddingLeft || "0");
-      if (Math.abs(left) > 1) pane.scrollTo({ left: pane.scrollLeft + left, behavior: "smooth" });
-      return;
-    }
     const box = el.getBoundingClientRect();
-    if (box.top >= view.top && box.bottom <= view.bottom) return;
-    pane.scrollTo({ top: pane.scrollTop + box.top - view.top - 16, behavior: "smooth" });
-  }, [k]);
+    const svg = el.ownerSVGElement!;
+    const pageBox = svg.getBoundingClientRect();
+    const u = pageBox.width / PAGE.w; // une unité de la page, à l'écran
+    const m = 16; // la marge gardée au bord de l'écran
+    const ps = page.systems[k];
+    const bars = barsIn(ps);
+    const b = Math.max(0, bars.findIndex((bar) => bar.includes(ci)));
+    const left = (bar: number[]) => pageBox.left + ps.xs[bar[0]] * u;
+    const right = (bar: number[]) => pageBox.left + (ps.xs[bar[bar.length - 1]] + ps.ws[bar[bar.length - 1]]) * u;
+    // en coordonnées du contenu, qui ne bougent pas pendant un défilement en cours
+    const x = (v: number) => v - view.left + pane.scrollLeft;
+    const y = (v: number) => v - view.top + pane.scrollTop;
+    // de côté. Pages côte à côte (ajustées à la hauteur) : la page jouée vient à gauche si elle
+    // tient dans l'écran, les suivantes se lisent d'avance. Une ligne plus large que l'écran
+    // (zoom) : quand la mesure suivante n'est pas en vue, la mesure jouée vient au bord gauche,
+    // la suivante à sa droite ; si les deux n'y tiennent pas, la case jouée revient au premier
+    // quart avant d'approcher du bord
+    const pad = parseFloat(getComputedStyle(pane).scrollPaddingLeft || "0");
+    if (pane.closest(".reading.fit-height") && pageBox.width <= view.width - pad) g.to("left", x(pageBox.left) - pad);
+    else {
+      const start = left(bars[b]), end = right(bars[Math.min(b + 1, bars.length - 1)]);
+      if (box.left < view.left || end > view.right - m) {
+        if (end - start <= view.width - 2 * m) g.to("left", x(start) - m);
+        else if (box.left < view.left || box.right > view.right - view.width * 0.15) g.to("left", x(box.left) - view.width / 4);
+      }
+    }
+    // de haut en bas. Un système hors de l'écran y revient, en haut. Dans la dernière mesure
+    // d'un système (option), la page glisse d'un seul mouvement, au rythme de la musique, pour
+    // que le système joué ensuite (le suivant, ou celui où ramène une reprise) soit en vue à
+    // mi-mesure, sauf s'il est sur la page d'à côté ; le système joué reste en vue, quitte à ne
+    // montrer qu'un bout de l'autre. Un système compte en entier : ses textes, sa pédale
+    const key = `${page.index}:${k}`;
+    if (box.top < view.top || box.bottom > view.bottom) g.to("top", y(box.top) - m);
+    else if (lookAhead && b === bars.length - 1 && ahead.current !== key) {
+      ahead.current = key;
+      const then = player.upcoming(ps.sys.end);
+      const area = then === null ? undefined : [...pane.querySelectorAll<SVGRectElement>("rect.system-area")].find((r) => then >= Number(r.dataset.start) && then < Number(r.dataset.end));
+      const next = area && extent(area);
+      const here = extent(svg.querySelectorAll<SVGRectElement>("rect.system-area")[k]);
+      if (next && next.left < pageBox.right && next.right > pageBox.left) {
+        const below = next.top >= here.bottom - 1, above = next.bottom <= here.top + 1;
+        const goal = below ? Math.min(y(next.bottom) - (view.height - m), y(here.top) - m) : above ? Math.max(y(next.top) - m, y(here.bottom) - (view.height - m)) : pane.scrollTop;
+        if ((below && goal > pane.scrollTop + 1) || (above && goal < pane.scrollTop - 1)) {
+          // d'ici au milieu de la mesure, en durée de musique (le tempo, les points d'orgue compris)
+          const from = player.position() ?? tick!, mid = (from + ps.sys.end) / 2;
+          const bar0 = (ps.sys.columns[bars[b][0]] as { t: number }).t, half = (bar0 + ps.sys.end) / 2;
+          const until = Math.max(mid, half);
+          g.to("top", goal, () => {
+            const now = player.position();
+            return now === null || now < from ? 1 : (now - from) / (until - from);
+          });
+        }
+      }
+    }
+  }, [k, ci, following, lookAhead]);
   if (k < 0) return null;
   const ps = page.systems[k];
-  const { sys } = ps;
-  let a = 0;
-  sys.anchors.forEach((ci, i) => {
-    if ((sys.columns[ci] as { t: number }).t <= tick!) a = i;
-  });
-  const ci = sys.anchors[a];
   const { top, bottom } = band(ps);
   return <rect ref={ref} x={ps.xs[ci]} y={top} width={ps.ws[ci]} height={bottom - top} rx={0.6} fill="rgba(255, 190, 40, 0.3)" style={{ pointerEvents: "none" }} />;
+}
+
+/**
+ * La place d'un système à l'écran, en entier (textes au-dessus de la règle, pédale en dessous) et
+ * non sa seule bande jouée : d'après la zone de clic du système, qui la porte.
+ */
+function extent(area: SVGRectElement) {
+  const svg = area.ownerSVGElement!, page = svg.getBoundingClientRect(), u = page.width / svg.viewBox.baseVal.width;
+  const r = area.getBoundingClientRect();
+  return { left: r.left, right: r.right, top: page.top + Number(area.dataset.top) * u, bottom: page.top + Number(area.dataset.bottom) * u };
+}
+
+/** Les mesures d'un système : les colonnes de leurs cases, de gauche à droite. */
+function barsIn(ps: PlacedSystem): number[][] {
+  const bars: number[][] = [[]];
+  ps.sys.columns.forEach((c, i) => {
+    if (c.kind === "barSep") bars[bars.length - 1].length && bars.push([]);
+    else if (c.kind === "anchor") bars[bars.length - 1].push(i);
+  });
+  return bars.filter((bar) => bar.length);
 }
 
 /** Hauteur d'un système, de sa règle au bas de sa dernière partie : celle du curseur. */
@@ -943,6 +1017,7 @@ function SeekAreas({ page }: { page: Page }) {
       const d = x < ps.xs[ci] ? ps.xs[ci] - x : x > ps.xs[ci] + ps.ws[ci] ? x - ps.xs[ci] - ps.ws[ci] : 0;
       if (d < dist) (best = ci), (dist = d);
     }
+    follow.release();
     player.seek((sys.columns[best] as { t: number }).t);
   };
   return (
@@ -950,7 +1025,7 @@ function SeekAreas({ page }: { page: Page }) {
       {page.systems.map((ps, k) => {
         const { top, bottom } = band(ps);
         const left = ps.xs[ps.sys.anchors[0]], last = ps.sys.anchors[ps.sys.anchors.length - 1];
-        return <rect key={k} x={left} y={top} width={ps.xs[last] + ps.ws[last] - left} height={bottom - top} fill="transparent" onClick={(e) => seek(ps, e)} />;
+        return <rect key={k} x={left} y={top} width={ps.xs[last] + ps.ws[last] - left} height={bottom - top} className="system-area" fill="transparent" data-start={ps.sys.start} data-end={ps.sys.end} data-top={ps.y} data-bottom={ps.y + ps.height} onClick={(e) => seek(ps, e)} />;
       })}
     </g>
   );
@@ -1001,7 +1076,7 @@ export function PageView({ page, total, meta, options, still = false }: { page: 
         {page.index + 1} / {total}
       </text>
       {!still && <SeekAreas page={page} />}
-      {!still && <PlayCursor page={page} />}
+      {!still && <PlayCursor page={page} lookAhead={options.lookAhead} />}
     </svg>
   );
 }

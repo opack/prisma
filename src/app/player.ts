@@ -11,7 +11,7 @@
 import type { SplendidGrandPiano } from "smplr";
 import { TICKS_PER_BEAT } from "../core/index.ts";
 import type { Score } from "../core/index.ts";
-import { clicks, countIn, entryAt, entryStart, holds, inFirstBar, passages, playedLength, playedNotes, playedTick, scoreTick, stretched, unstretched } from "./performance.ts";
+import { clicks, countIn, entryAt, entryStart, holds, inFirstBar, nextTick, passages, playedLength, playedNotes, playedTick, scoreTick, stretched, unstretched } from "./performance.ts";
 import type { Click, ClickGrid, Hold, PlayedNote, Passage } from "./performance.ts";
 import { DEFAULT_CLICK_SOUNDS, click, clickVolume, loadClick } from "./metronome.ts";
 import type { ClickSounds } from "./metronome.ts";
@@ -270,6 +270,18 @@ class Player {
   stop() {
     this.halt();
     if (this.snapshot.state !== "idle" || this.snapshot.tick !== null) this.set({ state: "idle", tick: null, entry: null });
+  }
+
+  /** L'instant du morceau en ce moment même, selon l'horloge audio (le curseur, lui, avance par cases). */
+  position(): number | null {
+    return this.snapshot.state === "playing" ? scoreTick(this.passages, this.now()) : this.snapshot.tick;
+  }
+
+  /** L'instant du morceau qu'on jouera après until (la fin du système joué) : où regarder ensuite. */
+  upcoming(until: number): number | null {
+    const { state } = this.snapshot;
+    if (state !== "playing" && state !== "paused") return null;
+    return nextTick(this.passages, state === "playing" ? this.now() : this.pos, until);
   }
 
   /** Ce que publie un instant joué : la case du morceau et la section de l'ordre de jeu. */
