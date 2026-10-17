@@ -1,5 +1,5 @@
 /** Options de rendu et d'écoute, choisies dans le panneau « Options » et gardées dans le navigateur. */
-import type { OctavePalette } from "./colors.ts";
+import type { OctaveColors } from "./colors.ts";
 import type { ChordStyle } from "./engrave.ts";
 import type { SimileDisplay } from "./pedal.ts";
 import { CLICK_SOUNDS, DEFAULT_CLICK_SOUNDS } from "./metronome.ts";
@@ -33,10 +33,8 @@ export type RenderOptions = {
   namesEverySystem: boolean;
   /** En début de ligne, rappeler la note tenue depuis la ligne précédente (« — 8 ») ; sinon le seul trait de tenue. */
   holdReminders: boolean;
-  /** Couleur des couloirs d'octave : aucune (bandes grises alternées), arc-en-ciel ou feutrée. */
-  octavePalette: OctavePalette;
-  /** Couleurs dans un ordre mélangé (fixe) plutôt que progressif : plus de contraste entre voisines. */
-  octaveMixed: boolean;
+  /** Couleur des couloirs d'octave : aucune (bandes grises alternées), ou une palette, dans l'ordre ou mélangée. */
+  octaveColors: OctaveColors;
   /** Accords : nom anglais, notes Prisma empilées, ou les deux. */
   chords: ChordStyle;
   /** Sections : chacune commence une nouvelle ligne, ou suit la précédente sur la même ligne, séparée par un blanc. */
@@ -59,7 +57,7 @@ export type RenderOptions = {
   clickVolume: number;
 };
 
-export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal", fingerings: true, namesEverySystem: false, holdReminders: true, octavePalette: "rainbow", octaveMixed: false, chords: "both", sections: "newLine", noteNames: "latin", simile: "pedals", lookAhead: true, metronome: false, clickSounds: DEFAULT_CLICK_SOUNDS, clickGrid: "cells", countIn: false, clickVolume: 1 };
+export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal", fingerings: true, namesEverySystem: false, holdReminders: true, octaveColors: "rainbow", chords: "both", sections: "newLine", noteNames: "latin", simile: "pedals", lookAhead: true, metronome: false, clickSounds: DEFAULT_CLICK_SOUNDS, clickGrid: "cells", countIn: false, clickVolume: 1 };
 
 export const OCTAVE_STYLES: { value: OctaveStyle; label: string; sample: string }[] = [
   { value: "arrow", label: "Flèches", sample: "↑1  0  ↓1" },
@@ -82,10 +80,12 @@ export const NOTE_POSITIONS: { value: NotePosition; label: string }[] = [
   { value: "pitch", label: "Une ligne par note" },
 ];
 
-export const OCTAVE_PALETTES: { value: OctavePalette; label: string }[] = [
-  { value: "none", label: "Aucune" },
+export const OCTAVE_COLORS: { value: OctaveColors; label: string }[] = [
+  { value: "none", label: "Blanc et gris" },
   { value: "rainbow", label: "Arc-en-ciel" },
-  { value: "muted", label: "Feutrée" },
+  { value: "rainbowMixed", label: "Arc-en-ciel mélangé" },
+  { value: "muted", label: "Feutré" },
+  { value: "mutedMixed", label: "Feutré mélangé" },
 ];
 
 export const CHORD_STYLES: { value: ChordStyle; label: string; sample: string }[] = [
@@ -133,8 +133,7 @@ export function loadOptions(stored?: string | null): RenderOptions {
     const fingerings = typeof raw.fingerings === "boolean" ? raw.fingerings : DEFAULT_OPTIONS.fingerings;
     const namesEverySystem = typeof raw.namesEverySystem === "boolean" ? raw.namesEverySystem : DEFAULT_OPTIONS.namesEverySystem;
     const holdReminders = typeof raw.holdReminders === "boolean" ? raw.holdReminders : DEFAULT_OPTIONS.holdReminders;
-    const octavePalette = OCTAVE_PALETTES.some((p) => p.value === raw.octavePalette) ? raw.octavePalette : DEFAULT_OPTIONS.octavePalette;
-    const octaveMixed = typeof raw.octaveMixed === "boolean" ? raw.octaveMixed : DEFAULT_OPTIONS.octaveMixed;
+    const octaveColors = OCTAVE_COLORS.some((c) => c.value === raw.octaveColors) ? raw.octaveColors : DEFAULT_OPTIONS.octaveColors;
     const chords = CHORD_STYLES.some((c) => c.value === raw.chords) ? raw.chords : DEFAULT_OPTIONS.chords;
     const simile = SIMILE_DISPLAYS.some((d) => d.value === raw.simile) ? raw.simile : DEFAULT_OPTIONS.simile;
     const sections = SECTION_LAYOUTS.some((d) => d.value === raw.sections) ? raw.sections : DEFAULT_OPTIONS.sections;
@@ -148,7 +147,7 @@ export function loadOptions(stored?: string | null): RenderOptions {
     const clickSounds = Object.fromEntries(
       Object.entries(DEFAULT_CLICK_SOUNDS).map(([level, d]) => [level, CLICK_SOUNDS.some((c) => c.value === sounds[level]) ? sounds[level] : d]),
     ) as ClickSounds;
-    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density, fingerings, namesEverySystem, holdReminders, octavePalette, octaveMixed, chords, sections, noteNames, simile, lookAhead, metronome, clickSounds, clickGrid, countIn, clickVolume };
+    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density, fingerings, namesEverySystem, holdReminders, octaveColors, chords, sections, noteNames, simile, lookAhead, metronome, clickSounds, clickGrid, countIn, clickVolume };
   } catch {
     return DEFAULT_OPTIONS;
   }

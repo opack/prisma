@@ -679,7 +679,7 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
     });
   };
   // couleur par octave (option) ; sans palette, une bande grise un couloir sur deux
-  const tint = (octave: number) => octaveTint(options.octavePalette, options.octaveMixed, octaveOffset(octave));
+  const tint = (octave: number) => octaveTint(options.octaveColors, octaveOffset(octave));
   const bandFill = (octave: number, alt: boolean) => tint(octave)?.band ?? (alt ? BAND : undefined);
   const tabFill = (octave: number) => tint(octave)?.tab ?? TAB;
   const centered = options.notePosition === "center";

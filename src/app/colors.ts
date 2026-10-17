@@ -4,7 +4,12 @@
  * reprend la couleur un ton plus soutenu. Le numéro d'octave reste dans l'onglet : la
  * couleur ne porte jamais seule l'information (impression en noir et blanc, daltonisme).
  */
-export type OctavePalette = "none" | "rainbow" | "muted";
+/**
+ * Les couleurs des octaves : aucune (bandes grises alternées), ou une palette, dans l'ordre (une
+ * progression qui dit aussi « plus haut » ou « plus bas ») ou mélangée (un ordre fixe où deux
+ * octaves voisines ont toujours des teintes bien différentes ; l'octave 0 garde sa couleur).
+ */
+export type OctaveColors = "none" | "rainbow" | "rainbowMixed" | "muted" | "mutedMixed";
 
 /** Une teinte : le fond du couloir et celui de son onglet. */
 type Tint = { band: string; tab: string };
@@ -34,25 +39,16 @@ const MUTED = {
   red: { band: "#fdebec", tab: "#ffe2dd" },
 };
 
-/**
- * Teinte de chaque octave, de -4 (le plus grave) à +4. « Dans l'ordre » : une progression
- * qui dit aussi « plus haut » ou « plus bas ». « Mélangé » : un ordre fixe où deux octaves
- * voisines ont toujours des teintes bien différentes ; l'octave 0 garde sa couleur.
- */
-const ORDERS: Record<Exclude<OctavePalette, "none">, { natural: Tint[]; mixed: Tint[] }> = {
-  rainbow: {
-    natural: [RAINBOW.greyviolet, RAINBOW.violet, RAINBOW.blue, RAINBOW.cyan, RAINBOW.green, RAINBOW.yellow, RAINBOW.orange, RAINBOW.red, RAINBOW.pink],
-    mixed: [RAINBOW.yellow, RAINBOW.violet, RAINBOW.cyan, RAINBOW.orange, RAINBOW.green, RAINBOW.pink, RAINBOW.blue, RAINBOW.red, RAINBOW.greyviolet],
-  },
-  muted: {
-    natural: [MUTED.green, MUTED.yellow, MUTED.orange, MUTED.brown, MUTED.gray, MUTED.blue, MUTED.purple, MUTED.pink, MUTED.red],
-    mixed: [MUTED.red, MUTED.blue, MUTED.yellow, MUTED.purple, MUTED.gray, MUTED.green, MUTED.orange, MUTED.pink, MUTED.brown],
-  },
+/** Teinte de chaque octave, de -4 (le plus grave) à +4, pour chaque palette. */
+const PALETTES: Record<Exclude<OctaveColors, "none">, Tint[]> = {
+  rainbow: [RAINBOW.greyviolet, RAINBOW.violet, RAINBOW.blue, RAINBOW.cyan, RAINBOW.green, RAINBOW.yellow, RAINBOW.orange, RAINBOW.red, RAINBOW.pink],
+  rainbowMixed: [RAINBOW.yellow, RAINBOW.violet, RAINBOW.cyan, RAINBOW.orange, RAINBOW.green, RAINBOW.pink, RAINBOW.blue, RAINBOW.red, RAINBOW.greyviolet],
+  muted: [MUTED.green, MUTED.yellow, MUTED.orange, MUTED.brown, MUTED.gray, MUTED.blue, MUTED.purple, MUTED.pink, MUTED.red],
+  mutedMixed: [MUTED.red, MUTED.blue, MUTED.yellow, MUTED.purple, MUTED.gray, MUTED.green, MUTED.orange, MUTED.pink, MUTED.brown],
 };
 
-/** Teinte d'une octave (écart au do central, de -4 à +4), ou rien sans palette. */
-export function octaveTint(palette: OctavePalette, mixed: boolean, offset: number): Tint | undefined {
-  if (palette === "none") return undefined;
-  const list = ORDERS[palette][mixed ? "mixed" : "natural"];
-  return list[Math.max(0, Math.min(8, offset + 4))];
+/** Teinte d'une octave (écart au do central, de -4 à +4), ou rien sans couleurs. */
+export function octaveTint(colors: OctaveColors, offset: number): Tint | undefined {
+  if (colors === "none") return undefined;
+  return PALETTES[colors][Math.max(0, Math.min(8, offset + 4))];
 }

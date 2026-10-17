@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { octaveTint } from "./colors.ts";
-import type { OctavePalette } from "./colors.ts";
+import type { OctaveColors } from "./colors.ts";
 import { CLICK_SOUNDS } from "./metronome.ts";
 import type { ClickGrid, ClickLevel } from "./performance.ts";
 import type { RenderOptions } from "./options.ts";
@@ -53,18 +53,13 @@ const SIMILE: Option<RenderOptions["simile"]>[] = [
   { value: "text", label: "Mention seule", hint: "« Ped. simile », sans les pédales qu'il demande" },
 ];
 
-/** Couleurs des octaves : la palette et son ordre, réunis en un seul choix. */
-type Colors = "none" | "rainbow" | "rainbow-mixed" | "muted" | "muted-mixed";
-const COLORS: Option<Colors>[] = [
+const COLORS: Option<OctaveColors>[] = [
   { value: "none", label: "Blanc et gris", hint: "des bandes alternées, sans couleur" },
   { value: "rainbow", label: "Arc-en-ciel", hint: "une couleur fixe par octave, du violet (grave) au rose (aigu)" },
-  { value: "rainbow-mixed", label: "Arc-en-ciel mélangé", hint: "les mêmes couleurs dans un ordre mélangé : deux octaves voisines contrastent davantage" },
+  { value: "rainbowMixed", label: "Arc-en-ciel mélangé", hint: "les mêmes couleurs dans un ordre mélangé : deux octaves voisines contrastent davantage" },
   { value: "muted", label: "Feutré", hint: "des teintes douces et discrètes, dans l'ordre" },
-  { value: "muted-mixed", label: "Feutré mélangé", hint: "les teintes feutrées dans un ordre mélangé" },
+  { value: "mutedMixed", label: "Feutré mélangé", hint: "les teintes feutrées dans un ordre mélangé" },
 ];
-const colorsOf = (o: RenderOptions): Colors => (o.octavePalette === "none" ? "none" : `${o.octavePalette}${o.octaveMixed ? "-mixed" : ""}` as Colors);
-const paletteOf = (c: Colors): Pick<RenderOptions, "octavePalette" | "octaveMixed"> =>
-  c === "none" ? { octavePalette: "none", octaveMixed: false } : { octavePalette: c.replace("-mixed", "") as OctavePalette, octaveMixed: c.endsWith("-mixed") };
 
 const OCTAVE_SYMBOLS: Option<RenderOptions["octaveStyle"]>[] = [
   { value: "triangle", label: "Triangles", hint: "▲1  0  ▼1" },
@@ -167,9 +162,8 @@ function Check({ id, label, text, checked, onChange, hint, scope }: { id: string
 }
 
 /** Le drapeau d'une palette : les octaves empilées, de l'aigu (en haut) au grave. */
-function Flag({ colors }: { colors: Colors }) {
-  const { octavePalette, octaveMixed } = paletteOf(colors);
-  const stripes = Array.from({ length: 9 }, (_, k) => 4 - k).map((offset, k) => octaveTint(octavePalette, octaveMixed, offset)?.tab ?? (k % 2 ? "#ffffff" : "#e6e8e3"));
+function Flag({ colors }: { colors: OctaveColors }) {
+  const stripes = Array.from({ length: 9 }, (_, k) => 4 - k).map((offset, k) => octaveTint(colors, offset)?.tab ?? (k % 2 ? "#ffffff" : "#e6e8e3"));
   return (
     <svg className="flag" viewBox="0 0 24 18" preserveAspectRatio="none" aria-hidden>
       {stripes.map((c, k) => (
@@ -190,7 +184,7 @@ const DESCRIBE: Record<string, (o: RenderOptions) => string> = {
   simile: (o) => labelOf(SIMILE, o.simile),
   octavePosition: (o) => labelOf(OCTAVE_POSITIONS, o.octavePosition),
   octaveStyle: (o) => labelOf(OCTAVE_SYMBOLS, o.octaveStyle),
-  colors: (o) => labelOf(COLORS, colorsOf(o)),
+  octaveColors: (o) => labelOf(COLORS, o.octaveColors),
   density: (o) => labelOf(DENSITIES, o.density),
   notePosition: (o) => labelOf(NOTE_POSITIONS, o.notePosition),
   holdReminders: (o) => (o.holdReminders ? "rappelée" : "trait seul"),
@@ -299,8 +293,7 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
       line: <p className="setting-scope quiet">{link("Appliquer à la partition", () => piece.setPiece(pick(keys, general)), "La partition garde cette valeur, quelles que soient les options générales")}</p>,
     };
   };
-  // les couleurs (palette et ordre) comptent pour une option
-  const ownCount = Object.keys(own).filter((k) => !(k === "octaveMixed" && own.octavePalette !== undefined)).length;
+  const ownCount = Object.keys(own).length;
 
   return (
     <aside id="options" className="drawer" aria-label="Options">
@@ -377,7 +370,7 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
           <>
             <Choice id="octave-position" label="Position" value={options.octavePosition} options={OCTAVE_POSITIONS} onChange={(octavePosition) => setOptions({ octavePosition })} scope={scope(["octavePosition"], "octavePosition")} />
             <Choice id="octave-symbol" label="Symbole" value={options.octaveStyle} options={OCTAVE_SYMBOLS} onChange={(octaveStyle) => setOptions({ octaveStyle })} scope={scope(["octaveStyle"], "octaveStyle")} />
-            <Choice id="octave-colors" label="Couleurs" value={colorsOf(options)} options={COLORS} onChange={(c) => setOptions(paletteOf(c))} icon={(c) => <Flag colors={c} />} scope={scope(["octavePalette", "octaveMixed"], "colors")} />
+            <Choice id="octave-colors" label="Couleurs" value={options.octaveColors} options={COLORS} onChange={(octaveColors) => setOptions({ octaveColors })} icon={(c) => <Flag colors={c} />} scope={scope(["octaveColors"], "octaveColors")} />
           </>
         )}
         {tab === "notes" && (
