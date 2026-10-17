@@ -5,23 +5,29 @@ import type { OctavePalette } from "./colors.ts";
 import { CLICK_SOUNDS } from "./metronome.ts";
 import type { ClickGrid, ClickLevel } from "./performance.ts";
 import type { RenderOptions } from "./options.ts";
+import type { PieceKey } from "./piece.ts";
 
 /**
  * Panneau des options : un tiroir à droite, sous le bouton engrenage, par-dessus l'aperçu et sans
- * rien pousser. Les réglages sont rangés par
- * onglets ; chacun tient sur une ligne, avec sous lui une courte explication du choix en cours.
+ * rien pousser. Les réglages sont rangés par onglets ; chacun tient sur une ligne, avec sous lui
+ * une courte explication du choix en cours.
+ *
+ * Deux portées, comme les réglages d'un éditeur de code : les options générales, pour tous les
+ * morceaux, et celles de la partition ouverte, qui priment sur elles. Côté partition, seules
+ * paraissent les options du rendu (mise en page, octaves, notes) ; chacune y est définie pour la
+ * partition ou suit l'option générale.
  */
 
 /** Un choix d'une liste : sa valeur, son nom, et ce qu'il fait. */
 type Option<T> = { value: T; label: string; hint: string };
 
 const TABS = [
-  { id: "editing", label: "Édition" },
-  { id: "score", label: "Partition" },
-  { id: "octaves", label: "Octaves" },
-  { id: "notes", label: "Notes" },
-  { id: "playback", label: "Lecture" },
-  { id: "metronome", label: "Métronome" },
+  { id: "editing", label: "Édition", piece: false },
+  { id: "score", label: "Partition", piece: true },
+  { id: "octaves", label: "Octaves", piece: true },
+  { id: "notes", label: "Notes", piece: true },
+  { id: "playback", label: "Lecture", piece: false },
+  { id: "metronome", label: "Métronome", piece: false },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 
@@ -96,24 +102,47 @@ const CLICK_LEVELS: { value: ClickLevel; label: string; hint: string }[] = [
   { value: "subdivision", label: "Subdivision", hint: "chaque division en 2 : ." },
 ];
 
-/** Une ligne de réglage : son nom, la commande, puis l'explication. */
-function Row({ label, htmlFor, hint, children }: { label: string; htmlFor?: string; hint?: ReactNode; children: ReactNode }) {
+/** Une ligne de réglage : son nom, la commande, puis l'explication, et sa portée. */
+function Row({ label, htmlFor, hint, scope, children }: { label: string; htmlFor?: string; hint?: ReactNode; scope?: Scope; children: ReactNode }) {
   return (
-    <div className="setting">
+    <div className={"setting" + (scope?.mark ? ` ${scope.mark}` : "")}>
       <label className="setting-label" htmlFor={htmlFor}>
         {label}
       </label>
       <div className="setting-control">{children}</div>
       {hint && <p className="setting-hint">{hint}</p>}
+      {scope?.line}
     </div>
   );
 }
 
+/** Ce qu'une ligne montre de sa portée : une marque (« own » : définie pour la partition) et une ligne d'actions. */
+type Scope = { mark?: string; line?: ReactNode };
+
+/** Les options de la partition ouverte, à côté des générales. */
+export type PieceOptions = {
+  general: RenderOptions;
+  /** Les options définies pour la partition (elles priment sur les générales). */
+  own: Partial<RenderOptions>;
+  setGeneral: (patch: Partial<RenderOptions>) => void;
+  setPiece: (patch: Partial<RenderOptions>) => void;
+  /** Retire des options de la partition : les générales font alors foi. */
+  unsetPiece: (keys: PieceKey[]) => void;
+  /** Le nom de la partition. */
+  name: string;
+  /** Le fichier où elles s'enregistrent, à côté de la partition ; null : gardées le temps qu'elle est ouverte. */
+  where: string | null;
+  keys: readonly PieceKey[];
+};
+
+type Portee = "general" | "piece";
+const SCOPE_KEY = "prisma:options-scope";
+
 /** Un choix dans une liste déroulante, avec l'explication du choix en cours. */
-function Choice<T extends string>({ id, label, value, options, onChange, icon }: { id: string; label: string; value: T; options: Option<T>[]; onChange: (v: T) => void; icon?: (v: T) => ReactNode }) {
+function Choice<T extends string>({ id, label, value, options, onChange, icon, scope }: { id: string; label: string; value: T; options: Option<T>[]; onChange: (v: T) => void; icon?: (v: T) => ReactNode; scope?: Scope }) {
   const current = options.find((o) => o.value === value) ?? options[0];
   return (
-    <Row label={label} htmlFor={id} hint={current.hint}>
+    <Row label={label} htmlFor={id} hint={current.hint} scope={scope}>
       {icon?.(current.value)}
       <select id={id} value={current.value} onChange={(e) => onChange(e.target.value as T)}>
         {options.map((o) => (
@@ -126,9 +155,9 @@ function Choice<T extends string>({ id, label, value, options, onChange, icon }:
   );
 }
 
-function Check({ id, label, text, checked, onChange, hint }: { id: string; label: string; text: string; checked: boolean; onChange: (v: boolean) => void; hint?: string }) {
+function Check({ id, label, text, checked, onChange, hint, scope }: { id: string; label: string; text: string; checked: boolean; onChange: (v: boolean) => void; hint?: string; scope?: Scope }) {
   return (
-    <Row label={label} hint={hint}>
+    <Row label={label} hint={hint} scope={scope}>
       <label className="check">
         <input type="checkbox" id={id} checked={checked} onChange={(e) => onChange(e.target.checked)} />
         {text}
@@ -151,8 +180,41 @@ function Flag({ colors }: { colors: Colors }) {
   );
 }
 
-export function OptionsDrawer({ options, setOptions, onClose }: { options: RenderOptions; setOptions: (patch: Partial<RenderOptions>) => void; onClose: () => void }) {
-  const [tab, setTab] = useState<Tab>(() => {
+const labelOf = <T extends string>(list: { value: T; label: string }[], v: T) => list.find((o) => o.value === v)?.label ?? v;
+
+/** Le nom, en clair, de la valeur d'une option du rendu (pour dire celle de l'autre portée). */
+const DESCRIBE: Record<string, (o: RenderOptions) => string> = {
+  chords: (o) => labelOf(CHORDS, o.chords),
+  namesEverySystem: (o) => (o.namesEverySystem ? "à chaque système" : "au premier système"),
+  sections: (o) => labelOf(SECTIONS, o.sections),
+  simile: (o) => labelOf(SIMILE, o.simile),
+  octavePosition: (o) => labelOf(OCTAVE_POSITIONS, o.octavePosition),
+  octaveStyle: (o) => labelOf(OCTAVE_SYMBOLS, o.octaveStyle),
+  colors: (o) => labelOf(COLORS, colorsOf(o)),
+  density: (o) => labelOf(DENSITIES, o.density),
+  notePosition: (o) => labelOf(NOTE_POSITIONS, o.notePosition),
+  holdReminders: (o) => (o.holdReminders ? "rappelée" : "trait seul"),
+  fingerings: (o) => (o.fingerings ? "affichés" : "masqués"),
+};
+
+export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose: () => void }) {
+  const { general, own } = piece;
+  const [portee, setPorteeState] = useState<Portee>(() => {
+    try {
+      return localStorage.getItem(SCOPE_KEY) === "piece" ? "piece" : "general";
+    } catch {
+      return "general";
+    }
+  });
+  const setPortee = (p: Portee) => {
+    setPorteeState(p);
+    try {
+      localStorage.setItem(SCOPE_KEY, p);
+    } catch {
+      /* stockage indisponible : sans conséquence */
+    }
+  };
+  const [tabChoice, setTab] = useState<Tab>(() => {
     try {
       return (TABS.find((t) => t.id === localStorage.getItem("prisma:options-tab"))?.id ?? "score") as Tab;
     } catch {
@@ -161,11 +223,84 @@ export function OptionsDrawer({ options, setOptions, onClose }: { options: Rende
   });
   useEffect(() => {
     try {
-      localStorage.setItem("prisma:options-tab", tab);
+      localStorage.setItem("prisma:options-tab", tabChoice);
     } catch {
       /* stockage indisponible : sans conséquence */
     }
-  }, [tab]);
+  }, [tabChoice]);
+  const tabs = TABS.filter((t) => portee === "general" || t.piece);
+  const tab = tabs.some((t) => t.id === tabChoice) ? tabChoice : "score";
+
+  // les valeurs montrées et ce que change une commande : celles de la portée choisie (côté
+  // partition, une option qu'elle ne définit pas montre la générale, qu'elle suit)
+  const onPiece = portee === "piece";
+  const options: RenderOptions = onPiece ? { ...general, ...own } : general;
+  const setOptions = onPiece ? piece.setPiece : piece.setGeneral;
+  const isOwn = (keys: PieceKey[]) => keys.every((k) => own[k] !== undefined);
+  const same = (keys: PieceKey[]) => keys.every((k) => own[k] === general[k]);
+  const pick = (keys: PieceKey[], from: Partial<RenderOptions>) => Object.fromEntries(keys.map((k) => [k, from[k]])) as Partial<RenderOptions>;
+
+  /** La portée d'une ligne : ce qu'en dit l'autre portée, et de quoi passer de l'une à l'autre. */
+  const scope = (keys: PieceKey[], describe: string): Scope => {
+    const name = DESCRIBE[describe];
+    const theirs = (o: Partial<RenderOptions>) => name({ ...general, ...o });
+    const link = (text: string, run: () => void, title?: string) => (
+      <button className="link" onClick={run} title={title}>
+        {text}
+      </button>
+    );
+    if (onPiece) {
+      if (!isOwn(keys))
+        return {
+          mark: "follows",
+          line: (
+            <p className="setting-scope">
+              <span className="muted">option générale</span>
+              {link("Définir pour la partition", () => piece.setPiece(pick(keys, general)), "La partition garde cette valeur, quelles que soient les options générales")}
+            </p>
+          ),
+        };
+      return {
+        mark: "own",
+        line: (
+          <p className="setting-scope">
+            <span className="badge">partition</span>
+            {same(keys) ? <span className="muted">comme l'option générale</span> : <span className="muted">générale : {theirs({})}</span>}
+            {!same(keys) && link("Appliquer aux générales", () => piece.setGeneral(pick(keys, own)), "Cette valeur devient l'option générale, pour tous les morceaux")}
+            {!same(keys) && link("Reprendre la générale", () => piece.setPiece(pick(keys, general)), "La partition prend la valeur de l'option générale, et la garde")}
+            {link("Retirer", () => piece.unsetPiece(keys), "Retirer de la partition : elle suit alors l'option générale")}
+          </p>
+        ),
+      };
+    }
+    // côté général : une partition qui définit sa propre valeur la garde
+    if (isOwn(keys) && !same(keys))
+      return {
+        mark: "overridden",
+        line: (
+          <p className="setting-scope">
+            <span className="badge">partition : {theirs(own)}</span>
+            <span className="muted">elle prime sur cette option</span>
+            {link("Appliquer à la partition", () => piece.setPiece(pick(keys, general)), "La partition prend cette valeur")}
+            {link("Reprendre la sienne", () => piece.setGeneral(pick(keys, own)), "L'option générale prend la valeur de la partition")}
+          </p>
+        ),
+      };
+    if (isOwn(keys))
+      return {
+        line: (
+          <p className="setting-scope">
+            <span className="badge">partition : idem</span>
+          </p>
+        ),
+      };
+    // rien de propre à la partition : l'action ne paraît qu'au survol, pour ne pas encombrer
+    return {
+      line: <p className="setting-scope quiet">{link("Appliquer à la partition", () => piece.setPiece(pick(keys, general)), "La partition garde cette valeur, quelles que soient les options générales")}</p>,
+    };
+  };
+  // les couleurs (palette et ordre) comptent pour une option
+  const ownCount = Object.keys(own).filter((k) => !(k === "octaveMixed" && own.octavePalette !== undefined)).length;
 
   return (
     <aside id="options" className="drawer" aria-label="Options">
@@ -175,8 +310,34 @@ export function OptionsDrawer({ options, setOptions, onClose }: { options: Rende
           ×
         </button>
       </header>
+      <div className="portee" role="radiogroup" aria-label="Portée des options">
+        <button role="radio" aria-checked={!onPiece} className={!onPiece ? "on" : undefined} onClick={() => setPortee("general")} title="Les options de tous les morceaux">
+          Générales
+        </button>
+        <button role="radio" aria-checked={onPiece} className={onPiece ? "on" : undefined} onClick={() => setPortee("piece")} title="Les options de la partition ouverte : elles priment sur les générales">
+          Partition{ownCount ? ` (${ownCount})` : ""}
+        </button>
+      </div>
+      {onPiece && (
+        <div className="piece-head">
+          <p className="piece-note">
+            <strong>{piece.name}</strong> :{" "}
+            {piece.where ? `ses options s'enregistrent à côté d'elle, dans ${piece.where}, et la suivent d'un ordinateur à l'autre.` : "ses options valent le temps qu'elle est ouverte ; ouverte depuis la bibliothèque, elle les garderait à côté d'elle."}
+          </p>
+          <p className="piece-actions">
+            <button className="link" onClick={() => piece.setPiece(pick([...piece.keys], general))} title="Chaque option du rendu est définie pour la partition, avec la valeur générale actuelle">
+              Tout définir pour la partition
+            </button>
+            {ownCount > 0 && (
+              <button className="link" onClick={() => piece.unsetPiece([...piece.keys])} title="La partition suit alors toutes les options générales">
+                Tout retirer
+              </button>
+            )}
+          </p>
+        </div>
+      )}
       <nav className="tabs" role="tablist">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? "active" : undefined} onClick={() => setTab(t.id)}>
             {t.label}
           </button>
@@ -198,7 +359,7 @@ export function OptionsDrawer({ options, setOptions, onClose }: { options: Rende
         )}
         {tab === "score" && (
           <>
-            <Choice id="chords" label="Accompagnement" value={options.chords} options={CHORDS} onChange={(chords) => setOptions({ chords })} />
+            <Choice id="chords" label="Accompagnement" value={options.chords} options={CHORDS} onChange={(chords) => setOptions({ chords })} scope={scope(["chords"], "chords")} />
             <Check
               id="names-every-system"
               label="Instruments"
@@ -206,22 +367,23 @@ export function OptionsDrawer({ options, setOptions, onClose }: { options: Rende
               checked={options.namesEverySystem}
               onChange={(namesEverySystem) => setOptions({ namesEverySystem })}
               hint={options.namesEverySystem ? "le nom de chaque instrument en tête de chaque système" : "les noms au premier système seulement, comme sur une partition"}
+              scope={scope(["namesEverySystem"], "namesEverySystem")}
             />
-            <Choice id="sections" label="Sections" value={options.sections} options={SECTIONS} onChange={(sections) => setOptions({ sections })} />
-            <Choice id="simile" label="Ped. simile" value={options.simile} options={SIMILE} onChange={(simile) => setOptions({ simile })} />
+            <Choice id="sections" label="Sections" value={options.sections} options={SECTIONS} onChange={(sections) => setOptions({ sections })} scope={scope(["sections"], "sections")} />
+            <Choice id="simile" label="Ped. simile" value={options.simile} options={SIMILE} onChange={(simile) => setOptions({ simile })} scope={scope(["simile"], "simile")} />
           </>
         )}
         {tab === "octaves" && (
           <>
-            <Choice id="octave-position" label="Position" value={options.octavePosition} options={OCTAVE_POSITIONS} onChange={(octavePosition) => setOptions({ octavePosition })} />
-            <Choice id="octave-symbol" label="Symbole" value={options.octaveStyle} options={OCTAVE_SYMBOLS} onChange={(octaveStyle) => setOptions({ octaveStyle })} />
-            <Choice id="octave-colors" label="Couleurs" value={colorsOf(options)} options={COLORS} onChange={(c) => setOptions(paletteOf(c))} icon={(c) => <Flag colors={c} />} />
+            <Choice id="octave-position" label="Position" value={options.octavePosition} options={OCTAVE_POSITIONS} onChange={(octavePosition) => setOptions({ octavePosition })} scope={scope(["octavePosition"], "octavePosition")} />
+            <Choice id="octave-symbol" label="Symbole" value={options.octaveStyle} options={OCTAVE_SYMBOLS} onChange={(octaveStyle) => setOptions({ octaveStyle })} scope={scope(["octaveStyle"], "octaveStyle")} />
+            <Choice id="octave-colors" label="Couleurs" value={colorsOf(options)} options={COLORS} onChange={(c) => setOptions(paletteOf(c))} icon={(c) => <Flag colors={c} />} scope={scope(["octavePalette", "octaveMixed"], "colors")} />
           </>
         )}
         {tab === "notes" && (
           <>
-            <Choice id="density" label="Espacement" value={options.density} options={DENSITIES} onChange={(density) => setOptions({ density })} />
-            <Choice id="note-position" label="Position" value={options.notePosition} options={NOTE_POSITIONS} onChange={(notePosition) => setOptions({ notePosition })} />
+            <Choice id="density" label="Espacement" value={options.density} options={DENSITIES} onChange={(density) => setOptions({ density })} scope={scope(["density"], "density")} />
+            <Choice id="note-position" label="Position" value={options.notePosition} options={NOTE_POSITIONS} onChange={(notePosition) => setOptions({ notePosition })} scope={scope(["notePosition"], "notePosition")} />
             <Check
               id="hold-reminders"
               label="Tenues"
@@ -229,6 +391,7 @@ export function OptionsDrawer({ options, setOptions, onClose }: { options: Rende
               checked={options.holdReminders}
               onChange={(holdReminders) => setOptions({ holdReminders })}
               hint={options.holdReminders ? "« — 8 » : le trait de tenue, puis la note tenue en gris" : "le seul trait de tenue"}
+              scope={scope(["holdReminders"], "holdReminders")}
             />
             <Check
               id="fingerings"
@@ -237,6 +400,7 @@ export function OptionsDrawer({ options, setOptions, onClose }: { options: Rende
               checked={options.fingerings}
               onChange={(fingerings) => setOptions({ fingerings })}
               hint={options.fingerings ? "en chiffre blanc sur une pastille, en bas à droite de la note" : "masqués : la page s'allège, le fichier les garde"}
+              scope={scope(["fingerings"], "fingerings")}
             />
           </>
         )}

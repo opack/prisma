@@ -2,6 +2,7 @@
  * La bibliothèque : les morceaux du dossier choisi, rangés par sous-dossier, à chercher et à
  * trier, en liste ou en vignettes (le haut de leur première page) ; un clic ouvre le morceau.
  */
+import { BackIcon, FolderIcon, RefreshIcon } from "./icons.tsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageView } from "./PageView.tsx";
 import type { RenderOptions } from "./options.ts";
@@ -41,6 +42,7 @@ const loadKinds = (): Kinds => {
 
 /** En liste, pour chercher vite ; en vignettes, pour retrouver un morceau à l'œil. */
 type View = "list" | "thumbs";
+const THUMBS_OWN_KEY = "prisma:thumbs-own";
 const VIEW_KEY = "prisma:library-view";
 const loadView = (): View => {
   try {
@@ -69,6 +71,22 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
     setViewState(v);
     try {
       localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      /* stockage indisponible : sans conséquence */
+    }
+  };
+  // vignettes : chaque partition avec ses propres options, quand elle en a, ou toutes avec les générales
+  const [thumbsOwn, setThumbsOwnState] = useState(() => {
+    try {
+      return localStorage.getItem(THUMBS_OWN_KEY) !== "false";
+    } catch {
+      return true;
+    }
+  });
+  const setThumbsOwn = (v: boolean) => {
+    setThumbsOwnState(v);
+    try {
+      localStorage.setItem(THUMBS_OWN_KEY, String(v));
     } catch {
       /* stockage indisponible : sans conséquence */
     }
@@ -137,8 +155,8 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
 
   return (
     <main className="library-pane">
-      <button className="back" onClick={onClose}>
-        ← Retour à la partition
+      <button className="back icon" onClick={onClose} title="Retour à la partition (Ctrl+B)" aria-label="Retour à la partition">
+        <BackIcon />
       </button>
       <div className="library">
         <header className="library-head">
@@ -146,8 +164,14 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
           {(state.kind === "ready" || state.kind === "locked") && (
             <p className="library-folder">
               Dossier « {state.dir.name} »
-              <button onClick={choose}>Changer de dossier</button>
-              {state.kind === "ready" && <button onClick={() => load(state.dir)}>Actualiser</button>}
+              <button className="icon" onClick={choose} title="Changer de dossier" aria-label="Changer de dossier">
+                <FolderIcon />
+              </button>
+              {state.kind === "ready" && (
+                <button className="icon" onClick={() => load(state.dir)} title="Actualiser : relire le dossier" aria-label="Actualiser">
+                  <RefreshIcon />
+                </button>
+              )}
             </p>
           )}
         </header>
@@ -203,6 +227,12 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
                   ))}
                 </select>
               </label>
+              {view === "thumbs" && (
+                <label className="check" title="Les vignettes montrent chaque partition avec ses propres options, si elle en a ; sinon avec les options générales">
+                  <input type="checkbox" checked={thumbsOwn} onChange={(e) => setThumbsOwn(e.target.checked)} />
+                  Options de chaque partition
+                </label>
+              )}
               <span className="library-view" role="group" aria-label="Présentation">
                 <button className={view === "list" ? "on" : undefined} aria-pressed={view === "list"} onClick={() => setView("list")} title="En liste" aria-label="En liste">
                   <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
@@ -228,7 +258,7 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
                     {g.entries.map((e) => (
                       <li key={e.path}>
                         <button onClick={() => onOpen(e)} title={e.path}>
-                          <ThumbView entry={e} options={options} />
+                          <ThumbView entry={e} options={thumbsOwn && e.own ? { ...options, ...e.own } : options} />
                           <span className="library-title">{titleOf(e)}</span>
                           <span className="library-composer">{e.composer ?? "\u00a0"}</span>
                           <span className="library-meta">

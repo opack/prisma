@@ -4,6 +4,9 @@
  * copié dans le navigateur, seul l'accès au dossier y est mémorisé (Chrome, Edge).
  */
 
+import type { RenderOptions } from "./options.ts";
+import { readSettings } from "./piece.ts";
+
 type DirPicker = { showDirectoryPicker?: (o?: { id?: string; mode?: "read" | "readwrite" }) => Promise<FileSystemDirectoryHandle> };
 type Permissions = { queryPermission(o: { mode: "readwrite" }): Promise<PermissionState>; requestPermission(o: { mode: "readwrite" }): Promise<PermissionState> };
 type Iterable = { values(): AsyncIterable<FileSystemHandle> };
@@ -27,6 +30,8 @@ export type LibraryEntry = {
   handle: FileSystemFileHandle;
   /** Dossier du fichier : un MusicXML importé s'y enregistre en .prisma, à côté de lui. */
   dir: FileSystemDirectoryHandle;
+  /** Les options définies pour la partition, dans ses réglages à côté d'elle (pour sa vignette). */
+  own?: Partial<RenderOptions>;
 };
 
 // l'accès au dossier se garde dans IndexedDB (un accès ne se range pas dans localStorage), avec
@@ -105,7 +110,9 @@ export async function scan(dir: FileSystemDirectoryHandle): Promise<LibraryEntry
       const handle = h as FileSystemFileHandle;
       const file = await handle.getFile();
       const head = await file.slice(0, 32_000).text();
-      out.push({ path: folder ? `${folder}/${h.name}` : h.name, folder, name: h.name, kind, modified: file.lastModified, handle, dir: d, ...describe(head, kind) });
+      // ses réglages, à côté d'elle : illisibles, la vignette prend les options générales
+      const own = kind === "prisma" ? ((await readSettings(d, h.name).catch(() => null))?.options ?? undefined) : undefined;
+      out.push({ path: folder ? `${folder}/${h.name}` : h.name, folder, name: h.name, kind, modified: file.lastModified, handle, dir: d, ...describe(head, kind), ...(own ? { own } : {}) });
     }
   };
   await walk(dir, "");

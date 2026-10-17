@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Score } from "../core/index.ts";
 import { DEFAULT_BPM, player } from "./player.ts";
 import { follow } from "./follow.ts";
+import { MAX_TEMPO, MIN_TEMPO } from "./piece.ts";
 import { partNames } from "./parts.ts";
 import { usePopover } from "./popover.ts";
 
@@ -16,8 +17,8 @@ function Icon({ d }: { d: string }) {
   );
 }
 
-const MIN_BPM = 20;
-const MAX_BPM = 300;
+const MIN_BPM = MIN_TEMPO;
+const MAX_BPM = MAX_TEMPO;
 
 /**
  * Commandes d'écoute de la barre : début, section précédente, lecture et pause, section suivante,
@@ -32,18 +33,20 @@ type Props = {
   /** Les parties muettes (leurs numéros) : on les joue soi-même pendant que l'app joue les autres. */
   muted: number[];
   onMuted: (parts: number[]) => void;
+  /** Le tempo choisi pour ce morceau, ou null : celui de la partition. */
+  tempo: number | null;
+  onTempo: (bpm: number | null) => void;
 };
 
-export function ListenControls({ score, disabled, metronome, onMetronome, muted, onMuted }: Props) {
+export function ListenControls({ score, disabled, metronome, onMetronome, muted, onMuted, tempo, onTempo }: Props) {
   const { state, error, entry: playing, entries } = useSyncExternalStore(player.subscribe, player.getSnapshot);
   const following = useSyncExternalStore(follow.subscribe, follow.enabled);
   const entry = playing ?? 0;
   const written = score?.meta.bpm ?? DEFAULT_BPM;
-  const [chosen, setChosen] = useState<number | null>(null);
+  const chosen = tempo;
+  const setChosen = onTempo;
   const [draft, setDraft] = useState<string | null>(null); // saisie en cours, pas encore un tempo valable
   const bpm = chosen ?? written;
-  // un nouveau tempo écrit dans la partition reprend la main
-  useEffect(() => setChosen(null), [written]);
   useEffect(() => player.setTempo(bpm), [bpm]);
 
   const edit = (text: string) => {

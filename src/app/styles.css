@@ -104,6 +104,10 @@ textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16p
 .library-head h1 { font-size: 26px; margin: 8px 0 4px; }
 .library-folder { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 16px; color: var(--muted); }
 .library-folder button { padding: 3px 10px; }
+/* boutons à icône de la bibliothèque et de la notice : le nom en bulle */
+.library-folder button.icon, .back.icon { display: inline-flex; align-items: center; justify-content: center; padding: 5px 7px; color: var(--muted); }
+.library-folder button.icon:hover, .back.icon:hover { color: var(--accent); border-color: var(--accent); }
+.library-tools .check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--muted); }
 .library-note { color: var(--muted); line-height: 1.5; }
 .library-note p { margin: 0 0 12px; }
 .library-action { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -220,6 +224,24 @@ textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16p
 .setting .flag { flex: none; width: 38px; height: 28px; }
 .setting .slider { flex: 1; accent-color: var(--accent); min-width: 0; }
 .setting .slider-value { min-width: 4.5em; color: var(--ink); }
+/* portée des options : générales ou de la partition ouverte */
+.drawer .portee { display: flex; margin: 0 12px 8px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.drawer .portee button { flex: 1; border: 0; border-radius: 0; background: #fff; padding: 6px 8px; color: var(--muted); }
+.drawer .portee button + button { border-left: 1px solid var(--line); }
+.drawer .portee button.on { background: color-mix(in srgb, var(--accent) 12%, #fff); color: var(--accent); font-weight: 600; }
+.drawer .piece-head { margin: 0 12px 6px; }
+.piece-note { margin: 0 0 2px; font-size: 0.9em; color: var(--muted); line-height: 1.4; overflow-wrap: anywhere; }
+.piece-actions { margin: 0; display: flex; gap: 12px; font-size: 0.9em; }
+/* une option et sa portée : définie pour la partition, suivie de l'option générale, ou prise par la partition */
+.setting.own .setting-label, .setting.overridden .setting-label { color: var(--accent); }
+.setting.follows .setting-control { opacity: 0.75; }
+.setting-scope { grid-column: 2; margin: 4px 0 0; font-size: 0.9em; color: var(--muted); display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+/* sous le nom de l'option, là où il y a de la place : n'ajoute pas de hauteur */
+.setting-scope.quiet { visibility: hidden; grid-column: 1; grid-row: 2; align-self: start; margin: 0; font-size: 0.8em; line-height: 1.3; }
+.setting:hover .setting-scope.quiet, .setting:focus-within .setting-scope.quiet { visibility: visible; }
+.drawer .badge { display: inline-block; padding: 0 6px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 14%, #fff); color: var(--accent); font-size: 0.85em; font-weight: 600; white-space: nowrap; }
+.drawer .muted { color: var(--muted); }
+.drawer button.link { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
 /* les parties jouées : le bouton de la musique, sa flèche et la liste à cocher qu'elle ouvre */
 .bar .parts-menu { position: relative; display: flex; }
 .bar .toggles .parts-menu button { border-radius: 0; margin-left: -1px; }

@@ -119,9 +119,10 @@ export const DENSITIES: { value: Density; label: string }[] = [
 
 const KEY = "prisma:options";
 
-export function loadOptions(): RenderOptions {
+/** Les options enregistrées dans le navigateur, ou celles d'un texte (les réglages d'un morceau), validées. */
+export function loadOptions(stored?: string | null): RenderOptions {
   try {
-    const raw = JSON.parse(localStorage.getItem(KEY) ?? "{}");
+    const raw = JSON.parse((stored === undefined ? localStorage.getItem(KEY) : stored) ?? "{}");
     const octaveStyle = OCTAVE_STYLES.some((s) => s.value === raw.octaveStyle) ? raw.octaveStyle : DEFAULT_OPTIONS.octaveStyle;
     const octavePosition = OCTAVE_POSITIONS.some((p) => p.value === raw.octavePosition)
       ? raw.octavePosition

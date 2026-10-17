@@ -10,6 +10,7 @@ import { OptionsDrawer } from "./OptionsDrawer.tsx";
 import { player } from "./player.ts";
 import { follow } from "./follow.ts";
 import { FocusView } from "./FocusView.tsx";
+import { BackIcon } from "./icons.tsx";
 import { NoticeView } from "./NoticeView.tsx";
 import { LibraryView } from "./LibraryView.tsx";
 import { engraveOptions, engravePages } from "./render.ts";
@@ -19,6 +20,8 @@ import { PageView } from "./PageView.tsx";
 import { SAMPLE } from "./sample.ts";
 import { loadOptions, saveOptions } from "./options.ts";
 import type { RenderOptions } from "./options.ts";
+import { PIECE_KEYS, isEmpty, isPieceKey, parseSettings, readSettings, saveSettings, settingsName, writeSettings } from "./piece.ts";
+import type { PieceKey, PieceSettings } from "./piece.ts";
 import { OPENABLE, canWriteInPlace, download, droppedFile, pickFile, pickSaveTarget, targetIn, writeFile } from "./files.ts";
 
 /** Délai sans frappe avant la gravure automatique. */
@@ -69,6 +72,28 @@ const persist = (s: string) => {
   }
 };
 
+/** Les seules options du rendu, celles qu'une partition peut définir. */
+const pick = (patch: Partial<RenderOptions>) => Object.fromEntries(Object.entries(patch).filter(([k]) => isPieceKey(k))) as Partial<RenderOptions>;
+
+/** Les réglages du morceau en cours, gardés avec son texte d'une visite à l'autre. */
+const PIECE_KEY = "prisma:piece";
+const loadPiece = (): PieceSettings => {
+  try {
+    const text = localStorage.getItem(PIECE_KEY);
+    return text ? parseSettings(text) : {};
+  } catch {
+    return {};
+  }
+};
+const persistPiece = (s: PieceSettings) => {
+  try {
+    if (isEmpty(s)) localStorage.removeItem(PIECE_KEY);
+    else localStorage.setItem(PIECE_KEY, writeSettings(s));
+  } catch {
+    /* stockage indisponible : sans conséquence */
+  }
+};
+
 type Problem = { message: string; line?: number; column?: number };
 
 function tryParse(text: string): { score?: Score; problem?: Problem } {
@@ -84,7 +109,38 @@ function tryParse(text: string): { score?: Score; problem?: Problem } {
 
 export function App() {
   const [source, setSource] = useState(load);
-  const [options, setOptionsState] = useState<RenderOptions>(loadOptions);
+  /** Les options de tous les morceaux. */
+  const [general, setGeneral] = useState<RenderOptions>(loadOptions);
+  /**
+   * Les réglages du morceau en cours : son tempo, ses parties muettes, les options de mise en
+   * page choisies pour lui seul. Ils s'enregistrent à côté de lui quand on connaît son dossier
+   * (un morceau de la bibliothèque) ; sinon ils durent le temps qu'on le garde ouvert.
+   */
+  const [piece, setPieceState] = useState<PieceSettings>(loadPiece);
+  /** Les options en vigueur : celles du morceau, à défaut les générales. */
+  const options = useMemo<RenderOptions>(() => ({ ...general, ...piece.options }), [general, piece.options]);
+  /** Dossier du morceau, où s'enregistrent ses réglages (un morceau ouvert depuis la bibliothèque). */
+  const [pieceDir, setPieceDir] = useState<FileSystemDirectoryHandle | null>(null);
+  /** Change à chaque morceau ouvert : ce qui suit un changement de morceau n'est pas un choix de l'utilisateur. */
+  const [pieceId, setPieceId] = useState(0);
+  // un réglage changé à la main, à enregistrer (pas ceux qu'on vient de lire)
+  const pieceChanged = useRef(false);
+  const updatePiece = (patch: Partial<PieceSettings>) =>
+    setPieceState((cur) => {
+      const next = { ...cur, ...patch };
+      for (const k of Object.keys(next) as (keyof PieceSettings)[]) if (next[k] === undefined) delete next[k];
+      pieceChanged.current = true;
+      persistPiece(next);
+      return next;
+    });
+  /** Un autre morceau : ses réglages, lus à côté de lui ou vides. */
+  const resetPiece = (s: PieceSettings, dir: FileSystemDirectoryHandle | null) => {
+    pieceChanged.current = false;
+    setPieceState(s);
+    persistPiece(s);
+    setPieceDir(dir);
+    setPieceId((n) => n + 1);
+  };
   const [showOptions, setShowOptions] = useState(false);
   // Échap ferme le panneau d'options
   useEffect(() => {
@@ -222,10 +278,18 @@ export function App() {
     const done = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
     done.catch(() => setNotice("Plein écran impossible : essayez F11"));
   };
-  const setOptions = (patch: Partial<RenderOptions>) => {
-    const next = { ...options, ...patch };
-    setOptionsState(next);
+  const saveGeneral = (next: RenderOptions) => {
+    setGeneral(next);
     saveOptions(next);
+  };
+  /** Les options générales (l'édition, l'écoute, le menu : toujours celles-là). */
+  const setOptions = (patch: Partial<RenderOptions>) => saveGeneral({ ...general, ...patch });
+  /** Les options du rendu définies pour la partition ouverte, ou retirées (elle suit alors les générales). */
+  const setPieceOptions = (patch: Partial<RenderOptions>) => updatePiece({ options: { ...piece.options, ...pick(patch) } });
+  const unsetPieceOptions = (keys: PieceKey[]) => {
+    const own: Record<string, unknown> = { ...piece.options };
+    for (const k of keys) delete own[k];
+    updatePiece({ options: Object.keys(own).length ? (own as PieceSettings["options"]) : undefined });
   };
   const [engraved, setEngraved] = useState(() => tryParse(source));
   const [fileName, setFileName] = useState("morceau.prisma");
@@ -340,6 +404,17 @@ export function App() {
     const text = await file.text();
     let prisma = text;
     const isXml = /\.(musicxml|xml)$/i.test(file.name);
+    const name = isXml ? file.name.replace(/\.(musicxml|xml)$/i, ".prisma") : file.name;
+    // les réglages du morceau, à côté de lui ; illisibles, on le dit et on part des options générales
+    let settings: PieceSettings = {};
+    if (dir) {
+      try {
+        settings = (await readSettings(dir, name)) ?? {};
+      } catch (e) {
+        setNotice(`Réglages de ${name} ignorés (${settingsName(name)} : ${(e as Error).message})`);
+      }
+    }
+    resetPiece(settings, dir);
     setSaveDir(isXml ? dir : null);
     // un MusicXML n'est jamais réécrit : le premier enregistrement crée un nouveau .prisma
     setHandle(isXml ? null : fileHandle);
@@ -454,6 +529,7 @@ export function App() {
     setHandle(null);
     setSavedText(null);
     setSaveDir(null);
+    resetPiece({}, null);
     setFileName("morceau.prisma");
     persist("");
     setEditing(true);
@@ -489,10 +565,32 @@ export function App() {
   const { problem, score } = engraved;
   // écoute : le morceau gravé, avec le curseur sur la gravure ; arrêtée quand on regrave
   useEffect(() => player.load(score), [score]);
-  // parties muettes : le temps d'une séance, rétablies quand les parties du morceau changent
-  const [muted, setMuted] = useState<number[]>([]);
+  // parties muettes, propres au morceau : rétablies quand on change ses parties en l'écrivant
+  const muted = piece.muted ?? [];
+  const setMuted = (parts: number[]) => updatePiece({ muted: parts.length ? parts : undefined });
   const partsKey = JSON.stringify(score?.instruments ?? []);
-  useEffect(() => setMuted([]), [partsKey]);
+  // tempo choisi, propre au morceau : un nouveau tempo écrit dans la partition reprend la main
+  const written = score?.meta.bpm;
+  const seen = useRef({ pieceId, partsKey, written });
+  useEffect(() => {
+    const before = seen.current;
+    seen.current = { pieceId, partsKey, written };
+    if (before.pieceId !== pieceId) return; // un autre morceau : ses réglages viennent d'être lus
+    if (before.partsKey !== partsKey && piece.muted) updatePiece({ muted: undefined });
+    if (before.written !== written && piece.tempo !== undefined) updatePiece({ tempo: undefined });
+  }, [pieceId, partsKey, written]);
+  // enregistrement des réglages du morceau, à côté de lui, peu après le dernier changement ; il
+  // faut son dossier et le morceau lui-même sur le disque (un MusicXML importé : à son
+  // premier enregistrement en .prisma)
+  useEffect(() => {
+    if (!pieceChanged.current || !pieceDir || !handle) return;
+    const name = handle.name;
+    const timer = setTimeout(() => {
+      pieceChanged.current = false;
+      saveSettings(pieceDir, name, piece).catch((e) => setNotice(`Réglages du morceau non enregistrés : ${(e as Error).message}`));
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [piece, pieceDir, handle]);
   useEffect(
     () =>
       player.setSound({
@@ -582,6 +680,8 @@ export function App() {
           onMetronome={(metronome) => setOptions({ metronome })}
           muted={muted}
           onMuted={setMuted}
+          tempo={piece.tempo ?? null}
+          onTempo={(tempo) => updatePiece({ tempo: tempo ?? undefined })}
         />
         <button
           className={"icon gear" + (showOptions ? " on" : "")}
@@ -605,13 +705,13 @@ export function App() {
       <div className="workspace">
       {showGuide && (
         <main className="guide-pane">
-          <button className="back" onClick={() => setShowGuide(false)}>
-            ← Retour à la partition
+          <button className="back icon" onClick={() => setShowGuide(false)} title="Retour à la partition" aria-label="Retour à la partition">
+            <BackIcon />
           </button>
-          <NoticeView options={options} />
+          <NoticeView options={general} />
         </main>
       )}
-      {showLibrary && <LibraryView options={options} onOpen={openEntry} onClose={() => setShowLibrary(false)} />}
+      {showLibrary && <LibraryView options={general} onOpen={openEntry} onClose={() => setShowLibrary(false)} />}
       <main className={"split" + (reading ? " reading" : "") + ` fit-${view.fit}` + (view.zoom > 1 ? " zoomed" : "")} hidden={showGuide || showLibrary}>
         {/* la languette de l'éditeur, sur le bord où il apparaît : on le tire, on le repousse */}
         <button
@@ -664,7 +764,21 @@ export function App() {
           )}
         </section>
       </main>
-      {showOptions && <OptionsDrawer options={options} setOptions={setOptions} onClose={() => setShowOptions(false)} />}
+      {showOptions && (
+        <OptionsDrawer
+          piece={{
+            general,
+            own: piece.options ?? {},
+            setGeneral: setOptions,
+            setPiece: setPieceOptions,
+            unsetPiece: unsetPieceOptions,
+            name: fileName,
+            where: pieceDir && handle ? settingsName(handle.name) : null,
+            keys: PIECE_KEYS,
+          }}
+          onClose={() => setShowOptions(false)}
+        />
+      )}
       </div>
     </div>
   );
