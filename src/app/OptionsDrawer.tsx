@@ -42,6 +42,12 @@ const NOTE_NAMES: Option<RenderOptions["noteNames"]>[] = [
   { value: "english", label: "C D E", hint: "dans la barre de statut de l'éditeur, en notation anglaise ; le do central est C4" },
 ];
 
+const SOURCE_COLORS: Option<RenderOptions["sourceColors"]>[] = [
+  { value: "octaves", label: "Signes et octaves", hint: "les signes en couleur, et chaque ligne de notes sur le fond de son couloir d'octave, comme sur la partition" },
+  { value: "signs", label: "Signes", hint: "les barres, les traits, les nuances, les doigtés… en couleur, sur un fond blanc" },
+  { value: "none", label: "Aucune", hint: "un texte sobre, d'une seule couleur" },
+];
+
 const SECTIONS: Option<RenderOptions["sections"]>[] = [
   { value: "newLine", label: "À la ligne", hint: "chaque section commence une nouvelle ligne, comme les couplets d'une chanson" },
   { value: "inline", label: "À la suite", hint: "une section suit la précédente sur la même ligne, séparée par un blanc : la partition est plus courte" },
@@ -347,6 +353,7 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
               onChange={(autoEngrave) => setOptions({ autoEngrave })}
               hint={options.autoEngrave ? "la mise en page suit la saisie, peu après la dernière frappe" : "on met en page d'un clic sur le bouton en bas de l'éditeur (Ctrl+Entrée)"}
             />
+            <Choice id="source-colors" label="Coloration" value={options.sourceColors} options={SOURCE_COLORS} onChange={(sourceColors) => setOptions({ sourceColors })} />
             <Choice id="note-names" label="Noms des notes" value={options.noteNames} options={NOTE_NAMES} onChange={(noteNames) => setOptions({ noteNames })} />
           </>
         )}

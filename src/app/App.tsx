@@ -736,7 +736,7 @@ export function App() {
           </svg>
         </button>
         <section className="source" hidden={reading}>
-          <SourceEditor value={source} onChange={setSource} editor={editor} errorLine={problem?.line} noteNames={options.noteNames}>
+          <SourceEditor value={source} onChange={setSource} editor={editor} errorLine={problem?.line} noteNames={options.noteNames} colors={options.sourceColors} palette={options.octaveColors}>
             <EngraveButton dirty={dirty} auto={options.autoEngrave} onEngrave={engraveNow} onAuto={(autoEngrave) => setOptions({ autoEngrave })} />
           </SourceEditor>
           {problem && (

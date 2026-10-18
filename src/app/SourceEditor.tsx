@@ -5,13 +5,16 @@
  */
 import { useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type { ReactNode, Ref } from "react";
-import { EditorSelection, EditorState, RangeSet, StateEffect, StateField } from "@codemirror/state";
+import { Compartment, EditorSelection, EditorState, RangeSet, StateEffect, StateField } from "@codemirror/state";
 import { EditorView, GutterMarker, gutterLineClass, highlightActiveLineGutter, keymap, lineNumbers, drawSelection } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { highlightSelectionMatches, search, searchKeymap } from "@codemirror/search";
 import { inspect, octaveOffset } from "../core/index.ts";
 import type { NoteNames } from "../core/index.ts";
 import { staffNames } from "./staves.ts";
+import { sourceColors } from "./sourceColors.ts";
+import type { SourceColors } from "./sourceColors.ts";
+import type { OctaveColors } from "./colors.ts";
 
 /** Ce que l'application demande à l'éditeur. */
 export type EditorHandle = {
@@ -27,6 +30,9 @@ type Props = {
   /** Ligne d'une erreur de lecture, marquée dans la marge. */
   errorLine?: number;
   noteNames: NoteNames;
+  /** La coloration du texte, et la palette des couloirs d'octave (celle de la partition). */
+  colors: SourceColors;
+  palette: OctaveColors;
   /** Ce qui flotte au-dessus du texte (le bouton de mise en page). */
   children?: ReactNode;
 };
@@ -55,9 +61,10 @@ const errorLineField = StateField.define<RangeSet<GutterMarker>>({
 // Ctrl+Entrée met la partition en page (raccourci de l'application) : l'éditeur n'en fait rien
 const keys = defaultKeymap.filter((k) => k.key !== "Mod-Enter");
 
-export function SourceEditor({ value, onChange, editor, errorLine, noteNames, children }: Props) {
+export function SourceEditor({ value, onChange, editor, errorLine, noteNames, colors, palette, children }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
+  const coloring = useRef(new Compartment()).current;
   const [caret, setCaret] = useState(0);
   // les rappels changent à chaque rendu : l'éditeur, créé une fois, passe par cette référence
   const changed = useRef(onChange);
@@ -72,6 +79,7 @@ export function SourceEditor({ value, onChange, editor, errorLine, noteNames, ch
           lineNumbers(),
           highlightActiveLineGutter(),
           errorLineField,
+          coloring.of(sourceColors(colors, palette)),
           history(),
           drawSelection(),
           search({ top: true }),
@@ -98,6 +106,10 @@ export function SourceEditor({ value, onChange, editor, errorLine, noteNames, ch
     if (!v || v.state.doc.toString() === value) return;
     v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: value }, selection: EditorSelection.cursor(0) });
   }, [value]);
+
+  useEffect(() => {
+    view.current?.dispatch({ effects: coloring.reconfigure(sourceColors(colors, palette)) });
+  }, [colors, palette]);
 
   useEffect(() => {
     view.current?.dispatch({ effects: setError.of(errorLine) });
