@@ -1101,10 +1101,15 @@ describe("paroles", () => {
     expect(parsePrisma(writePrisma(late, { width: 14 })).lyrics).toEqual(late.lyrics);
   });
 
+  it("refuse une note écrite après la dernière barre", () => {
+    expect(() => parsePrisma(["m1 |1  |2  ||", "0  |1  |3  ||5", ""].join("\n"))).toThrow(/ligne 2, col. 14 : rien ne s'écrit après la dernière barre/);
+    expect(() => parsePrisma(["m1 |1  |2  ||", "0  |1  |3  ||   ", ""].join("\n"))).not.toThrow();
+  });
+
   it("refuse des paroles mal placées", () => {
     const one = (l: string) => ["m1 |1  |2  |3  ||", "0  |1  |3  |5  ||", l, "---", "-1 |   |   |   ||", ""].join("\n");
     expect(() => parsePrisma(one("@l   la"))).toThrow(/exactement sur une case/);
-    expect(() => parsePrisma(one("@l  ---"))).toThrow(/écris d'abord la syllabe/);
+    expect(() => parsePrisma(one("@l  ---"))).toThrow(/écrivez d'abord la syllabe/);
     expect(() => parsePrisma(one("@l  la- --"))).toThrow(/ne se prolonge pas/);
     expect(() => parsePrisma(one("@l  la -"))).toThrow(/dépasser la case/);
     expect(() => parsePrisma(["@l  la", "m1 |1  ||", "0  |1  ||", "---", ""].join("\n"))).toThrow(/sous les lignes de leur portée/);
@@ -1253,7 +1258,7 @@ describe("portées et parties", () => {
     expect(() => parsePrisma(swap("═ Piano ═", "═ Pno. ══"))).toThrow(/« Pno\. » non déclaré/);
     expect(() => parsePrisma(swap("─ Chant ─", "─ Piano ─"))).toThrow(/à la place de « Chant »/);
     expect(() => parsePrisma(swap("───┼─ Chant ─┼", "───┼───────┼"))).toThrow(/il manque le nom de la partie « Chant »/);
-    expect(() => parsePrisma(swap("parts: Chant, Piano\n", ""))).toThrow(/non déclarée : nomme les parties/);
+    expect(() => parsePrisma(swap("parts: Chant, Piano\n", ""))).toThrow(/non déclarée : nommez les parties/);
     expect(() => parsePrisma(swap("parts: Chant, Piano", "parts: Chant, Piano, Flûte"))).toThrow(/il manque des parties/);
     expect(() => parsePrisma(swap("───┼─────┼───┼───┼────┼┼", "───┼─ Main ┼───┼───┼────┼┼"))).toThrow(/trait double/);
   });

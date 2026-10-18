@@ -218,8 +218,6 @@ const theme = EditorView.baseTheme({
   ".cm-p-section": { color: "#1f5fa8", fontWeight: "700" },
   ".cm-p-sign": { color: "#7a4fb0" },
   ".cm-p-text, .cm-p-lyric": { fontStyle: "italic", color: "#4a4f54" },
-  // la sélection se dessine sous le texte : par-dessus les couloirs, elle les teinte sans les cacher
-  ".cm-selectionLayer": { zIndex: "1", mixBlendMode: "multiply" },
 });
 
 /** L'extension de la coloration choisie, avec la palette des octaves. */

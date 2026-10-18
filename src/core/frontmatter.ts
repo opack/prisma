@@ -9,10 +9,16 @@ export type FrontmatterResult = { meta: Meta; bodyStartLine: number };
 export class PrismaError extends Error {
   line: number;
   column: number;
-  constructor(message: string, line: number, column = 1) {
-    super(`ligne ${line}, col. ${column} : ${message}`);
+  /** Le message seul, sans sa place. */
+  reason: string;
+  /** La colonne est-elle celle du signe fautif ? Sinon, c'est la ligne entière. */
+  exact: boolean;
+  constructor(message: string, line: number, column?: number) {
+    super(`ligne ${line}, col. ${column ?? 1} : ${message}`);
     this.line = line;
-    this.column = column;
+    this.column = column ?? 1;
+    this.reason = message;
+    this.exact = column !== undefined;
   }
 }
 
@@ -44,7 +50,7 @@ export function parseFrontmatter(lines: string[]): FrontmatterResult {
       const n = Number(value);
       if (!Number.isInteger(n) || n < 0) throw new PrismaError("« format » est le numéro de version du format Prisma : un entier, par exemple « format: 1 »", i + 1);
       if (n > FORMAT_VERSION) {
-        throw new PrismaError(`ce fichier utilise la version ${n} du format Prisma, plus récente que celle de cette application (${FORMAT_VERSION}) : mets l'application à jour`, i + 1);
+        throw new PrismaError(`ce fichier utilise la version ${n} du format Prisma, plus récente que celle de cette application (${FORMAT_VERSION}) : mettez l'application à jour`, i + 1);
       }
       if (n < FORMAT_VERSION) {
         throw new PrismaError(`ce fichier utilise l'ancienne version ${n} du format Prisma ; cette application lit la version ${FORMAT_VERSION} (voir FORMAT.md)`, i + 1);

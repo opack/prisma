@@ -5,6 +5,7 @@ import { Menu } from "./Menu.tsx";
 import { ListenControls } from "./ListenControls.tsx";
 import { EngraveButton } from "./EngraveButton.tsx";
 import { SourceEditor } from "./SourceEditor.tsx";
+import { Message } from "./message.tsx";
 import type { EditorHandle } from "./SourceEditor.tsx";
 import { OptionsDrawer } from "./OptionsDrawer.tsx";
 
@@ -555,7 +556,15 @@ export function App() {
     if (line) editor.current?.goTo(line, column);
   };
 
-  const { problem, score } = engraved;
+  const { problem: engravedProblem, score } = engraved;
+  // le texte relu pendant la frappe : son erreur, ou rien (undefined : pas encore relu)
+  const [checked, setChecked] = useState<Problem | null | undefined>(undefined);
+  // l'erreur à montrer : celle du texte tel qu'il est, pas celle de la dernière mise en page, qu'on a
+  // pu corriger depuis (une erreur sans place, celle d'un import, reste celle de la mise en page)
+  const textProblem = engravedProblem?.line !== undefined && checked !== undefined ? checked : engravedProblem;
+  const problem = textProblem ?? undefined;
+  // corrigée, mais pas encore remise en page
+  const fixed = !!engravedProblem && engravedProblem.line !== undefined && checked === null;
   // écoute : le morceau gravé, avec le curseur sur la gravure ; arrêtée quand on regrave
   useEffect(() => player.load(score), [score]);
   // portées muettes, propres au morceau : rétablies quand on change ses portées en l'écrivant
@@ -736,12 +745,12 @@ export function App() {
           </svg>
         </button>
         <section className="source" hidden={reading}>
-          <SourceEditor value={source} onChange={setSource} editor={editor} errorLine={problem?.line} noteNames={options.noteNames} colors={options.sourceColors} palette={options.octaveColors}>
+          <SourceEditor value={source} onChange={setSource} editor={editor} noteNames={options.noteNames} colors={options.sourceColors} palette={options.octaveColors} onCheck={setChecked}>
             <EngraveButton dirty={dirty} auto={options.autoEngrave} onEngrave={engraveNow} onAuto={(autoEngrave) => setOptions({ autoEngrave })} />
           </SourceEditor>
           {problem && (
             <button className="problem" onClick={() => goTo(problem.line, problem.column)}>
-              {problem.message}
+              <Message text={problem.message} />
             </button>
           )}
         </section>
@@ -756,6 +765,28 @@ export function App() {
           style={{ "--zoom": view.zoom } as React.CSSProperties}
         >
           {score && !pages.length && <p className="empty">Aucune mesure à mettre en page.</p>}
+          {/* une erreur : la partition n'a pas pu être mise en page ; on dit pourquoi, et où corriger */}
+          {fixed && (
+            <div className="preview-problem fixed" role="status">
+              <p className="preview-problem-title">L'erreur est corrigée.</p>
+              <p className="empty">Mettez le texte en page (Ctrl+Entrée) pour voir la partition.</p>
+              <button onClick={engraveNow}>Mettre en page</button>
+            </div>
+          )}
+          {problem && (
+            <div className="preview-problem" role="alert">
+              <p className="preview-problem-title">{problem.line ? "La partition ne peut pas être mise en page : le texte contient une erreur." : "La partition ne peut pas être affichée."}</p>
+              <p>
+                <Message text={problem.message} />
+              </p>
+              {problem.line !== undefined && (
+                <>
+                  <p className="empty">{options.autoEngrave ? "Une fois l'erreur corrigée, la mise en page reprend d'elle-même." : "Une fois l'erreur corrigée, remettez en page (Ctrl+Entrée)."}</p>
+                  <button onClick={() => goTo(problem.line!, problem.column)}>Aller à l'erreur</button>
+                </>
+              )}
+            </div>
+          )}
           {focused ? (
             <>
               <FocusView pages={pages} options={options} />

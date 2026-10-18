@@ -348,7 +348,7 @@ export function parsePrisma(text: string): Score {
     });
     here.forEach((x, k) => {
       if (!declared) {
-        if (x.name) throw new PrismaError(`partie « ${x.name} » non déclarée : nomme les parties dans le frontmatter (parts: …)`, x.line, 1);
+        if (x.name) throw new PrismaError(`partie « ${x.name} » non déclarée : nommez les parties dans le frontmatter (parts: …)`, x.line, 1);
         return;
       }
       if (k >= declared.length) throw new PrismaError(`partie de trop : « parts » en déclare ${declared.length} (${declared.join(", ")})`, x.line, 1);
@@ -443,7 +443,7 @@ export function parsePrisma(text: string): Score {
           if (!last) {
             // suite de la prolongation d'une syllabe du système précédent
             const prev = col === anchors[0].from ? lyrics.find((l) => l.staff === staff && l.verse === verse && l.extend === t0) : undefined;
-            if (!prev) throw new PrismaError("« --- » prolonge la syllabe qui le précède sur la ligne : écris d'abord la syllabe", R, col + 1);
+            if (!prev) throw new PrismaError("« --- » prolonge la syllabe qui le précède sur la ligne : écrivez d'abord la syllabe", R, col + 1);
             prev.extend = end;
             last = prev;
           } else {
@@ -502,6 +502,10 @@ export function parsePrisma(text: string): Score {
           throw new PrismaError("« | » mal placé : il ne tombe pas sur une barre de la règle", R, c + 1);
         }
       }
+      // rien après la dernière barre de la règle : une note n'y aurait pas de case
+      const end = rulerLine.trimEnd().length;
+      const extra = row.slice(end).search(/\S/);
+      if (extra >= 0) throw new PrismaError("rien ne s'écrit après la dernière barre de la règle de comptage", R, end + extra + 1);
       const lab = row.slice(0, pipe).trim();
       if (lab) {
         const oct = parseOctaveLabel(lab);
@@ -604,7 +608,7 @@ export function parsePrisma(text: string): Score {
         pedalDown.delete(p.staff);
       }
       if (p.text !== PEDAL_UP) {
-        if (pedalDown.has(p.staff)) throw new PrismaError("« Ped. » alors que la pédale est déjà enfoncée : écris « *Ped. » pour la changer", p.line, p.col);
+        if (pedalDown.has(p.staff)) throw new PrismaError("« Ped. » alors que la pédale est déjà enfoncée : écrivez « *Ped. » pour la changer", p.line, p.col);
         const pedal = { staff: p.staff, start: p.t, end: -1 };
         pedalDown.set(p.staff, pedal);
         pedals.push(pedal);
@@ -612,10 +616,10 @@ export function parsePrisma(text: string): Score {
     }
     if (pendingSlurs.length) {
       const o = pendingSlurs[0];
-      throw new PrismaError("liaison coupée en fin de système : reprends-la au début du suivant par « ---) »", o.line, o.col);
+      throw new PrismaError("liaison coupée en fin de système : reprenez-la au début du suivant par « ---) »", o.line, o.col);
     }
   }
-  if (openSlurs.length) throw new PrismaError("liaison jamais refermée : termine-la par « ) »", openSlurs[0].line, openSlurs[0].col);
+  if (openSlurs.length) throw new PrismaError("liaison jamais refermée : terminez-la par « ) »", openSlurs[0].line, openSlurs[0].col);
   for (const s of slurs) {
     if (s.end <= s.start) {
       throw new PrismaError("une liaison relie au moins deux notes : « ( » et « ) » dans deux cases différentes", slurAt.get(s)!.line, slurAt.get(s)!.col);
@@ -641,7 +645,7 @@ export function parsePrisma(text: string): Score {
     if (markers.find((x) => x.label === m.label) !== m) throw new PrismaError(`section « [${m.label}] » posée deux fois`, m.line, m.col);
   }
   if (markers.length && markers[0].barIndex !== 0) {
-    throw new PrismaError(`le morceau commence avant la première section « [${markers[0].label}] » : pose une section sur la première mesure`, markers[0].line, markers[0].col);
+    throw new PrismaError(`le morceau commence avant la première section « [${markers[0].label}] » : posez une section sur la première mesure`, markers[0].line, markers[0].col);
   }
   let repeatStart = 0;
   for (const r of [...repeats.values()].sort((a, b) => a.barIndex - b.barIndex)) {
