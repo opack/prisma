@@ -27,6 +27,11 @@ export type EditorHandle = {
   focus(): void;
   /** Place le curseur sur une ligne et une colonne (à partir de 1), et la montre ; focus : l'éditeur prend la main (le clavier). */
   goTo(line: number, column?: number, focus?: boolean): void;
+  /**
+   * Remplace le texte par text (une retouche faite ailleurs que dans l'éditeur), comme une frappe :
+   * seul ce qui change est réécrit, Ctrl+Z le défait ; le curseur va à la ligne et la colonne données.
+   */
+  replace(text: string, line: number, column: number): void;
 };
 
 type Props = {
@@ -176,6 +181,20 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
 
   useImperativeHandle(editor, () => ({
     focus: () => view.current?.focus(),
+    replace(text, line, column) {
+      const v = view.current;
+      if (!v) return;
+      const old = v.state.doc.toString();
+      let a = 0;
+      while (a < old.length && a < text.length && old[a] === text[a]) a++;
+      let b = 0;
+      while (b < old.length - a && b < text.length - a && old[old.length - 1 - b] === text[text.length - 1 - b]) b++;
+      const changes = { from: a, to: old.length - b, insert: text.slice(a, text.length - b) };
+      const doc = v.state.update({ changes }).state.doc;
+      const l = doc.line(Math.max(1, Math.min(line, doc.lines)));
+      const at = Math.min(l.from + column - 1, l.to);
+      v.dispatch({ changes, selection: { anchor: at }, effects: EditorView.scrollIntoView(at, { y: "center" }), userEvent: "input.retouch" });
+    },
     goTo(line, column = 1, focus = true) {
       const v = view.current;
       if (!v) return;

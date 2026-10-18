@@ -48,6 +48,11 @@ export const mainOf = (cell: string) => {
   const c = cell.trim().replace(/\d+'/g, "");
   return c.startsWith("-") ? "-" : (c.match(/^\d+/)?.[0] ?? "");
 };
+/** Le même, et pour une tenue nommée (« -7 »), la note qu'elle prolonge. */
+const signOf = (cell: string) => {
+  const c = cell.trim();
+  return /^-\d+/.test(c) ? c.match(/^-\d+/)![0] : mainOf(c);
+};
 
 /** Les systèmes du texte : leurs lignes (de first à last), leur règle, ses temps, et le rang de leur premier temps. */
 function systems(lines: string[]) {
@@ -82,13 +87,22 @@ const split = (text: string) => text.replace(/\t/g, "    ").split(/\r?\n/);
 
 /** La ligne et la colonne (à partir de 1) d'un signe de la partition, ou rien s'il n'est pas trouvé. */
 export function locate(text: string, at: ScorePlace): { line: number; column: number } | undefined {
+  const r = findRow(text, at);
+  return r && { line: r.line, column: r.column };
+}
+
+/**
+ * Le même, avec l'octave de la ligne trouvée : celle du signe, ou la plus proche quand ce système
+ * du texte n'a pas (encore) de ligne dans son octave.
+ */
+export function findRow(text: string, at: ScorePlace): { line: number; column: number; octave?: number } | undefined {
   const lines = split(text);
   for (const s of systems(lines)) {
     const first = s.beat0 * TICKS_PER_BEAT;
     if (at.t < first || at.t >= (s.beat0 + s.beats.length) * TICKS_PER_BEAT) continue;
     const b = s.beats[Math.floor(at.t / TICKS_PER_BEAT) - s.beat0];
     const k = Math.min(b.length - 1, Math.floor(((at.t % TICKS_PER_BEAT) * b.length) / TICKS_PER_BEAT));
-    return place(lines, s.R, s.last, b[k], at);
+    return place(lines, s.R, s.last, b[k], s.beats.flat(), at);
   }
   return undefined;
 }
@@ -130,8 +144,18 @@ export function textPlace(text: string, L: number, C: number): ScorePlace | unde
 }
 
 /** Dans le système de règle R, la ligne du signe, et la colonne de son contenu dans la case c. */
-function place(lines: string[], R: number, end: number, c: { start: number; end: number }, at: ScorePlace) {
-  const rows: { line: number; content: string; octave?: number }[] = [];
+function place(lines: string[], R: number, end: number, c: { start: number; end: number }, all: { start: number; end: number }[], at: ScorePlace) {
+  const rows: { line: number; content: string; sign: string; octave?: number }[] = [];
+  // la note qu'une tenue prolonge sur sa ligne : la dernière attaque avant elle (« -7 » la nomme)
+  const held = (line: string) => {
+    for (let k = all.findIndex((x) => x.start === c.start); k >= 0; k--) {
+      const cell = line.slice(all[k].start, all[k].end).trim().replace(/\d+'/g, "");
+      const n = cell.match(/^-?(\d+)/)?.[1];
+      if (n) return n;
+      if (!cell.startsWith("-")) return undefined;
+    }
+    return undefined;
+  };
   let staff = -1;
   let octave: number | undefined;
   for (let k = R + 1; k <= end; k++) {
@@ -146,7 +170,12 @@ function place(lines: string[], R: number, end: number, c: { start: number; end:
     if (l.startsWith("@") || !l.includes("|")) continue;
     const label = l.slice(0, l.indexOf("|")).trim();
     if (label) octave = parseOctaveLabel(label);
-    if (staff === at.staff) rows.push({ line: k, content: l.slice(c.start, c.end), octave });
+    if (staff === at.staff) {
+      const content = l.slice(c.start, c.end);
+      // une tenue se reconnaît à la note qu'elle prolonge
+      const hold = mainOf(content) === "-" ? held(l) : undefined;
+      rows.push({ line: k, content, sign: hold ? "-" + hold : signOf(content), octave });
+    }
   }
   // les lignes de l'octave cliquée ; sans elles (la gravure montre un couloir que ce système du
   // texte n'a pas encore), celles de l'octave la plus proche dans la portée
@@ -154,12 +183,16 @@ function place(lines: string[], R: number, end: number, c: { start: number; end:
   const best = Math.min(...rows.map((x) => gap(x.octave)));
   const near = rows.filter((x) => gap(x.octave) === best);
   if (!near.length) return undefined;
-  if (best > 0) return column(near[0], c);
+  if (best > 0) return { ...column(near[0], c), octave: near[0].octave };
   rows.splice(0, rows.length, ...near);
-  const want = at.content === undefined ? undefined : mainOf(at.content);
+  const want = at.content === undefined ? undefined : signOf(at.content);
   // la ligne qui porte ce contenu ; à défaut, une case vide, puis la première ligne de l'octave
-  const row = (want ? rows.find((x) => mainOf(x.content) === want) : undefined) ?? rows.find((x) => !x.content.trim()) ?? rows[0];
-  return column(row, c);
+  const row =
+    (want ? rows.find((x) => x.sign === want) : undefined) ??
+    (want?.startsWith("-") ? rows.find((x) => mainOf(x.content) === "-") : undefined) ??
+    rows.find((x) => !x.content.trim()) ??
+    rows[0];
+  return { ...column(row, c), octave: row.octave };
 }
 
 /** La place du contenu d'une case sur sa ligne (son début, ou celui de la case vide). */

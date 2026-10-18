@@ -8,6 +8,10 @@ import { SourceEditor } from "./SourceEditor.tsx";
 import { Message } from "./message.tsx";
 import { pick as scorePick } from "./pick.ts";
 import { locate, textPlace } from "../core/locate.ts";
+import type { ScorePlace } from "../core/locate.ts";
+import type { ScreenPoint } from "./pick.ts";
+import { cellOf, durationOf, holdChoices, holdIn, resize, retouch } from "./retouch.ts";
+import { RetouchMenu } from "./RetouchMenu.tsx";
 import { textMark } from "./textMark.ts";
 import type { EditorHandle } from "./SourceEditor.tsx";
 import { OptionsDrawer } from "./OptionsDrawer.tsx";
@@ -559,18 +563,60 @@ export function App() {
     if (line) editor.current?.goTo(line, column);
   };
 
-  // un clic sur la partition : le curseur du texte va sur le signe cliqué, sans prendre le clavier
+  // un clic sur la partition : le curseur du texte va sur le signe cliqué, sans prendre le clavier ;
+  // un double-clic ouvre le choix de la note de la case
   const sourceNow = useRef(source);
   sourceNow.current = source;
+  type Retouch = { at: ScorePlace; where: ScreenPoint; content: string; canHold: boolean; duration?: ReturnType<typeof durationOf>; holds: string[] };
+  const [retouchAt, setRetouchAt] = useState<Retouch | null>(null);
+  // ce que le choix montre d'une case : son contenu, la durée de sa note, les notes qu'elle peut tenir
+  const describe = (text: string, at: ScorePlace, where: ScreenPoint): Retouch | null => {
+    const cell = at.octave !== undefined ? cellOf(text, at) : undefined;
+    if (!cell) return null;
+    const duration = cell.content ? durationOf(text, at) : undefined;
+    return { at: duration?.attack ?? at, where, content: cell.content, canHold: cell.canHold, duration, holds: cell.content || !cell.exact ? [] : holdChoices(text, at) };
+  };
   useEffect(
     () =>
-      scorePick.subscribe((at) => {
+      scorePick.subscribe((at, where, kind) => {
+        if (kind === "edit") {
+          setRetouchAt(describe(sourceNow.current, at, where));
+          return;
+        }
         if (reading || !options.scoreToText) return;
         const p = locate(sourceNow.current, at);
         if (p) editor.current?.goTo(p.line, p.column, false);
       }),
     [reading, options.scoreToText],
   );
+  const closeRetouch = useCallback(() => setRetouchAt(null), []);
+  // la retouche écrite dans le texte (comme une frappe), puis la partition remise en page
+  const engraveAfter = useRef(false);
+  const write = (r: { text: string; line: number; column: number } | undefined) => {
+    if (!r || r.text === sourceNow.current) return false;
+    engraveAfter.current = true;
+    editor.current?.replace(r.text, r.line, r.column);
+    return true;
+  };
+  const applyRetouch = (content: string) => {
+    if (retouchAt) write(retouch(sourceNow.current, retouchAt.at, content));
+    setRetouchAt(null);
+  };
+  // la durée : le choix reste ouvert, pour allonger ou raccourcir encore
+  const applyResize = (by: 1 | -1) => {
+    if (!retouchAt) return;
+    const r = resize(sourceNow.current, retouchAt.at, by);
+    if (write(r)) setRetouchAt(describe(r!.text, retouchAt.at, retouchAt.where));
+  };
+  const applyHold = (note: string) => {
+    if (retouchAt) write(holdIn(sourceNow.current, retouchAt.at, note));
+    setRetouchAt(null);
+  };
+  useEffect(() => {
+    if (!engraveAfter.current) return;
+    engraveAfter.current = false;
+    engraveNow();
+  }, [source, engraveNow]);
 
   // le curseur du texte : le signe qu'il pointe est encadré sur la partition, et amené à l'écran
   // quand il bouge (sauf pendant l'écoute, qui mène le défilement)
@@ -795,6 +841,22 @@ export function App() {
           style={{ "--zoom": view.zoom } as React.CSSProperties}
         >
           {score && !pages.length && <p className="empty">Aucune mesure à mettre en page.</p>}
+          {retouchAt && (
+            <RetouchMenu
+              x={retouchAt.where.x}
+              y={retouchAt.where.y}
+              octave={retouchAt.at.octave}
+              content={retouchAt.content}
+              canHold={retouchAt.canHold}
+              duration={retouchAt.duration}
+              holds={retouchAt.holds}
+              names={options.noteNames}
+              onPick={applyRetouch}
+              onResize={applyResize}
+              onHold={applyHold}
+              onClose={closeRetouch}
+            />
+          )}
           {/* une erreur : la partition n'a pas pu être mise en page ; on dit pourquoi, et où corriger */}
           {fixed && (
             <div className="preview-problem fixed" role="status">

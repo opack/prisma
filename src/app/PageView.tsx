@@ -1048,9 +1048,10 @@ function band(ps: PlacedSystem) {
  * la lecture démarre ou reprend (ou repart tout de suite si elle est en cours).
  */
 export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
-  const seek = (ps: PlacedSystem, e: React.MouseEvent<SVGRectElement>) => {
+  // le signe sous le pointeur : son instant, sa portée, son octave, le contenu de sa case
+  const placeOf = (ps: PlacedSystem, e: React.MouseEvent<SVGRectElement>) => {
     const m = e.currentTarget.getScreenCTM();
-    if (!m) return;
+    if (!m) return undefined;
     const { x, y } = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
     const { sys } = ps;
     // la colonne sous le clic, ou la plus proche quand on clique entre deux
@@ -1059,24 +1060,47 @@ export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
       const d = x < ps.xs[ci] ? ps.xs[ci] - x : x > ps.xs[ci] + ps.ws[ci] ? x - ps.xs[ci] - ps.ws[ci] : 0;
       if (d < dist) (best = ci), (dist = d);
     }
-    follow.release();
     const t = (sys.columns[best] as { t: number }).t;
-    player.seek(t);
-    // la ligne sous le clic : sa portée, son octave, ce qui est écrit dans la case (les places des
-    // portées se comptent depuis le haut du système)
+    // la ligne sous le clic (les places des portées se comptent depuis le haut du système)
     const dy = y - ps.y;
     const k = ps.staves.findIndex((p, i) => dy >= p.rowsTop && dy < p.rowsTop + sys.staves[i].rows.length * ps.rowH);
     const k0 = k >= 0 ? k : Math.max(0, ps.staves.findIndex((p) => dy < p.bottom));
     const rows = sys.staves[k0]?.rows ?? [];
     const row = k >= 0 ? rows[Math.floor((dy - ps.staves[k].rowsTop) / ps.rowH)] : undefined;
-    pick.emit({ t, staff: rows[0]?.staff ?? k0, octave: row?.octave, content: row?.cells[sys.anchors.indexOf(best)] });
+    const a = sys.anchors.indexOf(best);
+    let content = row?.cells[a];
+    // une tenue dit quelle note elle prolonge (« -7 ») : celle de la dernière attaque de sa ligne
+    if (row && content?.startsWith("-") && !/\d/.test(content)) {
+      for (let b = a - 1; b >= 0; b--) {
+        const c = row.cells[b] ?? "";
+        const n = c.match(/^-?(\d+)/)?.[1];
+        if (n) {
+          content = "-" + n;
+          break;
+        }
+        if (!c.startsWith("-")) break;
+      }
+    }
+    return { at: { t, staff: rows[0]?.staff ?? k0, octave: row?.octave, content }, where: { x: e.clientX, y: e.clientY } };
+  };
+  // un clic place l'écoute (et le curseur du texte) ; un double-clic ouvre la retouche de la case
+  const seek = (ps: PlacedSystem, e: React.MouseEvent<SVGRectElement>) => {
+    const p = placeOf(ps, e);
+    if (!p) return;
+    follow.release();
+    player.seek(p.at.t);
+    pick.emit(p.at, p.where, "click");
+  };
+  const edit = (ps: PlacedSystem, e: React.MouseEvent<SVGRectElement>) => {
+    const p = placeOf(ps, e);
+    if (p) pick.emit(p.at, p.where, "edit");
   };
   return (
     <g className="seek">
       {systems.map((ps, k) => {
         const { top, bottom } = band(ps);
         const left = ps.xs[ps.sys.anchors[0]], last = ps.sys.anchors[ps.sys.anchors.length - 1];
-        return <rect key={k} x={left} y={top} width={ps.xs[last] + ps.ws[last] - left} height={bottom - top} className="system-area" fill="transparent" data-start={ps.sys.start} data-end={ps.sys.end} data-top={ps.y} data-bottom={ps.y + ps.height} onClick={(e) => seek(ps, e)} />;
+        return <rect key={k} x={left} y={top} width={ps.xs[last] + ps.ws[last] - left} height={bottom - top} className="system-area" fill="transparent" data-start={ps.sys.start} data-end={ps.sys.end} data-top={ps.y} data-bottom={ps.y + ps.height} onClick={(e) => seek(ps, e)} onDoubleClick={(e) => edit(ps, e)} />;
       })}
     </g>
   );
