@@ -26,13 +26,12 @@ body { font-family: var(--ui); color: var(--ink); background: var(--chrome); fon
 .notice { color: var(--accent); margin-left: 12px; white-space: nowrap; }
 button { font: inherit; padding: 6px 12px; border: 1px solid var(--line); border-radius: 4px; background: #fff; color: var(--ink); cursor: pointer; }
 button:hover { border-color: var(--muted); }
-button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 button:disabled { opacity: .5; cursor: default; }
 
 .workspace { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 0; }
 .split { flex: 1; display: grid; grid-template-columns: minmax(360px, 42%) 1fr; min-height: 0; }
 .source { display: grid; grid-template-rows: 1fr auto auto; min-height: 0; border-right: 1px solid var(--line); background: #fff; }
-textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16px; font-family: var(--mono); font-size: 13px; line-height: 1.45; white-space: pre; overflow: auto; color: var(--ink); background: #fff; font-variant-ligatures: none; }
 .problem { margin: 0; border: 0; border-top: 1px solid var(--error); border-radius: 0; background: var(--error-bg); color: var(--error); text-align: left; padding: 10px 16px; }
 
 .preview { overflow: auto; padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 24px; }
@@ -266,13 +265,23 @@ textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16p
 .popover-hint { margin: 2px 0 0; color: var(--muted); font-size: 0.85em; line-height: 1.35; white-space: normal; }
 /* graver : un bouton flottant en bas de l'éditeur, contre les pages, et sa flèche vers les réglages
    de la gravure */
-.editor { position: relative; min-height: 0; display: grid; grid-template-columns: auto 1fr; }
-.editor textarea { padding: 12px 16px 76px 10px; }
-/* numéros de ligne : ils défilent avec le texte ; la ligne du curseur en évidence, une erreur en rouge */
-.gutter { overflow: hidden; min-width: 3.2em; padding: 12px 0; background: var(--panel); border-right: 1px solid var(--line); font-family: var(--mono); font-size: 13px; line-height: 1.45; color: var(--muted); text-align: right; user-select: none; }
-.gutter > div > div { padding: 0 8px 0 10px; }
-.gutter .current { color: var(--ink); font-weight: 600; }
-.gutter .error { color: var(--error); background: var(--error-bg); font-weight: 600; }
+.editor { position: relative; min-height: 0; display: grid; }
+/* l'éditeur (CodeMirror) : le texte à chasse fixe, sans retour à la ligne ; de la place en bas pour le bouton */
+.editor-host { min-height: 0; }
+.editor-host .cm-editor { height: 100%; background: #fff; color: var(--ink); }
+.editor-host .cm-editor.cm-focused { outline: none; }
+.editor-host .cm-scroller { font-family: var(--mono); font-size: 13px; line-height: 1.45; font-variant-ligatures: none; }
+.editor-host .cm-content { padding: 12px 16px 76px 10px; caret-color: var(--ink); }
+.editor-host .cm-line { padding: 0; }
+.editor-host .cm-cursor { border-left-color: var(--ink); }
+/* numéros de ligne : la ligne du curseur en évidence, une erreur en rouge */
+.editor-host .cm-gutters { min-width: 3.2em; background: var(--panel); border-right: 1px solid var(--line); color: var(--muted); user-select: none; }
+.editor-host .cm-lineNumbers .cm-gutterElement { padding: 0 8px 0 10px; }
+.editor-host .cm-activeLineGutter { background: none; color: var(--ink); font-weight: 600; }
+.editor-host .cm-gutterElement.cm-error-line { color: var(--error); background: var(--error-bg); font-weight: 600; }
+.editor-host .cm-selectionBackground, .editor-host .cm-focused .cm-selectionBackground { background: color-mix(in srgb, var(--accent) 22%, #fff); }
+.editor-host .cm-searchMatch { background: color-mix(in srgb, #ffbe28 35%, #fff); }
+.editor-host .cm-panels { background: var(--panel); border-color: var(--line); font-family: var(--ui); font-size: 13px; }
 /* barre de statut : la place du curseur, puis le sens du signe qu'il pointe */
 .status { display: flex; gap: 16px; align-items: baseline; min-width: 0; padding: 5px 12px; border-top: 1px solid var(--line); background: var(--panel); font-size: 12px; color: var(--muted); white-space: nowrap; }
 .status-where { flex: none; }

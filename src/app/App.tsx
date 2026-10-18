@@ -5,6 +5,7 @@ import { Menu } from "./Menu.tsx";
 import { ListenControls } from "./ListenControls.tsx";
 import { EngraveButton } from "./EngraveButton.tsx";
 import { SourceEditor } from "./SourceEditor.tsx";
+import type { EditorHandle } from "./SourceEditor.tsx";
 import { OptionsDrawer } from "./OptionsDrawer.tsx";
 
 import { player } from "./player.ts";
@@ -253,7 +254,7 @@ export function App() {
     if (!reading) return;
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      if (e.ctrlKey || e.metaKey || e.altKey || target.closest("input, select, textarea, .drawer")) return;
+      if (e.ctrlKey || e.metaKey || e.altKey || target.closest("input, select, textarea, .cm-editor, .drawer")) return;
       const turn = { PageDown: 1, ArrowRight: 1, ArrowDown: 1, PageUp: -1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
       const pane = preview.current;
       if (!turn || !pane || view.fit === "focus") return;
@@ -303,7 +304,7 @@ export function App() {
   const [engravedSource, setEngravedSource] = useState(source);
   const dirty = source !== engravedSource;
   const unsaved = savedText !== null && source !== savedText;
-  const editor = useRef<HTMLTextAreaElement>(null);
+  const editor = useRef<EditorHandle>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const engraveNow = useCallback(() => {
@@ -551,16 +552,7 @@ export function App() {
 
   /** Place le curseur sur la ligne et la colonne d'une erreur. */
   const goTo = (line?: number, column = 1) => {
-    const ta = editor.current;
-    if (!ta || !line) return;
-    const lines = source.split("\n");
-    let pos = 0;
-    for (let i = 0; i < line - 1 && i < lines.length; i++) pos += lines[i].length + 1;
-    pos += Math.max(0, column - 1);
-    ta.focus();
-    ta.setSelectionRange(pos, pos + 1);
-    const lineH = parseFloat(getComputedStyle(ta).lineHeight) || 18;
-    ta.scrollTop = Math.max(0, (line - 4) * lineH);
+    if (line) editor.current?.goTo(line, column);
   };
 
   const { problem, score } = engraved;
@@ -744,7 +736,7 @@ export function App() {
           </svg>
         </button>
         <section className="source" hidden={reading}>
-          <SourceEditor value={source} onChange={setSource} textarea={editor} errorLine={problem?.line} noteNames={options.noteNames}>
+          <SourceEditor value={source} onChange={setSource} editor={editor} errorLine={problem?.line} noteNames={options.noteNames}>
             <EngraveButton dirty={dirty} auto={options.autoEngrave} onEngrave={engraveNow} onAuto={(autoEngrave) => setOptions({ autoEngrave })} />
           </SourceEditor>
           {problem && (
