@@ -15,6 +15,8 @@ import type { ThumbRequest } from "./thumbs.worker.ts";
 export type Thumb = { page: Page; total: number; meta: Meta } | null;
 type Cached = { modified: number; options: string; thumb?: Thumb; error?: string };
 
+/** À changer quand la forme des pages (Page) change. */
+const THUMBS_VERSION = 2;
 const memory = new Map<string, Cached>();
 let worker: Worker | undefined;
 let nextId = 0;
@@ -41,7 +43,8 @@ const inFlight = new Map<string, Promise<Cached>>();
 
 /** L'aperçu d'un morceau, du cache ou calculé ; une erreur de lecture le remplace par son message. */
 export function thumbOf(entry: LibraryEntry, options: EngraveOptions): Promise<Cached> {
-  const key = JSON.stringify(options);
+  // la version des pages gardées : un aperçu fait par une version d'avant, aux données d'une autre forme, se refait
+  const key = JSON.stringify({ v: THUMBS_VERSION, options });
   const fresh = (c?: Cached) => c && c.modified === entry.modified && c.options === key;
   const hit = memory.get(entry.path);
   if (fresh(hit)) return Promise.resolve(hit!);

@@ -18,7 +18,7 @@ describe("réglages d'un morceau", () => {
 
   it("laissent de côté ce qu'ils ne comprennent pas, et appliquent le reste", () => {
     const text = JSON.stringify({ format: 1, tempo: 999, muted: [2, -1, "x", 2, 0], options: { density: "énorme", sections: "inline", octaveStyle: "sign", metronome: true, inconnue: 1 } });
-    // tempo hors limites, partie négative, valeur inconnue, option qui n'est pas du rendu : écartés
+    // tempo hors limites, portée négative, valeur inconnue, option qui n'est pas du rendu : écartés
     expect(parseSettings(text)).toEqual({ muted: [0, 2], options: { sections: "inline", octaveStyle: "sign" } });
   });
 

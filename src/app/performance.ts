@@ -21,7 +21,7 @@ export type Passage = { from: number; to: number; at: number; entry: number };
  * grace : petite note, jouée `grace` crans avant l'instant `start` de sa note principale (start et
  * end sont alors cet instant) ; la durée d'un cran se décide au tempo de l'écoute.
  */
-export type PlayedNote = { part: number; start: number; end: number; midi: number; velocity: number; grace?: number; trill?: Trill; roll?: Roll };
+export type PlayedNote = { staff: number; start: number; end: number; midi: number; velocity: number; grace?: number; trill?: Trill; roll?: Roll };
 
 /** Note d'un arpège : son rang dans l'accord égrené (0 : sur le temps) et le nombre de notes de l'accord. */
 export type Roll = { rank: number; count: number };
@@ -91,7 +91,7 @@ export type ClickGrid = "beats" | "cells" | "attacks";
  * temps : le temps, sa division en 2 ou en 3 selon son découpage, puis chaque division coupée en
  * deux. Ou sur les cases écrites : un coup par case, à son niveau (« * » division, « . » et « , »
  * subdivision), ce qui fait entendre quand jouer. Ou sur les seules attaques : chaque case, temps
- * compris, où une note commence dans n'importe quelle partie (pas une case de tenue, de silence ou
+ * compris, où une note commence dans n'importe quelle portée (pas une case de tenue, de silence ou
  * de soufflet). Une levée commence sur un temps, pas sur un premier temps.
  */
 export function clicks(score: Score, ps: Passage[], grid: ClickGrid = "beats"): Click[] {
@@ -151,7 +151,7 @@ export function playedNotes(score: Score, ps: Passage[]): PlayedNote[] {
     else runs.push(p);
   }
   // articulations : la touche relâchée plus tôt (la pédale peut encore tenir le son), l'attaque plus forte
-  const marks = score.notes.map((n) => score.articulations.filter((a) => a.part === n.part && a.t === n.start).map((a) => a.kind));
+  const marks = score.notes.map((n) => score.articulations.filter((a) => a.staff === n.staff && a.t === n.start).map((a) => a.kind));
   const released = score.notes.map((n, i) => ({ ...n, end: n.start + (n.end - n.start) * Math.min(1, ...marks[i].map((k) => SHORTER[k])) }));
   const velocity = velocities(score).map((v, i) => Math.min(127, v + Math.max(0, ...marks[i].map((k) => LOUDER[k]))));
   const ends = soundingEnds({ ...score, notes: released }), rolls = rollRanks(score);
@@ -159,7 +159,7 @@ export function playedNotes(score: Score, ps: Passage[]): PlayedNote[] {
   for (const p of runs)
     score.notes.forEach((n, i) => {
       if (n.start >= p.from && n.start < p.to) out.push({
-          part: n.part,
+          staff: n.staff,
           start: p.at + n.start - p.from,
           end: p.at + Math.min(ends[i], p.to) - p.from,
           midi: n.midi,
@@ -171,12 +171,12 @@ export function playedNotes(score: Score, ps: Passage[]): PlayedNote[] {
   // petites notes : rangées avant leur note, la première le plus tôt ; même rang, jouées ensemble
   const level = velocityAt(score);
   const ranks = new Map<string, number>();
-  for (const g of score.graces) ranks.set(`${g.part}:${g.t}`, Math.max(ranks.get(`${g.part}:${g.t}`) ?? 0, g.slot + 1));
+  for (const g of score.graces) ranks.set(`${g.staff}:${g.t}`, Math.max(ranks.get(`${g.staff}:${g.t}`) ?? 0, g.slot + 1));
   for (const p of runs)
     for (const g of score.graces)
       if (g.t >= p.from && g.t < p.to) {
         const t = p.at + g.t - p.from;
-        out.push({ part: g.part, start: t, end: t, midi: g.midi, velocity: level(g.part, g.t, false), grace: ranks.get(`${g.part}:${g.t}`)! - g.slot });
+        out.push({ staff: g.staff, start: t, end: t, midi: g.midi, velocity: level(g.staff, g.t, false), grace: ranks.get(`${g.staff}:${g.t}`)! - g.slot });
       }
   return out.sort((a, b) => a.start - b.start || (b.grace ?? 0) - (a.grace ?? 0) || a.midi - b.midi);
 }
@@ -187,12 +187,12 @@ const SHORTER: Record<ArticulationKind, number> = { staccato: 0.5, accent: 1, ma
 const LOUDER: Record<ArticulationKind, number> = { staccato: 0, accent: 20, marcato: 28 };
 
 /**
- * Arpèges : pour chaque note, sa place dans l'accord égrené (rien hors arpège). Du grave à l'aigu, ou de l'aigu au grave ; sans partie, tout le système d'un geste.
+ * Arpèges : pour chaque note, sa place dans l'accord égrené (rien hors arpège). Du grave à l'aigu, ou de l'aigu au grave ; sans portée, tout le système d'un geste.
  */
 function rollRanks(score: Score): (Roll | undefined)[] {
   const ranks: (Roll | undefined)[] = score.notes.map(() => undefined);
   for (const a of score.arpeggios) {
-    const chord = score.notes.map((n, i) => ({ n, i })).filter(({ n }) => n.start === a.t && (a.part === undefined || n.part === a.part));
+    const chord = score.notes.map((n, i) => ({ n, i })).filter(({ n }) => n.start === a.t && (a.staff === undefined || n.staff === a.staff));
     chord.sort((x, y) => (a.down ? y.n.midi - x.n.midi : x.n.midi - y.n.midi));
     chord.forEach(({ i }, k) => (ranks[i] = { rank: k, count: chord.length }));
   }

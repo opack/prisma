@@ -53,8 +53,8 @@ export function FocusView({ pages, options }: { pages: Page[]; options: RenderOp
     const pad = 2;
     const first = systems[0];
     if (!first) return null;
-    const named = first.instruments.filter((x) => x.name).map((x) => [...x.name!].length * 1.45 + 2.6);
-    const braced = first.instruments.some((x) => x.last > x.first) ? 1.8 : 0;
+    const named = first.parts.filter((x) => x.name).map((x) => [...x.name!].length * 1.45 + 2.6);
+    const braced = first.parts.some((x) => x.last > x.first) ? 1.8 : 0;
     const x0 = PAGE.marginX - pad - Math.max(braced, ...named);
     const x1 = Math.max(...systems.map((ps) => ps.xs[ps.xs.length - 1] + ps.ws[ps.ws.length - 1])) + pad;
     const h = Math.max(...systems.map((ps) => ps.height)) + 2 * pad;

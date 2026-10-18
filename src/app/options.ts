@@ -29,7 +29,7 @@ export type RenderOptions = {
   density: Density;
   /** Graver les doigtés : les masquer allège la page sans toucher au fichier. */
   fingerings: boolean;
-  /** Noms des instruments : au premier système seulement (comme une partition), ou à chaque système. */
+  /** Noms des parties : au premier système seulement (comme une partition), ou à chaque système. */
   namesEverySystem: boolean;
   /** En début de ligne, rappeler la note tenue depuis la ligne précédente (« — 8 ») ; sinon le seul trait de tenue. */
   holdReminders: boolean;

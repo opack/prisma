@@ -2,13 +2,13 @@
  * Nuances à l'écoute : l'intensité (vélocité MIDI, de 1 à 127) de chaque note, d'après les nuances,
  * les soufflets et les « cresc. » / « dim. ».
  *
- * Une indication vaut pour tout l'instrument, sous quelque partie qu'elle soit écrite : au piano,
+ * Une indication vaut pour toute la partie, sous quelque portée qu'elle soit écrite : au piano,
  * la nuance écrite entre les portées vaut pour les deux mains (et le MusicXML la range sous l'une
- * d'elles). Une partie qui a sa propre indication au même instant garde la sienne : deux nuances
+ * d'elles). Une portée qui a sa propre indication au même instant garde la sienne : deux nuances
  * écrites ensemble, une par main, se jouent chacune pour sa main.
  */
-import { TICKS_PER_BEAT, instrumentOf, isDynamic } from "../core/index.ts";
-import type { Part, Score } from "../core/index.ts";
+import { TICKS_PER_BEAT, partOf, isDynamic } from "../core/index.ts";
+import type { Staff, Score } from "../core/index.ts";
 
 /** Intensité de chaque nuance, de ppp à fff : un pas d'une nuance à la suivante. */
 const LEVELS: Record<string, number> = { ppp: 16, pp: 28, p: 42, mp: 56, mf: 70, f: 86, ff: 100, fff: 114 };
@@ -28,11 +28,11 @@ type Mark =
 
 const clamp = (v: number) => Math.max(1, Math.min(127, Math.round(v)));
 
-/** Les indications d'intensité d'une partie, dans l'ordre. */
-function marksOf(score: Score, part: Part): Mark[] {
+/** Les indications d'intensité d'une portée, dans l'ordre. */
+function marksOf(score: Score, staff: Staff): Mark[] {
   const out: Mark[] = [];
   for (const e of score.expressions) {
-    if (e.part !== part) continue;
+    if (e.staff !== staff) continue;
     const text = e.text.replace(/^\((.+)\)$/, "$1"); // une nuance ajoutée par l'éditeur se joue de même
     if (e.kind === "dynamic" && isDynamic(text)) {
       if (text in LEVELS) out.push({ t: e.t, kind: "set", level: LEVELS[text] });
@@ -41,7 +41,7 @@ function marksOf(score: Score, part: Part): Mark[] {
     } else if (/^cresc/.test(text)) out.push({ t: e.t, kind: "ramp", up: true });
     else if (/^(dim|decresc)/.test(text)) out.push({ t: e.t, kind: "ramp", up: false });
   }
-  for (const h of score.hairpins) if (h.part === part) out.push({ t: h.start, kind: "ramp", up: h.kind === "<", end: h.end });
+  for (const h of score.hairpins) if (h.staff === staff) out.push({ t: h.start, kind: "ramp", up: h.kind === "<", end: h.end });
   return out.sort((a, b) => a.t - b.t);
 }
 
@@ -67,21 +67,21 @@ function levelAt(marks: Mark[], t: number): number {
 }
 
 /**
- * L'intensité d'une attaque d'une partie à un instant du morceau. Une note attaquée pile sur un
+ * L'intensité d'une attaque d'une portée à un instant du morceau. Une note attaquée pile sur un
  * accent (sf, fp…) prend l'intensité de l'accent ; une petite note, qui précède sa note, non.
  */
-export function velocityAt(score: Score): (part: Part, t: number, accent?: boolean) => number {
-  const own = new Map<Part, Mark[]>();
-  const partsCount = score.instruments.reduce((n, i) => n + i.parts, 0);
-  for (let p = 0; p < partsCount; p++) own.set(p, marksOf(score, p));
-  // les indications des autres parties de l'instrument, sauf là où la partie a la sienne
+export function velocityAt(score: Score): (staff: Staff, t: number, accent?: boolean) => number {
+  const own = new Map<Staff, Mark[]>();
+  const stavesCount = score.parts.reduce((n, i) => n + i.staves, 0);
+  for (let p = 0; p < stavesCount; p++) own.set(p, marksOf(score, p));
+  // les indications des autres portées de la partie, sauf là où la portée a la sienne
   const family = (m: Mark) => (m.kind === "ramp" ? "ramp" : "level");
-  const used = new Map<Part, Mark[]>();
-  for (let p = 0; p < partsCount; p++) {
+  const used = new Map<Staff, Mark[]>();
+  for (let p = 0; p < stavesCount; p++) {
     const mine = own.get(p)!;
     const taken = new Set(mine.map((m) => `${family(m)}:${m.t}`));
-    const k = instrumentOf(score.instruments, p);
-    const others = [...own].filter(([q]) => q !== p && instrumentOf(score.instruments, q) === k).flatMap(([, ms]) => ms);
+    const k = partOf(score.parts, p);
+    const others = [...own].filter(([q]) => q !== p && partOf(score.parts, q) === k).flatMap(([, ms]) => ms);
     const shared: Mark[] = [];
     for (const m of others) {
       const key = `${family(m)}:${m.t}`;
@@ -90,8 +90,8 @@ export function velocityAt(score: Score): (part: Part, t: number, accent?: boole
     // à un même instant, la nuance d'abord, puis le changement qui part d'elle
     used.set(p, [...mine, ...shared].sort((a, b) => a.t - b.t || (family(a) === "ramp" ? 1 : 0) - (family(b) === "ramp" ? 1 : 0)));
   }
-  return (part, t, accent = true) => {
-    const marks = used.get(part) ?? [];
+  return (staff, t, accent = true) => {
+    const marks = used.get(staff) ?? [];
     const hit = accent ? (marks.find((m) => m.t === t && m.kind !== "ramp" && m.attack !== undefined) as { attack: number } | undefined) : undefined;
     return clamp(hit ? hit.attack : levelAt(marks, t));
   };
@@ -100,5 +100,5 @@ export function velocityAt(score: Score): (part: Part, t: number, accent?: boole
 /** La vélocité de chaque note du morceau, dans l'ordre de score.notes. */
 export function velocities(score: Score): number[] {
   const at = velocityAt(score);
-  return score.notes.map((n) => at(n.part, n.start));
+  return score.notes.map((n) => at(n.staff, n.start));
 }

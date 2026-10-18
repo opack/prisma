@@ -1,6 +1,6 @@
 /**
  * Ce que montre le curseur dans un texte .prisma : sa place dans la musique (section, mesure, temps,
- * case, partie, octave) et le sens du signe qu'il pointe (une note, une nuance, une clé de
+ * case, portée, octave) et le sens du signe qu'il pointe (une note, une nuance, une clé de
  * l'en-tête…), pour la barre de statut de l'éditeur. La lecture est indulgente : un texte en
  * cours d'écriture, même faux, se décrit au mieux.
  */
@@ -21,9 +21,9 @@ export type Inspection = {
   beat?: number;
   /** Case du temps sous le curseur : son rang et le nombre de cases du temps. */
   cell?: { index: number; count: number };
-  /** Partie de la ligne, dans l'ordre du système, et les instruments du système (pour la nommer). */
-  part?: number;
-  instruments?: { name?: string; parts: number }[];
+  /** Portée de la ligne, dans l'ordre du système, et les parties du système (pour la nommer). */
+  staff?: number;
+  parts?: { name?: string; staves: number }[];
   /** Octave de la ligne de notes (scientifique : celle du do central vaut 4). */
   octave?: number;
   /** Le signe sous le curseur et son sens. */
@@ -55,7 +55,7 @@ const FRONTMATTER: Record<string, string> = {
   composer: "compositeur",
   source: "source du morceau",
   bpm: "tempo de départ, en temps par minute",
-  parts: "noms des instruments, de haut en bas",
+  parts: "noms des parties, de haut en bas",
   order: "ordre de jeu des sections",
   cell: "largeur de base d'une case, en caractères, à l'écriture",
   division: "découpage par défaut d'un temps : 2 (binaire) ou 3 (ternaire)",
@@ -263,27 +263,27 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
     return out;
   }
 
-  // sous la règle : les parties, chacune de ses lignes de notes à ses lignes @. Le trait sous la
-  // règle ouvre le premier instrument, un trait double en ouvre un autre, un trait simple ouvre
-  // une autre partie du même instrument.
+  // sous la règle : les portées, chacune de ses lignes de notes à ses lignes @. Le trait sous la
+  // règle ouvre la première partie, un trait double en ouvre une autre, un trait simple ouvre
+  // une autre portée de la même partie.
   const declared = (meta.parts ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  const instruments: { name?: string; parts: number }[] = [];
-  let part = -1;
+  const parts: { name?: string; staves: number }[] = [];
+  let staff = -1;
   let octave: number | undefined;
   let lastOctave: number | undefined;
   for (let k = rulerAt + 1; k < block.length; k++) {
     const l = block[k];
     const rule = isRule(l);
     if (rule) {
-      if (k === rulerAt + 1 || rule.double || !instruments.length) instruments.push({ parts: 0 });
-      instruments[instruments.length - 1].parts++;
+      if (k === rulerAt + 1 || rule.double || !parts.length) parts.push({ staves: 0 });
+      parts[parts.length - 1].staves++;
       lastOctave = undefined;
       if (k === at) {
-        const name = rule.name ? ` ; il porte le nom de l'instrument « ${rule.name} »` : "";
-        symbol(l.trim().slice(0, 3), (k === rulerAt + 1 ? "trait sous la règle de comptage" : rule.double ? "trait double : sépare deux instruments" : "trait simple : sépare deux parties d'un même instrument") + name);
+        const name = rule.name ? ` ; il porte le nom de la partie « ${rule.name} »` : "";
+        symbol(l.trim().slice(0, 3), (k === rulerAt + 1 ? "trait sous la règle de comptage" : rule.double ? "trait double : sépare deux parties" : "trait simple : sépare deux portées d'une même partie") + name);
       }
-    } else if (!instruments.length) instruments.push({ parts: 1 });
-    if (k <= at) part = instruments.reduce((n, x) => n + x.parts, 0) - 1;
+    } else if (!parts.length) parts.push({ staves: 1 });
+    if (k <= at) staff = parts.reduce((n, x) => n + x.staves, 0) - 1;
     if (!rule && !l.startsWith("@")) {
       const pipe = l.indexOf("|");
       const label = pipe > 0 ? l.slice(0, pipe).trim() : "";
@@ -292,10 +292,10 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
       if (k === at) octave = lastOctave;
     }
   }
-  instruments.forEach((x, n) => declared[n] && (x.name = declared[n]));
-  if (part >= 0) {
-    out.part = part;
-    out.instruments = instruments;
+  parts.forEach((x, n) => declared[n] && (x.name = declared[n]));
+  if (staff >= 0) {
+    out.staff = staff;
+    out.parts = parts;
   }
   if (out.symbol) return out;
 
@@ -306,9 +306,9 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
     return out;
   }
   if (line.startsWith("@")) {
-    if (C === 0) return symbol("@", "ligne des nuances, articulations et pédale de la partie"), out;
+    if (C === 0) return symbol("@", "ligne des nuances, articulations et pédale de la portée"), out;
     const t = markAt(line, C);
-    if (t) symbol(t.text, partMeaning(t.text));
+    if (t) symbol(t.text, staffMeaning(t.text));
     return out;
   }
 
@@ -340,13 +340,13 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
   function noteMeaning(content: string, oct: number, row: string, p: NonNullable<ReturnType<typeof placeOf>>): string {
     const graces = content.match(/^(\d+')+/)?.[0] ?? "";
     const rest = content.slice(graces.length);
-    const parts: string[] = [];
+    const staves: string[] = [];
     if (graces) {
       const g = graces.split(GRACE_MARK).filter(Boolean).map((n) => noteName(midiOf(oct, Number(n)), names));
-      parts.push(`${g.length > 1 ? "petites notes" : "petite note"} : ${g.join(", ")}${rest ? ", puis" : ""}`);
+      staves.push(`${g.length > 1 ? "petites notes" : "petite note"} : ${g.join(", ")}${rest ? ", puis" : ""}`);
     }
-    if (rest === "-") parts.push(held(row, p) ?? "la note continue");
-    else if (/^-\d+$/.test(rest)) parts.push(`${noteName(midiOf(oct, Number(rest.slice(1))), names)}, commencé plus tôt, qui continue`);
+    if (rest === "-") staves.push(held(row, p) ?? "la note continue");
+    else if (/^-\d+$/.test(rest)) staves.push(`${noteName(midiOf(oct, Number(rest.slice(1))), names)}, commencé plus tôt, qui continue`);
     else {
       const m = rest.match(new RegExp(`^(\\d+)(?:\\${TRILL_MARK}(\\d+))?(?:${FINGER_MARK}(\\d))?$`));
       if (m) {
@@ -354,10 +354,10 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
         let s = noteName(midi, names);
         if (m[2]) s += `, en trille avec ${noteName(trillAux(midi, Number(m[2])), names)}`;
         if (m[3]) s += `, doigt ${m[3]}${FINGERS[Number(m[3])] ? ` (${FINGERS[Number(m[3])]})` : ""}`;
-        parts.push(s);
-      } else if (rest) parts.push("signe inconnu");
+        staves.push(s);
+      } else if (rest) staves.push("signe inconnu");
     }
-    return parts.join(" ");
+    return staves.join(" ");
   }
 
   /** La note qu'une tenue prolonge : la dernière attaque à sa gauche, sur la même ligne. */
@@ -417,22 +417,22 @@ function topMeaning(t: string): string {
   const m = t.match(MARKER_SIGN);
   if (m) return `début de la section ${m[1]}`;
   if (t === FERMATA) return "point d'orgue : tenir plus longtemps que la valeur écrite";
-  if (t === "/") return "arpège de toutes les parties, du grave à l'aigu";
-  if (t === ARPEGGIO_DOWN) return "arpège de toutes les parties, de l'aigu au grave";
+  if (t === "/") return "arpège de toutes les portées, du grave à l'aigu";
+  if (t === ARPEGGIO_DOWN) return "arpège de toutes les portées, de l'aigu au grave";
   const times = t.match(/^(\d+)[×x]$/);
   if (times) return `le passage se joue ${times[1]} fois`;
   return term(t) ?? "indication pour tout le système";
 }
 
-function partMeaning(t: string): string {
+function staffMeaning(t: string): string {
   if (isDynamic(t)) {
     const d = t.replace(/^\((.+)\)$/, "$1");
     return `${DYNAMICS[d] ?? "nuance"}${d !== t ? " (ajoutée par l'éditeur)" : ""}`;
   }
   if (isHairpin(t)) return t.startsWith("<") ? "crescendo : de plus en plus fort" : "decrescendo : de moins en moins fort";
   if (isSlur(t)) return "liaison d'expression : notes jouées liées";
-  if (t === "/") return "arpège de l'accord de cette partie, du grave à l'aigu";
-  if (t === ARPEGGIO_DOWN) return "arpège de l'accord de cette partie, de l'aigu au grave";
+  if (t === "/") return "arpège de l'accord de cette portée, du grave à l'aigu";
+  if (t === ARPEGGIO_DOWN) return "arpège de l'accord de cette portée, de l'aigu au grave";
   if (t === ".") return "staccato : détaché, plus court";
   if (t === "!") return "accent : attaque plus forte";
   if (t === "!!") return "marcato : accent plus fort et plus sec";
@@ -440,5 +440,5 @@ function partMeaning(t: string): string {
   if (t === PEDAL_UP) return "relâcher la pédale";
   if (t === PEDAL_CHANGE) return "changer de pédale : relâcher et enfoncer au même instant";
   if (isPedalText(t)) return /simile/i.test(t) ? "continuer à pédaler de même" : "consigne de pédale";
-  return term(t) ?? "indication pour cette partie";
+  return term(t) ?? "indication pour cette portée";
 }

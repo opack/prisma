@@ -254,12 +254,12 @@ textarea { width: 100%; height: 100%; resize: none; border: 0; padding: 12px 16p
 .popover-title { margin: 0 0 2px; font-weight: 600; }
 .popover-actions { display: flex; gap: 6px; margin-top: 4px; }
 .bar .popover-actions button { width: auto; padding: 3px 10px; margin: 0; border-radius: 4px; color: var(--ink); background: #fff; }
-/* parties jouées : chaque instrument et son timbre, puis ses parties */
+/* parties jouées : chaque partie et son instrument, puis ses portées */
 .parts-list { min-width: 300px; }
 .parts-list .part-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .parts-list .part-row select { font: inherit; padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: #fff; max-width: 11em; }
-.parts-list .part-instrument { font-weight: 600; }
-.parts-list .part-sub { padding-left: 14px; }
+.parts-list .part-name { font-weight: 600; }
+.parts-list .part-staff { padding-left: 14px; }
 .parts-list .part-group { display: grid; gap: 4px; }
 .popover-hint { margin: 2px 0 0; color: var(--muted); font-size: 0.85em; line-height: 1.35; white-space: normal; }
 /* graver : un bouton flottant en bas de l'éditeur, contre les pages, et sa flèche vers les réglages

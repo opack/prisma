@@ -2,7 +2,7 @@
 import { writeFrontmatter } from "./frontmatter.ts";
 import { layout, noteText } from "./layout.ts";
 import type { Column, Mark, System, SystemRow, Voice } from "./layout.ts";
-import { ARTICULATION_SIGNS, GRACE_MARK, HYPHEN, LYRIC_LINE, firstParts, graceDigits, joinsText, partCount } from "./model.ts";
+import { ARTICULATION_SIGNS, GRACE_MARK, HYPHEN, LYRIC_LINE, firstStaves, graceDigits, joinsText, staffCount } from "./model.ts";
 import type { Score } from "./model.ts";
 import { octaveLabel } from "./pitch.ts";
 
@@ -13,7 +13,7 @@ export type WriteOptions = { width?: number };
 
 /**
  * Trait horizontal calqué sur la règle : les barres deviennent des croisements. Double (═)
- * entre deux instruments ; name : le nom de l'instrument qui commence sous ce trait, écrit
+ * entre deux parties ; name : le nom de la partie qui commence sous ce trait, écrit
  * juste après la colonne de gauche.
  */
 function rule(model: string, prefix: number, double = false, name?: string): string {
@@ -91,9 +91,9 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
   const ruler = head + line((a) => (sys.columns[sys.anchors[a]] as { label: string }).label, true);
   // petites notes en tête de case, rang par rang ; le contenu de la case vient après, sur
   // toutes les lignes, pour que les notes jouées ensemble restent alignées
-  const graceW = sys.anchors.map((_, a) => Math.max(...sys.parts.map((p) => graceWidth(p.graceDigits[a]))));
+  const graceW = sys.anchors.map((_, a) => Math.max(...sys.staves.map((p) => graceWidth(p.graceDigits[a]))));
   const cellText = (r: SystemRow, a: number) => {
-    const g = sys.parts[r.part].graceDigits[a].map((d, k) => (r.graces[a][k] ? r.graces[a][k] + GRACE_MARK : "").padEnd(d + GRACE_MARK.length)).join("");
+    const g = sys.staves[r.staff].graceDigits[a].map((d, k) => (r.graces[a][k] ? r.graces[a][k] + GRACE_MARK : "").padEnd(d + GRACE_MARK.length)).join("");
     return g.trim() || r.cells[a] ? g.padEnd(graceW[a]) + r.cells[a] : "";
   };
   const rows = (list: SystemRow[]) =>
@@ -110,7 +110,7 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
   // lignes @ d'une voix : nuances et textes sur leur ancre ; un soufflet couvre ses cases
   // (son dernier caractère tombe dans la dernière case, en laissant une espace avant la suivante)
   // un soufflet qui part d'une case portant une nuance s'écrit juste après elle : « p <--- »
-  // lignes @ d'une partie, rangées par famille dans l'ordre de la gravure : le phrasé
+  // lignes @ d'une portée, rangées par famille dans l'ordre de la gravure : le phrasé
   // (liaisons), puis l'expression (nuances, soufflets, textes, arpèges) ; une famille
   // n'occupe une ligne que si elle a quelque chose dans ce système
   const expressionLines = (v: Voice) =>
@@ -155,7 +155,7 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
       ].sort((a, b) => a.col - b.col);
       return items.reduce((s, x) => s.padEnd(x.col) + x.text, LYRIC_LINE).trimEnd();
     });
-  const firsts = firstParts(sys.instruments);
+  const firsts = firstStaves(sys.parts);
   // accords : une ligne à part, juste au-dessus de la règle, chaque accord sur sa case
   const chordLine = sys.chords.length
     ? [sys.chords.reduce((l, c) => l.padEnd(anchorCol[c.anchor]) + c.text, CHORD_LINE).trimEnd()]
@@ -164,12 +164,12 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
     ...stackLines(sys.marks.map((m) => ({ col: colOf(m), text: m.text, ...(m.kind === "text" && m.anchor !== undefined ? { t: tAt(m.anchor) } : {}) })), collide),
     ...chordLine,
     ruler,
-    // chaque partie sous son trait : double au début d'un instrument (avec son nom), simple sinon ;
+    // chaque portée sous son trait : double au début d'une partie (avec son nom), simple sinon ;
     // ses lignes de notes, ses paroles, ses nuances, puis sa pédale sur sa propre ligne @
-    ...sys.parts.flatMap((p, k) => {
+    ...sys.staves.flatMap((p, k) => {
       const first = firsts.indexOf(k);
       return [
-        rule(ruler, prefix, first > 0, first >= 0 ? sys.instruments[first].name : undefined),
+        rule(ruler, prefix, first > 0, first >= 0 ? sys.parts[first].name : undefined),
         ...rows(p.rows),
         ...phrasingLines(p.voice),
         ...lyricLines(p.voice),
@@ -213,7 +213,7 @@ function cellWidths(score: Score, cell: number, widen: Set<number> = new Set()):
       if (widen.has(e.t)) want(e.t, e.text.length + 2);
       continue;
     }
-    const pin = score.hairpins.some((h) => h.part === e.part && h.start === e.t);
+    const pin = score.hairpins.some((h) => h.staff === e.staff && h.start === e.t);
     want(e.t, e.text.length + (pin ? 3 : 2));
   }
   // une articulation, suivie d'une espace (deux signes d'une même case : « . ! »)
@@ -233,15 +233,15 @@ function cellWidths(score: Score, cell: number, widen: Set<number> = new Set()):
     want(n.start, len);
   }
   for (const g of score.graces) {
-    const graces = Math.max(...Array.from({ length: partCount(score.instruments) }, (_, k) => graceWidth(graceDigits(score.graces, k, g.t))));
+    const graces = Math.max(...Array.from({ length: staffCount(score.parts) }, (_, k) => graceWidth(graceDigits(score.graces, k, g.t))));
     want(g.t, graces + (trillNeed.get(g.t) ?? cell));
   }
   for (const tm of score.texts) if (widen.has(tm.t)) want(tm.t, tm.text.length + 2);
   for (const p of score.pedalTexts) if (widen.has(p.t)) want(p.t, p.text.length + 2);
   for (const p of score.pedals) {
-    const change = score.pedals.some((q) => q.part === p.part && q.end === p.start);
+    const change = score.pedals.some((q) => q.staff === p.staff && q.end === p.start);
     want(p.start, (change ? "*Ped." : "Ped.").length + 1);
-    if (!score.pedals.some((q) => q.part === p.part && q.start === p.end)) want(p.end, 2);
+    if (!score.pedals.some((q) => q.staff === p.staff && q.start === p.end)) want(p.end, 2);
   }
   return (t) => need.get(t) ?? cell;
 }
@@ -267,8 +267,8 @@ export function writePrisma(score: Score, opts: WriteOptions = {}): string {
   if (ternary * 2 > score.beats.length) meta.division = 3;
   else delete meta.division;
   if (score.order.length) meta.order = score.order.join(" ");
-  // noms des instruments : déclarés ici, écrits sur le trait de chacun
-  if (score.instruments.some((x) => x.name)) meta.parts = score.instruments.map((x) => x.name).join(", ");
+  // noms des parties : déclarés ici, écrits sur le trait de chacune
+  if (score.parts.some((x) => x.name)) meta.parts = score.parts.map((x) => x.name).join(", ");
   const out = writeFrontmatter(meta);
   systems.forEach((s, i) => {
     if (i) out.push("");

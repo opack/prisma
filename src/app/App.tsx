@@ -20,7 +20,7 @@ import { PageView } from "./PageView.tsx";
 import { SAMPLE } from "./sample.ts";
 import { loadOptions, saveOptions } from "./options.ts";
 import type { RenderOptions } from "./options.ts";
-import { guessTimbre, partTimbres, timbresOf } from "./timbres.ts";
+import { guessInstrument, staffInstruments, instrumentsOf } from "./instruments.ts";
 import { PIECE_KEYS, isEmpty, isPieceKey, parseSettings, readSettings, saveSettings, settingsName, writeSettings } from "./piece.ts";
 import type { PieceKey, PieceSettings } from "./piece.ts";
 import { OPENABLE, canWriteInPlace, download, droppedFile, pickFile, pickSaveTarget, targetIn, writeFile } from "./files.ts";
@@ -113,7 +113,7 @@ export function App() {
   /** Les options de tous les morceaux. */
   const [general, setGeneral] = useState<RenderOptions>(loadOptions);
   /**
-   * Les réglages du morceau en cours : son tempo, ses parties muettes, les options de mise en
+   * Les réglages du morceau en cours : son tempo, ses portées muettes, les options de mise en
    * page choisies pour lui seul. Ils s'enregistrent à côté de lui quand on connaît son dossier
    * (un morceau de la bibliothèque) ; sinon ils durent le temps qu'on le garde ouvert.
    */
@@ -566,21 +566,21 @@ export function App() {
   const { problem, score } = engraved;
   // écoute : le morceau gravé, avec le curseur sur la gravure ; arrêtée quand on regrave
   useEffect(() => player.load(score), [score]);
-  // parties muettes, propres au morceau : rétablies quand on change ses parties en l'écrivant
+  // portées muettes, propres au morceau : rétablies quand on change ses portées en l'écrivant
   const muted = piece.muted ?? [];
-  const setMuted = (parts: number[]) => updatePiece({ muted: parts.length ? parts : undefined });
-  // timbres, propres au morceau : chaque instrument a le sien, deviné d'après son nom ou choisi
-  const instruments = useMemo(() => score?.instruments ?? [], [score]);
-  const timbres = useMemo(() => timbresOf(instruments, piece.timbres), [instruments, piece.timbres]);
-  const setTimbre = (instrument: number, timbre: string) => {
-    const chosen = instruments.map((_, i) => piece.timbres?.[i] ?? null);
-    chosen[instrument] = timbre === guessTimbre(instruments[instrument]?.name) ? null : timbre;
-    updatePiece({ timbres: chosen.some((t) => t !== null) ? chosen : undefined });
+  const setMuted = (staves: number[]) => updatePiece({ muted: staves.length ? staves : undefined });
+  // instruments, propres au morceau : chaque partie a le sien, deviné d'après son nom ou choisi
+  const parts = useMemo(() => score?.parts ?? [], [score]);
+  const instruments = useMemo(() => instrumentsOf(parts, piece.instruments), [parts, piece.instruments]);
+  const setInstrument = (part: number, instrument: string) => {
+    const chosen = parts.map((_, i) => piece.instruments?.[i] ?? null);
+    chosen[part] = instrument === guessInstrument(parts[part]?.name) ? null : instrument;
+    updatePiece({ instruments: chosen.some((t) => t !== null) ? chosen : undefined });
   };
   useEffect(() => {
-    player.setTimbres(partTimbres(instruments, timbres));
-  }, [instruments, timbres]);
-  const partsKey = JSON.stringify(score?.instruments ?? []);
+    player.setInstruments(staffInstruments(parts, instruments));
+  }, [parts, instruments]);
+  const partsKey = JSON.stringify(score?.parts ?? []);
   // tempo choisi, propre au morceau : un nouveau tempo écrit dans la partition reprend la main
   const written = score?.meta.bpm;
   const seen = useRef({ pieceId, partsKey, written });
@@ -588,7 +588,7 @@ export function App() {
     const before = seen.current;
     seen.current = { pieceId, partsKey, written };
     if (before.pieceId !== pieceId) return; // un autre morceau : ses réglages viennent d'être lus
-    if (before.partsKey !== partsKey && (piece.muted || piece.timbres)) updatePiece({ muted: undefined, timbres: undefined });
+    if (before.partsKey !== partsKey && (piece.muted || piece.instruments)) updatePiece({ muted: undefined, instruments: undefined });
     if (before.written !== written && piece.tempo !== undefined) updatePiece({ tempo: undefined });
   }, [pieceId, partsKey, written]);
   // enregistrement des réglages du morceau, à côté de lui, peu après le dernier changement ; il
@@ -692,8 +692,8 @@ export function App() {
           onMetronome={(metronome) => setOptions({ metronome })}
           muted={muted}
           onMuted={setMuted}
-          timbres={timbres}
-          onTimbre={setTimbre}
+          instruments={instruments}
+          onInstrument={setInstrument}
           tempo={piece.tempo ?? null}
           onTempo={(tempo) => updatePiece({ tempo: tempo ?? undefined })}
         />

@@ -5,8 +5,8 @@
  * Le moteur ne connaît que des « unités » de largeur : des caractères pour le texte,
  * des millimètres pour le rendu graphique. Seules les mesures changent.
  */
-import { ARPEGGIO_DOWN, ARPEGGIO_UP, ARTICULATION_SIGNS, FINGER_MARK, partCount, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, TRILL_MARK, beatStart, graceDigits, repeatOf } from "./model.ts";
-import type { Beat, Division, Hairpin, Instrument, Note, Part, Score } from "./model.ts";
+import { ARPEGGIO_DOWN, ARPEGGIO_UP, ARTICULATION_SIGNS, FINGER_MARK, staffCount, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, TRILL_MARK, beatStart, graceDigits, repeatOf } from "./model.ts";
+import type { Beat, Division, Hairpin, Part, Note, Staff, Score } from "./model.ts";
 import { numberOf, octaveOf } from "./pitch.ts";
 
 export type Metrics = {
@@ -58,7 +58,7 @@ export type Column =
 // section : barre qui termine une section (double barre)
 
 export type SystemRow = {
-  part: Part;
+  staff: Staff;
   octave: number;
   /** Faux pour les lignes suivantes d'un même groupe d'octave : on n'écrit le numéro qu'une fois. */
   showOctave: boolean;
@@ -126,7 +126,7 @@ export type LyricLine = {
   extenders: { fromAnchor: number; toAnchor: number; opens: boolean; closes: boolean }[];
 };
 
-/** Ligne @ d'une partie : sous ses lignes de notes. lyrics : un couplet par ligne, dans l'ordre. */
+/** Ligne @ d'une portée : sous ses lignes de notes. lyrics : un couplet par ligne, dans l'ordre. */
 export type Voice = { marks: VoiceMark[]; hairpins: HairpinSpan[]; slurs: SlurSpan[]; lyrics: LyricLine[] };
 
 /**
@@ -143,10 +143,10 @@ export type PedalLine = {
 };
 
 /**
- * Une partie dans un système. graceDigits : pour chaque ancre, le nombre de chiffres de
- * chaque rang de petites notes. pedal : sa pédale (vide sauf sous la dernière partie d'un piano).
+ * Une portée dans un système. graceDigits : pour chaque ancre, le nombre de chiffres de
+ * chaque rang de petites notes. pedal : sa pédale (vide sauf sous la dernière portée d'un piano).
  */
-export type SystemPart = { rows: SystemRow[]; voice: Voice; pedal: PedalLine; graceDigits: number[][] };
+export type SystemStaff = { rows: SystemRow[]; voice: Voice; pedal: PedalLine; graceDigits: number[][] };
 
 export type System = {
   /** Numéro de la mesure par laquelle commence le système. */
@@ -156,10 +156,10 @@ export type System = {
   columns: Column[];
   /** Index, dans columns, de chaque ancre. */
   anchors: number[];
-  /** Instruments du morceau, dans l'ordre de leurs parties. */
-  instruments: Instrument[];
-  /** Chaque partie, de haut en bas : ses lignes, ses indications, sa pédale. */
-  parts: SystemPart[];
+  /** Parties du morceau, dans l'ordre de leurs portées. */
+  parts: Part[];
+  /** Chaque portée, de haut en bas : ses lignes, ses indications, sa pédale. */
+  staves: SystemStaff[];
   marks: Mark[];
   /** Lettre de la section que ce système ouvre (chaque section commence un système). */
   section?: string;
@@ -167,8 +167,8 @@ export type System = {
   endsSection: boolean;
   /** Accords d'accompagnement, sur leur ancre, tels qu'écrits. */
   chords: { anchor: number; text: string }[];
-  /** Arpèges du système, sur leur ancre ; part absente : toutes les parties. */
-  arpeggios: { anchor: number; part?: Part; down: boolean }[];
+  /** Arpèges du système, sur leur ancre ; part absente : toutes les portées. */
+  arpeggios: { anchor: number; staff?: Staff; down: boolean }[];
   /** Largeur naturelle du système, en unités. */
   width: number;
 };
@@ -332,7 +332,7 @@ function breakSystems(score: Score, grids: BeatGrid[], m: Metrics): number[][] {
 }
 
 /** Une ligne d'un couloir d'octave. */
-type Lane = { part: Part; octave: number; notes: Note[] };
+type Lane = { staff: Staff; octave: number; notes: Note[] };
 
 /**
  * Bloc : suite de notes d'un même couloir qui se chevauchent (directement ou de proche
@@ -341,11 +341,11 @@ type Lane = { part: Part; octave: number; notes: Note[] };
  */
 type Block = { start: number; end: number; size: number };
 
-/** Couloir d'octave d'une partie : ses lignes et ses blocs. */
-type Group = { part: Part; octave: number; lanes: Lane[]; blocks: Block[] };
+/** Couloir d'octave d'une portée : ses lignes et ses blocs. */
+type Group = { staff: Staff; octave: number; lanes: Lane[]; blocks: Block[] };
 
 /**
- * Répartit les notes d'un système en couloirs (une partie, une octave), puis en lignes
+ * Répartit les notes d'un système en couloirs (une portée, une octave), puis en lignes
  * (jamais deux notes à la fois sur une ligne).
  *
  * Dans chaque bloc, les notes sont rangées de haut en bas, la plus aiguë en premier :
@@ -354,7 +354,7 @@ type Group = { part: Part; octave: number; lanes: Lane[]; blocks: Block[] };
 function groups(notes: Note[], t0: number, align?: Align, barOf?: (t: number) => number): Group[] {
   const byKey = new Map<string, Note[]>();
   for (const n of notes) {
-    const key = n.part + ":" + octaveOf(n.midi);
+    const key = n.staff + ":" + octaveOf(n.midi);
     if (!byKey.has(key)) byKey.set(key, []);
     byKey.get(key)!.push(n);
   }
@@ -362,9 +362,9 @@ function groups(notes: Note[], t0: number, align?: Align, barOf?: (t: number) =>
   for (const list of byKey.values()) {
     const s = (n: Note) => Math.max(n.start, t0);
     const sorted = [...list].sort((a, b) => s(a) - s(b) || b.midi - a.midi);
-    const g: Group = { part: sorted[0].part, octave: octaveOf(sorted[0].midi), lanes: [], blocks: [] };
+    const g: Group = { staff: sorted[0].staff, octave: octaveOf(sorted[0].midi), lanes: [], blocks: [] };
     if (align) {
-      g.lanes = alignedLanes(list, t0, g.part, g.octave, align === "pitch" ? barOf : undefined);
+      g.lanes = alignedLanes(list, t0, g.staff, g.octave, align === "pitch" ? barOf : undefined);
       out.push(g);
       continue;
     }
@@ -375,7 +375,7 @@ function groups(notes: Note[], t0: number, align?: Align, barOf?: (t: number) =>
       block.size = local.length;
       g.blocks.push(block);
       local.forEach((notes, i) => {
-        if (!g.lanes[i]) g.lanes[i] = { part: g.part, octave: g.octave, notes: [] };
+        if (!g.lanes[i]) g.lanes[i] = { staff: g.staff, octave: g.octave, notes: [] };
         g.lanes[i].notes.push(...notes);
       });
     };
@@ -407,7 +407,7 @@ const ALIGN_GAP = TICKS_PER_BEAT;
  * doivent être au-dessus d'elle. C'est le moins de lignes possible pour ces chaînes : des
  * lignes restent vides par endroits.
  */
-function alignedLanes(list: Note[], t0: number, part: Part, octave: number, barOf?: (t: number) => number): Lane[] {
+function alignedLanes(list: Note[], t0: number, staff: Staff, octave: number, barOf?: (t: number) => number): Lane[] {
   const s = (n: Note) => Math.max(n.start, t0);
   const chains: { midi: number; notes: Note[] }[] = [];
   const last = new Map<number, { midi: number; notes: Note[] }>();
@@ -440,7 +440,7 @@ function alignedLanes(list: Note[], t0: number, part: Part, octave: number, barO
   const lanes: Lane[] = [];
   for (const c of sorted) {
     const k = lane.get(c)!;
-    for (let i = lanes.length; i <= k; i++) lanes.push({ part, octave, notes: [] });
+    for (let i = lanes.length; i <= k; i++) lanes.push({ staff, octave, notes: [] });
     lanes[k].notes.push(...c.notes);
   }
   for (const l of lanes) l.notes.sort((a, b) => a.start - b.start);
@@ -508,26 +508,26 @@ export function layout(score: Score, m: Metrics): System[] {
 
     const inSystem = score.notes.filter((n) => n.start < t1 && n.end > t0);
     const anchorT = anchors.map((ci) => (columns[ci] as { t: number }).t);
-    const digits = (part: Part) => anchorT.map((t) => graceDigits(score.graces, part, t));
+    const digits = (staff: Staff) => anchorT.map((t) => graceDigits(score.graces, staff, t));
     const barOf = (t: number) => score.beats[Math.min(score.beats.length - 1, Math.floor(t / T))].barIndex;
-    const toRows = (part: Part): SystemRow[] => {
-      const gs = groups(inSystem.filter((n) => n.part === part), t0, m.align, barOf);
+    const toRows = (staff: Staff): SystemRow[] => {
+      const gs = groups(inSystem.filter((n) => n.staff === staff), t0, m.align, barOf);
       // petites notes : sur la première ligne libre de leur couloir d'octave (créé au besoin)
-      const graces = score.graces.filter((g) => g.part === part && g.t >= t0 && g.t < t1);
-      const slotsAt = digits(part);
+      const graces = score.graces.filter((g) => g.staff === staff && g.t >= t0 && g.t < t1);
+      const slotsAt = digits(staff);
       const placed = new Map<Lane, string[][]>();
       for (const g of graces) {
         const octave = octaveOf(g.midi);
         let group = gs.find((x) => x.octave === octave);
         if (!group) {
-          group = { part, octave, lanes: [], blocks: [] };
+          group = { staff, octave, lanes: [], blocks: [] };
           gs.push(group);
           gs.sort((x, y) => y.octave - x.octave);
         }
         const a = anchorT.indexOf(g.t);
         let lane = group.lanes.find((l) => !placed.get(l)?.[a]?.[g.slot]);
         if (!lane) {
-          lane = { part, octave, notes: [] };
+          lane = { staff, octave, notes: [] };
           group.lanes.push(lane);
         }
         if (!placed.has(lane)) placed.set(lane, anchorT.map(() => []));
@@ -537,7 +537,7 @@ export function layout(score: Score, m: Metrics): System[] {
       }
       return gs.flatMap((g) =>
         g.lanes.map((lane, i) => ({
-          part,
+          staff,
           octave: g.octave,
           showOctave: i === 0,
           cells: anchorT.map((t) => cell(lane, t, t0)),
@@ -603,8 +603,8 @@ export function layout(score: Score, m: Metrics): System[] {
     for (const x of score.arpeggios) {
       const a = anchorT.indexOf(x.t);
       if (a < 0) continue;
-      arpeggios.push({ anchor: a, ...(x.part !== undefined ? { part: x.part } : {}), down: !!x.down });
-      if (x.part === undefined) marks.push({ anchor: a, text: x.down ? ARPEGGIO_DOWN : ARPEGGIO_UP, kind: "arpeggio" });
+      arpeggios.push({ anchor: a, ...(x.staff !== undefined ? { staff: x.staff } : {}), down: !!x.down });
+      if (x.staff === undefined) marks.push({ anchor: a, text: x.down ? ARPEGGIO_DOWN : ARPEGGIO_UP, kind: "arpeggio" });
     }
     for (const tm of score.texts) {
       const a = anchors.findIndex((ci) => (columns[ci] as { t: number }).t === tm.t);
@@ -621,9 +621,9 @@ export function layout(score: Score, m: Metrics): System[] {
       return a;
     };
     // liaisons : les plus courtes d'abord, chacune au premier étage où elle ne touche aucune autre
-    const slurSpans = (part: Part): SlurSpan[] => {
+    const slurSpans = (staff: Staff): SlurSpan[] => {
       const spans = score.slurs
-        .filter((s) => s.part === part && s.start < t1 && s.end >= t0)
+        .filter((s) => s.staff === staff && s.start < t1 && s.end >= t0)
         .map((s) => ({
           fromAnchor: anchorAt(Math.max(s.start, t0)),
           toAnchor: s.end < t1 ? anchorAt(s.end) : anchors.length - 1,
@@ -641,9 +641,9 @@ export function layout(score: Score, m: Metrics): System[] {
       return spans;
     };
     // paroles : autant de lignes que le plus haut couplet présent dans le système
-    const lyricLines = (part: Part): LyricLine[] => {
+    const lyricLines = (staff: Staff): LyricLine[] => {
       const here = score.lyrics.filter(
-        (l) => l.part === part && ((l.t >= t0 && l.t < t1) || (l.t < t0 && l.extend !== undefined && l.extend > t0)),
+        (l) => l.staff === staff && ((l.t >= t0 && l.t < t1) || (l.t < t0 && l.extend !== undefined && l.extend > t0)),
       );
       const verses = Math.max(0, ...here.map((l) => l.verse));
       return Array.from({ length: verses }, (_, v) => {
@@ -661,22 +661,22 @@ export function layout(score: Score, m: Metrics): System[] {
         };
       });
     };
-    const voice = (part: Part): Voice => ({
+    const voice = (staff: Staff): Voice => ({
       marks: score.expressions
-        .filter((e) => e.part === part)
+        .filter((e) => e.staff === staff)
         .map((e): VoiceMark => ({ anchor: anchorAt(e.t), text: e.text, kind: e.kind }))
         .concat(
           score.arpeggios
-            .filter((x) => x.part === part)
+            .filter((x) => x.staff === staff)
             .map((x) => ({ anchor: anchorAt(x.t), text: x.down ? ARPEGGIO_DOWN : ARPEGGIO_UP, kind: "arpeggio" as const })),
           score.articulations
-            .filter((x) => x.part === part)
+            .filter((x) => x.staff === staff)
             .map((x) => ({ anchor: anchorAt(x.t), text: ARTICULATION_SIGNS[x.kind], kind: "articulation" as const })),
         )
         .filter((m) => m.anchor >= 0)
         .sort((x, y) => x.anchor - y.anchor),
       hairpins: score.hairpins
-        .filter((h) => h.part === part && h.start < t1 && h.end > t0 && h.end > h.start)
+        .filter((h) => h.staff === staff && h.start < t1 && h.end > t0 && h.end > h.start)
         .map((h) => {
           const s = Math.max(h.start, t0), e = Math.min(h.end, t1);
           return {
@@ -688,13 +688,13 @@ export function layout(score: Score, m: Metrics): System[] {
           };
         })
         .filter((h) => h.fromAnchor >= 0 && h.toAnchor >= h.fromAnchor),
-      slurs: slurSpans(part),
-      lyrics: lyricLines(part),
+      slurs: slurSpans(staff),
+      lyrics: lyricLines(staff),
     });
 
-    // pédale d'une partie : ses signes (pour le texte .prisma) et ses traits (pour la gravure)
-    const pedalLine = (part: Part): PedalLine => {
-      const pedals = score.pedals.filter((p) => p.part === part);
+    // pédale d'une portée : ses signes (pour le texte .prisma) et ses traits (pour la gravure)
+    const pedalLine = (staff: Staff): PedalLine => {
+      const pedals = score.pedals.filter((p) => p.staff === staff);
       const signs: PedalLine["signs"] = [];
       const spans: PedalLine["spans"] = [];
       for (const p of pedals) {
@@ -722,7 +722,7 @@ export function layout(score: Score, m: Metrics): System[] {
         }
       }
       signs.sort((a, b) => a.anchor - b.anchor);
-      const texts = score.pedalTexts.filter((p) => p.part === part).map((p) => ({ anchor: anchorAt(p.t), text: p.text })).filter((p) => p.anchor >= 0);
+      const texts = score.pedalTexts.filter((p) => p.staff === staff).map((p) => ({ anchor: anchorAt(p.t), text: p.text })).filter((p) => p.anchor >= 0);
       return { signs, spans, texts };
     };
 
@@ -732,12 +732,12 @@ export function layout(score: Score, m: Metrics): System[] {
       end: t1,
       columns,
       anchors,
-      instruments: score.instruments,
-      parts: Array.from({ length: partCount(score.instruments) }, (_, part) => ({
-        rows: toRows(part),
-        voice: voice(part),
-        pedal: pedalLine(part),
-        graceDigits: digits(part),
+      parts: score.parts,
+      staves: Array.from({ length: staffCount(score.parts) }, (_, staff) => ({
+        rows: toRows(staff),
+        voice: voice(staff),
+        pedal: pedalLine(staff),
+        graceDigits: digits(staff),
       })),
       marks,
       section: section?.label,

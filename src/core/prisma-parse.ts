@@ -7,7 +7,7 @@
 import { chordNotes } from "./chords.ts";
 import { PrismaError, parseFrontmatter } from "./frontmatter.ts";
 import { ARPEGGIO_DOWN, FERMATA, articulationOf, isArticulationSign, HYPHEN, LYRIC_LINE, isExtender, sortLyrics, FINGER_MARK, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isSlur, isPedalText, joinsText, sortArticulations, sortGraces, sortNotes } from "./model.ts";
-import type { Arpeggio, Articulation, Beat, Division, Expression, Grace, Hairpin, Instrument, Lyric, Marker, Note, Part, Pedal, PedalText, Repeat, Score, Slur, TextMark } from "./model.ts";
+import type { Arpeggio, Articulation, Beat, Division, Expression, Grace, Hairpin, Part, Lyric, Marker, Note, Staff, Pedal, PedalText, Repeat, Score, Slur, TextMark } from "./model.ts";
 import { midiOf, parseOctaveLabel } from "./pitch.ts";
 
 /** Un temps de la règle de comptage, et la barre qui le termine. */
@@ -16,9 +16,9 @@ type Segment = { from: number; to: number; barEnd: boolean; endRepeat: boolean; 
 type SepSpan = { from: number; to: number; text: string };
 
 /**
- * Trait entre deux parties : simple (« ─── », « --- ») entre deux parties d'un instrument,
- * double (« ═══ », « === ») entre deux instruments. Le trait au-dessus de la première partie
- * d'un instrument porte son nom, entouré d'espaces : « ═══╪═ Piano ═══╪═══ ».
+ * Trait entre deux portées : simple (« ─── », « --- ») entre deux portées d'une partie,
+ * double (« ═══ », « === ») entre deux parties. Le trait au-dessus de la première portée
+ * d'une partie porte son nom, entouré d'espaces : « ═══╪═ Piano ═══╪═══ ».
  */
 type Rule = { double: boolean; name?: string };
 const RULE_CHARS = /^[─━\-=═+┼╪|]+$/;
@@ -36,7 +36,7 @@ export function parseRule(line: string, lineNo: number): Rule | undefined {
   }
   if (t.length < 3 || !HORIZONTAL.test(body)) return undefined;
   const double = /[═=╪]/.test(body);
-  if (double && /[─━\-]/.test(body)) throw new PrismaError("trait mélangé : simple (─) entre deux parties d'un instrument, double (═) entre deux instruments", lineNo, 1);
+  if (double && /[─━\-]/.test(body)) throw new PrismaError("trait mélangé : simple (─) entre deux portées d'une partie, double (═) entre deux parties", lineNo, 1);
   return { double, ...(name ? { name } : {}) };
 }
 export const isRuler = (line: string) => /^m[^|\s]*\s*\|/.test(line);
@@ -44,7 +44,7 @@ const isMarkLine = (line: string) => line.startsWith("@");
 /** Ligne des accords : « @c », puis chaque accord sur sa case. */
 export const CHORD_LINE = "@c";
 const isChordLine = (line: string) => line === CHORD_LINE || line.startsWith(CHORD_LINE + " ");
-/** Ligne des paroles d'un couplet, sous les lignes de sa partie. */
+/** Ligne des paroles d'un couplet, sous les lignes de sa portée. */
 const isLyricLine = (line: string) => line === LYRIC_LINE || line.startsWith(LYRIC_LINE + " ");
 
 const SEPARATORS = new Set(["|", "||", ":||", "||:", ":||:"]);
@@ -99,9 +99,9 @@ export function markTokens(line: string) {
     // un soufflet collé à une nuance (« p<--- ») en est séparé ; la découpe ne retire
     // aucun caractère : chaque morceau commence où finit le précédent
     let col = w.index;
-    for (const part of w[0].split(/(?<=[^\s<>])(?=[<>][-|]*$)/)) {
-      pieces.push({ col, text: part });
-      col += part.length;
+    for (const staff of w[0].split(/(?<=[^\s<>])(?=[<>][-|]*$)/)) {
+      pieces.push({ col, text: staff });
+      col += staff.length;
     }
   }
   for (const p of pieces) {
@@ -122,16 +122,16 @@ export function markTokens(line: string) {
 export function parsePrisma(text: string): Score {
   const lines = text.replace(/\t/g, "    ").split(/\r?\n/);
   const { meta, bodyStartLine } = parseFrontmatter(lines);
-  // instruments déclarés : « parts: Chant, Piano », chacun nommé sur le trait au-dessus de sa première partie
+  // parties déclarées : « parts: Chant, Piano », chacune nommée sur le trait au-dessus de sa première portée
   const partsLine = lines.findIndex((l, i) => i < bodyStartLine && /^parts\s*:/.test(l)) + 1;
   const declared = meta.parts === undefined ? undefined : String(meta.parts).split(",").map((x) => x.trim());
   delete meta.parts;
   if (declared) {
-    if (declared.some((x) => !x)) throw new PrismaError("« parts » : les noms des instruments, séparés par des virgules (parts: Chant, Piano)", partsLine);
+    if (declared.some((x) => !x)) throw new PrismaError("« parts » : les noms des parties, séparés par des virgules (parts: Chant, Piano)", partsLine);
     const twice = declared.find((x, i) => declared.indexOf(x) !== i);
-    if (twice) throw new PrismaError(`« parts » : l'instrument « ${twice} » est nommé deux fois`, partsLine);
+    if (twice) throw new PrismaError(`« parts » : la partie « ${twice} » est nommée deux fois`, partsLine);
   }
-  let instruments: Instrument[] | undefined; // fixés par le premier système
+  let parts: Part[] | undefined; // fixés par le premier système
   const defaultDivision = (Number(meta.division ?? 2) === 3 ? 3 : 2) as Division;
 
   // découpage en blocs : lignes @, une règle de comptage, puis les lignes qui la suivent
@@ -146,7 +146,7 @@ export function parsePrisma(text: string): Score {
     }
     if (isMarkLine(l)) {
       const last = blocks[blocks.length - 1];
-      // sous les lignes d'une partie, sans ligne vide : ligne @ de cette partie (nuances, soufflets)
+      // sous les lignes d'une portée, sans ligne vide : ligne @ de cette portée (nuances, soufflets)
       if (last && !last.lines.includes(-1) && !pendingMarks.length) last.lines.push(i);
       else pendingMarks.push(i);
       continue;
@@ -180,10 +180,10 @@ export function parsePrisma(text: string): Score {
   const lyricCell = new Map<Lyric, { end: number; line: number; col: number }>();
   const arpeggios: Arpeggio[] = [];
   const articulations: Articulation[] = [];
-  /** Arpège posé une seule fois par instant et par partie (ou pour toutes les parties). */
+  /** Arpège posé une seule fois par instant et par portée (ou pour toutes les portées). */
   const addArpeggio = (x: Arpeggio, line: number, col: number) => {
-    const clash = arpeggios.find((y) => y.t === x.t && (y.part === undefined || x.part === undefined || y.part === x.part));
-    if (clash) throw new PrismaError("un seul arpège par accord : sur la ligne @ d'une partie, ou sur celle du haut pour toutes les parties", line, col);
+    const clash = arpeggios.find((y) => y.t === x.t && (y.staff === undefined || x.staff === undefined || y.staff === x.staff));
+    if (clash) throw new PrismaError("un seul arpège par accord : sur la ligne @ d'une portée, ou sur celle du haut pour toutes les portées", line, col);
     arpeggios.push(x);
   };
   const expressions: Expression[] = [];
@@ -195,7 +195,7 @@ export function parsePrisma(text: string): Score {
   let pendingSlurs: OpenSlur[] = [];
   const slurAt = new Map<Slur, { line: number; col: number }>(); // position du « ( », pour les erreurs // liaisons du système précédent, à reprendre en tête de celui-ci
   const pedalTexts: PedalText[] = [];
-  const pedalDown = new Map<Part, Pedal>(); // pédale enfoncée de chaque partie, peut-être depuis un système précédent
+  const pedalDown = new Map<Staff, Pedal>(); // pédale enfoncée de chaque portée, peut-être depuis un système précédent
   const timesMarks: { bar: number; times: number; line: number; col: number }[] = [];
   const markers: (Marker & { line: number; col: number })[] = [];
   let barIndex = -1;
@@ -267,7 +267,7 @@ export function parsePrisma(text: string): Score {
 
     // ligne(s) @ au-dessus de la règle : débuts de section, nombre de passages, textes
     for (const li of block.marks) {
-      if (isLyricLine(lines[li])) throw new PrismaError("les paroles se placent sous les lignes de leur partie, comme ses nuances", li + 1, 1);
+      if (isLyricLine(lines[li])) throw new PrismaError("les paroles se placent sous les lignes de leur portée, comme ses nuances", li + 1, 1);
       if (isChordLine(lines[li])) {
         // accords : chaque mot est un accord, posé sur une case (pas de texte de plusieurs mots)
         const line = lines[li];
@@ -309,63 +309,63 @@ export function parsePrisma(text: string): Score {
         } else if (isArpeggioSign(tok.text)) {
           addArpeggio({ t: a.t, ...(tok.text === ARPEGGIO_DOWN ? { down: true } : {}) }, li + 1, tok.col + 1);
         } else if (isArticulationSign(tok.text)) {
-          throw new PrismaError(`« ${tok.text} » : une articulation se place sur une ligne @ sous sa partie`, li + 1, tok.col + 1);
+          throw new PrismaError(`« ${tok.text} » : une articulation se place sur une ligne @ sous sa portée`, li + 1, tok.col + 1);
         } else texts.push({ t: a.t, text: tok.text });
       }
     }
 
-    // parties : séparées par des traits ; un trait facultatif sous la règle ouvre la première
+    // portées : séparées par des traits ; un trait facultatif sous la règle ouvre la première
     const content = block.lines.filter((i) => i >= 0);
     const rules = new Map<number, Rule>();
     for (const i of content) {
       const r = parseRule(lines[i], i + 1);
       if (r) rules.set(i, r);
     }
-    const partOfLine = new Map<number, Part>();
-    const blockParts: { rule?: Rule; line: number }[] = [{ line: L }];
+    const staffOfLine = new Map<number, Staff>();
+    const blockStaves: { rule?: Rule; line: number }[] = [{ line: L }];
     content.forEach((li, k) => {
       const r = rules.get(li);
-      if (!r) return partOfLine.set(li, blockParts.length - 1);
+      if (!r) return staffOfLine.set(li, blockStaves.length - 1);
       if (k === 0) {
-        if (r.double) throw new PrismaError("le trait sous la règle est simple (─) : le double (═) sépare deux instruments", li + 1, 1);
-        blockParts[0] = { rule: r, line: li + 1 };
-      } else blockParts.push({ rule: r, line: li + 1 });
+        if (r.double) throw new PrismaError("le trait sous la règle est simple (─) : le double (═) sépare deux parties", li + 1, 1);
+        blockStaves[0] = { rule: r, line: li + 1 };
+      } else blockStaves.push({ rule: r, line: li + 1 });
     });
-    // instruments du système : un trait double en commence un nouveau
-    const here: { name?: string; parts: number; line: number }[] = [];
-    blockParts.forEach((bp, k) => {
-      if (k === 0 || bp.rule!.double) here.push({ ...(bp.rule?.name ? { name: bp.rule.name } : {}), parts: 1, line: bp.line });
+    // parties du système : un trait double en commence une nouvelle
+    const here: { name?: string; staves: number; line: number }[] = [];
+    blockStaves.forEach((bp, k) => {
+      if (k === 0 || bp.rule!.double) here.push({ ...(bp.rule?.name ? { name: bp.rule.name } : {}), staves: 1, line: bp.line });
       else {
-        if (bp.rule!.name) throw new PrismaError(`« ${bp.rule!.name} » : le nom d'un instrument s'écrit sur le trait double (═) qui le commence`, bp.line, 1);
-        here[here.length - 1].parts++;
+        if (bp.rule!.name) throw new PrismaError(`« ${bp.rule!.name} » : le nom d'une partie s'écrit sur le trait double (═) qui la commence`, bp.line, 1);
+        here[here.length - 1].staves++;
       }
     });
     here.forEach((x, k) => {
       if (!declared) {
-        if (x.name) throw new PrismaError(`instrument « ${x.name} » non déclaré : nomme les instruments dans le frontmatter (parts: …)`, x.line, 1);
+        if (x.name) throw new PrismaError(`partie « ${x.name} » non déclarée : nomme les parties dans le frontmatter (parts: …)`, x.line, 1);
         return;
       }
-      if (k >= declared.length) throw new PrismaError(`instrument de trop : « parts » en déclare ${declared.length} (${declared.join(", ")})`, x.line, 1);
-      if (!x.name) throw new PrismaError(`il manque le nom de l'instrument « ${declared[k]} » sur le trait au-dessus de sa première partie`, x.line, 1);
+      if (k >= declared.length) throw new PrismaError(`partie de trop : « parts » en déclare ${declared.length} (${declared.join(", ")})`, x.line, 1);
+      if (!x.name) throw new PrismaError(`il manque le nom de la partie « ${declared[k]} » sur le trait au-dessus de sa première portée`, x.line, 1);
       if (x.name !== declared[k]) {
-        throw new PrismaError(declared.includes(x.name) ? `« ${x.name} » à la place de « ${declared[k]} » : les instruments se suivent dans l'ordre de « parts »` : `instrument « ${x.name} » non déclaré dans « parts » (${declared.join(", ")})`, x.line, 1);
+        throw new PrismaError(declared.includes(x.name) ? `« ${x.name} » à la place de « ${declared[k]} » : les parties se suivent dans l'ordre de « parts »` : `partie « ${x.name} » non déclarée dans « parts » (${declared.join(", ")})`, x.line, 1);
       }
     });
-    if (declared && here.length < declared.length) throw new PrismaError(`il manque des instruments : « parts » en déclare ${declared.length} (${declared.join(", ")})`, L, 1);
-    if (!instruments) instruments = here.map(({ name, parts }) => ({ ...(name ? { name } : {}), parts }));
-    else if (here.length !== instruments.length || here.some((x, k) => x.parts !== instruments![k].parts)) {
-      const shape = (xs: { parts: number }[]) => xs.map((x) => x.parts).join(" + ");
-      throw new PrismaError(`ce système n'a pas les mêmes parties que le premier (${shape(here)} au lieu de ${shape(instruments)}) : chaque système écrit toutes les parties, même vides`, L, 1);
+    if (declared && here.length < declared.length) throw new PrismaError(`il manque des parties : « parts » en déclare ${declared.length} (${declared.join(", ")})`, L, 1);
+    if (!parts) parts = here.map(({ name, staves }) => ({ ...(name ? { name } : {}), staves }));
+    else if (here.length !== parts.length || here.some((x, k) => x.staves !== parts![k].staves)) {
+      const shape = (xs: { staves: number }[]) => xs.map((x) => x.staves).join(" + ");
+      throw new PrismaError(`ce système n'a pas les mêmes portées que le premier (${shape(here)} au lieu de ${shape(parts)}) : chaque système écrit toutes les portées, même vides`, L, 1);
     }
-    const partTotal = blockParts.length;
-    // dernière partie de chaque instrument : celle qui porte la pédale
-    const lastParts = new Set(here.map((_, k) => here.slice(0, k + 1).reduce((n, x) => n + x.parts, 0) - 1));
+    const staffTotal = blockStaves.length;
+    // dernière portée de chaque partie : celle qui porte la pédale
+    const lastStaves = new Set(here.map((_, k) => here.slice(0, k + 1).reduce((n, x) => n + x.staves, 0) - 1));
     const inSpan = (c: number) => spans.some((s) => c >= s.from && c < s.to);
 
-    // ligne @ d'une partie : nuances, textes (« cresc. », « dolce »…), soufflets, et pédale
-    // sous la dernière partie d'un instrument
-    const pedalSigns: { part: Part; t: number; text: string; line: number; col: number }[] = [];
-    const readVoiceLine = (row: string, R: number, part: Part) => {
+    // ligne @ d'une portée : nuances, textes (« cresc. », « dolce »…), soufflets, et pédale
+    // sous la dernière portée d'une partie
+    const pedalSigns: { staff: Staff; t: number; text: string; line: number; col: number }[] = [];
+    const readVoiceLine = (row: string, R: number, staff: Staff) => {
       for (const tok of markTokens(row)) {
         // un soufflet, une liaison ou une articulation peut commencer dans la case, juste
         // après une autre indication (« p <--- », « . ! ») ; le reste commence exactement sur une case
@@ -375,25 +375,25 @@ export function parsePrisma(text: string): Score {
         if (ai < 0) throw new PrismaError(`« ${tok.text} » doit commencer exactement sur une case de la règle de comptage`, R, tok.col + 1);
         const a = anchors[ai];
         if (isArpeggioSign(tok.text)) {
-          addArpeggio({ t: a.t, part, ...(tok.text === ARPEGGIO_DOWN ? { down: true } : {}) }, R, tok.col + 1);
+          addArpeggio({ t: a.t, staff, ...(tok.text === ARPEGGIO_DOWN ? { down: true } : {}) }, R, tok.col + 1);
         } else if (isArticulationSign(tok.text)) {
           const kind = articulationOf(tok.text)!;
-          if (articulations.some((x) => x.part === part && x.t === a.t && x.kind === kind)) throw new PrismaError(`« ${tok.text} » posé deux fois sur la même case`, R, tok.col + 1);
-          articulations.push({ part, t: a.t, kind });
+          if (articulations.some((x) => x.staff === staff && x.t === a.t && x.kind === kind)) throw new PrismaError(`« ${tok.text} » posé deux fois sur la même case`, R, tok.col + 1);
+          articulations.push({ staff, t: a.t, kind });
         } else if (isPedalSign(tok.text) || isPedalText(tok.text)) {
-          if (!lastParts.has(part)) throw new PrismaError(`« ${tok.text} » : la pédale se note sur une ligne @ sous la dernière partie de son instrument`, R, tok.col + 1);
-          if (isPedalText(tok.text)) pedalTexts.push({ part, t: a.t, text: tok.text });
-          else pedalSigns.push({ part, t: a.t, text: tok.text, line: R, col: tok.col + 1 });
+          if (!lastStaves.has(staff)) throw new PrismaError(`« ${tok.text} » : la pédale se note sur une ligne @ sous la dernière portée de sa partie`, R, tok.col + 1);
+          if (isPedalText(tok.text)) pedalTexts.push({ staff, t: a.t, text: tok.text });
+          else pedalSigns.push({ staff, t: a.t, text: tok.text, line: R, col: tok.col + 1 });
         } else if (isSlur(tok.text)) {
           // suite d'une liaison du système précédent : elle reprend sur la première case
           // plusieurs suites : de haut en bas, dans l'ordre où les liaisons ont commencé
           const cont = tok.text.startsWith("(")
             ? undefined
-            : pendingSlurs.filter((o) => o.slur.part === part).sort((x, y) => x.slur.start - y.slur.start)[0];
+            : pendingSlurs.filter((o) => o.slur.staff === staff).sort((x, y) => x.slur.start - y.slur.start)[0];
           if (!tok.text.startsWith("(") && (!cont || ai !== 0)) {
             throw new PrismaError("« ---) » sans liaison ouverte : une liaison commence par « ( »", R, tok.col + 1);
           }
-          const slur = cont ? cont.slur : { part, start: a.t, end: -1 };
+          const slur = cont ? cont.slur : { staff, start: a.t, end: -1 };
           if (cont) pendingSlurs = pendingSlurs.filter((o) => o !== cont);
           else {
             slurs.push(slur);
@@ -411,18 +411,18 @@ export function parsePrisma(text: string): Score {
           const end = next ? next.t : t1;
           const kind = tok.text[0] as Hairpin["kind"];
           // suite d'un soufflet du système précédent
-          const prev = ai === 0 ? hairpins.find((h) => h.part === part && h.kind === kind && h.end === t0) : undefined;
+          const prev = ai === 0 ? hairpins.find((h) => h.staff === staff && h.kind === kind && h.end === t0) : undefined;
           if (prev) prev.end = end;
-          else hairpins.push({ part, kind, start: a.t, end });
+          else hairpins.push({ staff, kind, start: a.t, end });
         } else {
-          expressions.push({ part, t: a.t, text: tok.text, kind: isDynamic(tok.text) ? "dynamic" : "text" });
+          expressions.push({ staff, t: a.t, text: tok.text, kind: isDynamic(tok.text) ? "dynamic" : "text" });
         }
       }
     };
 
     // ligne de paroles d'une voix : une syllabe par case, « lu- » si le mot continue sur la
     // suivante, « --- » pour prolonger la syllabe précédente sur plusieurs notes
-    const readLyricLine = (row: string, R: number, part: Part, verse: number) => {
+    const readLyricLine = (row: string, R: number, staff: Staff, verse: number) => {
       let last: Lyric | undefined; // syllabe précédente sur la ligne
       let extended = false; // elle a déjà sa prolongation
       // seules les espaces séparent les syllabes : une espace insécable reste dans la syllabe (« Oh ! »)
@@ -436,7 +436,7 @@ export function parsePrisma(text: string): Score {
           const end = anchors.find((x) => x.from > lastCh)?.t ?? t1;
           if (!last) {
             // suite de la prolongation d'une syllabe du système précédent
-            const prev = col === anchors[0].from ? lyrics.find((l) => l.part === part && l.verse === verse && l.extend === t0) : undefined;
+            const prev = col === anchors[0].from ? lyrics.find((l) => l.staff === staff && l.verse === verse && l.extend === t0) : undefined;
             if (!prev) throw new PrismaError("« --- » prolonge la syllabe qui le précède sur la ligne : écris d'abord la syllabe", R, col + 1);
             prev.extend = end;
             last = prev;
@@ -454,36 +454,36 @@ export function parsePrisma(text: string): Score {
         const a = anchors.find((x) => x.from === col);
         if (!a) throw new PrismaError(`syllabe « ${tok} » : elle doit commencer exactement sur une case de la règle de comptage`, R, col + 1);
         const hyphen = tok.length > 1 && tok.endsWith(HYPHEN);
-        last = { part, verse, t: a.t, text: hyphen ? tok.slice(0, -HYPHEN.length) : tok, ...(hyphen ? { hyphen: true } : {}) };
+        last = { staff, verse, t: a.t, text: hyphen ? tok.slice(0, -HYPHEN.length) : tok, ...(hyphen ? { hyphen: true } : {}) };
         extended = false;
         lyrics.push(last);
       }
     };
 
     const nextPending: Note[] = [];
-    // petites notes du bloc, par partie et instant : leur rang se lit de gauche à droite dans la case
-    const blockGraces = new Map<string, { part: Part; t: number; col: number; midi: number }[]>();
-    const lastOctave: (number | undefined)[] = Array(partTotal).fill(undefined);
-    const voiceLine: boolean[] = Array(partTotal).fill(false);
-    const verses: number[] = Array(partTotal).fill(0); // couplets : les lignes @l d'une partie, de haut en bas
+    // petites notes du bloc, par portée et instant : leur rang se lit de gauche à droite dans la case
+    const blockGraces = new Map<string, { staff: Staff; t: number; col: number; midi: number }[]>();
+    const lastOctave: (number | undefined)[] = Array(staffTotal).fill(undefined);
+    const voiceLine: boolean[] = Array(staffTotal).fill(false);
+    const verses: number[] = Array(staffTotal).fill(0); // couplets : les lignes @l d'une portée, de haut en bas
     for (const li of content) {
       if (rules.has(li)) continue;
       const row = lines[li];
       const R = li + 1;
-      const part = partOfLine.get(li)!;
+      const staff = staffOfLine.get(li)!;
       if (isChordLine(row)) throw new PrismaError("les accords se placent au-dessus de la règle de comptage", R, 1);
       if (isLyricLine(row)) {
-        voiceLine[part] = true;
-        readLyricLine(row, R, part, ++verses[part]);
+        voiceLine[staff] = true;
+        readLyricLine(row, R, staff, ++verses[staff]);
         continue;
       }
       if (isMarkLine(row)) {
-        voiceLine[part] = true;
-        readVoiceLine(row, R, part);
+        voiceLine[staff] = true;
+        readVoiceLine(row, R, staff);
         continue;
       }
-      if (voiceLine[part]) {
-        throw new PrismaError("ligne de notes sous une ligne @ : les lignes @ d'une partie se placent après toutes ses lignes de notes", R, 1);
+      if (voiceLine[staff]) {
+        throw new PrismaError("ligne de notes sous une ligne @ : les lignes @ d'une portée se placent après toutes ses lignes de notes", R, 1);
       }
       if (row[pipe] !== "|") throw new PrismaError("le « | » de début de ligne doit être aligné sur celui de la règle", R, Math.min(row.length, pipe) + 1);
       // les barres (et leurs deux points de reprise, facultatifs) sont alignées sur la règle
@@ -502,10 +502,10 @@ export function parsePrisma(text: string): Score {
         if (oct === undefined) {
           throw new PrismaError(`octave invalide : « ${lab} » (attendu 0 pour l'octave du do central, +1, -1, +2…)`, R, 1);
         }
-        lastOctave[part] = oct;
+        lastOctave[staff] = oct;
       }
-      const octave = lastOctave[part];
-      if (octave === undefined) throw new PrismaError("la première ligne de chaque partie doit indiquer son octave", R, 1);
+      const octave = lastOctave[staff];
+      if (octave === undefined) throw new PrismaError("la première ligne de chaque portée doit indiquer son octave", R, 1);
 
       let open: Note | undefined;
       const close = (t: number) => {
@@ -520,9 +520,9 @@ export function parsePrisma(text: string): Score {
           const gc = a.from + g.index! + 1;
           const k = Number(g[1]);
           if (k < 1 || k > 12) throw new PrismaError(`petite note invalide « ${g[0]} » : attendu un numéro de 1 à 12 suivi de « ${GRACE_MARK} »`, R, gc);
-          const key = part + ":" + a.t;
+          const key = staff + ":" + a.t;
           if (!blockGraces.has(key)) blockGraces.set(key, []);
-          blockGraces.get(key)!.push({ part, t: a.t, col: gc, midi: midiOf(octave, k) });
+          blockGraces.get(key)!.push({ staff, t: a.t, col: gc, midi: midiOf(octave, k) });
           graceEnd = g.index! + g[0].length;
         }
         if (graceEnd) {
@@ -547,7 +547,7 @@ export function parsePrisma(text: string): Score {
           close(a.t);
           const midi = midiOf(octave, Number(digits));
           if (aux && Number(aux) === Number(digits)) throw new PrismaError("une trille alterne avec une autre note", R, col);
-          open = { part, midi, start: a.t, end: t1, ...(aux ? { trill: trillAux(midi, Number(aux)) } : {}), ...(finger ? { finger: Number(finger) } : {}) };
+          open = { staff, midi, start: a.t, end: t1, ...(aux ? { trill: trillAux(midi, Number(aux)) } : {}), ...(finger ? { finger: Number(finger) } : {}) };
           notes.push(open);
           return;
         }
@@ -564,13 +564,13 @@ export function parsePrisma(text: string): Score {
           if (open.midi !== midi) throw new PrismaError(`« -${digits} » prolonge une note différente (${(open.midi % 12) + 1})`, R, col);
           return;
         }
-        const prev = ai === 0 ? pending.find((p) => p.part === part && p.midi === midi && p.end === t0) : undefined;
+        const prev = ai === 0 ? pending.find((p) => p.staff === staff && p.midi === midi && p.end === t0) : undefined;
         if (prev) {
           pending = pending.filter((p) => p !== prev);
           open = prev;
         } else {
           // tenue sans origine connue (début de fichier, saisie partielle) : la note commence ici
-          open = { part, midi, start: a.t, end: t1 };
+          open = { staff, midi, start: a.t, end: t1 };
           notes.push(open);
         }
       });
@@ -582,25 +582,25 @@ export function parsePrisma(text: string): Score {
     pending = nextPending;
     for (const list of blockGraces.values()) {
       const cols = [...new Set(list.map((g) => g.col))].sort((x, y) => x - y);
-      for (const g of list) graces.push({ part: g.part, midi: g.midi, t: g.t, slot: cols.indexOf(g.col) });
+      for (const g of list) graces.push({ staff: g.staff, midi: g.midi, t: g.t, slot: cols.indexOf(g.col) });
     }
 
     // pédale : dans l'ordre du temps, en relâchant avant d'enfoncer à un même instant
     const order = (x: string) => (x === PEDAL_UP ? 0 : x === PEDAL_CHANGE ? 1 : 2);
-    pedalSigns.sort((a, b) => a.part - b.part || a.t - b.t || order(a.text) - order(b.text));
+    pedalSigns.sort((a, b) => a.staff - b.staff || a.t - b.t || order(a.text) - order(b.text));
     for (const p of pedalSigns) {
-      const down = pedalDown.get(p.part);
+      const down = pedalDown.get(p.staff);
       if (p.text !== PEDAL_DOWN) {
         if (!down) {
           throw new PrismaError(p.text === PEDAL_UP ? "« * » sans pédale enfoncée" : "« *Ped. » sans pédale enfoncée : écris « Ped. »", p.line, p.col);
         }
         down.end = p.t;
-        pedalDown.delete(p.part);
+        pedalDown.delete(p.staff);
       }
       if (p.text !== PEDAL_UP) {
-        if (pedalDown.has(p.part)) throw new PrismaError("« Ped. » alors que la pédale est déjà enfoncée : écris « *Ped. » pour la changer", p.line, p.col);
-        const pedal = { part: p.part, start: p.t, end: -1 };
-        pedalDown.set(p.part, pedal);
+        if (pedalDown.has(p.staff)) throw new PrismaError("« Ped. » alors que la pédale est déjà enfoncée : écris « *Ped. » pour la changer", p.line, p.col);
+        const pedal = { staff: p.staff, start: p.t, end: -1 };
+        pedalDown.set(p.staff, pedal);
         pedals.push(pedal);
       }
     }
@@ -657,21 +657,21 @@ export function parsePrisma(text: string): Score {
 
   return {
     meta,
-    instruments: instruments!,
+    parts: parts!,
     beats,
     notes: sortNotes(notes),
     graces: sortGraces(graces),
     repeats: [...repeats.values()].sort((a, b) => a.barIndex - b.barIndex),
     texts,
-    expressions: expressions.sort((a, b) => a.t - b.t || a.part - b.part),
-    hairpins: hairpins.sort((a, b) => a.start - b.start || a.part - b.part),
-    slurs: slurs.sort((a, b) => a.start - b.start || a.part - b.part || a.end - b.end),
-    pedals: pedals.filter((p) => p.end > p.start).sort((a, b) => a.start - b.start || a.part - b.part),
-    pedalTexts: pedalTexts.sort((a, b) => a.t - b.t || a.part - b.part),
+    expressions: expressions.sort((a, b) => a.t - b.t || a.staff - b.staff),
+    hairpins: hairpins.sort((a, b) => a.start - b.start || a.staff - b.staff),
+    slurs: slurs.sort((a, b) => a.start - b.start || a.staff - b.staff || a.end - b.end),
+    pedals: pedals.filter((p) => p.end > p.start).sort((a, b) => a.start - b.start || a.staff - b.staff),
+    pedalTexts: pedalTexts.sort((a, b) => a.t - b.t || a.staff - b.staff),
     markers: markers.map(({ label, barIndex }) => ({ label, barIndex })),
     chords: chords.sort((a, b) => a.t - b.t),
     lyrics: sortLyrics(lyrics),
-    arpeggios: arpeggios.sort((a, b) => a.t - b.t || (a.part ?? -1) - (b.part ?? -1)),
+    arpeggios: arpeggios.sort((a, b) => a.t - b.t || (a.staff ?? -1) - (b.staff ?? -1)),
     articulations: sortArticulations(articulations),
     fermatas: fermatas.sort((a, b) => a - b),
     order,

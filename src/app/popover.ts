@@ -1,5 +1,5 @@
 /**
- * Petit panneau ouvert depuis un bouton (la liste des parties, les réglages de la gravure) : il se
+ * Petit panneau ouvert depuis un bouton (la liste des portées, les réglages de la gravure) : il se
  * ferme avec Échap ou par un clic ailleurs.
  */
 import { useEffect, useRef, useState } from "react";

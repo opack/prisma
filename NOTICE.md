@@ -12,7 +12,7 @@ Trois idées suffisent :
 
 1. **Une note, un numéro.** Les douze notes d'une octave (au piano, ses touches blanches et noires) sont numérotées de 1 à 12. Pas de noms de notes, pas de dièses ni de bémols.
 2. **La position, c'est le temps.** Une note se lit de gauche à droite sur une règle de comptage, comme sur une frise. Sa place dit quand elle commence, sa longueur combien de temps elle dure.
-3. **Ce qui est aligné verticalement se joue ensemble.** Toutes les parties partagent la même règle.
+3. **Ce qui est aligné verticalement se joue ensemble.** Toutes les portées partagent la même règle.
 
 ```prisma
 m1 |1  *  |2  *  |3  *  |4  ||
@@ -22,9 +22,9 @@ m1 |1  *  |2  *  |3  *  |4  ||
 -1 |1  -  |-  -  |8  -  |-  ||
 ```
 
-La partie du haut (au piano, la main droite) monte la gamme de do (1, 3, 5, 6, 8, 10, 12) en deux notes par temps. Celle du bas (la main gauche) tient un do pendant deux temps, puis un sol.
+La portée du haut (au piano, la main droite) monte la gamme de do (1, 3, 5, 6, 8, 10, 12) en deux notes par temps. Celle du bas (la main gauche) tient un do pendant deux temps, puis un sol.
 
-De haut en bas : la **règle de comptage** (`m1` pour la mesure 1, puis les temps), un trait, les lignes de la partie du haut, un second trait qui sépare les deux parties, puis les lignes de la partie du bas. Le 12 de la fin dure jusqu'au bout du temps 4 : il n'a pas besoin d'autre case.
+De haut en bas : la **règle de comptage** (`m1` pour la mesure 1, puis les temps), un trait, les lignes de la portée du haut, un second trait qui sépare les deux portées, puis les lignes de la portée du bas. Le 12 de la fin dure jusqu'au bout du temps 4 : il n'a pas besoin d'autre case.
 
 Un morceau Prisma existe sous deux formes : un **texte** (le fichier `.prisma`), qu'on tape au clavier, et une **partition**, la page imprimable produite par l'application. Les deux disent exactement la même chose. Dans l'application (bouton « Notice »), chaque exemple de cette notice est montré sous ses deux formes : son texte, puis sa gravure.
 
@@ -51,11 +51,11 @@ Pour apprendre à situer les octaves, l'application peut donner à chaque couloi
 
 Ce système remplace les clés (sol, fa, ut), les portées, les lignes supplémentaires et les « 8va » : l'octave de chaque note est écrite sur sa ligne, une fois pour toutes.
 
-### Les parties
+### Les portées
 
-Une **partie** est un groupe de lignes de notes : au piano, chaque main est une partie ; une voix, une flûte en sont une. Une partie n'est liée à aucune clé ni aucune hauteur : chacune peut aller de l'extrême grave à l'extrême aigu. Toutes les parties partagent la règle de comptage : ce qui est aligné verticalement sonne ensemble.
+Une **portée** est un groupe de lignes de notes : au piano, chaque main est une portée ; une voix, une flûte en sont une. Une portée n'est liée à aucune clé ni aucune hauteur : chacune peut aller de l'extrême grave à l'extrême aigu. Toutes les portées partagent la règle de comptage : ce qui est aligné verticalement sonne ensemble.
 
-Un trait simple sépare les parties d'un même **instrument** (les deux mains du piano), un trait double deux instruments. Leurs noms sont annoncés en tête du fichier (`parts:`) et écrits sur le trait qui ouvre chacun :
+Un trait simple sépare les portées d'une même **partie** (les deux mains du piano), un trait double deux parties. Leurs noms sont annoncés en tête du fichier (`parts:`) et écrits sur le trait qui ouvre chacune :
 
 ```prisma
 ---
@@ -73,7 +73,7 @@ m1 |1    |2  |3  |4   ||
 @   Ped.          *
 ```
 
-La partition réunit les parties d'un instrument par une accolade et écrit les noms à gauche du premier système.
+La partition réunit les portées d'une partie par une accolade et écrit les noms à gauche du premier système.
 
 ### Les accords
 
@@ -156,7 +156,7 @@ En 4/4 : `1  *` pour des croches, `1  .  *  .` pour des doubles croches. En 6/8 
 - **Les liaisons de prolongation** : une note qui continue au-delà d'une barre garde son trait `-`. En début de ligne, elle est rappelée en gris : `-7` veut dire « le 7 commencé plus tôt continue ».
 - **Les triolets, duolets, octolets** : la partition classique a besoin d'un chiffre (3, 2, 8…) quand les figures ne savent pas couper le temps comme il faut. Ici, le temps se coupe simplement en autant de cases qu'il faut. Un triolet en 4/4 est un temps de trois cases, `1  *  *` ; un duolet en 9/8, un temps de deux cases, `1  *`.
 
-Quand les deux parties ne coupent pas le temps de la même façon, la règle porte les deux découpages à la fois. Trois notes contre deux donnent six cases : la partie du haut joue toutes les deux cases, celle du bas toutes les trois.
+Quand les deux portées ne coupent pas le temps de la même façon, la règle porte les deux découpages à la fois. Trois notes contre deux donnent six cases : la portée du haut joue toutes les deux cases, celle du bas toutes les trois.
 
 ```prisma
 m1 |1  ,  ,  *  ,  ,  |2  ||
@@ -194,8 +194,8 @@ m1 |1        |2  |3     |4   ||
 
 Deux signes se posent sur une ligne `@`, au-dessus ou sous les notes :
 
-- `^` sur la ligne `@` du haut : **point d'orgue**. On tient la note, l'accord ou le silence plus longtemps que prévu. Il n'y en a qu'un pour toutes les parties, puisqu'il suspend le temps lui-même (la partition classique le répète sur chaque portée).
-- `/` : **arpège**. On égrène l'accord du grave à l'aigu (`\` : de l'aigu au grave). Sur la ligne `@` d'une partie, il ne concerne qu'elle ; sur celle du haut, toutes les parties d'un seul geste (au piano, les deux mains).
+- `^` sur la ligne `@` du haut : **point d'orgue**. On tient la note, l'accord ou le silence plus longtemps que prévu. Il n'y en a qu'un pour toutes les portées, puisqu'il suspend le temps lui-même (la partition classique le répète sur chaque portée).
+- `/` : **arpège**. On égrène l'accord du grave à l'aigu (`\` : de l'aigu au grave). Sur la ligne `@` d'une portée, il ne concerne qu'elle ; sur celle du haut, toutes les portées d'un seul geste (au piano, les deux mains).
 
 ## 5. La structure
 
@@ -240,7 +240,7 @@ Ce morceau se joue A (mesures 1 et 2), B (3), A de nouveau, puis C (4) : c'est u
 
 ## 6. Nuances, soufflets, liaisons, pédale
 
-Ces indications s'écrivent sur des lignes `@`, placées sous les lignes de la partie qu'elles concernent. Chacune commence sur la case où elle prend effet.
+Ces indications s'écrivent sur des lignes `@`, placées sous les lignes de la portée qu'elles concernent. Chacune commence sur la case où elle prend effet.
 
 ```prisma
 m1 |1    |2  |3  |4  ||1     |2  |3  |4  ||
@@ -255,9 +255,9 @@ m1 |1    |2  |3  |4  ||1     |2  |3  |4  ||
 
 - **Nuances** : `pp`, `p`, `mp`, `mf`, `f`, `ff`… comme sur une partition classique, écrites en gras italique.
 - **Soufflets** : `<----` crescendo, `>----` decrescendo, de leur première case à la dernière.
-- **Liaisons d'expression** : `(-----)`, de la première à la dernière note liée. Elles dessinent les phrases ; la partition les trace en arcs fins juste sous les lignes de la partie.
+- **Liaisons d'expression** : `(-----)`, de la première à la dernière note liée. Elles dessinent les phrases ; la partition les trace en arcs fins juste sous les lignes de la portée.
 - **Articulations**, sur la case de l'attaque, pour la note ou tout l'accord : `.` staccato (détaché, plus court), `!` accent (plus fort), `!!` marcato (plus fort et plus sec). La partition dessine le point, le `>` ou le `^` classique en haut à droite de la note. Le tenuto n'a pas de signe : la durée écrite est déjà la durée jouée.
-- **Pédale** (piano), sous la partie du bas : `Ped.` enfonce, `*` relâche, `*Ped.` change. La partition trace un trait sous le système, avec une pointe à chaque changement : on voit exactement ce qui est tenu. Une consigne comme `Ped. simile` (« continuer de même ») s'écrit sur la même ligne.
+- **Pédale** (piano), sous la portée du bas : `Ped.` enfonce, `*` relâche, `*Ped.` change. La partition trace un trait sous le système, avec une pointe à chaque changement : on voit exactement ce qui est tenu. Une consigne comme `Ped. simile` (« continuer de même ») s'écrit sur la même ligne.
 
 ### Les accords d'accompagnement
 
@@ -278,7 +278,7 @@ La partition montre le nom, les notes empilées (la basse en bas, comme sur les 
 
 ### Les paroles
 
-Les paroles s'écrivent sur une ligne `@l` (*lyrics*) sous les lignes de la partie qui chante, chaque syllabe sur la case de sa note. Un couplet par ligne, le premier en haut :
+Les paroles s'écrivent sur une ligne `@l` (*lyrics*) sous les lignes de la portée qui chante, chaque syllabe sur la case de sa note. Un couplet par ligne, le premier en haut :
 
 ```prisma
 m1 |1  |2     |3     |4   ||1    |2  |3   |4  ||
@@ -311,7 +311,7 @@ Les indications de caractère et de tempo (`dolce`, `rit.`, `a tempo`…) garden
 |---|---|
 | noms de notes, dièses, bémols, bécarres | numéros de 1 à 12, un par hauteur |
 | armure | rien : chaque numéro est la note jouée |
-| clés, portées | des parties (au piano, les deux mains) séparées par un trait ; un trait double entre deux instruments |
+| clés, portées | des portées (au piano, les deux mains) séparées par un trait ; un trait double entre deux parties |
 | lignes supplémentaires, 8va, 15ma, loco | numéro d'octave sur chaque ligne (`0`, `+1`, `-1`…) |
 | ronde, blanche, noire, croche… et points | la longueur de la note sur la règle (`-`) |
 | silences | case vide |
@@ -322,13 +322,13 @@ Les indications de caractère et de tempo (`dolce`, `rit.`, `a tempo`…) garden
 | trille *tr*~~~ | `5~6`, la voisine écrite en clair |
 | mordant, gruppetto | écrits en petites notes : `5'6'5`, `6'5'3'5` |
 | arpège (vaguelette) | `/` sur une ligne `@` |
-| point d'orgue 𝄐 | `^` sur la ligne `@` du haut, une fois pour toutes les parties |
+| point d'orgue 𝄐 | `^` sur la ligne `@` du haut, une fois pour toutes les portées |
 | doigtés | `5_3` |
 | cases 1. et 2., D.C., D.S., segno, coda, Fine | sections (`[A]`) et ordre de jeu (`order: A B A C`) |
 | reprises | `||:` … `:||`, et `3×` |
-| nuances, soufflets | les mêmes, sous la partie concernée |
-| liaisons d'expression | `(-----)` sous la partie concernée |
-| staccato, accent, marcato | `.`, `!`, `!!` sous la partie concernée ; le tenuto n'a pas de signe |
+| nuances, soufflets | les mêmes, sous la portée concernée |
+| liaisons d'expression | `(-----)` sous la portée concernée |
+| staccato, accent, marcato | `.`, `!`, `!!` sous la portée concernée ; le tenuto n'a pas de signe |
 | pédale | `Ped.`, `*`, `*Ped.`, tracés en trait continu |
 | accords d'accompagnement (Am, G/B) | ligne `@c` : le nom, ou les notes de la basse vers l'aigu (`10;1;5`) |
-| paroles, traits d'union, mélismes | une ligne `@l` par couplet, sous la partie qui chante : `lu- ne`, `men ---` |
+| paroles, traits d'union, mélismes | une ligne `@l` par couplet, sous la portée qui chante : `lu- ne`, `men ---` |

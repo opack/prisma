@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode, RefObject } from "react";
 import { inspect, octaveOffset } from "../core/index.ts";
 import type { NoteNames } from "../core/index.ts";
-import { partNames } from "./parts.ts";
+import { staffNames } from "./staves.ts";
 
 type Props = {
   value: string;
@@ -48,9 +48,9 @@ export function SourceEditor({ value, onChange, textarea, errorLine, noteNames, 
   const where: string[] = [];
   if (info.section) where.push(`section ${info.section}`);
   if (info.bar) where.push(`mesure ${info.bar}${info.beat ? `, temps ${info.beat}` : ""}${info.cell && info.cell.count > 1 ? ` (case ${info.cell.index}/${info.cell.count})` : ""}`);
-  if (info.part !== undefined && info.instruments) {
-    const name = partNames(info.instruments)[info.part];
-    if (name && (info.instruments.length > 1 || info.instruments[0].parts > 1)) where.push(name);
+  if (info.staff !== undefined && info.parts) {
+    const name = staffNames(info.parts)[info.staff];
+    if (name && (info.parts.length > 1 || info.parts[0].staves > 1)) where.push(name);
   }
   if (info.octave !== undefined) {
     const o = octaveOffset(info.octave);

@@ -1,17 +1,17 @@
 /**
- * Timbres de l'écoute : le piano échantillonné, et une sélection des sons General MIDI que la
+ * Instruments de l'écoute : le piano échantillonné, et une sélection des sons General MIDI que la
  * bibliothèque smplr sait charger (« Soundfont »), ceux qu'on trouve sur une partition de
- * pianiste : claviers, cordes, vents, voix. Chaque instrument du morceau a le sien, deviné d'après
+ * pianiste : claviers, cordes, vents, voix. Chaque partie du morceau a le sien, deviné d'après
  * son nom, que l'on peut changer (un réglage du morceau).
  */
-import type { Instrument } from "../core/index.ts";
+import type { Part } from "../core/index.ts";
 
-export type Timbre = { id: string; label: string };
+export type Instrument = { id: string; label: string };
 
 /** « piano » : le piano échantillonné ; les autres : le nom du son General MIDI. */
 export const PIANO = "piano";
 
-export const TIMBRES: Timbre[] = [
+export const INSTRUMENTS: Instrument[] = [
   { id: PIANO, label: "Piano" },
   { id: "electric_piano_1", label: "Piano électrique" },
   { id: "harpsichord", label: "Clavecin" },
@@ -38,11 +38,11 @@ export const TIMBRES: Timbre[] = [
   { id: "vibraphone", label: "Vibraphone" },
 ];
 
-export const isTimbre = (id: unknown): id is string => typeof id === "string" && TIMBRES.some((t) => t.id === id);
-export const timbreLabel = (id: string) => TIMBRES.find((t) => t.id === id)?.label ?? id;
+export const isInstrument = (id: unknown): id is string => typeof id === "string" && INSTRUMENTS.some((t) => t.id === id);
+export const instrumentLabel = (id: string) => INSTRUMENTS.find((t) => t.id === id)?.label ?? id;
 
 /**
- * Le timbre d'un instrument d'après son nom, en français ou en anglais ; le piano à défaut. Les
+ * L'instrument d'une partie d'après son nom, en français ou en anglais ; le piano à défaut. Les
  * voix d'abord (« Alto », « Basse » sont aussi des voix : un nom seul, sans autre indice, est
  * pris pour une voix), puis les instruments, du plus précis au plus général.
  */
@@ -72,19 +72,19 @@ const GUESSES: [RegExp, string][] = [
   [/chant|voix|voice|vocal|choeur|chœur|choir|chorus|soprano|mezzo|contralto|alto|t[ée]nor|baryton|baritone|basse|\bbass\b/, "choir_aahs"],
 ];
 
-export function guessTimbre(name?: string): string {
+export function guessInstrument(name?: string): string {
   if (!name) return PIANO;
   const n = name.toLowerCase();
   if (/\bpiano\b/.test(n) && !/[ée]lec|rhodes|wurli/.test(n)) return PIANO;
   return GUESSES.find(([re]) => re.test(n))?.[1] ?? PIANO;
 }
 
-/** Le timbre de chaque instrument : celui choisi pour le morceau, sinon celui de son nom. */
-export function timbresOf(instruments: Instrument[], chosen: (string | null)[] = []): string[] {
-  return instruments.map((ins, i) => (isTimbre(chosen[i]) ? chosen[i]! : guessTimbre(ins.name)));
+/** L'instrument de chaque partie : celui choisi pour le morceau, sinon celui de son nom. */
+export function instrumentsOf(parts: Part[], chosen: (string | null)[] = []): string[] {
+  return parts.map((part, i) => (isInstrument(chosen[i]) ? chosen[i]! : guessInstrument(part.name)));
 }
 
-/** Le timbre de chaque partie, d'après celui de son instrument. */
-export function partTimbres(instruments: Instrument[], timbres: string[]): string[] {
-  return instruments.flatMap((ins, i) => Array.from({ length: ins.parts }, () => timbres[i] ?? PIANO));
+/** L'instrument de chaque portée, d'après celui de sa partie. */
+export function staffInstruments(parts: Part[], instruments: string[]): string[] {
+  return parts.flatMap((part, i) => Array.from({ length: part.staves }, () => instruments[i] ?? PIANO));
 }

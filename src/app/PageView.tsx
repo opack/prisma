@@ -1,6 +1,6 @@
 import { FINGER_MARK, TRILL_MARK, octaveOffset } from "../core/index.ts";
 import type { Meta, PedalLine, SystemRow, Voice } from "../core/index.ts";
-import { FINGER, G, PAGE, chordParts, graceExtra, graceSlotW, headerHeight, leadExtra, lyricTextW, noteParts } from "./engrave.ts";
+import { FINGER, G, PAGE, splitChord, graceExtra, graceSlotW, headerHeight, leadExtra, lyricTextW, splitNote } from "./engrave.ts";
 import type { Page, PlacedSystem } from "./engrave.ts";
 import type { OctavePosition, OctaveStyle, RenderOptions } from "./options.ts";
 import { octaveTint } from "./colors.ts";
@@ -155,7 +155,7 @@ function Row({ ps, row, y, centered, articulations, reminders }: { ps: PlacedSys
   const graces = row.graces.flatMap((list, a) => {
     let x = xs[sys.anchors[a]] + 0.4;
     const dy = centered ? row.center[a] * ps.rowH : 0;
-    return sys.parts[row.part].graceDigits[a].map((d, k) => {
+    return sys.staves[row.staff].graceDigits[a].map((d, k) => {
       const gx = x;
       x += graceSlotW(d);
       return list[k] ? (
@@ -184,7 +184,7 @@ function Row({ ps, row, y, centered, articulations, reminders }: { ps: PlacedSys
         // droite), le doigt en négatif (en bas à droite)
         const arts = !c.startsWith("-") ? articulations?.get(a) : undefined;
         if (!c.startsWith("-") && (c.includes(TRILL_MARK) || c.includes(FINGER_MARK) || arts)) {
-          const { main, aux, finger } = noteParts(c);
+          const { main, aux, finger } = splitNote(c);
           let end = x + 0.5 + main.length * G.noteDigit;
           // au-dessus des chiffres, à cheval sur le haut de la ligne : assez d'air pour rester lisible
           const art = articulationSigns(arts ?? [], x + 0.5 + (main.length * G.noteDigit) / 2 - 0.15, y + dy - 0.05);
@@ -281,7 +281,7 @@ function vwave(x: number, y1: number, y2: number, down: boolean): string {
 const WAVE = { fill: "none", stroke: INK, strokeWidth: 0.3, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
 
 /**
- * Liaisons d'une partie : un arc fin, creux vers le haut comme une liaison sous les notes, de
+ * Liaisons d'une portée : un arc fin, creux vers le haut comme une liaison sous les notes, de
  * la première note à la dernière. Une liaison coupée reste ouverte au bord du système.
  */
 function SlurBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: number }) {
@@ -309,7 +309,7 @@ type BarCol = Extract<PlacedSystem["sys"]["columns"][number], { kind: "barSep" }
  * Barre entre deux sections à la suite : la fin de la section (double barre, ou « :|| »), un
  * blanc, puis le début de la suivante, ouverte comme une ligne (trait, ou « ||: »).
  */
-function spacedParts(col: BarCol, x: number, w: number) {
+function spacedWidths(col: BarCol, x: number, w: number) {
   const close = G.barSep + (col.endRepeat ? G.repeatDots : 0);
   const open = col.startRepeat ? G.repeatDots + G.beatSep : 0;
   return { close, open, gap: [x + close, x + w - open] as [number, number] };
@@ -317,7 +317,7 @@ function spacedParts(col: BarCol, x: number, w: number) {
 
 /**
  * Barre de mesure, avec ses signes de reprise : « :|| » (points, trait fin, trait épais),
- * « ||: » (trait épais, trait fin, points). Les points sont placés au milieu de chaque partie.
+ * « ||: » (trait épais, trait fin, points). Les points sont placés au milieu de chaque portée.
  */
 function BarLine({ x, w, col, top, bottom, sections, end }: { x: number; w: number; col: BarCol; top: number; bottom: number; sections: number[][]; end: boolean }) {
   const thin = (lx: number, k: string) => <line key={k} x1={lx} x2={lx} y1={top} y2={bottom} stroke={INK} strokeWidth={0.22} />;
@@ -335,7 +335,7 @@ function BarLine({ x, w, col, top, bottom, sections, end }: { x: number; w: numb
   // les points sont centrés dans la place qui leur est réservée (G.repeatDots)
   const d = G.repeatDots / 2;
   if (col.spaced) {
-    const { close, open, gap } = spacedParts(col, x, w);
+    const { close, open, gap } = spacedWidths(col, x, w);
     const sub = { top, bottom, sections, end: true };
     return (
       <g>
@@ -415,7 +415,7 @@ function Marks({ ps }: { ps: PlacedSystem }) {
         .map((m, i) => {
           const c = m.column! >= 0 ? (sys.columns[m.column!] as BarCol) : undefined;
           // en cours de ligne, contre la barre qui ouvre la section (après le blanc, s'il y en a un)
-          const bar = !c ? left : c.spaced ? spacedParts(c, xs[m.column!], ws[m.column!]).gap[1] : xs[m.column!] + ws[m.column!] / 2;
+          const bar = !c ? left : c.spaced ? spacedWidths(c, xs[m.column!], ws[m.column!]).gap[1] : xs[m.column!] + ws[m.column!] / 2;
           return <SectionBox key={"r" + i} x={bar + 0.6} y={top} label={m.label!} />;
         })}
       {sys.marks
@@ -468,7 +468,7 @@ function OrderPlaying({ x0, step, y }: { x0: number; step: number; y: number }) 
 }
 
 /**
- * Paroles d'une partie : un couplet par ligne, chaque syllabe sous le début de sa note. Un
+ * Paroles d'une portée : un couplet par ligne, chaque syllabe sous le début de sa note. Un
  * trait d'union relie les syllabes d'un mot ; un trait bas prolonge une syllabe chantée sur
  * plusieurs notes (mélisme), jusqu'à la fin de la dernière.
  */
@@ -518,7 +518,7 @@ function LyricBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: nu
 const markW = (text: string, kind: string) => [...text].length * (kind === "dynamic" ? 2.1 : 1.35) + 0.9;
 
 /**
- * Bande des nuances d'une partie : nuances (p, mf…), textes (cresc., dolce…) et soufflets.
+ * Bande des nuances d'une portée : nuances (p, mf…), textes (cresc., dolce…) et soufflets.
  * Un soufflet coupé par un changement de système garde son ouverture au point de coupure.
  */
 function VoiceBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: number }) {
@@ -583,18 +583,18 @@ function PedalBand({ ps, pedal, top }: { ps: PlacedSystem; pedal: PedalLine; top
   const px = (a: number) => xs[sys.anchors[a]] + 0.3;
   const written: string[] = [], implied: string[] = [];
   for (const s of pedal.spans) {
-    const parts = s.implied ? implied : written;
+    const staves = s.implied ? implied : written;
     let x1 = s.fromAnchor >= 0 ? px(s.fromAnchor) : left;
     let x2 = s.toAnchor >= 0 ? px(s.toAnchor) : right;
     if (s.changeStart) {
       // pointe du changement, dessinée une seule fois, par la pédale qui commence
-      parts.push(`M ${x1 - notch} ${y} L ${x1} ${y - hook} L ${x1 + notch} ${y}`);
+      staves.push(`M ${x1 - notch} ${y} L ${x1} ${y - hook} L ${x1 + notch} ${y}`);
       x1 += notch;
-    } else if (s.opens) parts.push(`M ${x1} ${y - hook} L ${x1} ${y}`);
+    } else if (s.opens) staves.push(`M ${x1} ${y - hook} L ${x1} ${y}`);
     // un changement en fin de système se dessine au début du système suivant
     if (s.changeEnd && s.toAnchor >= 0) x2 -= notch;
-    parts.push(`M ${x1} ${y} L ${x2} ${y}`);
-    if (s.closes && !s.changeEnd) parts.push(`M ${x2} ${y} L ${x2} ${y - hook}`);
+    staves.push(`M ${x1} ${y} L ${x2} ${y}`);
+    if (s.closes && !s.changeEnd) staves.push(`M ${x2} ${y} L ${x2} ${y - hook}`);
   }
   return (
     <g>
@@ -615,7 +615,7 @@ function PedalBand({ ps, pedal, top }: { ps: PlacedSystem; pedal: PedalLine; top
 }
 
 /**
- * Accolade fine à gauche d'un instrument à plusieurs parties (le piano), de top à bottom.
+ * Accolade fine à gauche d'une partie à plusieurs portées (le piano), de top à bottom.
  * Une accolade classique : deux courbes qui se rejoignent en pointe au milieu.
  */
 function Brace({ x, top, bottom }: { x: number; top: number; bottom: number }) {
@@ -636,7 +636,7 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
   const ps = {
     ...placed,
     rulerTop: Y + placed.rulerTop,
-    parts: placed.parts.map((p) => ({
+    staves: placed.staves.map((p) => ({
       ...p,
       separator: p.separator === undefined ? undefined : Y + p.separator,
       rowsTop: Y + p.rowsTop,
@@ -646,7 +646,7 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
       pedalTop: Y + p.pedalTop,
       bottom: Y + p.bottom,
     })),
-    instruments: placed.instruments.map((x) => ({ ...x, top: Y + x.top, bottom: Y + x.bottom })),
+    parts: placed.parts.map((x) => ({ ...x, top: Y + x.top, bottom: Y + x.bottom })),
   };
   const { sys, xs, ws } = ps;
   const chordTop = ps.y + ps.textBand + ps.structBand; // bande des accords, juste au-dessus de la règle
@@ -655,9 +655,9 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
   const left = x0 + G.prefix;
   const right = xs[xs.length - 1] + ws[ws.length - 1];
   const rulerBase = y + G.rulerH * 0.72;
-  const rowsOf = (k: number) => sys.parts[k].rows;
+  const rowsOf = (k: number) => sys.staves[k].rows;
   // sections à la suite : le blanc entre la fin d'une section et la suivante coupe les couloirs
-  const gaps = sys.columns.flatMap((c, ci) => (c.kind === "barSep" && c.spaced ? [spacedParts(c, xs[ci], ws[ci]).gap] : []));
+  const gaps = sys.columns.flatMap((c, ci) => (c.kind === "barSep" && c.spaced ? [spacedWidths(c, xs[ci], ws[ci]).gap] : []));
   const spans = (a: number, b: number) => {
     const out: [number, number][] = [];
     let from = a;
@@ -668,9 +668,9 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
     out.push([from, b]);
     return out;
   };
-  const rowY = (k: number, i: number) => ps.parts[k].rowsTop + i * ps.rowH;
+  const rowY = (k: number, i: number) => ps.staves[k].rowsTop + i * ps.rowH;
 
-  // bandes alternées par groupe d'octave, dans chaque partie
+  // bandes alternées par groupe d'octave, dans chaque portée
   const alternate = (rows: SystemRow[]) => {
     let group = -1;
     return rows.map((r) => {
@@ -683,9 +683,9 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
   const bandFill = (octave: number, alt: boolean) => tint(octave)?.band ?? (alt ? BAND : undefined);
   const tabFill = (octave: number) => tint(octave)?.tab ?? TAB;
   const centered = options.notePosition === "center";
-  // articulations de chaque partie : portées par sa note la plus aiguë attaquée dans la case (une fois pour l'accord)
+  // articulations de chaque portée : portées par sa note la plus aiguë attaquée dans la case (une fois pour l'accord)
   const articulationsOf = (k: number, i: number) => {
-    const p = sys.parts[k];
+    const p = sys.staves[k];
     const out = new Map<number, string[]>();
     for (const m of p.voice.marks) {
       if (m.kind !== "articulation") continue;
@@ -742,7 +742,7 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
       ))}
       {/* accords : le nom en haut, les notes Prisma empilées dessous, la basse en bas */}
       {sys.chords.map((c, i) => {
-        const { notes, name } = chordParts(c.text);
+        const { notes, name } = splitChord(c.text);
         const x = xs[sys.anchors[c.anchor]] + leadExtra(sys, c.anchor) + 0.5;
         const named = !!name && options.chords !== "notes";
         const stacked = options.chords !== "name" || !name;
@@ -764,9 +764,9 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
       })}
 
       {/* instruments : une accolade pour plusieurs parties, le nom au premier système */}
-      {ps.instruments.map((inst, i) => {
+      {ps.parts.map((inst, i) => {
         const multi = inst.last > inst.first;
-        const top = ps.parts[inst.first].rowsTop, bottom = ps.parts[inst.last].voiceTop + ps.parts[inst.last].voiceBand;
+        const top = ps.staves[inst.first].rowsTop, bottom = ps.staves[inst.last].voiceTop + ps.staves[inst.last].voiceBand;
         return (
           <g key={"in" + i}>
             {multi && bottom > top && <Brace x={x0 - 0.3} top={top} bottom={bottom} />}
@@ -779,20 +779,20 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
         );
       })}
 
-      {sys.parts.map((p, k) => (
-        <OctaveTabs key={"ot" + k} rows={p.rows} top={ps.parts[k].rowsTop} style={options.octaveStyle} position={options.octavePosition} tabFill={tabFill} rowH={ps.rowH} />
+      {sys.staves.map((p, k) => (
+        <OctaveTabs key={"ot" + k} rows={p.rows} top={ps.staves[k].rowsTop} style={options.octaveStyle} position={options.octavePosition} tabFill={tabFill} rowH={ps.rowH} />
       ))}
       {/* fonds des couloirs d'abord : les notes, dessinées ensuite, ne sont jamais recouvertes */}
-      {sys.parts.map((p, k) => {
+      {sys.staves.map((p, k) => {
         const alt = alternate(p.rows);
         return p.rows.map((r, i) => {
           const fill = bandFill(r.octave, alt[i]);
           return fill && spans(left, right).map(([a, b], j) => <rect key={`bd${k}-${i}-${j}`} x={a} y={rowY(k, i)} width={b - a} height={ps.rowH} fill={fill} />);
         });
       })}
-      {sys.parts.map((p, k) => p.rows.map((r, i) => <Row key={`r${k}-${i}`} ps={ps} row={r} y={rowY(k, i)} centered={centered} articulations={articulationsOf(k, i)} reminders={options.holdReminders} />))}
+      {sys.staves.map((p, k) => p.rows.map((r, i) => <Row key={`r${k}-${i}`} ps={ps} row={r} y={rowY(k, i)} centered={centered} articulations={articulationsOf(k, i)} reminders={options.holdReminders} />))}
       {/* trait épais entre deux parties d'un même instrument */}
-      {ps.parts.map(
+      {ps.staves.map(
         (pp, k) =>
           pp.separator !== undefined &&
           spans(left, right).map(([a, b], j) => <line key={`sep${k}-${j}`} x1={a} x2={b} y1={pp.separator} y2={pp.separator} stroke={INK} strokeWidth={0.5} />),
@@ -800,18 +800,18 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
       {/* arpèges : une vaguelette devant l'accord, de sa note la plus grave à la plus aiguë */}
       {sys.arpeggios.map((arp, i) => {
         const attack = (r: SystemRow) => !!r.cells[arp.anchor] && !r.cells[arp.anchor].startsWith("-");
-        const ys = sys.parts.flatMap((p, k) => (arp.part === undefined || arp.part === k ? p.rows.flatMap((r, j) => (attack(r) ? [rowY(k, j)] : [])) : []));
+        const ys = sys.staves.flatMap((p, k) => (arp.staff === undefined || arp.staff === k ? p.rows.flatMap((r, j) => (attack(r) ? [rowY(k, j)] : [])) : []));
         if (!ys.length) return null;
         const x = xs[sys.anchors[arp.anchor]] + graceExtra(sys, arp.anchor) + G.arpeggioW / 2 + 0.2;
         return <path key={"arp" + i} d={vwave(x, Math.min(...ys) + 0.5, Math.max(...ys) + ps.rowH - 0.5, arp.down)} {...WAVE} />;
       })}
 
       {/* séparations verticales, instrument par instrument : temps fins, mesures épaisses, reprises */}
-      {ps.instruments.map((inst, i) => {
+      {ps.parts.map((inst, i) => {
         const top = inst.top;
-        const last = ps.parts[inst.last];
+        const last = ps.staves[inst.last];
         const bottom = last.voiceTop + last.voiceBand;
-        const sections = sys.parts
+        const sections = sys.staves
           .map((p, k) => (k >= inst.first && k <= inst.last && p.rows.length ? [rowY(k, 0), rowY(k, p.rows.length)] : null))
           .filter(Boolean) as number[][];
         return (
@@ -829,8 +829,8 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
         );
       })}
 
-      {sys.parts.map((p, k) => {
-        const pp = ps.parts[k];
+      {sys.staves.map((p, k) => {
+        const pp = ps.staves[k];
         return (
           <g key={"bands" + k}>
             {pp.slurBand > 0 && <SlurBand ps={ps} voice={p.voice} top={pp.slurTop} />}
@@ -853,10 +853,10 @@ export function Excerpt({ pages, options, scale = 1 }: { pages: Page[]; options:
   const systems = pages.flatMap((p) => p.systems);
   if (!systems.length) return null;
   const pad = 1.5;
-  // à gauche, la place de l'accolade et des noms d'instruments
+  // à gauche, la place de l'accolade et des noms de parties
   const first = systems[0];
-  const named = first.instruments.filter((x) => x.name).map((x) => [...x.name!].length * 1.45 + 2.6);
-  const braced = first.instruments.some((x) => x.last > x.first) ? 1.8 : 0;
+  const named = first.parts.filter((x) => x.name).map((x) => [...x.name!].length * 1.45 + 2.6);
+  const braced = first.parts.some((x) => x.last > x.first) ? 1.8 : 0;
   const x0 = PAGE.marginX - pad - Math.max(braced, ...named);
   const x1 = Math.max(...systems.map((ps) => ps.xs[ps.xs.length - 1] + ps.ws[ps.ws.length - 1])) + pad;
   // un extrait tient sur une page ; s'il en déborde, les pages suivantes sont décalées à la suite
@@ -1002,9 +1002,9 @@ export function barsIn(ps: PlacedSystem): number[][] {
   return bars.filter((bar) => bar.length);
 }
 
-/** Hauteur d'un système, de sa règle au bas de sa dernière partie : celle du curseur. */
+/** Hauteur d'un système, de sa règle au bas de sa dernière portée : celle du curseur. */
 function band(ps: PlacedSystem) {
-  const last = ps.parts[ps.parts.length - 1];
+  const last = ps.staves[ps.staves.length - 1];
   return { top: ps.y + ps.rulerTop, bottom: ps.y + last.voiceTop + last.voiceBand };
 }
 

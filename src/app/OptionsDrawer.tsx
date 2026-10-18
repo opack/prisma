@@ -355,11 +355,11 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
             <Choice id="chords" label="Accompagnement" value={options.chords} options={CHORDS} onChange={(chords) => setOptions({ chords })} scope={scope(["chords"], "chords")} />
             <Check
               id="names-every-system"
-              label="Instruments"
+              label="Parties"
               text="Répéter les noms à chaque système"
               checked={options.namesEverySystem}
               onChange={(namesEverySystem) => setOptions({ namesEverySystem })}
-              hint={options.namesEverySystem ? "le nom de chaque instrument en tête de chaque système" : "les noms au premier système seulement, comme sur une partition"}
+              hint={options.namesEverySystem ? "le nom de chaque partie en tête de chaque système" : "les noms au premier système seulement, comme sur une partition"}
               scope={scope(["namesEverySystem"], "namesEverySystem")}
             />
             <Choice id="sections" label="Sections" value={options.sections} options={SECTIONS} onChange={(sections) => setOptions({ sections })} scope={scope(["sections"], "sections")} />
