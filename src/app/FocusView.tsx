@@ -9,7 +9,7 @@ import type { Page, PlacedSystem } from "./engrave.ts";
 import { PAGE } from "./engrave.ts";
 import type { RenderOptions } from "./options.ts";
 import { player } from "./player.ts";
-import { CursorRect, FONT, OrderLine, SeekAreas, SystemView, barsIn, columnAt } from "./PageView.tsx";
+import { CursorRect, FONT, OrderLine, SeekAreas, SystemView, TextMarks, barsIn, columnAt } from "./PageView.tsx";
 
 type Slots = [number, number];
 
@@ -83,6 +83,7 @@ export function FocusView({ pages, options }: { pages: Page[]; options: RenderOp
               <svg viewBox={`${frame.x0} ${top(ps)} ${frame.w} ${frame.h}`} preserveAspectRatio="xMidYMid meet" fontFamily={FONT} style={{ fontVariantNumeric: "tabular-nums" }}>
                 <rect x={frame.x0} y={top(ps)} width={frame.w} height={frame.h} fill="#fff" />
                 <SystemView ps={ps} options={options} names={k === 0 || options.namesEverySystem} />
+                <TextMarks systems={[ps]} />
                 <SeekAreas systems={[ps]} />
                 {k === cur && <CursorRect ps={ps} ci={ci} />}
               </svg>

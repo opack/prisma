@@ -10,6 +10,7 @@
  * réécrites et la place du curseur après l'écriture.
  */
 import { isRuler, markTokens, parseRule } from "../core/prisma-parse.ts";
+import { CENTRAL_OCTAVE, parseOctaveLabel } from "../core/pitch.ts";
 
 /** Les lignes d'un système : de first à last, dont sa règle de comptage. */
 export type System = { first: number; last: number; ruler: number };
@@ -184,6 +185,36 @@ export function rulerSuffixes(ruler: string, cell: number) {
   ];
   if (last.text === "|" && seps.length > 1) out.push({ text: "|", label: "||", detail: "fin de la mesure" });
   return out;
+}
+
+/**
+ * Les octaves possibles pour une nouvelle ligne de notes à la ligne L : dans une portée, les
+ * octaves vont de l'aigu au grave, chacune numérotée une fois. same : la ligne peut prolonger
+ * l'octave de la ligne du dessus (sans numéro) ; octaves : les écarts au do central possibles avec
+ * un numéro. Sous une ligne @, aucune ligne de notes ne s'écrit ; au-dessus d'une ligne sans
+ * numéro, seule l'octave du dessus convient (un numéro lui volerait cette ligne).
+ */
+export function octaveRoom(lines: string[], sys: System, L: number): { same: boolean; octaves: number[] } {
+  const none = { same: false, octaves: [] };
+  const isNote = (l: string) => !!l && !l.startsWith("@") && !l.startsWith("#") && l.includes("|") && !isRuleLine(l) && !isRuler(l);
+  const label = (l: string) => parseOctaveLabel(l.slice(0, l.indexOf("|")).trim());
+  const up = lines[L - 1] ?? "";
+  if (up.startsWith("@")) return none;
+  let above: number | undefined;
+  const same = isNote(up);
+  for (let k = L - 1; k > sys.ruler && isNote(lines[k]); k--) {
+    above = label(lines[k]);
+    if (above !== undefined) break;
+  }
+  const down = L + 1 <= sys.last ? lines[L + 1] : "";
+  if (isNote(down) && label(down) === undefined) return { same, octaves: [] };
+  const below = isNote(down) ? label(down) : undefined;
+  const octaves: number[] = [];
+  for (let o = 4; o >= -4; o--) {
+    const abs = o + CENTRAL_OCTAVE;
+    if ((above === undefined || abs < above) && (below === undefined || abs > below)) octaves.push(o);
+  }
+  return { same, octaves };
 }
 
 /** Une nouvelle ligne de notes : son numéro d'octave, puis les barres de la règle. */

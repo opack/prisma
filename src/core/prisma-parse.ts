@@ -8,7 +8,7 @@ import { chordNotes } from "./chords.ts";
 import { PrismaError, parseFrontmatter } from "./frontmatter.ts";
 import { ARPEGGIO_DOWN, FERMATA, articulationOf, isArticulationSign, HYPHEN, LYRIC_LINE, isExtender, sortLyrics, FINGER_MARK, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isSlur, isPedalText, joinsText, sortArticulations, sortGraces, sortNotes } from "./model.ts";
 import type { Arpeggio, Articulation, Beat, Division, Expression, Grace, Hairpin, Part, Lyric, Marker, Note, Staff, Pedal, PedalText, Repeat, Score, Slur, TextMark } from "./model.ts";
-import { midiOf, parseOctaveLabel } from "./pitch.ts";
+import { CENTRAL_OCTAVE, midiOf, parseOctaveLabel } from "./pitch.ts";
 import { INSTRUMENTS, isInstrument, splitPartEntry } from "./instruments.ts";
 import type { InstrumentName } from "./instruments.ts";
 
@@ -512,6 +512,18 @@ export function parsePrisma(text: string): Score {
         if (oct === undefined) {
           throw new PrismaError(`octave invalide : « ${lab} » (attendu 0 pour l'octave du do central, +1, -1, +2…)`, R, 1);
         }
+        // dans une portée, les octaves se suivent de l'aigu au grave, comme sur la partition
+        const above = lastOctave[staff];
+        if (above !== undefined && oct >= above) {
+          const name = (o: number) => (o > CENTRAL_OCTAVE ? `+${o - CENTRAL_OCTAVE}` : String(o - CENTRAL_OCTAVE));
+          throw new PrismaError(
+            oct === above
+              ? `octave « ${lab} » écrite deux fois dans la portée : ses lignes suivantes s'écrivent sans numéro`
+              : `octave « ${lab} » sous l'octave « ${name(above)} » : dans une portée, les octaves vont de l'aigu (en haut) au grave (en bas)`,
+            R,
+            1,
+          );
+        }
         lastOctave[staff] = oct;
       }
       const octave = lastOctave[staff];
@@ -565,7 +577,7 @@ export function parsePrisma(text: string): Score {
         if (!digits) {
           if (open) return;
           throw new PrismaError(
-            ai === 0 ? "tenue en début de système : écris le numéro de la note, par exemple « -7 »" : "« - » sans note à prolonger",
+            ai === 0 ? "tenue en début de système : écrivez le numéro de la note, par exemple « -7 »" : "« - » sans note à prolonger",
             R, col,
           );
         }
@@ -602,7 +614,7 @@ export function parsePrisma(text: string): Score {
       const down = pedalDown.get(p.staff);
       if (p.text !== PEDAL_DOWN) {
         if (!down) {
-          throw new PrismaError(p.text === PEDAL_UP ? "« * » sans pédale enfoncée" : "« *Ped. » sans pédale enfoncée : écris « Ped. »", p.line, p.col);
+          throw new PrismaError(p.text === PEDAL_UP ? "« * » sans pédale enfoncée" : "« *Ped. » sans pédale enfoncée : écrivez « Ped. »", p.line, p.col);
         }
         down.end = p.t;
         pedalDown.delete(p.staff);

@@ -387,7 +387,7 @@ describe("erreurs de saisie", () => {
     expect(err("m1 |1  x  |2  ||\n───\n0  |1     |-  ||\n───")).toMatch(/ligne 1, col\. 8 : étiquette de case « x » inconnue/);
   });
   it("refuse un « - » en début de système", () => {
-    expect(err(base("0  |-  |   ||\n───┼───┼───┼┼"))).toMatch(/ligne 3.*écris le numéro de la note/);
+    expect(err(base("0  |-  |   ||\n───┼───┼───┼┼"))).toMatch(/ligne 3.*écrivez le numéro de la note/);
   });
   it("refuse un numéro hors de 1 à 12", () => {
     expect(err(base("0  |13 |   ||\n───┼───┼───┼┼"))).toMatch(/ligne 3, col\. 5 : case invalide « 13 »/);
@@ -1099,6 +1099,12 @@ describe("paroles", () => {
     const late = parsePrisma(["m1 |1  |2  ||1  |2  ||", "0  |1  |3  ||5  |-  ||", "@l      oh --------", "---", "-1 |   |   ||   |   ||", ""].join("\n"));
     expect(late.lyrics).toEqual([{ staff: 0, verse: 1, t: T, text: "oh", extend: 4 * T }]);
     expect(parsePrisma(writePrisma(late, { width: 14 })).lyrics).toEqual(late.lyrics);
+  });
+
+  it("veut les octaves d'une portée de l'aigu au grave, chacune numérotée une fois", () => {
+    expect(() => parsePrisma(["m1 |1  ||", "-1 |1  ||", "+1 |5  ||", ""].join("\n"))).toThrow(/ligne 3, col. 1 : octave « \+1 » sous l'octave « -1 »/);
+    expect(() => parsePrisma(["m1 |1  ||", "0  |1  ||", "0  |5  ||", ""].join("\n"))).toThrow(/octave « 0 » écrite deux fois/);
+    expect(() => parsePrisma(["m1 |1  ||", "+1 |1  ||", "───┼───┼┼", "+1 |5  ||", ""].join("\n"))).not.toThrow();
   });
 
   it("refuse une note écrite après la dernière barre", () => {

@@ -6,6 +6,9 @@ import { ListenControls } from "./ListenControls.tsx";
 import { EngraveButton } from "./EngraveButton.tsx";
 import { SourceEditor } from "./SourceEditor.tsx";
 import { Message } from "./message.tsx";
+import { pick as scorePick } from "./pick.ts";
+import { locate, textPlace } from "../core/locate.ts";
+import { textMark } from "./textMark.ts";
 import type { EditorHandle } from "./SourceEditor.tsx";
 import { OptionsDrawer } from "./OptionsDrawer.tsx";
 
@@ -556,6 +559,33 @@ export function App() {
     if (line) editor.current?.goTo(line, column);
   };
 
+  // un clic sur la partition : le curseur du texte va sur le signe cliqué, sans prendre le clavier
+  const sourceNow = useRef(source);
+  sourceNow.current = source;
+  useEffect(
+    () =>
+      scorePick.subscribe((at) => {
+        if (reading || !options.scoreToText) return;
+        const p = locate(sourceNow.current, at);
+        if (p) editor.current?.goTo(p.line, p.column, false);
+      }),
+    [reading, options.scoreToText],
+  );
+
+  // le curseur du texte : le signe qu'il pointe est encadré sur la partition, et amené à l'écran
+  // quand il bouge (sauf pendant l'écoute, qui mène le défilement)
+  // (sans rendu de l'application à chaque mouvement du curseur : la partition écoute textMark)
+  const caretAt = useRef<[number, number, string] | null>(null);
+  const linked = !reading && options.scoreToText;
+  const linkedNow = useRef(linked);
+  linkedNow.current = linked;
+  const markCaret = useCallback((reveal: boolean) => {
+    const c = caretAt.current;
+    const place = linkedNow.current && c ? textPlace(c[2], c[0], c[1]) : undefined;
+    textMark.set(place ? { place, reveal: reveal && player.getSnapshot().state !== "playing" } : null);
+  }, []);
+  useEffect(() => markCaret(false), [linked, markCaret]);
+
   const { problem: engravedProblem, score } = engraved;
   // le texte relu pendant la frappe : son erreur, ou rien (undefined : pas encore relu)
   const [checked, setChecked] = useState<Problem | null | undefined>(undefined);
@@ -745,7 +775,7 @@ export function App() {
           </svg>
         </button>
         <section className="source" hidden={reading}>
-          <SourceEditor value={source} onChange={setSource} editor={editor} noteNames={options.noteNames} colors={options.sourceColors} palette={options.octaveColors} onCheck={setChecked}>
+          <SourceEditor value={source} onChange={setSource} editor={editor} noteNames={options.noteNames} colors={options.sourceColors} palette={options.octaveColors} onCheck={setChecked} onCaret={(line, column, text) => ((caretAt.current = [line, column, text]), markCaret(true))}>
             <EngraveButton dirty={dirty} auto={options.autoEngrave} onEngrave={engraveNow} onAuto={(autoEngrave) => setOptions({ autoEngrave })} />
           </SourceEditor>
           {problem && (

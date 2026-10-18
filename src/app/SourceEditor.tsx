@@ -25,8 +25,8 @@ import type { OctaveColors } from "./colors.ts";
 /** Ce que l'application demande à l'éditeur. */
 export type EditorHandle = {
   focus(): void;
-  /** Place le curseur sur une ligne et une colonne (à partir de 1), et la montre. */
-  goTo(line: number, column?: number): void;
+  /** Place le curseur sur une ligne et une colonne (à partir de 1), et la montre ; focus : l'éditeur prend la main (le clavier). */
+  goTo(line: number, column?: number, focus?: boolean): void;
 };
 
 type Props = {
@@ -39,6 +39,8 @@ type Props = {
   palette: OctaveColors;
   /** À chaque relecture du texte : son erreur (message avec sa place, ligne et colonne), ou rien. */
   onCheck?: (error: { message: string; line: number; column: number } | null) => void;
+  /** Le curseur a bougé : sa ligne et sa colonne (à partir de 1), dans le texte tel qu'il est. */
+  onCaret?: (line: number, column: number, text: string) => void;
   /** Ce qui flotte au-dessus du texte (le bouton de mise en page). */
   children?: ReactNode;
 };
@@ -96,7 +98,7 @@ const errorLineField = StateField.define<RangeSet<GutterMarker>>({
 // Ctrl+Entrée met la partition en page (raccourci de l'application) : l'éditeur n'en fait rien
 const keys = defaultKeymap.filter((k) => k.key !== "Mod-Enter");
 
-export function SourceEditor({ value, onChange, editor, noteNames, colors, palette, onCheck, children }: Props) {
+export function SourceEditor({ value, onChange, editor, noteNames, colors, palette, onCheck, onCaret, children }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const coloring = useRef(new Compartment()).current;
@@ -106,6 +108,8 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
   changed.current = onChange;
   const checked = useRef(onCheck);
   checked.current = onCheck;
+  const moved = useRef(onCaret);
+  moved.current = onCaret;
   const names = useRef(noteNames);
   names.current = noteNames;
 
@@ -142,7 +146,12 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
           EditorView.contentAttributes.of({ "aria-label": "Source .prisma", spellcheck: "false", autocorrect: "off", autocapitalize: "off" }),
           EditorView.updateListener.of((u) => {
             if (u.docChanged) changed.current(u.state.doc.toString());
-            if (u.docChanged || u.selectionSet) setCaret(u.state.selection.main.head);
+            if (u.docChanged || u.selectionSet) {
+              const head = u.state.selection.main.head;
+              setCaret(head);
+              const l = u.state.doc.lineAt(head);
+              moved.current?.(l.number, head - l.from + 1, u.state.doc.toString());
+            }
           }),
         ],
       }),
@@ -167,13 +176,13 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
 
   useImperativeHandle(editor, () => ({
     focus: () => view.current?.focus(),
-    goTo(line, column = 1) {
+    goTo(line, column = 1, focus = true) {
       const v = view.current;
       if (!v) return;
       const l = v.state.doc.line(Math.max(1, Math.min(line, v.state.doc.lines)));
       const at = Math.min(l.from + Math.max(0, column - 1), l.to);
       v.dispatch({ selection: EditorSelection.range(Math.min(at + 1, l.to), at), effects: EditorView.scrollIntoView(at, { y: "center" }) });
-      v.focus();
+      if (focus) v.focus();
     },
   }));
 

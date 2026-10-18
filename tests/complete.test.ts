@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { caseAt, extendRuler, noteLine, rulerSuffixes, systemOf, writeCase } from "../src/app/complete.ts";
+import { caseAt, extendRuler, noteLine, octaveRoom, rulerSuffixes, systemOf, writeCase } from "../src/app/complete.ts";
 import { parsePrisma } from "../src/core/index.ts";
 
 const sys = [
@@ -82,5 +82,19 @@ describe("écrire dans un système", () => {
     expect(out[3]).toBe("+1 |       9_5 |-  |6  ||-  4  6  |4  ||");
     expect(out[5]).toBe("@                        (----------)");
     expect(() => parsePrisma(out.join("\n"))).not.toThrow();
+  });
+
+  it("n'offre que les octaves possibles pour une nouvelle ligne", () => {
+    const s = ["m1 |1  ||", "───┼───┼┼", "+1 |1  ||", "", "-1 |5  ||", "───┼───┼┼", "-2 |1  ||", "", "@   p"];
+    const sys = systemOf(s, 3)!;
+    // entre +1 et -1 : la même octave, 0
+    expect(octaveRoom(s, sys, 3)).toEqual({ same: true, octaves: [0] });
+    // sous -2 : les octaves plus graves
+    expect(octaveRoom(s, sys, 7)).toEqual({ same: true, octaves: [-3, -4] });
+    // sous une ligne @ : aucune
+    expect(octaveRoom([...s, ""], sys, 9).octaves).toEqual([]);
+    // au-dessus d'une ligne sans numéro : seulement la même octave
+    const t = ["m1 |1  ||", "0  |1  ||", "", "   |3  ||"];
+    expect(octaveRoom(t, systemOf(t, 2)!, 2)).toEqual({ same: true, octaves: [] });
   });
 });

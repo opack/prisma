@@ -18,7 +18,7 @@ import type { EditorView } from "@codemirror/view";
 import { FRONTMATTER, INSTRUMENTS, DEFAULT_CELL, inspect, midiOf, noteName } from "../core/index.ts";
 import type { NoteNames } from "../core/index.ts";
 import { isRuler } from "../core/prisma-parse.ts";
-import { caseAt, extendRuler, noteLine, rulerSuffixes, systemOf, writeCase } from "./complete.ts";
+import { caseAt, extendRuler, noteLine, octaveRoom, rulerSuffixes, systemOf, writeCase } from "./complete.ts";
 import type { Rewrite } from "./complete.ts";
 
 const FINGERS = ["pouce", "index", "majeur", "annulaire", "auriculaire"];
@@ -119,8 +119,9 @@ function lineStarts(ctx: CompletionContext, lines: string[], L: number, before: 
           view.dispatch({ changes: { from: l.from, to: l.to, insert }, selection: { anchor: l.from + ruler.indexOf("|") + 1 }, userEvent: "input.complete" });
         },
       });
-    add("", "une ligne de plus, dans l'octave de la ligne du dessus", 1);
-    for (let o = 4; o >= -4; o--) add(label(o), o === 0 ? "l'octave du do central" : `${Math.abs(o)} octave${Math.abs(o) > 1 ? "s" : ""} ${o > 0 ? "au-dessus" : "au-dessous"} du do central`, 0);
+    const room = octaveRoom(lines, sys, L);
+    if (room.same) add("", "une ligne de plus, dans l'octave de la ligne du dessus", 1);
+    for (const o of room.octaves) add(label(o), o === 0 ? "l'octave du do central" : `${Math.abs(o)} octave${Math.abs(o) > 1 ? "s" : ""} ${o > 0 ? "au-dessus" : "au-dessous"} du do central`, 0);
   }
   return { from, options, filter: !!before };
 }

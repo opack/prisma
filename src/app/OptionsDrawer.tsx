@@ -353,6 +353,14 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
               onChange={(autoEngrave) => setOptions({ autoEngrave })}
               hint={options.autoEngrave ? "la mise en page suit la saisie, peu après la dernière frappe" : "on met en page d'un clic sur le bouton en bas de l'éditeur (Ctrl+Entrée)"}
             />
+            <Check
+              id="score-to-text"
+              label="Partition et texte"
+              text="Relier la partition et le texte"
+              checked={options.scoreToText}
+              onChange={(scoreToText) => setOptions({ scoreToText })}
+              hint={options.scoreToText ? "un clic sur la partition place le curseur du texte sur le signe cliqué ; le signe sous le curseur du texte est encadré sur la partition" : "le clic sur la partition ne place que l'écoute ; rien n'est encadré"}
+            />
             <Choice id="source-colors" label="Coloration" value={options.sourceColors} options={SOURCE_COLORS} onChange={(sourceColors) => setOptions({ sourceColors })} />
             <Choice id="note-names" label="Noms des notes" value={options.noteNames} options={NOTE_NAMES} onChange={(noteNames) => setOptions({ noteNames })} />
           </>

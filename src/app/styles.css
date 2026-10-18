@@ -165,6 +165,7 @@ button:disabled { opacity: .5; cursor: default; }
 @media print {
   body { background: #fff; }
   .bar, .source, .drawer, .edge, .focus { display: none !important; }
+  .text-mark { display: none; }
   .app, .split { display: block; height: auto; }
   .preview { overflow: visible; padding: 0; gap: 0; display: block; }
   /* La page gravée s'adapte à la zone imprimable réelle (marges du navigateur comprises)

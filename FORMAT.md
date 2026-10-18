@@ -134,7 +134,7 @@ L'import calcule les voisines d'après l'armure, les altérations déjà posées
 
 ### Les lignes
 
-- À gauche du premier `|`, l'octave, **comptée depuis celle du do central** : `0` pour l'octave qui commence au do central, `+1` pour celle du dessus, `-1` pour celle du dessous, et ainsi de suite (un piano de 88 touches va de `-4` à `+4`). Le rendu graphique les affiche avec des flèches (↑1, ↓1). On ne l'écrit que sur la première ligne d'un groupe : les lignes suivantes sans numéro appartiennent à la même octave.
+- À gauche du premier `|`, l'octave, **comptée depuis celle du do central** : `0` pour l'octave qui commence au do central, `+1` pour celle du dessus, `-1` pour celle du dessous, et ainsi de suite (un piano de 88 touches va de `-4` à `+4`). Le rendu graphique les affiche avec des flèches (↑1, ↓1). On ne l'écrit que sur la première ligne d'un groupe : les lignes suivantes sans numéro appartiennent à la même octave. Dans une portée, les octaves se suivent de l'aigu (en haut) au grave (en bas), comme sur la partition, chacune numérotée une seule fois.
 - Cette référence ne dépend d'aucune convention nationale : le do central s'appelle do3 en France et C4 dans la notation internationale, mais c'est la même touche.
 - Une ligne ne porte jamais deux notes en même temps. Un accord occupe une ligne par note.
 - Tous les `|` d'une ligne sont alignés sur ceux de la règle. Les espaces en fin de ligne peuvent être omis.

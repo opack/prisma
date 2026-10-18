@@ -93,7 +93,7 @@ m1 |1  |2  |3  |4  ||
 -1 |1  |-  |-  |-  ||
 ```
 
-Les lignes sans numéro d'octave continuent le couloir du dessus.
+Les lignes sans numéro d'octave continuent le couloir du dessus. Dans le texte comme sur la partition, les octaves d'une portée se suivent de l'aigu (en haut) au grave (en bas), chacune numérotée une seule fois.
 
 Dans le fichier, chaque accord se range depuis le haut de son couloir. Sur la partition, l'option « Position » de l'onglet Notes, à « Alignées », garde sur sa ligne une note rejouée d'un temps à l'autre, quitte à laisser des lignes vides : après `8 5 1`, un accord `5 1` reste sur les deux lignes du bas au lieu de remonter, et l'on suit des yeux les notes qui reviennent. Le fichier ne change pas.
 

@@ -6,6 +6,9 @@ import type { OctavePosition, OctaveStyle, RenderOptions } from "./options.ts";
 import { octaveTint } from "./colors.ts";
 import { player } from "./player.ts";
 import { follow } from "./follow.ts";
+import { pick } from "./pick.ts";
+import { textMark } from "./textMark.ts";
+import { mainOf } from "../core/locate.ts";
 import { glide, timed } from "./glide.ts";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 
@@ -983,6 +986,38 @@ export function CursorRect({ ps, ci, rectRef }: { ps: PlacedSystem; ci: number; 
 }
 
 /**
+ * Le signe du texte sous le curseur de l'éditeur, encadré sur la partition : sa case, sur la ligne
+ * qui le porte (sa portée seule pour une ligne @, tout le système pour la règle). Quand le curseur
+ * vient de bouger, le cadre est amené à l'écran.
+ */
+export function TextMarks({ systems }: { systems: PlacedSystem[] }) {
+  const mark = useSyncExternalStore(textMark.subscribe, textMark.get);
+  const ref = useRef<SVGRectElement>(null);
+  const at = mark?.place;
+  const ps = at && systems.find((p) => at.t >= p.sys.start && at.t < p.sys.end);
+  useEffect(() => {
+    if (ps && mark?.reveal) ref.current?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+  }, [mark, ps]);
+  if (!at || !ps) return null;
+  const { sys } = ps;
+  // la case : la dernière qui commence à l'instant du signe ou avant
+  let a = 0;
+  sys.anchors.forEach((ci, k) => (sys.columns[ci] as { t: number }).t <= at.t && (a = k));
+  const ci = sys.anchors[a];
+  let { top, bottom } = band(ps);
+  const staff = at.staff >= 0 ? ps.staves[at.staff] : undefined;
+  if (staff) {
+    const rows = sys.staves[at.staff].rows;
+    const lane = rows.map((r, i) => ({ r, i })).filter((x) => x.r.octave === at.octave);
+    const want = at.content === undefined ? undefined : mainOf(at.content);
+    const hit = lane.find((x) => want && mainOf(x.r.cells[a] ?? "") === want) ?? lane[0];
+    top = ps.y + staff.rowsTop + (hit ? hit.i : 0) * ps.rowH;
+    bottom = hit ? top + ps.rowH : ps.y + staff.bottom;
+  }
+  return <rect ref={ref} className="text-mark" x={ps.xs[ci] - 0.3} y={top} width={ps.ws[ci] + 0.6} height={bottom - top} rx={0.8} fill="rgba(43, 93, 110, 0.12)" stroke="#2b5d6e" strokeWidth={0.35} style={{ pointerEvents: "none" }} />;
+}
+
+/**
  * La place d'un système à l'écran, en entier (textes au-dessus de la règle, pédale en dessous) et
  * non sa seule bande jouée : d'après la zone de clic du système, qui la porte.
  */
@@ -1016,7 +1051,7 @@ export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
   const seek = (ps: PlacedSystem, e: React.MouseEvent<SVGRectElement>) => {
     const m = e.currentTarget.getScreenCTM();
     if (!m) return;
-    const x = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse()).x;
+    const { x, y } = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
     const { sys } = ps;
     // la colonne sous le clic, ou la plus proche quand on clique entre deux
     let best = sys.anchors[0], dist = Infinity;
@@ -1025,7 +1060,16 @@ export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
       if (d < dist) (best = ci), (dist = d);
     }
     follow.release();
-    player.seek((sys.columns[best] as { t: number }).t);
+    const t = (sys.columns[best] as { t: number }).t;
+    player.seek(t);
+    // la ligne sous le clic : sa portée, son octave, ce qui est écrit dans la case (les places des
+    // portées se comptent depuis le haut du système)
+    const dy = y - ps.y;
+    const k = ps.staves.findIndex((p, i) => dy >= p.rowsTop && dy < p.rowsTop + sys.staves[i].rows.length * ps.rowH);
+    const k0 = k >= 0 ? k : Math.max(0, ps.staves.findIndex((p) => dy < p.bottom));
+    const rows = sys.staves[k0]?.rows ?? [];
+    const row = k >= 0 ? rows[Math.floor((dy - ps.staves[k].rowsTop) / ps.rowH)] : undefined;
+    pick.emit({ t, staff: rows[0]?.staff ?? k0, octave: row?.octave, content: row?.cells[sys.anchors.indexOf(best)] });
   };
   return (
     <g className="seek">
@@ -1082,6 +1126,7 @@ export function PageView({ page, total, meta, options, still = false }: { page: 
       <text x={PAGE.w / 2} y={PAGE.h - 8} fontSize={2.6} textAnchor="middle" fill={GREY}>
         {page.index + 1} / {total}
       </text>
+      {!still && <TextMarks systems={page.systems} />}
       {!still && <SeekAreas systems={page.systems} />}
       {!still && <PlayCursor page={page} lookAhead={options.lookAhead} />}
     </svg>
