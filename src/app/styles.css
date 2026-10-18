@@ -148,7 +148,22 @@ button:disabled { opacity: .5; cursor: default; }
 /* notice du pianiste : le texte, et sous chaque exemple sa gravure */
 .split[hidden] { display: none; }
 .guide-pane { flex: 1; overflow: auto; background: #fff; }
-.guide { max-width: 860px; margin: 0 auto; padding: 24px 32px 64px; line-height: 1.55; font-size: 15px; }
+/* la notice et, à sa gauche, son sommaire, qui reste en place pendant qu'on fait défiler */
+.guide-layout { display: grid; grid-template-columns: 240px minmax(0, 860px); justify-content: center; gap: 8px; }
+.guide-toc { position: sticky; top: 60px; align-self: start; max-height: calc(100vh - 140px); overflow: auto; padding: 24px 0 24px 16px; font-size: 13.5px; line-height: 1.35; }
+.guide-toc-title { margin: 0 0 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.guide-toc ul { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--line); }
+.guide-toc li a { display: block; padding: 4px 10px; margin-left: -1px; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; }
+.guide-toc li.depth-2 a { color: var(--ink); font-weight: 600; margin-top: 6px; }
+.guide-toc li.depth-3 a { padding-left: 22px; }
+.guide-toc li a:hover { color: var(--ink); background: var(--panel); }
+.guide-toc li.current a { color: var(--accent); border-left-color: var(--accent); }
+.guide h2, .guide h3 { scroll-margin-top: 16px; }
+@media (max-width: 980px) {
+  .guide-layout { grid-template-columns: minmax(0, 1fr); }
+  .guide-toc { display: none; }
+}
+.guide { max-width: 860px; margin: 0; padding: 24px 32px 64px; line-height: 1.55; font-size: 15px; }
 .guide h1 { font-size: 26px; margin: 8px 0 16px; }
 .guide h2 { font-size: 20px; margin: 36px 0 8px; padding-top: 12px; border-top: 1px solid var(--line); }
 .guide h3 { font-size: 16px; margin: 24px 0 6px; }
