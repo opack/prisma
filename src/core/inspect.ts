@@ -48,7 +48,7 @@ const pitchClass = (n: number, names: NoteNames) => (names === "latin" ? LATIN :
 
 const FINGERS = ["", "pouce", "index", "majeur", "annulaire", "auriculaire"];
 
-const FRONTMATTER: Record<string, string> = {
+export const FRONTMATTER: Record<string, string> = {
   format: "version du format Prisma du fichier",
   title: "titre du morceau",
   subtitle: "sous-titre, gravé sous le titre",

@@ -279,6 +279,15 @@ button:disabled { opacity: .5; cursor: default; }
 .editor-host .cm-editor .cm-selectionLayer { z-index: 1 !important; mix-blend-mode: multiply; }
 /* une erreur de lecture : soulignée en rouge, sur un fond rosé qui se voit même sous un seul caractère */
 .editor-host .cm-lintRange.cm-lintRange-error { background-image: none; background-color: rgba(214, 40, 40, 0.16); text-decoration: underline wavy #d22c2c; text-decoration-skip-ink: none; text-underline-offset: 3px; }
+/* la liste de la complétion : ce qui s'écrit en chasse fixe, son sens à côté */
+.editor-host .cm-tooltip.cm-tooltip-autocomplete { border: 1px solid var(--line); border-radius: 6px; background: #fff; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12); overflow: hidden; }
+.editor-host .cm-tooltip-autocomplete > ul { font-family: var(--mono); font-size: 13px; max-height: 18em; }
+.editor-host .cm-tooltip-autocomplete > ul > li { padding: 2px 10px 2px 8px; }
+.editor-host .cm-tooltip-autocomplete > ul > li[aria-selected] { background: var(--accent); color: #fff; }
+.editor-host .cm-tooltip-autocomplete .cm-completionDetail { font-family: var(--ui); font-style: normal; font-size: 12.5px; color: var(--muted); margin-left: 1.2em; }
+.editor-host .cm-tooltip-autocomplete li[aria-selected] .cm-completionDetail { color: rgba(255, 255, 255, 0.85); }
+.editor-host .cm-tooltip-autocomplete completion-section { font-family: var(--ui); font-size: 11.5px; color: var(--muted); padding: 4px 8px 2px; border-bottom: 0; }
+.editor-host .cm-tooltip-autocomplete .cm-completionMatchedText { text-decoration: none; font-weight: 700; }
 /* le message d'une erreur, au survol de son soulignement */
 .editor-host .cm-tooltip.cm-tooltip-hover { font-family: var(--ui); font-size: 13px; border: 1px solid var(--line); border-radius: 6px; background: #fff; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12); overflow: hidden; }
 .editor-host .cm-tooltip-lint .cm-diagnostic { padding: 6px 10px; max-width: 420px; }

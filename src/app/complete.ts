@@ -1,0 +1,195 @@
+/**
+ * Écrire dans un système sans casser son alignement : ce que la complétion de l'éditeur insère.
+ *
+ * Toutes les lignes d'un système suivent les colonnes de sa règle de comptage. Écrire dans une
+ * case se fait dans ses espaces quand elle a la place ; sinon la case s'élargit sur toutes les
+ * lignes du système à la fois (de l'espace sur la règle et les lignes de notes, du trait sur les
+ * traits, de l'espace ou un soufflet prolongé sur les lignes @), et les colonnes restent alignées.
+ *
+ * Tout se calcule sur les lignes du texte (à partir de 0) ; le résultat est la liste des lignes
+ * réécrites et la place du curseur après l'écriture.
+ */
+import { isRuler, markTokens, parseRule } from "../core/prisma-parse.ts";
+
+/** Les lignes d'un système : de first à last, dont sa règle de comptage. */
+export type System = { first: number; last: number; ruler: number };
+
+/** Une case de la règle : ses colonnes [start, end), et si une barre la termine. */
+export type Case = { start: number; end: number; bar: boolean };
+
+/** Une barre de la règle (« | », « || », « :|| »…) : ses colonnes. */
+type Sep = { from: number; to: number; text: string };
+
+/** Ce qu'une écriture change : des lignes entières, et la place du curseur. */
+export type Rewrite = { lines: Map<number, string>; caret: { line: number; col: number } };
+
+const isRuleLine = (line: string) => {
+  try {
+    return !!parseRule(line, 0);
+  } catch {
+    return true;
+  }
+};
+
+/** Les barres d'une règle de comptage. */
+export function separators(ruler: string): Sep[] {
+  const seps: Sep[] = [];
+  for (let i = ruler.indexOf("|"); i >= 0 && i < ruler.length; ) {
+    if (ruler[i] === "|" || (ruler[i] === ":" && ruler[i + 1] === "|")) {
+      let j = i;
+      while (j < ruler.length && (ruler[j] === "|" || ruler[j] === ":")) j++;
+      seps.push({ from: i, to: j, text: ruler.slice(i, j) });
+      i = j;
+    } else i++;
+  }
+  return seps;
+}
+
+/** Les cases d'une règle : chacune commence à son étiquette (la première, juste après la barre). */
+export function cases(ruler: string): Case[] {
+  const seps = separators(ruler);
+  const out: Case[] = [];
+  for (let k = 0; k + 1 < seps.length; k++) {
+    const from = seps[k].to, to = seps[k + 1].from;
+    const labels = [...ruler.slice(from, to).matchAll(/\S+/g)].map((m) => from + m.index);
+    if (!labels.length) continue;
+    labels[0] = from;
+    labels.forEach((start, i) => out.push({ start, end: i + 1 < labels.length ? labels[i + 1] : to, bar: i + 1 === labels.length }));
+  }
+  return out;
+}
+
+/** La case d'une colonne. */
+export const caseAt = (ruler: string, col: number) => cases(ruler).find((c) => col >= c.start && col < c.end);
+
+/**
+ * Le système de la ligne L : les lignes non vides autour d'elle, dont une règle de comptage. Une
+ * ligne vide qu'on vient d'ouvrir sous une ligne du système en fait partie (sinon elle le coupe).
+ */
+export function systemOf(lines: string[], L: number, body = 0): System | undefined {
+  const blank = (k: number) => !lines[k]?.trim();
+  let top = L, bottom = L;
+  if (blank(L)) {
+    if (L === 0 || blank(L - 1)) return undefined;
+    top = L - 1;
+  }
+  while (top > body && !blank(top - 1)) top--;
+  while (bottom + 1 < lines.length && !blank(bottom + 1)) bottom++;
+  for (let k = top; k <= bottom; k++) if (isRuler(lines[k])) return { first: top, last: bottom, ruler: k };
+  return undefined;
+}
+
+/** Une ligne prolongée jusqu'à la colonne col, avec les barres de la règle là où elle en a. */
+function padTo(line: string, col: number, ruler: string) {
+  let out = line;
+  for (let c = line.length; c < col; c++) out += ruler[c] === "|" ? "|" : " ";
+  return out;
+}
+
+/** Le caractère dont un trait se prolonge : le sien (─, -, ═, =). */
+const ruleChar = (line: string) => line.match(/[─━\-=═]/)?.[0] ?? "─";
+
+/**
+ * Les indications d'une ligne @ : sur une ligne @, les mots qu'une seule espace sépare forment un
+ * seul texte (« Andante très expressif ») ; sur une ligne de paroles ou d'accords, chaque mot est
+ * à part.
+ */
+function marksOf(line: string) {
+  if (/^@[lc](\s|$)/.test(line)) return [...line.matchAll(/\S+/g)].filter((m) => m.index > 0).map((m) => ({ col: m.index, text: m[0] }));
+  return markTokens(line);
+}
+
+/**
+ * Élargit une ligne de n colonnes à la colonne x, selon sa sorte. Sur une ligne @, une
+ * indication à cheval sur x n'est jamais coupée : un soufflet, une liaison ou un trait de
+ * prolongation s'allonge ; un texte garde son début et l'espace va après lui.
+ */
+function widen(line: string, x: number, n: number): string {
+  if (line.length <= x) return line;
+  if (isRuleLine(line)) return line.slice(0, x) + ruleChar(line).repeat(n) + line.slice(x);
+  if (line.startsWith("@")) {
+    const t = marksOf(line).find((m) => m.col < x && x < m.col + m.text.length);
+    if (t) {
+      if (line[x - 1] === "-" || line[x] === "-") return line.slice(0, x) + "-".repeat(n) + line.slice(x);
+      const end = t.col + t.text.length;
+      return (line.slice(0, end) + " ".repeat(n) + line.slice(end)).trimEnd();
+    }
+  }
+  return line.slice(0, x) + " ".repeat(n) + line.slice(x);
+}
+
+/**
+ * Écrit content dans la case c de la ligne L : il remplace ce que la case contenait, une espace au
+ * moins le sépare de la case suivante ; la case s'élargit sur tout le système s'il le faut.
+ */
+export function writeCase(lines: string[], sys: System, L: number, c: Case, content: string): Rewrite {
+  const ruler = lines[sys.ruler];
+  const span = c.end - c.start;
+  const extra = Math.max(0, content.length + 1 - span);
+  const out = new Map<number, string>();
+  for (let k = sys.first; k <= sys.last; k++) {
+    if (k === L || !extra) continue;
+    const w = widen(lines[k], c.end, extra);
+    if (w !== lines[k]) out.set(k, w);
+  }
+  const line = padTo(lines[L], c.start, ruler);
+  const rest = line.slice(c.end);
+  const cell = rest ? content.padEnd(span + extra) : content;
+  out.set(L, (line.slice(0, c.start) + cell + rest).trimEnd());
+  return { lines: out, caret: { line: L, col: c.start + content.length } };
+}
+
+/**
+ * Prolonge la règle de comptage de text (ajouté après sa dernière barre, ou à la place d'une
+ * barre simple finale changée en double). Les traits et les lignes de notes qui vont jusqu'au bout
+ * de la règle la suivent : du trait (et un croisement sous chaque barre), de l'espace et des barres.
+ */
+export function extendRuler(lines: string[], sys: System, text: string): Rewrite {
+  const ruler = lines[sys.ruler].trimEnd();
+  const out = new Map<number, string>();
+  for (let k = sys.ruler + 1; k <= sys.last; k++) {
+    const l = lines[k].trimEnd();
+    if (l.length < ruler.length || l.trimStart().startsWith("@")) continue;
+    let add = "";
+    if (isRuleLine(l)) {
+      const h = ruleChar(l);
+      // le croisement sous une barre : celui que le trait emploie déjà
+      const cross = l.match(/[┼╪+|]/)?.[0] ?? (/[═=]/.test(l) ? "╪" : "┼");
+      for (const ch of text) add += ch === "|" || ch === ":" ? cross : h;
+    } else for (const ch of text) add += ch === "|" ? "|" : " ";
+    out.set(k, l + add);
+  }
+  out.set(sys.ruler, ruler + text);
+  return { lines: out, caret: { line: sys.ruler, col: ruler.length + text.length } };
+}
+
+/** Ce qui peut prolonger une règle : le temps suivant, coupé ou non, et la fin de mesure. */
+export function rulerSuffixes(ruler: string, cell: number) {
+  const seps = separators(ruler.trimEnd());
+  const last = seps[seps.length - 1];
+  if (!last || last.to !== ruler.trimEnd().length) return [];
+  // le temps suivant : après une fin de mesure, le premier
+  let beat = 1;
+  if (last.text === "|" && seps.length > 1) {
+    const prev = seps[seps.length - 2];
+    const n = Number(ruler.slice(prev.to, last.from).trim().split(/\s+/)[0]);
+    if (Number.isInteger(n)) beat = n + 1;
+  }
+  const pad = (s: string) => s.padEnd(cell);
+  const one = String(beat);
+  const out = [
+    { text: pad(one) + "|", label: one, detail: "temps suivant" },
+    { text: pad(one) + pad("*") + "|", label: `${one}  *`, detail: "temps suivant, en deux cases" },
+    { text: pad(one) + pad("*") + pad("*") + "|", label: `${one}  *  *`, detail: "temps suivant, en trois cases" },
+  ];
+  if (last.text === "|" && seps.length > 1) out.push({ text: "|", label: "||", detail: "fin de la mesure" });
+  return out;
+}
+
+/** Une nouvelle ligne de notes : son numéro d'octave, puis les barres de la règle. */
+export function noteLine(ruler: string, label: string) {
+  const pipe = ruler.indexOf("|");
+  let out = label.padEnd(pipe);
+  for (let c = pipe; c < ruler.trimEnd().length; c++) out += ruler[c] === "|" ? "|" : " ";
+  return out;
+}

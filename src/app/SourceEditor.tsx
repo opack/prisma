@@ -17,6 +17,7 @@ import { PrismaError, inspect, octaveOffset, parsePrisma } from "../core/index.t
 import type { NoteNames } from "../core/index.ts";
 import { staffNames } from "./staves.ts";
 import { messageNode } from "./message.tsx";
+import { completion } from "./completion.ts";
 import { sourceColors } from "./sourceColors.ts";
 import type { SourceColors } from "./sourceColors.ts";
 import type { OctaveColors } from "./colors.ts";
@@ -105,6 +106,8 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
   changed.current = onChange;
   const checked = useRef(onCheck);
   checked.current = onCheck;
+  const names = useRef(noteNames);
+  names.current = noteNames;
 
   useEffect(() => {
     const v = new EditorView({
@@ -130,6 +133,7 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
             { delay: 300 },
           ),
           coloring.of(sourceColors(colors, palette)),
+          completion(() => names.current),
           history(),
           drawSelection(),
           search({ top: true }),
