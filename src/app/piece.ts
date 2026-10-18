@@ -8,6 +8,7 @@
  */
 import type { RenderOptions } from "./options.ts";
 import { loadOptions } from "./options.ts";
+import { isTimbre } from "./timbres.ts";
 
 /** Les options qu'une partition peut définir pour elle-même : tout ce qui fait son rendu. */
 export const PIECE_KEYS = ["chords", "namesEverySystem", "sections", "simile", "octavePosition", "octaveStyle", "octaveColors", "density", "notePosition", "holdReminders", "fingerings"] as const;
@@ -19,6 +20,8 @@ export type PieceSettings = {
   tempo?: number;
   /** Les parties muettes (leurs numéros), qu'on joue soi-même. */
   muted?: number[];
+  /** Le timbre choisi pour chaque instrument, dans l'ordre ; null : celui que son nom fait deviner. */
+  timbres?: (string | null)[];
   /** Les options du rendu définies pour ce morceau : elles priment sur les générales. */
   options?: Partial<Pick<RenderOptions, PieceKey>>;
 };
@@ -31,7 +34,7 @@ export const MAX_TEMPO = 300;
 export const settingsName = (pieceName: string) => `${pieceName}.json`;
 
 /** Rien à retenir ? */
-export const isEmpty = (s: PieceSettings) => s.tempo === undefined && !s.muted?.length && !Object.keys(s.options ?? {}).length;
+export const isEmpty = (s: PieceSettings) => s.tempo === undefined && !s.muted?.length && !s.timbres?.some((t) => t !== null) && !Object.keys(s.options ?? {}).length;
 
 /**
  * Lit des réglages : ce qui n'est pas compris est laissé de côté (une option inconnue, une valeur
@@ -47,6 +50,10 @@ export function parseSettings(text: string): PieceSettings {
     const muted = raw.muted.filter((k: unknown) => Number.isInteger(k) && (k as number) >= 0);
     if (muted.length) out.muted = [...new Set<number>(muted)].sort((a, b) => a - b);
   }
+  if (Array.isArray(raw.timbres)) {
+    const timbres = raw.timbres.map((t: unknown) => (isTimbre(t) ? t : null));
+    if (timbres.some((t: string | null) => t !== null)) out.timbres = timbres;
+  }
   if (raw.options && typeof raw.options === "object") {
     // les valeurs se valident comme celles des options générales : une valeur refusée y reprend la valeur par défaut
     const checked = loadOptionsFrom(raw.options);
@@ -61,6 +68,7 @@ export function writeSettings(s: PieceSettings): string {
   const out: Record<string, unknown> = { format: FORMAT };
   if (s.tempo !== undefined) out.tempo = s.tempo;
   if (s.muted?.length) out.muted = s.muted;
+  if (s.timbres?.some((t) => t !== null)) out.timbres = s.timbres;
   if (s.options && Object.keys(s.options).length) out.options = s.options;
   return JSON.stringify(out, null, 2) + "\n";
 }

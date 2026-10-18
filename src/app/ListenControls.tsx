@@ -3,6 +3,7 @@ import type { Score } from "../core/index.ts";
 import { DEFAULT_BPM, player } from "./player.ts";
 import { follow } from "./follow.ts";
 import { MAX_TEMPO, MIN_TEMPO } from "./piece.ts";
+import { PIANO, TIMBRES } from "./timbres.ts";
 import { partNames } from "./parts.ts";
 import { usePopover } from "./popover.ts";
 
@@ -33,12 +34,15 @@ type Props = {
   /** Les parties muettes (leurs numéros) : on les joue soi-même pendant que l'app joue les autres. */
   muted: number[];
   onMuted: (parts: number[]) => void;
+  /** Le timbre de chaque instrument, et son changement. */
+  timbres: string[];
+  onTimbre: (instrument: number, timbre: string) => void;
   /** Le tempo choisi pour ce morceau, ou null : celui de la partition. */
   tempo: number | null;
   onTempo: (bpm: number | null) => void;
 };
 
-export function ListenControls({ score, disabled, metronome, onMetronome, muted, onMuted, tempo, onTempo }: Props) {
+export function ListenControls({ score, disabled, metronome, onMetronome, muted, onMuted, timbres, onTimbre, tempo, onTempo }: Props) {
   const { state, error, entry: playing, entries } = useSyncExternalStore(player.subscribe, player.getSnapshot);
   const following = useSyncExternalStore(follow.subscribe, follow.enabled);
   const entry = playing ?? 0;
@@ -131,7 +135,7 @@ export function ListenControls({ score, disabled, metronome, onMetronome, muted,
         >
           <Icon d="M6.2 1.5h3.6L13 14.5H3zM7 4.5l-.9 8h3.8l-.9-8zM8 11.8 12.6 3.6l.9.5-4.4 8z" />
         </button>
-        <PartsMenu score={score} muted={muted} onMuted={onMuted} />
+        <PartsMenu score={score} muted={muted} onMuted={onMuted} timbres={timbres} onTimbre={onTimbre} />
       </span>
     </>
   );
@@ -139,14 +143,26 @@ export function ListenControls({ score, disabled, metronome, onMetronome, muted,
 
 /**
  * Les parties jouées : un bouton qui coupe ou rend la musique d'un clic (le métronome seul reste),
- * et sa flèche, qui ouvre la liste des parties, chacune à cocher pour l'entendre ou la rendre
- * muette (pour la jouer soi-même). La musique rendue retrouve les parties choisies avant.
+ * et sa flèche, qui ouvre la liste des instruments, chacun avec son timbre, et de leurs parties,
+ * chacune à cocher pour l'entendre ou la rendre muette (pour la jouer soi-même). La musique
+ * rendue retrouve les parties choisies avant.
  */
-function PartsMenu({ score, muted, onMuted }: { score?: Score; muted: number[]; onMuted: (parts: number[]) => void }) {
+function PartsMenu({ score, muted, onMuted, timbres, onTimbre }: { score?: Score; muted: number[]; onMuted: (parts: number[]) => void; timbres: string[]; onTimbre: (instrument: number, timbre: string) => void }) {
   const { open, setOpen, root } = usePopover<HTMLSpanElement>();
   // le dernier choix où une partie au moins jouait : la musique rendue le retrouve
   const before = useRef<number[]>([]);
   const names = score ? partNames(score.instruments) : [];
+  // les parties de chaque instrument, nommées sans le nom de l'instrument quand il les précède
+  const groups: { name?: string; parts: { k: number; label: string }[] }[] = [];
+  let k = 0;
+  for (const ins of score?.instruments ?? []) {
+    const parts = Array.from({ length: ins.parts }, () => {
+      const full = names[k];
+      const label = ins.parts > 1 && full.includes(" — ") ? full.split(" — ")[1] : full;
+      return { k: k++, label: ins.parts > 1 ? label[0].toUpperCase() + label.slice(1) : label };
+    });
+    groups.push({ name: ins.name, parts });
+  }
   const all = names.map((_, k) => k);
   const silent = names.length > 0 && muted.length >= names.length;
   const state = !muted.length ? "on" : silent ? undefined : "on partial";
@@ -159,20 +175,50 @@ function PartsMenu({ score, muted, onMuted }: { score?: Score; muted: number[]; 
       <button className={state} aria-pressed={!silent} onClick={music} disabled={!names.length} title={title} aria-label="Musique">
         <Icon d="M6 2.5 13 1v9.2a2.3 2.3 0 1 1-1.5-2.15V4.1L7.5 5v6.7A2.3 2.3 0 1 1 6 9.55z" />
       </button>
-      <button className={`more${open ? " open" : ""}`} aria-haspopup="true" aria-expanded={open} onClick={() => setOpen((v) => !v)} disabled={!names.length} title="Choisir les parties jouées" aria-label="Parties jouées">
+      <button className={`more${open ? " open" : ""}`} aria-haspopup="true" aria-expanded={open} onClick={() => setOpen((v) => !v)} disabled={!names.length} title="Parties jouées et timbres des instruments" aria-label="Parties et timbres">
         <svg width="8" height="16" viewBox="0 0 8 16" aria-hidden="true">
           <path d="M1 6.5h6L4 10z" fill="currentColor" />
         </svg>
       </button>
       {open && (
-        <div className="popover parts-list" role="dialog" aria-label="Parties jouées">
-          <p className="popover-title">Parties jouées</p>
-          {names.map((name, k) => (
-            <label key={k}>
-              <input type="checkbox" checked={!muted.includes(k)} onChange={() => toggle(k)} />
-              {name}
-            </label>
-          ))}
+        <div className="popover parts-list" role="dialog" aria-label="Parties et timbres">
+          <p className="popover-title">Parties et timbres</p>
+          {groups.map((g, i) => {
+            const timbre = (
+              <select value={timbres[i] ?? PIANO} onChange={(e) => onTimbre(i, e.target.value)} aria-label={`Timbre${g.name ? ` : ${g.name}` : ""}`} title="Le timbre de l'instrument, à l'écoute">
+                {TIMBRES.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            );
+            // un instrument d'une partie : une seule ligne ; sinon son nom et son timbre, puis ses parties
+            if (g.parts.length === 1)
+              return (
+                <div key={i} className="part-row">
+                  <label>
+                    <input type="checkbox" checked={!muted.includes(g.parts[0].k)} onChange={() => toggle(g.parts[0].k)} />
+                    {g.parts[0].label}
+                  </label>
+                  {timbre}
+                </div>
+              );
+            return (
+              <div key={i} className="part-group">
+                <div className="part-row">
+                  <span className="part-instrument">{g.name || "Instrument"}</span>
+                  {timbre}
+                </div>
+                {g.parts.map((p) => (
+                  <label key={p.k} className="part-sub">
+                    <input type="checkbox" checked={!muted.includes(p.k)} onChange={() => toggle(p.k)} />
+                    {p.label}
+                  </label>
+                ))}
+              </div>
+            );
+          })}
           <div className="popover-actions">
             <button onClick={() => onMuted([])} disabled={!muted.length}>
               Toutes
@@ -181,7 +227,7 @@ function PartsMenu({ score, muted, onMuted }: { score?: Score; muted: number[]; 
               Aucune
             </button>
           </div>
-          <p className="popover-hint">Une partie muette n'est pas jouée : à vous de la jouer, avec le métronome au besoin.</p>
+          <p className="popover-hint">Une partie muette n'est pas jouée : à vous de la jouer, avec le métronome au besoin. Le timbre d'un instrument se devine d'après son nom ; un autre choix vaut pour ce morceau.</p>
         </div>
       )}
     </span>

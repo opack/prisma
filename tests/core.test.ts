@@ -1378,17 +1378,17 @@ describe("écoute", () => {
   it("donne les notes en secondes, au tempo choisi", () => {
     const s = parsePrisma(two);
     expect(playNotes(playedNotes(s, passages(s)), 120)).toEqual([
-      { time: 0, midi: 55, duration: 0.5, velocity: 70 },
-      { time: 0, midi: 60, duration: 1, velocity: 70 },
-      { time: 0.5, midi: 50, duration: 0.5, velocity: 70 },
+      { time: 0, midi: 55, duration: 0.5, velocity: 70, part: 1 },
+      { time: 0, midi: 60, duration: 1, velocity: 70, part: 0 },
+      { time: 0.5, midi: 50, duration: 0.5, velocity: 70, part: 1 },
     ]);
   });
 
   it("reprend à un instant donné, en rejouant ce qui sonne encore", () => {
     const s = parsePrisma(two);
     expect(playNotes(playedNotes(s, passages(s)), 60, T)).toEqual([
-      { time: 0, midi: 50, duration: 1, velocity: 70 },
-      { time: 0, midi: 60, duration: 1, velocity: 70 },
+      { time: 0, midi: 50, duration: 1, velocity: 70, part: 1 },
+      { time: 0, midi: 60, duration: 1, velocity: 70, part: 0 },
     ]);
   });
 
@@ -1826,5 +1826,41 @@ describe("ce que montre le curseur", () => {
     expect(inspect(chords, 4).symbol).toEqual({ text: "Am", meaning: "(10;1;5) accord la do mi" });
     expect(inspect(chords, 8).symbol).toEqual({ text: "10;1;5", meaning: "(Am) accord la do mi" });
     expect(inspect("@c  8;3;4\nm1 |1   ||\n0  |    ||\n", 4).symbol?.meaning).toBe("accord sol ré ré♯");
+  });
+});
+
+describe("timbres", () => {
+  it("se devinent d'après le nom de l'instrument, en français ou en anglais", async () => {
+    const { guessTimbre } = await import("../src/app/timbres.ts");
+    const cases: [string | undefined, string][] = [
+      [undefined, "piano"],
+      ["Piano", "piano"],
+      ["Piano électrique", "electric_piano_1"],
+      ["Flûte", "flute"],
+      ["Flute 1", "flute"],
+      ["Violon II", "violin"],
+      ["Violoncelle", "cello"],
+      ["Contrebasse", "contrabass"],
+      ["Basse électrique", "electric_bass_finger"],
+      ["Chant", "choir_aahs"],
+      ["Soprano", "choir_aahs"],
+      ["Alto", "choir_aahs"],
+      ["Viola", "viola"],
+      ["Saxophone alto", "alto_sax"],
+      ["Cor", "french_horn"],
+      ["Cor anglais", "oboe"],
+      ["Harpsichord", "harpsichord"],
+      ["Ukulélé", "piano"],
+    ];
+    for (const [name, timbre] of cases) expect([name, guessTimbre(name)]).toEqual([name, timbre]);
+  });
+
+  it("donnent celui choisi pour le morceau, sinon celui du nom, à chaque partie de l'instrument", async () => {
+    const { partTimbres, timbresOf } = await import("../src/app/timbres.ts");
+    const instruments = [{ name: "Flûte", parts: 1 }, { name: "Piano", parts: 2 }];
+    expect(timbresOf(instruments)).toEqual(["flute", "piano"]);
+    expect(timbresOf(instruments, [null, "harpsichord"])).toEqual(["flute", "harpsichord"]);
+    expect(timbresOf(instruments, ["inconnu"])).toEqual(["flute", "piano"]);
+    expect(partTimbres(instruments, ["flute", "harpsichord"])).toEqual(["flute", "harpsichord", "harpsichord"]);
   });
 });

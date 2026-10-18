@@ -1,14 +1,15 @@
 /**
- * Écoute : joue le morceau avec un piano échantillonné (bibliothèque smplr, « Splendid Grand
- * Piano »), chargé au premier clic puis gardé par le navigateur, et publie l'instant joué
- * pour le curseur de la gravure.
+ * Écoute : joue le morceau avec des instruments échantillonnés (bibliothèque smplr : le piano
+ * « Splendid Grand Piano », les autres timbres en sons General MIDI), chacun chargé la première
+ * fois qu'il sert puis gardé par le navigateur, et publie l'instant joué pour le curseur de la
+ * gravure. Chaque partie sonne avec le timbre de son instrument.
  *
  * Les notes telles qu'écrites, toutes les parties ensemble, au tempo choisi (celui du morceau par
  * défaut), reprises et ordre des sections déroulés, nuances et soufflets en intensité, pédale de résonance,
  * petites notes, trilles, arpèges, points d'orgue, articulations ; un métronome sur les temps, avec
  * ou sans les instruments ; des parties muettes, pour les jouer soi-même.
  */
-import type { SplendidGrandPiano } from "smplr";
+import { PIANO, timbreLabel } from "./timbres.ts";
 import { TICKS_PER_BEAT } from "../core/index.ts";
 import type { Score } from "../core/index.ts";
 import { clicks, countIn, entryAt, entryStart, holds, inFirstBar, nextTick, passages, playedLength, playedNotes, playedTick, scoreTick, stretched, unstretched } from "./performance.ts";
@@ -31,7 +32,7 @@ const PREVIOUS_AGAIN = 800;
 const TAIL = 1.5;
 
 /** Une note à jouer, en secondes depuis le départ de l'écoute. */
-export type PlayNote = { time: number; midi: number; duration: number; velocity: number };
+export type PlayNote = { time: number; midi: number; duration: number; velocity: number; part: number };
 
 /** Durée d'un tick, en secondes, au tempo donné. */
 export const secondsPerTick = (bpm: number) => 60 / bpm / TICKS_PER_BEAT;
@@ -62,7 +63,7 @@ export function playNotes(notes: PlayedNote[], bpm: number, from = 0, hs: Hold[]
   const out: PlayNote[] = [];
   for (const n of notes) {
     if (n.grace) {
-      if (n.start >= from) out.push({ time: Math.max(EARLIEST, at(n.start) - n.grace * grace), midi: n.midi, duration: grace, velocity: n.velocity });
+      if (n.start >= from) out.push({ time: Math.max(EARLIEST, at(n.start) - n.grace * grace), midi: n.midi, duration: grace, velocity: n.velocity, part: n.part });
       continue;
     }
     if (n.end <= from) continue;
@@ -72,7 +73,7 @@ export function playNotes(notes: PlayedNote[], bpm: number, from = 0, hs: Hold[]
     const time = at(begin) + rolled, end = at(n.end);
     const trill = n.trill && n.trill.until > begin ? n.trill : undefined;
     if (!trill) {
-      out.push({ time, midi: n.midi, duration: end - time, velocity: n.velocity });
+      out.push({ time, midi: n.midi, duration: end - time, velocity: n.velocity, part: n.part });
       continue;
     }
     // un nombre impair de notes égales : la note, la voisine, la note… et la dernière est la note
@@ -81,7 +82,7 @@ export function playNotes(notes: PlayedNote[], bpm: number, from = 0, hs: Hold[]
     const step = span / count;
     for (let k = 0; k < count; k++) {
       const last = k === count - 1;
-      out.push({ time: time + k * step, midi: k % 2 ? trill.midi : n.midi, duration: last ? end - time - k * step : step, velocity: n.velocity });
+      out.push({ time: time + k * step, midi: k % 2 ? trill.midi : n.midi, duration: last ? end - time - k * step : step, velocity: n.velocity, part: n.part });
     }
   }
   return out.sort((a, b) => a.time - b.time || a.midi - b.midi);
@@ -102,14 +103,18 @@ export type PlayerSnapshot = {
 /** Ce que l'on entend : le métronome et ses réglages, et les parties rendues muettes (leurs numéros). */
 type Sound = { metronome: boolean; muted: number[]; clickSounds: ClickSounds; clickGrid: ClickGrid; countIn: boolean; clickVolume: number };
 
-type Piano = Awaited<ReturnType<typeof SplendidGrandPiano>["load"]>;
+/** Un instrument chargé : il joue une note et rend de quoi l'arrêter. */
+type Voice = { start(n: { note: number; velocity: number; time: number; duration: number }): () => void };
 
 /** Lecteur unique de l'application : un état, et des abonnés (les boutons, le curseur). */
 class Player {
   private snapshot: PlayerSnapshot = { state: "idle", tick: null, entry: null, entries: 0 };
   private listeners = new Set<() => void>();
   private context?: AudioContext;
-  private piano?: Piano;
+  /** Les instruments chargés, par timbre. */
+  private voicesBy = new Map<string, Voice>();
+  /** Le timbre de chaque partie. */
+  private timbres: string[] = [];
   private timer?: number;
   private frame?: number;
   private run = 0; // numéro de la lecture en cours : une lecture interrompue ne reprend pas la main
@@ -162,20 +167,62 @@ class Player {
     try {
       this.context ??= new AudioContext();
       await this.context.resume();
-      if (!this.piano) {
-        this.set({ state: "loading", tick: null, entry: null, error: undefined });
-        // la bibliothèque n'est téléchargée qu'à la première écoute
-        const { SplendidGrandPiano } = await import("smplr");
-        this.piano = await SplendidGrandPiano(this.context).load;
-      }
+      const missing = this.missing();
+      if (missing.length) this.set({ state: "loading", tick: null, entry: null, error: undefined });
+      await this.loadTimbres(missing);
       this.tick = await loadClick(this.context);
       clickVolume(this.context, this.sound.clickVolume);
-    } catch {
-      if (run === this.run) this.set({ state: "idle", tick: null, entry: null, error: "Impossible de charger le son du piano (connexion internet ?)" });
+    } catch (e) {
+      if (run === this.run) this.set({ state: "idle", tick: null, entry: null, error: (e as Error).message });
       return;
     }
     if (run !== this.run) return; // arrêté pendant le chargement
     this.start(from, this.sound.countIn);
+  }
+
+  /** Les timbres dont le morceau a besoin et qui ne sont pas encore chargés. */
+  private missing() {
+    const needed = new Set(this.timbres.length ? this.timbres : [PIANO]);
+    return [...needed].filter((t) => !this.voicesBy.has(t));
+  }
+
+  /** Charge des timbres (la bibliothèque n'est téléchargée qu'à la première écoute). */
+  private async loadTimbres(ids: string[]) {
+    if (!ids.length) return;
+    const { SplendidGrandPiano, Soundfont } = await import("smplr");
+    await Promise.all(
+      ids.map(async (id) => {
+        try {
+          const voice = id === PIANO ? await SplendidGrandPiano(this.context!).load : await Soundfont(this.context!, { instrument: id }).load;
+          this.voicesBy.set(id, voice as Voice);
+        } catch {
+          throw new Error(`Impossible de charger le son ${id === PIANO ? "du piano" : `« ${timbreLabel(id)} »`} (connexion internet ?)`);
+        }
+      }),
+    );
+  }
+
+  /**
+   * Le timbre de chaque partie ; en cours de lecture, un timbre pas encore chargé se charge, et la
+   * suite repart avec lui depuis l'instant joué.
+   */
+  async setTimbres(timbres: string[]) {
+    if (JSON.stringify(timbres) === JSON.stringify(this.timbres)) return;
+    this.timbres = timbres;
+    if (this.snapshot.state !== "playing") return;
+    const run = this.run;
+    let error: string | undefined;
+    try {
+      await this.loadTimbres(this.missing());
+    } catch (e) {
+      error = (e as Error).message;
+    }
+    if (run !== this.run || this.snapshot.state !== "playing") return;
+    const from = this.now();
+    this.halt();
+    this.start(from);
+    // un timbre introuvable : on le dit, et sa partie se joue au piano
+    if (error) this.set({ error });
   }
 
   /** Métronome et parties muettes ; en cours de lecture, la suite repart ainsi. */
@@ -302,7 +349,10 @@ class Player {
   /** Joue depuis l'instant joué `from`, après le décompte s'il est demandé (au départ seulement). */
   private start(from: number, counted = false) {
     const run = this.run;
-    const context = this.context!, piano = this.piano!;
+    const context = this.context!;
+    // chaque partie avec le timbre de son instrument ; un timbre qui n'a pas pu se charger : le piano
+    const fallback = this.voicesBy.get(PIANO);
+    const voiceOf = (part: number) => this.voicesBy.get(this.timbres[part] ?? PIANO) ?? fallback;
     const hs = this.holds;
     // une partie muette n'est pas jouée : on la joue soi-même pendant que l'app joue les autres
     const muted = new Set(this.sound.muted);
@@ -336,7 +386,9 @@ class Player {
       this.voices = this.voices.filter((v) => v.end > now);
       for (; next < notes.length && notes[next].time < now - start + LOOKAHEAD; next++) {
         const n = notes[next];
-        const stop = piano.start({ note: n.midi, velocity: n.velocity, time: start + n.time, duration: n.duration });
+        const voice = voiceOf(n.part);
+        if (!voice) continue;
+        const stop = voice.start({ note: n.midi, velocity: n.velocity, time: start + n.time, duration: n.duration });
         this.voices.push({ end: start + n.time + n.duration + RELEASE, stop });
       }
       for (; nextBeat < beats.length && beats[nextBeat].time < now - start + LOOKAHEAD; nextBeat++) {
