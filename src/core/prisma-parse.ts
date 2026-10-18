@@ -9,6 +9,8 @@ import { PrismaError, parseFrontmatter } from "./frontmatter.ts";
 import { ARPEGGIO_DOWN, FERMATA, articulationOf, isArticulationSign, HYPHEN, LYRIC_LINE, isExtender, sortLyrics, FINGER_MARK, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isSlur, isPedalText, joinsText, sortArticulations, sortGraces, sortNotes } from "./model.ts";
 import type { Arpeggio, Articulation, Beat, Division, Expression, Grace, Hairpin, Part, Lyric, Marker, Note, Staff, Pedal, PedalText, Repeat, Score, Slur, TextMark } from "./model.ts";
 import { midiOf, parseOctaveLabel } from "./pitch.ts";
+import { INSTRUMENTS, isInstrument, splitPartEntry } from "./instruments.ts";
+import type { InstrumentName } from "./instruments.ts";
 
 /** Un temps de la règle de comptage, et la barre qui le termine. */
 type Segment = { from: number; to: number; barEnd: boolean; endRepeat: boolean; startRepeatAfter: boolean };
@@ -122,12 +124,16 @@ export function markTokens(line: string) {
 export function parsePrisma(text: string): Score {
   const lines = text.replace(/\t/g, "    ").split(/\r?\n/);
   const { meta, bodyStartLine } = parseFrontmatter(lines);
-  // parties déclarées : « parts: Chant, Piano », chacune nommée sur le trait au-dessus de sa première portée
+  // parties déclarées : « parts: Chant (flute), Piano », chacune nommée sur le trait au-dessus de sa
+  // première portée ; entre parenthèses, l'instrument qui la joue à l'écoute
   const partsLine = lines.findIndex((l, i) => i < bodyStartLine && /^parts\s*:/.test(l)) + 1;
-  const declared = meta.parts === undefined ? undefined : String(meta.parts).split(",").map((x) => x.trim());
+  const entries = meta.parts === undefined ? undefined : String(meta.parts).split(",").map(splitPartEntry);
+  const declared = entries?.map((e) => e.name);
   delete meta.parts;
   if (declared) {
     if (declared.some((x) => !x)) throw new PrismaError("« parts » : les noms des parties, séparés par des virgules (parts: Chant, Piano)", partsLine);
+    const unknown = entries!.find((e) => e.instrument !== undefined && !isInstrument(e.instrument));
+    if (unknown) throw new PrismaError(`« parts » : instrument « ${unknown.instrument} » inconnu pour « ${unknown.name} » ; les instruments : ${INSTRUMENTS.join(", ")}`, partsLine);
     const twice = declared.find((x, i) => declared.indexOf(x) !== i);
     if (twice) throw new PrismaError(`« parts » : la partie « ${twice} » est nommée deux fois`, partsLine);
   }
@@ -352,7 +358,7 @@ export function parsePrisma(text: string): Score {
       }
     });
     if (declared && here.length < declared.length) throw new PrismaError(`il manque des parties : « parts » en déclare ${declared.length} (${declared.join(", ")})`, L, 1);
-    if (!parts) parts = here.map(({ name, staves }) => ({ ...(name ? { name } : {}), staves }));
+    if (!parts) parts = here.map(({ name, staves }, k) => ({ ...(name ? { name } : {}), staves, ...(entries?.[k]?.instrument ? { instrument: entries[k].instrument as InstrumentName } : {}) }));
     else if (here.length !== parts.length || here.some((x, k) => x.staves !== parts![k].staves)) {
       const shape = (xs: { staves: number }[]) => xs.map((x) => x.staves).join(" + ");
       throw new PrismaError(`ce système n'a pas les mêmes portées que le premier (${shape(here)} au lieu de ${shape(parts)}) : chaque système écrit toutes les portées, même vides`, L, 1);

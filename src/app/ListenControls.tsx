@@ -3,7 +3,7 @@ import type { Score } from "../core/index.ts";
 import { DEFAULT_BPM, player } from "./player.ts";
 import { follow } from "./follow.ts";
 import { MAX_TEMPO, MIN_TEMPO } from "./piece.ts";
-import { PIANO, INSTRUMENTS } from "./instruments.ts";
+import { INSTRUMENTS, PIANO, instrumentLabel, scoreInstrument } from "./instruments.ts";
 import { staffNames } from "./staves.ts";
 import { usePopover } from "./popover.ts";
 
@@ -184,14 +184,24 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument }: { score
         <div className="popover parts-list" role="dialog" aria-label="Parties et instruments">
           <p className="popover-title">Parties et instruments</p>
           {groups.map((g, i) => {
+            // l'instrument de la partition (écrit après le nom de la partie, ou deviné) ; un autre choix se rétablit d'un clic
+            const fromScore = score ? scoreInstrument(score.parts[i]) : PIANO;
+            const chosen = (instruments[i] ?? PIANO) !== fromScore;
             const instrument = (
-              <select value={instruments[i] ?? PIANO} onChange={(e) => onInstrument(i, e.target.value)} aria-label={`Instrument${g.name ? ` : ${g.name}` : ""}`} title="L'instrument de la partie, à l'écoute">
-                {INSTRUMENTS.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
+              <span className="part-instrument">
+                <select value={instruments[i] ?? PIANO} onChange={(e) => onInstrument(i, e.target.value)} aria-label={`Instrument${g.name ? ` : ${g.name}` : ""}`} title={chosen ? `Choisi pour ce morceau ; la partition donne : ${instrumentLabel(fromScore)}` : "L'instrument de la partie, à l'écoute, tel que la partition le donne"}>
+                  {INSTRUMENTS.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+                {chosen && (
+                  <button className="reset" onClick={() => onInstrument(i, fromScore)} title={`Reprendre l'instrument de la partition (${instrumentLabel(fromScore)})`} aria-label="Reprendre l'instrument de la partition">
+                    ↺
+                  </button>
+                )}
+              </span>
             );
             // une partie d'une portée : une seule ligne ; sinon son nom et son instrument, puis ses portées
             if (g.staves.length === 1)
@@ -227,7 +237,7 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument }: { score
               Aucune
             </button>
           </div>
-          <p className="popover-hint">Une portée muette n'est pas jouée : à vous de la jouer, avec le métronome au besoin. L'instrument d'une partie se devine d'après son nom ; un autre choix vaut pour ce morceau.</p>
+          <p className="popover-hint">Une portée muette n'est pas jouée : à vous de la jouer, avec le métronome au besoin. L'instrument d'une partie est celui que la partition écrit après son nom, ou que son nom fait deviner ; un autre choix vaut pour ce morceau.</p>
         </div>
       )}
     </span>

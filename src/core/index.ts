@@ -1,5 +1,6 @@
 export * from "./model.ts";
 export * from "./pitch.ts";
+export * from "./instruments.ts";
 export { FORMAT_VERSION, PrismaError } from "./frontmatter.ts";
 export { importMusicXml } from "./musicxml.ts";
 export { inspect, noteName } from "./inspect.ts";

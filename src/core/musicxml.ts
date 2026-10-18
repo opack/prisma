@@ -16,6 +16,7 @@
 import { XMLParser } from "fast-xml-parser";
 import { chordNameNotes } from "./chords.ts";
 import { TICKS_PER_BEAT, dynamicInWords, sortArticulations, isDynamic, isPedalText, staffCount, sortGraces, sortLyrics, sortNotes } from "./model.ts";
+import { guessInstrument, instrumentOfProgram } from "./instruments.ts";
 import type { Arpeggio, Articulation, ArticulationKind, Beat, Division, Expression, Grace, Hairpin, Part, Slur, Staff, Lyric, Marker, Meta, Note, Pedal, PedalText, Repeat, Score, TextMark } from "./model.ts";
 
 /**
@@ -683,8 +684,14 @@ export function importMusicXml(xml: string, fileName?: string): Score {
   if (fileName) meta.source = fileName;
 
   // parties : une par <part>, une portée par <staff> ; nommées seulement s'il y en a plusieurs
-  const staffNames = new Map(
-    findAll(kids(find(rootKids, "part-list")), "score-part").map((sp) => [String(attr(sp, "id")), clean(text(find(kids(sp), "part-name")))]),
+  const scoreParts = findAll(kids(find(rootKids, "part-list")), "score-part");
+  const staffNames = new Map(scoreParts.map((sp) => [String(attr(sp, "id")), clean(text(find(kids(sp), "part-name")))]));
+  // l'instrument de chaque partie, d'après son programme General MIDI, quand il y en a un
+  const programs = new Map(
+    scoreParts.map((sp) => {
+      const program = num(find(kids(find(kids(sp), "midi-instrument")), "midi-program"), 0);
+      return [String(attr(sp, "id")), program ? instrumentOfProgram(program) : undefined];
+    }),
   );
   const parts: Part[] = [];
   const perPart: RawMeasure[][] = [];
@@ -696,7 +703,10 @@ export function importMusicXml(xml: string, fileName?: string): Score {
       ...measuresOf.flatMap((m) => findAll(kids(m), "note").map((n) => num(find(kids(n), "staff"), 1))),
     );
     perPart.push(readMeasures(node, staffCount(parts), staves));
-    parts.push({ name: staffNames.get(String(attr(node, "id"))) ?? "", staves: staves });
+    const id = String(attr(node, "id")), name = staffNames.get(id) ?? "";
+    // écrit seulement s'il diffère de celui que son nom fait deviner : le fichier reste sobre
+    const instrument = programs.get(id);
+    parts.push({ name, staves, ...(instrument && instrument !== guessInstrument(name) ? { instrument } : {}) });
   }
   if (parts.length > 1) {
     // noms uniques, sans virgule (elle sépare les noms dans « parts »)
@@ -706,7 +716,13 @@ export function importMusicXml(xml: string, fileName?: string): Score {
       for (let k = 2; parts.slice(0, i).some((y) => y.name === name); k++) name = `${base} ${k}`;
       x.name = name;
     });
-  } else delete parts[0].name;
+  } else if ((parts[0].instrument ?? guessInstrument(parts[0].name)) !== "piano") {
+    // une seule partie : nommée seulement pour porter son instrument, quand ce n'est pas le piano
+    parts[0].name = (parts[0].name ?? "").replace(/,/g, " ").replace(/\s+/g, " ").trim() || "Partie 1";
+  } else {
+    delete parts[0].name;
+    delete parts[0].instrument;
+  }
   // mesures : la première portée donne la métrique, les reprises et la structure ; les autres y ajoutent leur contenu
   const measures = perPart[0];
   for (const other of perPart.slice(1)) {

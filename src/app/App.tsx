@@ -20,7 +20,7 @@ import { PageView } from "./PageView.tsx";
 import { SAMPLE } from "./sample.ts";
 import { loadOptions, saveOptions } from "./options.ts";
 import type { RenderOptions } from "./options.ts";
-import { guessInstrument, staffInstruments, instrumentsOf } from "./instruments.ts";
+import { scoreInstrument, staffInstruments, instrumentsOf } from "./instruments.ts";
 import { PIECE_KEYS, isEmpty, isPieceKey, parseSettings, readSettings, saveSettings, settingsName, writeSettings } from "./piece.ts";
 import type { PieceKey, PieceSettings } from "./piece.ts";
 import { OPENABLE, canWriteInPlace, download, droppedFile, pickFile, pickSaveTarget, targetIn, writeFile } from "./files.ts";
@@ -574,7 +574,8 @@ export function App() {
   const instruments = useMemo(() => instrumentsOf(parts, piece.instruments), [parts, piece.instruments]);
   const setInstrument = (part: number, instrument: string) => {
     const chosen = parts.map((_, i) => piece.instruments?.[i] ?? null);
-    chosen[part] = instrument === guessInstrument(parts[part]?.name) ? null : instrument;
+    // l'instrument de la partition n'est pas un choix : il n'est pas retenu
+    chosen[part] = parts[part] && instrument === scoreInstrument(parts[part]) ? null : instrument;
     updatePiece({ instruments: chosen.some((t) => t !== null) ? chosen : undefined });
   };
   useEffect(() => {

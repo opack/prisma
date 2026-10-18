@@ -75,6 +75,10 @@ m1 |1    |2  |3  |4   ||
 
 La partition réunit les portées d'une partie par une accolade et écrit les noms à gauche du premier système.
 
+À l'écoute, le nom d'une partie fait choisir l'instrument qui la joue : « Chant » se chante, « Flûte » ou « Violin » sonnent comme tels, et un nom qui ne dit rien d'un instrument se joue au piano. Pour un nom libre (« Chœur de droite », « Premier violon »), l'instrument s'écrit entre parenthèses après le nom, dans `parts:`, en anglais : `parts: Chœur de droite (flute), Piano`. Les instruments : `piano`, `electric-piano`, `harpsichord`, `organ`, `accordion`, `guitar`, `electric-bass`, `harp`, `violin`, `viola`, `cello`, `double-bass`, `strings`, `flute`, `oboe`, `clarinet`, `bassoon`, `saxophone`, `trumpet`, `horn`, `trombone`, `voice`, `marimba`, `vibraphone`.
+
+L'application permet aussi de choisir un autre instrument pour soi, dans le menu « Parties et instruments » à côté du bouton de la musique, sans toucher au fichier ; une flèche ↺ reprend celui de la partition.
+
 ### Les accords
 
 Une ligne ne porte qu'une note à la fois. Un accord occupe une ligne par note, la plus aiguë en haut :

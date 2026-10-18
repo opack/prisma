@@ -11,7 +11,7 @@ Entre deux lignes `---`, une clé par ligne, sous la forme `clé: valeur`.
 | `format` | Version du format Prisma du fichier : `format: 1`. L'écriture la met toujours ; un fichier sans elle est lu comme la version courante. Le lecteur refuse un fichier d'une autre version en le disant (voir « Versions »). |
 | `title`, `subtitle`, `composer`, `source` | Informations affichées : le sous-titre (« Op. 9 n° 2 », « Suite bergamasque, 3ᵉ mouvement »…) sous le titre. |
 | `bpm` | Tempo de départ, en temps (*beats*) par minute : `bpm: 78`, affiché « 78 bpm ». Le temps est celui de la règle de comptage, donc la noire pointée d'un 6/8 : le nombre se lit sans ambiguïté, comme sur un métronome. Les indications en mots (`Andante`, `rit.`) vont sur la ligne `@` au-dessus de la règle. À l'import MusicXML, il vient du premier `<sound tempo>`, converti des noires en temps. Sans `bpm`, l'écoute joue à 80. |
-| `parts` | Noms des parties, de haut en bas, séparés par des virgules : `parts: Chant, Piano` (voir « Portées et parties »). |
+| `parts` | Noms des parties, de haut en bas, séparés par des virgules, chacun suivi s'il le faut de l'instrument qui la joue à l'écoute, entre parenthèses : `parts: Chant, Chœur de droite (flute), Piano` (voir « Portées et parties »). |
 | `order` | Ordre de jeu des sections, par leur lettre : `order: A A B C B D A` (voir « Sections et ordre de jeu »). |
 | `cell` | Largeur de base d'une case en caractères, à l'écriture. Vaut 3 par défaut. |
 | `division` | Découpage par défaut d'un temps : `2` (binaire, par défaut) ou `3` (ternaire, pour le 6/8 par exemple). |
@@ -46,6 +46,8 @@ Une **portée** est un groupe de lignes entre deux traits : une main au piano, u
 
 Les parties peuvent être nommées. Leurs noms se déclarent dans le frontmatter, dans l'ordre (`parts: Chant, Piano`), et chacun s'écrit sur le trait au-dessus de la première portée de sa partie : le trait sous la règle pour la première, le trait double qui la commence pour les suivantes. Le nom se place n'importe où sur le trait, entre des espaces, avec au moins un morceau de trait de chaque côté ; l'écriture le met juste après la colonne de gauche.
 
+À l'écoute, chaque partie est jouée par un instrument : celui écrit entre parenthèses après son nom dans `parts:` (`Chœur de droite (flute)`), sinon celui que son nom fait deviner, en français ou en anglais (« Flûte », « Violin », « Chant »…), et à défaut le piano. Les instruments, en anglais comme les clés : `piano`, `electric-piano`, `harpsichord`, `organ`, `accordion`, `guitar`, `electric-bass`, `harp`, `violin`, `viola`, `cello`, `double-bass`, `strings`, `flute`, `oboe`, `clarinet`, `bassoon`, `saxophone`, `trumpet`, `horn`, `trombone`, `voice`, `marimba`, `vibraphone`. Un autre nom est une erreur. Le nom écrit sur le trait reste le nom seul, sans l'instrument. L'auditeur peut en choisir un autre pour lui-même, dans l'application : ce choix se range dans les réglages du morceau, pas dans le fichier.
+
 ```
 ---
 parts: Chant, Piano
@@ -65,7 +67,7 @@ Le nom doit être celui que `parts` annonce à cette place : un nom non déclar�
 
 Prisma note toujours la hauteur qui sonne : un instrument transpositeur (clarinette en si♭, cor en fa, saxophone) s'écrit comme il sonne, et ses portées s'alignent juste avec les autres. À l'import MusicXML, la hauteur écrite est corrigée d'après `<transpose>`.
 
-À l'import MusicXML, chaque `<part>` devient une partie et chacune de ses portées une portée ; les parties sont nommées d'après `<part-name>` quand il y en a plusieurs. Un arpège qui traverse les portées s'égrène d'un seul geste (`/` sur la ligne du haut) quand le morceau n'a qu'une partie, et sinon portée par portée.
+À l'import MusicXML, chaque `<part>` devient une partie et chacune de ses portées une portée ; les parties sont nommées d'après `<part-name>` quand il y en a plusieurs ; l'instrument vient du programme General MIDI (`<midi-program>`), écrit seulement quand le nom ne le fait pas deviner (une partie seule n'est nommée que pour porter un instrument autre que le piano). Un arpège qui traverse les portées s'égrène d'un seul geste (`/` sur la ligne du haut) quand le morceau n'a qu'une partie, et sinon portée par portée.
 
 ### Les cases
 

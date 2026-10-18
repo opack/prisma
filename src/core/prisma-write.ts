@@ -22,6 +22,9 @@ function rule(model: string, prefix: number, double = false, name?: string): str
     const label = [..." " + name + " "];
     while (line.length < prefix + 1 + label.length + 1) line.push(double ? "═" : "─");
     line.splice(prefix + 1, label.length, ...label);
+    // un morceau de trait après le nom, même quand un croisement tombe juste là
+    const after = prefix + 1 + label.length;
+    if (line[after] !== (double ? "═" : "─")) line.splice(after, 0, double ? "═" : "─");
   }
   return line.join("");
 }
@@ -267,8 +270,8 @@ export function writePrisma(score: Score, opts: WriteOptions = {}): string {
   if (ternary * 2 > score.beats.length) meta.division = 3;
   else delete meta.division;
   if (score.order.length) meta.order = score.order.join(" ");
-  // noms des parties : déclarés ici, écrits sur le trait de chacune
-  if (score.parts.some((x) => x.name)) meta.parts = score.parts.map((x) => x.name).join(", ");
+  // noms des parties : déclarés ici, avec l'instrument qui les joue s'il est écrit, et sur le trait de chacune
+  if (score.parts.some((x) => x.name)) meta.parts = score.parts.map((x) => (x.instrument ? `${x.name} (${x.instrument})` : x.name)).join(", ");
   const out = writeFrontmatter(meta);
   systems.forEach((s, i) => {
     if (i) out.push("");

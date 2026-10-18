@@ -9,7 +9,7 @@
  * petites notes, trilles, arpèges, points d'orgue, articulations ; un métronome sur les temps, avec
  * ou sans les instruments ; des portées muettes, pour les jouer soi-même.
  */
-import { PIANO, instrumentLabel } from "./instruments.ts";
+import { PIANO, instrumentLabel, soundOf } from "./instruments.ts";
 import { TICKS_PER_BEAT } from "../core/index.ts";
 import type { Score } from "../core/index.ts";
 import { clicks, countIn, entryAt, entryStart, holds, inFirstBar, nextTick, passages, playedLength, playedNotes, playedTick, scoreTick, stretched, unstretched } from "./performance.ts";
@@ -193,7 +193,7 @@ class Player {
     await Promise.all(
       ids.map(async (id) => {
         try {
-          const voice = id === PIANO ? await SplendidGrandPiano(this.context!).load : await Soundfont(this.context!, { instrument: id }).load;
+          const voice = id === PIANO ? await SplendidGrandPiano(this.context!).load : await Soundfont(this.context!, { instrument: soundOf(id) }).load;
           this.voicesBy.set(id, voice as Voice);
         } catch {
           throw new Error(`Impossible de charger le son ${id === PIANO ? "du piano" : `« ${instrumentLabel(id)} »`} (connexion internet ?)`);

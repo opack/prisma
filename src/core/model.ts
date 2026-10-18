@@ -7,6 +7,8 @@
  * Cette unité est divisible par 2⁶, 3² et 5 : doubles croches, triolets dans des
  * mesures composées et quintolets tombent sur des valeurs entières.
  */
+import type { InstrumentName } from "./instruments.ts";
+
 export const TICKS_PER_BEAT = 2880;
 
 /**
@@ -18,8 +20,10 @@ export type Staff = number;
 /**
  * Partie : une ou plusieurs portées qui se suivent (le piano en a deux). name : son nom,
  * déclaré dans le frontmatter (`parts:`) et écrit sur le trait au-dessus de sa première portée.
+ * instrument : celui qui la joue à l'écoute, écrit après son nom (« Chœur (flute) ») ; absent,
+ * son nom le fait deviner.
  */
-export type Part = { name?: string; staves: number };
+export type Part = { name?: string; staves: number; instrument?: InstrumentName };
 
 /** Partie de chaque portée : son rang dans la liste des parties. */
 export function partOf(parts: Part[], staff: Staff): number {

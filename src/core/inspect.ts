@@ -55,7 +55,7 @@ const FRONTMATTER: Record<string, string> = {
   composer: "compositeur",
   source: "source du morceau",
   bpm: "tempo de départ, en temps par minute",
-  parts: "noms des parties, de haut en bas",
+  parts: "noms des parties, de haut en bas, et entre parenthèses l'instrument qui joue chacune à l'écoute (sinon son nom le fait deviner)",
   order: "ordre de jeu des sections",
   cell: "largeur de base d'une case, en caractères, à l'écriture",
   division: "découpage par défaut d'un temps : 2 (binaire) ou 3 (ternaire)",
