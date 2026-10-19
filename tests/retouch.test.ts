@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TICKS_PER_BEAT as T, parsePrisma } from "../src/core/index.ts";
-import { cellOf, durationOf, holdChoices, holdIn, resize, retouch } from "../src/app/retouch.ts";
+import { cellOf, durationOf, holdChoices, holdIn, joinCell, resize, retouch, splitCell } from "../src/app/retouch.ts";
 
 const text = ["m1 |1  |2  ||", "───┼───┼───┼┼", "+1 |3  |   ||", "-1 |1  |-  ||", "───┼───┼───┼┼", "-2 |8  |   ||", "@   p"].join("\n");
 
@@ -91,5 +91,13 @@ describe("retouche sur place", () => {
     const r = holdIn(holdIn(t, far, "5")!.text, next, "5")!;
     expect(r.text.split("\n")[5]).toBe("0  |-5 |-  ||");
     expect(() => parsePrisma(r.text)).not.toThrow();
+  });
+
+  it("découpe et recompose une case : petites notes, note, trille, doigté", () => {
+    expect(splitCell("3'4'5~7_2")).toEqual({ graces: ["3", "4"], note: "5", trill: "7", finger: "2" });
+    expect(splitCell("12")).toEqual({ graces: [], note: "12", trill: undefined, finger: undefined });
+    expect(splitCell("-")).toBeUndefined();
+    expect(joinCell({ graces: ["6"], note: "5", finger: "3" })).toBe("6'5_3");
+    for (const c of ["5", "3'5", "5~7", "5_1", "10'12'7~9_4"]) expect(joinCell(splitCell(c)!)).toBe(c);
   });
 });

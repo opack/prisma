@@ -422,3 +422,18 @@ export function holdIn(text: string, at: ScorePlace, note: string): Done | undef
   }
   return undefined;
 }
+
+// les ajouts à une note : petites notes devant, trille, doigté
+
+/** Une case qui attaque une note, en morceaux : ses petites notes, sa note, sa trille, son doigt. */
+export type CellParts = { graces: string[]; note: string; trill?: string; finger?: string };
+
+/** Les morceaux d'une case qui attaque une note (« 3'5~7_2 »), ou rien pour une tenue ou une case vide. */
+export function splitCell(cell: string): CellParts | undefined {
+  const m = cell.trim().match(/^((?:\d+')*)(\d+)(?:~(\d+))?(?:_(\d))?$/);
+  if (!m) return undefined;
+  return { graces: m[1] ? m[1].split("'").filter(Boolean) : [], note: m[2], trill: m[3], finger: m[4] };
+}
+
+/** La case réécrite d'après ses morceaux. */
+export const joinCell = (p: CellParts) => p.graces.map((g) => g + "'").join("") + p.note + (p.trill ? "~" + p.trill : "") + (p.finger ? "_" + p.finger : "");

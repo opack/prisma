@@ -47,6 +47,10 @@ button:disabled { opacity: .5; cursor: default; }
 .retouch-notes b { font-family: var(--mono); font-size: 15px; }
 .retouch-notes small { font-size: 10.5px; color: var(--muted); }
 .retouch-more { display: flex; gap: 4px; margin-top: 6px; }
+.retouch-adds { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 13px; }
+.retouch-adds > span { color: var(--muted); }
+.retouch-adds > div { display: flex; gap: 4px; }
+.retouch-adds button { flex: 1; padding: 2px 0; font-family: var(--mono); }
 .retouch-duration { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 13px; }
 .retouch-duration span { flex: 1; color: var(--muted); }
 .retouch-duration button { width: 30px; padding: 2px 0; font-size: 15px; line-height: 1; }

@@ -992,8 +992,10 @@ export function CursorRect({ ps, ci, rectRef }: { ps: PlacedSystem; ci: number; 
  */
 export function TextMarks({ systems }: { systems: PlacedSystem[] }) {
   const mark = useSyncExternalStore(textMark.subscribe, textMark.get);
+  // pendant l'écoute, seul le curseur de lecture se montre, sur toute la hauteur de sa case
+  const playing = useSyncExternalStore(player.subscribe, () => ["playing", "loading"].includes(player.getSnapshot().state));
   const ref = useRef<SVGRectElement>(null);
-  const at = mark?.place;
+  const at = playing ? undefined : mark?.place;
   const ps = at && systems.find((p) => at.t >= p.sys.start && at.t < p.sys.end);
   useEffect(() => {
     if (ps && mark?.reveal) ref.current?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });

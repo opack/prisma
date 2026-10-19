@@ -8,6 +8,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { midiOf, noteName } from "../core/index.ts";
 import type { NoteNames } from "../core/index.ts";
 import { mainOf } from "../core/locate.ts";
+import { joinCell, splitCell } from "./retouch.ts";
+import type { CellParts } from "./retouch.ts";
 
 type Props = {
   /** Où ouvrir le choix, à l'écran. */
@@ -26,10 +28,15 @@ type Props = {
   onPick: (content: string) => void;
   onResize: (by: 1 | -1) => void;
   onHold: (note: string) => void;
+  /** Réécrit la case (un ajout à sa note) sans fermer le choix. */
+  onAmend: (content: string) => void;
   onClose: () => void;
 };
 
-export function RetouchMenu({ x, y, octave, content, canHold, duration, holds, names, onPick, onResize, onHold, onClose }: Props) {
+/** Un numéro de note, ramené entre 1 et 12. */
+const wrap = (n: number) => ((((n - 1) % 12) + 12) % 12) + 1;
+
+export function RetouchMenu({ x, y, octave, content, canHold, duration, holds, names, onPick, onResize, onHold, onAmend, onClose }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const [place, setPlace] = useState({ left: x + 8, top: y + 8 });
   const current = mainOf(content);
@@ -55,6 +62,15 @@ export function RetouchMenu({ x, y, octave, content, canHold, duration, holds, n
   }, [onClose]);
 
   const name = (n: number) => (octave === undefined ? "" : noteName(midiOf(octave, n), names).replace(/ \(.*\)$/, ""));
+  const parts = splitCell(content);
+  // la voisine d'une trille : la plus proche qui porte ce numéro, au-dessus ou au-dessous
+  const neighbour = (m: number) => {
+    if (octave === undefined || !parts) return "";
+    const main = midiOf(octave, Number(parts.note));
+    const near = [-1, 0, 1].map((d) => midiOf(octave + d, m)).filter((x) => x !== main).sort((a, b) => Math.abs(a - main) - Math.abs(b - main))[0];
+    return noteName(near, names).replace(/ \(.*\)$/, "");
+  };
+  const amend = (change: Partial<CellParts>) => parts && onAmend(joinCell({ ...parts, ...change }));
   const label = octave === undefined ? "" : octave === 4 ? "octave 0" : `octave ${octave > 4 ? "+" : "−"}${Math.abs(octave - 4)}`;
   return (
     <div ref={box} className="retouch-menu" role="dialog" aria-label="Note de la case" style={place} tabIndex={-1}>
@@ -69,6 +85,43 @@ export function RetouchMenu({ x, y, octave, content, canHold, duration, holds, n
           </button>
         ))}
       </div>
+      {parts && (
+        <div className="retouch-adds">
+          <span>Doigt</span>
+          <div>
+            {[1, 2, 3, 4, 5].map((f) => (
+              <button key={f} className={parts.finger === String(f) ? "current" : undefined} onClick={() => amend({ finger: parts.finger === String(f) ? undefined : String(f) })} title={parts.finger === String(f) ? "retirer le doigté" : `jouer avec le doigt ${f}`}>
+                {f}
+              </button>
+            ))}
+          </div>
+          <span>Trille</span>
+          <div>
+            {[1, 2, -1, -2].map((d) => {
+              const m = String(wrap(Number(parts.note) + d));
+              return (
+                <button key={d} className={parts.trill === m ? "current" : undefined} onClick={() => amend({ trill: parts.trill === m ? undefined : m })} title={parts.trill === m ? "retirer la trille" : `alterner avec ${neighbour(Number(m))}`}>
+                  ~{m}
+                </button>
+              );
+            })}
+          </div>
+          <span>Petite note</span>
+          <div>
+            {[-2, -1, 1, 2]
+              .map((d) => Number(parts.note) + d)
+              .filter((g) => g >= 1 && g <= 12)
+              .map((g) => {
+                const on = parts.graces.includes(String(g));
+                return (
+                  <button key={g} className={on ? "current" : undefined} onClick={() => amend({ graces: on ? parts.graces.filter((x) => x !== String(g)) : [...parts.graces, String(g)] })} title={on ? "retirer cette petite note" : `${name(g)} joué très vite juste avant`}>
+                    {g}&#8217;
+                  </button>
+                );
+              })}
+          </div>
+        </div>
+      )}
       {duration && (
         <div className="retouch-duration">
           <span>Durée</span>

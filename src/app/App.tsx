@@ -563,6 +563,7 @@ export function App() {
     if (line) editor.current?.goTo(line, column);
   };
 
+  const playing = () => ["playing", "loading"].includes(player.getSnapshot().state);
   // un clic sur la partition : le curseur du texte va sur le signe cliqué, sans prendre le clavier ;
   // un double-clic ouvre le choix de la note de la case
   const sourceNow = useRef(source);
@@ -579,6 +580,8 @@ export function App() {
   useEffect(
     () =>
       scorePick.subscribe((at, where, kind) => {
+        // pendant l'écoute, la partition ne s'édite pas : le clic n'y place que l'écoute
+        if (playing()) return;
         if (kind === "edit") {
           setRetouchAt(describe(sourceNow.current, at, where));
           return;
@@ -590,6 +593,11 @@ export function App() {
     [reading, options.scoreToText],
   );
   const closeRetouch = useCallback(() => setRetouchAt(null), []);
+  // l'écoute qui démarre ferme le choix
+  useEffect(() => {
+    const off = player.subscribe(() => playing() && setRetouchAt(null));
+    return () => void off();
+  }, []);
   // la retouche écrite dans le texte (comme une frappe), puis la partition remise en page
   const engraveAfter = useRef(false);
   const write = (r: { text: string; line: number; column: number } | undefined) => {
@@ -607,6 +615,12 @@ export function App() {
     if (!retouchAt) return;
     const r = resize(sourceNow.current, retouchAt.at, by);
     if (write(r)) setRetouchAt(describe(r!.text, retouchAt.at, retouchAt.where));
+  };
+  // un ajout à la note (doigté, trille, petite note) : le choix reste ouvert, pour en faire d'autres
+  const applyAmend = (content: string) => {
+    if (!retouchAt) return;
+    const r = retouch(sourceNow.current, retouchAt.at, content);
+    if (write(r)) setRetouchAt(describe(r!.text, { ...retouchAt.at, content }, retouchAt.where));
   };
   const applyHold = (note: string) => {
     if (retouchAt) write(holdIn(sourceNow.current, retouchAt.at, note));
@@ -659,10 +673,13 @@ export function App() {
     player.setInstruments(staffInstruments(parts, instruments));
   }, [parts, instruments]);
   const partsKey = JSON.stringify(score?.parts ?? []);
-  // tempo choisi, propre au morceau : un nouveau tempo écrit dans la partition reprend la main
+  // tempo choisi, propre au morceau : un nouveau tempo écrit dans la partition reprend la main ;
+  // de nouvelles parties effacent les portées muettes et les instruments choisis
   const written = score?.meta.bpm;
   const seen = useRef({ pieceId, partsKey, written });
   useEffect(() => {
+    // une partition illisible (une erreur à corriger) ne change rien : on compare à la dernière lue
+    if (!score && seen.current.pieceId === pieceId) return;
     const before = seen.current;
     seen.current = { pieceId, partsKey, written };
     if (before.pieceId !== pieceId) return; // un autre morceau : ses réglages viennent d'être lus
@@ -854,6 +871,7 @@ export function App() {
               onPick={applyRetouch}
               onResize={applyResize}
               onHold={applyHold}
+              onAmend={applyAmend}
               onClose={closeRetouch}
             />
           )}
