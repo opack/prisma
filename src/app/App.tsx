@@ -10,7 +10,7 @@ import { pick as scorePick } from "./pick.ts";
 import { locate, textPlace } from "../core/locate.ts";
 import type { ScorePlace } from "../core/locate.ts";
 import type { ScreenPoint } from "./pick.ts";
-import { cellOf, durationOf, holdChoices, holdIn, resize, retouch } from "./retouch.ts";
+import { cellOf, durationOf, holdChoices, holdIn, moveOctave, octaveRoomOf, resize, retouch } from "./retouch.ts";
 import { RetouchMenu } from "./RetouchMenu.tsx";
 import { textMark } from "./textMark.ts";
 import type { EditorHandle } from "./SourceEditor.tsx";
@@ -622,6 +622,12 @@ export function App() {
     const r = retouch(sourceNow.current, retouchAt.at, content);
     if (write(r)) setRetouchAt(describe(r!.text, { ...retouchAt.at, content }, retouchAt.where));
   };
+  // l'octave de la note : le choix reste ouvert, sur la note à sa nouvelle place
+  const applyOctave = (dir: 1 | -1) => {
+    if (!retouchAt) return;
+    const r = moveOctave(sourceNow.current, retouchAt.at, dir);
+    if (write(r)) setRetouchAt(describe(r!.text, { ...retouchAt.at, octave: r!.octave }, retouchAt.where));
+  };
   const applyHold = (note: string) => {
     if (retouchAt) write(holdIn(sourceNow.current, retouchAt.at, note));
     setRetouchAt(null);
@@ -872,6 +878,8 @@ export function App() {
               onResize={applyResize}
               onHold={applyHold}
               onAmend={applyAmend}
+              octaves={retouchAt.duration ? octaveRoomOf(retouchAt.at) : undefined}
+              onOctave={applyOctave}
               onClose={closeRetouch}
             />
           )}

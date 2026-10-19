@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TICKS_PER_BEAT as T, parsePrisma } from "../src/core/index.ts";
-import { cellOf, durationOf, holdChoices, holdIn, joinCell, resize, retouch, splitCell } from "../src/app/retouch.ts";
+import { cellOf, durationOf, holdChoices, holdIn, joinCell, moveOctave, resize, retouch, splitCell } from "../src/app/retouch.ts";
 
 const text = ["m1 |1  |2  ||", "───┼───┼───┼┼", "+1 |3  |   ||", "-1 |1  |-  ||", "───┼───┼───┼┼", "-2 |8  |   ||", "@   p"].join("\n");
 
@@ -99,5 +99,27 @@ describe("retouche sur place", () => {
     expect(splitCell("-")).toBeUndefined();
     expect(joinCell({ graces: ["6"], note: "5", finger: "3" })).toBe("6'5_3");
     for (const c of ["5", "3'5", "5~7", "5_1", "10'12'7~9_4"]) expect(joinCell(splitCell(c)!)).toBe(c);
+  });
+
+  it("change l'octave d'une note, avec ses tenues, jusque dans le système suivant", () => {
+    const t = ["m1 |1  |2  |3  ||", "+1 |   |   |   ||", "0  |5  |-  |-  ||", "   |3  |   |   ||", "", "m2 |1  |2  ||", "0  |-5 |   ||"].join("\n");
+    const up = moveOctave(t, { t: 0, staff: 0, octave: 4, content: "5" }, 1)!;
+    // les lignes restées vides disparaissent : le 3 prend le numéro de l'octave 0
+    expect(up.text.split("\n")).toEqual(["m1 |1  |2  |3  ||", "+1 |5  |-  |-  ||", "0  |3  |   |   ||", "", "m2 |1  |2  ||", "+1 |-5 |   ||"]);
+    expect(up).toMatchObject({ octave: 5, line: 2, column: 5 });
+    expect(() => parsePrisma(up.text)).not.toThrow();
+    // vers une octave que le système n'a pas encore : sa ligne s'ouvre sous les autres
+    const down = moveOctave(t, { t: 0, staff: 0, octave: 4, content: "3" }, -1)!;
+    expect(down.text.split("\n").slice(1, 4)).toEqual(["+1 |   |   |   ||", "0  |5  |-  |-  ||", "-1 |3  |   |   ||"]);
+    expect(() => parsePrisma(down.text)).not.toThrow();
+  });
+
+  it("une ligne restée vide disparaît, son numéro d'octave passe à la suivante", () => {
+    const t = ["m1 |1  |2  ||", "+1 |5  |-  ||", "0  |   |   ||", "   |3  |   ||"].join("\n");
+    const down = moveOctave(t, { t: 0, staff: 0, octave: 5, content: "5" }, -1)!;
+    expect(down.text.split("\n")).toEqual(["m1 |1  |2  ||", "0  |5  |-  ||", "   |3  |   ||"]);
+    expect(down).toMatchObject({ line: 2 });
+    const t2 = ["m1 |1  |2  ||", "0  |   |   ||", "   |5  |-  ||", "-1 |1  |   ||"].join("\n");
+    expect(moveOctave(t2, { t: 0, staff: 0, octave: 4, content: "5" }, 1)!.text.split("\n")).toEqual(["m1 |1  |2  ||", "+1 |5  |-  ||", "0  |   |   ||", "-1 |1  |   ||"]);
   });
 });

@@ -28,6 +28,9 @@ type Props = {
   onPick: (content: string) => void;
   onResize: (by: 1 | -1) => void;
   onHold: (note: string) => void;
+  /** Si la note peut monter ou descendre d'une octave, et le faire (le choix reste ouvert). */
+  octaves?: { up: boolean; down: boolean };
+  onOctave: (dir: 1 | -1) => void;
   /** Réécrit la case (un ajout à sa note) sans fermer le choix. */
   onAmend: (content: string) => void;
   onClose: () => void;
@@ -36,7 +39,7 @@ type Props = {
 /** Un numéro de note, ramené entre 1 et 12. */
 const wrap = (n: number) => ((((n - 1) % 12) + 12) % 12) + 1;
 
-export function RetouchMenu({ x, y, octave, content, canHold, duration, holds, names, onPick, onResize, onHold, onAmend, onClose }: Props) {
+export function RetouchMenu({ x, y, octave, content, canHold, duration, holds, names, onPick, onResize, onHold, onAmend, octaves, onOctave, onClose }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const [place, setPlace] = useState({ left: x + 8, top: y + 8 });
   const current = mainOf(content);
@@ -74,9 +77,21 @@ export function RetouchMenu({ x, y, octave, content, canHold, duration, holds, n
   const label = octave === undefined ? "" : octave === 4 ? "octave 0" : `octave ${octave > 4 ? "+" : "−"}${Math.abs(octave - 4)}`;
   return (
     <div ref={box} className="retouch-menu" role="dialog" aria-label="Note de la case" style={place} tabIndex={-1}>
-      <p className="retouch-title">
-        Note de la case <span>{label}</span>
-      </p>
+      <div className="retouch-title">
+        <p>
+          Note de la case <span>{label}</span>
+        </p>
+        {octaves && (
+          <span className="retouch-octave">
+            <button onClick={() => onOctave(1)} disabled={!octaves.up} title={octaves.up ? "monter la note d'une octave, avec ses tenues" : "plus haut que le clavier"} aria-label="Une octave au-dessus">
+              ▲
+            </button>
+            <button onClick={() => onOctave(-1)} disabled={!octaves.down} title={octaves.down ? "descendre la note d'une octave, avec ses tenues" : "plus bas que le clavier"} aria-label="Une octave au-dessous">
+              ▼
+            </button>
+          </span>
+        )}
+      </div>
       <div className="retouch-notes">
         {Array.from({ length: 12 }, (_, k) => k + 1).map((n) => (
           <button key={n} className={String(n) === current ? "current" : undefined} onClick={() => onPick(String(n))} title={name(n)}>

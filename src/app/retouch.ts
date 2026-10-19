@@ -327,8 +327,10 @@ export function resize(text: string, at: ScorePlace, by: 1 | -1): Done | undefin
       lines = write(lines, { L: from, k }, "");
       lines = write(lines, { L: free.L, k }, content);
     }
-    const to = { L: free.L, k: next.k };
-    return done(write(lines, to, "-"), to);
+    lines = write(lines, { L: free.L, k: next.k }, "-");
+    const dropped = dropIfEmpty(lines, from);
+    const to = { L: dropped !== lines && from < free.L ? free.L - 1 : free.L, k: next.k };
+    return done(dropped, to);
   }
   // au bout du système : la note continue dans le suivant, sur une ligne de son octave libre au début
   const ns = nextSystem(lines, here.sys, 1);
@@ -437,3 +439,80 @@ export function splitCell(cell: string): CellParts | undefined {
 
 /** La case réécrite d'après ses morceaux. */
 export const joinCell = (p: CellParts) => p.graces.map((g) => g + "'").join("") + p.note + (p.trill ? "~" + p.trill : "") + (p.finger ? "_" + p.finger : "");
+
+/**
+ * Une ligne de notes restée vide après qu'une note l'a quittée disparaît : son numéro d'octave passe
+ * à la ligne suivante de l'octave, s'il y en a une. La seule ligne de notes d'une portée reste.
+ */
+function dropIfEmpty(lines: string[], L: number): string[] {
+  const here = casesAt(lines, L);
+  if (!here || here.all.some((_, k) => cellAt(lines, { L, k }))) return lines;
+  const lane = laneOf(lines, L);
+  if (!lane) return lines;
+  const isNote = (l?: string) => !!l && !l.startsWith("@") && !l.startsWith("#") && l.includes("|") && !isRule(l) && !isRuler(l);
+  // la seule ligne de notes de sa portée : elle reste
+  let count = 0;
+  for (let k = here.sys.ruler + 1; k <= here.sys.last; k++) if (isNote(lines[k]) && laneOf(lines, k)?.staff === lane.staff) count++;
+  if (count <= 1) return lines;
+  const out = [...lines];
+  const label = out[L].slice(0, out[L].indexOf("|"));
+  const next = out[L + 1];
+  if (label.trim() && isNote(next) && !next.slice(0, next.indexOf("|")).trim()) out[L + 1] = label + next.slice(next.indexOf("|"));
+  out.splice(L, 1);
+  return out;
+}
+
+/** Les octaves possibles : de -4 à +4 autour de celle du do central. */
+const LOWEST = CENTRAL_OCTAVE - 4, HIGHEST = CENTRAL_OCTAVE + 4;
+
+/**
+ * Change l'octave d'une note (dir : 1 au-dessus, -1 au-dessous) : son attaque et ses tenues passent,
+ * système par système, sur une ligne de l'octave voisine où elles ont la place, ou sur une ligne de
+ * plus ouverte à sa place dans la portée. Rien au-delà des octaves du clavier.
+ */
+export function moveOctave(text: string, at: ScorePlace, dir: 1 | -1): (Done & { octave: number }) | undefined {
+  let lines = text.split("\n");
+  const p = posOf(text, at);
+  const n = p && noteAt(lines, p);
+  if (!n || at.octave === undefined) return undefined;
+  const target = at.octave + dir;
+  if (target < LOWEST || target > HIGHEST) return undefined;
+  const lane = laneOf(lines, n.chain[0].L);
+  if (!lane) return undefined;
+  // les cases de la note, système par système (une ligne par système), du dernier au premier :
+  // une ligne ouverte plus bas ne déplace pas celles d'au-dessus
+  const groups: Pos[][] = [];
+  for (const c of n.chain) {
+    const g = groups[groups.length - 1];
+    if (g && g[0].L === c.L) g.push(c);
+    else groups.push([c]);
+  }
+  let first: Pos | undefined;
+  for (let gi = groups.length - 1; gi >= 0; gi--) {
+    const g = groups[gi];
+    let from = g[0].L;
+    const sys = casesAt(lines, from)!.sys;
+    const ks = g.map((c) => c.k);
+    const count = lines.length;
+    const free = freeLine(lines, sys, lane.staff, target, ks);
+    lines = free.lines;
+    // une ligne ouverte au-dessus de la note la décale d'une ligne
+    if (lines.length > count && free.L <= from) from++;
+    for (const k of ks) {
+      const content = cellAt(lines, { L: from, k });
+      lines = write(lines, { L: from, k }, "");
+      lines = write(lines, { L: free.L, k }, content);
+    }
+    let to = free.L;
+    const dropped = dropIfEmpty(lines, from);
+    if (dropped !== lines && from < to) to--;
+    lines = dropped;
+    first = { L: to, k: ks[0] };
+  }
+  return { ...done(lines, first!), octave: target };
+}
+
+/** Si la note d'une case peut monter ou descendre d'une octave. */
+export function octaveRoomOf(at: ScorePlace) {
+  return { up: at.octave !== undefined && at.octave < HIGHEST, down: at.octave !== undefined && at.octave > LOWEST };
+}
