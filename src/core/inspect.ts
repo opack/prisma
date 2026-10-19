@@ -9,8 +9,8 @@ import { ARPEGGIO_DOWN, FERMATA, FINGER_MARK, GRACE_MARK, MARKER_SIGN, PEDAL_CHA
 import { midiOf, octaveOf, parseOctaveLabel } from "./pitch.ts";
 import { CHORD_LINE, isRuler, markTokens, parseRule } from "./prisma-parse.ts";
 
-/** Noms des notes : do ré mi (do central = do3), ou anglais (C4). */
-export type NoteNames = "latin" | "english";
+/** Noms des notes : do ré mi (do central = do3), anglais (C4), ou aucun (le numéro Prisma suffit). */
+export type NoteNames = "latin" | "english" | "none";
 
 export type Inspection = {
   /** Ligne et colonne du curseur, à partir de 1. */
@@ -26,8 +26,11 @@ export type Inspection = {
   parts?: { name?: string; staves: number }[];
   /** Octave de la ligne de notes (scientifique : celle du do central vaut 4). */
   octave?: number;
-  /** Le signe sous le curseur et son sens. */
-  symbol?: { text: string; meaning: string };
+  /**
+   * Le signe sous le curseur et son sens ; pour une note ou un accord, ses numéros (1 à 12), à
+   * montrer sur un clavier, avec la voisine de trille et les petites notes d'une note.
+   */
+  symbol?: { text: string; meaning: string; keys?: number[]; trill?: number; graces?: number[] };
 };
 
 const LATIN = ["do", "do♯", "ré", "ré♯", "mi", "fa", "fa♯", "sol", "sol♯", "la", "la♯", "si"];
@@ -37,6 +40,7 @@ const FLAT_ENGLISH: Record<number, string> = { 1: "D♭", 3: "E♭", 6: "G♭", 
 
 /** Nom d'une hauteur : « do♯3 (ré♭3) », ou « C♯4 (D♭4) » en notation anglaise. */
 export function noteName(midi: number, names: NoteNames): string {
+  if (names === "none") return "";
   const pc = midi % 12;
   const oct = names === "latin" ? octaveOf(midi) - 1 : octaveOf(midi);
   const flat = (names === "latin" ? FLAT_LATIN : FLAT_ENGLISH)[pc];
@@ -44,7 +48,7 @@ export function noteName(midi: number, names: NoteNames): string {
   return flat ? `${main} (${flat}${oct})` : main;
 }
 /** Nom d'une classe de hauteur, sans octave : « mi », « F♯ ». */
-const pitchClass = (n: number, names: NoteNames) => (names === "latin" ? LATIN : ENGLISH)[(n - 1) % 12];
+const pitchClass = (n: number, names: NoteNames) => (names === "none" ? String(n) : (names === "latin" ? LATIN : ENGLISH)[(n - 1) % 12]);
 
 const FINGERS = ["", "pouce", "index", "majeur", "annulaire", "auriculaire"];
 
@@ -172,7 +176,9 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
   const C = before[before.length - 1].length;
   const out: Inspection = { line: L + 1, column: C + 1 };
   const line = lines[L] ?? "";
-  const symbol = (t: string, meaning: string) => (out.symbol = { text: t, meaning });
+  const symbol = (t: string, meaning: string, keys?: Pick<NonNullable<Inspection["symbol"]>, "keys" | "trill" | "graces">) => (out.symbol = { text: t, meaning, ...keys });
+  // le nom d'une note, ou, sans noms, son numéro
+  const named = (midi: number) => noteName(midi, names) || String((midi % 12) + 1);
 
   // l'en-tête
   let i = 0;
@@ -317,14 +323,14 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
   const pipe = line.indexOf("|");
   if (C < pipe) {
     const label = line.slice(0, pipe).trim();
-    if (label && octave !== undefined) symbol(label, `octave ${label} : de ${noteName(midiOf(octave, 1), names)} à ${noteName(midiOf(octave, 12), names)}`);
+    if (label && octave !== undefined) symbol(label, names === "none" ? `octave ${label}` : `octave ${label} : de ${noteName(midiOf(octave, 1), names)} à ${noteName(midiOf(octave, 12), names)}`);
     return out;
   }
   const sep = ruler.seps.find((s) => C >= s.from && C < s.to);
   if (sep) return symbol(sep.text, barMeaning(sep.text, sep === ruler.seps[0])), out;
   if (!place || octave === undefined) return out;
   const content = line.slice(place.cell.start, place.cell.end).trim();
-  if (content) symbol(content, noteMeaning(content, octave, line, place));
+  if (content) symbol(content, noteMeaning(content, octave, line, place), keysOf(content, line, place));
   return out;
 
   function chord(word: string) {
@@ -334,7 +340,7 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
     // au plus près du signe, son autre écriture : les chiffres Prisma d'un accord nommé, le nom d'un
     // accord écrit en chiffres (s'il en a un) ; puis ses notes
     const other = /^\d/.test(word) ? chordName(notes) : chordPrismaText(notes);
-    symbol(word, `${other ? `(${other}) ` : ""}accord ${list}`);
+    symbol(word, `${other ? `(${other}) ` : ""}accord ${list}`, { keys: notes.map((n) => ((n - 1) % 12) + 1) });
   }
 
   function noteMeaning(content: string, oct: number, row: string, p: NonNullable<ReturnType<typeof placeOf>>): string {
@@ -342,22 +348,35 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
     const rest = content.slice(graces.length);
     const staves: string[] = [];
     if (graces) {
-      const g = graces.split(GRACE_MARK).filter(Boolean).map((n) => noteName(midiOf(oct, Number(n)), names));
+      const g = graces.split(GRACE_MARK).filter(Boolean).map((n) => named(midiOf(oct, Number(n))));
       staves.push(`${g.length > 1 ? "petites notes" : "petite note"} : ${g.join(", ")}${rest ? ", puis" : ""}`);
     }
     if (rest === "-") staves.push(held(row, p) ?? "la note continue");
-    else if (/^-\d+$/.test(rest)) staves.push(`${noteName(midiOf(oct, Number(rest.slice(1))), names)}, commencé plus tôt, qui continue`);
+    else if (/^-\d+$/.test(rest)) staves.push(`${named(midiOf(oct, Number(rest.slice(1))))}, commencé plus tôt, qui continue`);
     else {
       const m = rest.match(new RegExp(`^(\\d+)(?:\\${TRILL_MARK}(\\d+))?(?:${FINGER_MARK}(\\d))?$`));
       if (m) {
         const midi = midiOf(oct, Number(m[1]));
-        let s = noteName(midi, names);
-        if (m[2]) s += `, en trille avec ${noteName(trillAux(midi, Number(m[2])), names)}`;
+        let s = noteName(midi, names) || "note";
+        if (m[2]) s += `, en trille avec ${named(trillAux(midi, Number(m[2])))}`;
         if (m[3]) s += `, doigt ${m[3]}${FINGERS[Number(m[3])] ? ` (${FINGERS[Number(m[3])]})` : ""}`;
         staves.push(s);
       } else if (rest) staves.push("signe inconnu");
     }
     return staves.join(" ");
+  }
+
+  /** Les numéros d'une case, pour un clavier : sa note (celle que prolonge une tenue), sa voisine de trille, ses petites notes. */
+  function keysOf(content: string, row: string, p: NonNullable<ReturnType<typeof placeOf>>) {
+    const valid = (n: number) => n >= 1 && n <= 12;
+    const graces = (content.match(/^(\d+')+/)?.[0] ?? "").split("'").filter(Boolean).map(Number).filter(valid);
+    const rest = content.replace(/^(\d+')+/, "");
+    const m = rest.match(/^-?(\d+)(?:~(\d+))?/);
+    const h = rest === "-" ? held(row, p)?.match(/^(\d+)/)?.[1] : undefined;
+    const main = m ? Number(m[1]) : h ? Number(h) : undefined;
+    if (main === undefined && !graces.length) return undefined;
+    const trill = m?.[2] ? Number(m[2]) : undefined;
+    return { keys: main !== undefined && valid(main) ? [main] : [], ...(trill && valid(trill) ? { trill } : {}), ...(graces.length ? { graces } : {}) };
   }
 
   /** La note qu'une tenue prolonge : la dernière attaque à sa gauche, sur la même ligne. */
@@ -371,7 +390,7 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
       }
       const n = c.match(/^-?(\d+)/);
       // la tenue ne montre pas sa note : son numéro, puis son nom
-      return n ? `${n[1]} (${noteName(midiOf(octave!, Number(n[1])), names)}) qui continue` : undefined;
+      return n ? (names === "none" ? `${n[1]} qui continue` : `${n[1]} (${noteName(midiOf(octave!, Number(n[1])), names)}) qui continue`) : undefined;
     }
     return undefined;
   }

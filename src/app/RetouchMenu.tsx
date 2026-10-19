@@ -6,7 +6,9 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { midiOf, noteName } from "../core/index.ts";
-import type { NoteNames } from "../core/index.ts";
+import type { NameDisplay } from "./options.ts";
+import { writtenNames } from "./options.ts";
+import { KeyboardPicker } from "./Keyboard.tsx";
 import { mainOf } from "../core/locate.ts";
 import { joinCell, splitCell } from "./retouch.ts";
 import type { CellParts } from "./retouch.ts";
@@ -24,7 +26,7 @@ type Props = {
   duration?: { count: number; longer: boolean; shorter: boolean };
   /** Les notes qu'une case vide peut tenir. */
   holds?: string[];
-  names: NoteNames;
+  names: NameDisplay;
   onPick: (content: string) => void;
   onResize: (by: 1 | -1) => void;
   onHold: (note: string) => void;
@@ -64,14 +66,15 @@ export function RetouchMenu({ x, y, octave, content, canHold, duration, holds, n
     };
   }, [onClose]);
 
-  const name = (n: number) => (octave === undefined ? "" : noteName(midiOf(octave, n), names).replace(/ \(.*\)$/, ""));
+  const written = writtenNames(names);
+  const name = (n: number) => (octave === undefined ? "" : noteName(midiOf(octave, n), written).replace(/ \(.*\)$/, ""));
   const parts = splitCell(content);
   // la voisine d'une trille : la plus proche qui porte ce numéro, au-dessus ou au-dessous
   const neighbour = (m: number) => {
     if (octave === undefined || !parts) return "";
     const main = midiOf(octave, Number(parts.note));
     const near = [-1, 0, 1].map((d) => midiOf(octave + d, m)).filter((x) => x !== main).sort((a, b) => Math.abs(a - main) - Math.abs(b - main))[0];
-    return noteName(near, names).replace(/ \(.*\)$/, "");
+    return noteName(near, written).replace(/ \(.*\)$/, "") || String(m);
   };
   const amend = (change: Partial<CellParts>) => parts && onAmend(joinCell({ ...parts, ...change }));
   const label = octave === undefined ? "" : octave === 4 ? "octave 0" : `octave ${octave > 4 ? "+" : "−"}${Math.abs(octave - 4)}`;
@@ -92,14 +95,18 @@ export function RetouchMenu({ x, y, octave, content, canHold, duration, holds, n
           </span>
         )}
       </div>
-      <div className="retouch-notes">
-        {Array.from({ length: 12 }, (_, k) => k + 1).map((n) => (
-          <button key={n} className={String(n) === current ? "current" : undefined} onClick={() => onPick(String(n))} title={name(n)}>
-            <b>{n}</b>
-            <small>{name(n)}</small>
-          </button>
-        ))}
-      </div>
+      {names === "keyboard" ? (
+        <KeyboardPicker current={current} onPick={onPick} />
+      ) : (
+        <div className={"retouch-notes" + (written === "none" ? " bare" : "")}>
+          {Array.from({ length: 12 }, (_, k) => k + 1).map((n) => (
+            <button key={n} className={String(n) === current ? "current" : undefined} onClick={() => onPick(String(n))} title={name(n) || undefined}>
+              <b>{n}</b>
+              {written !== "none" && <small>{name(n)}</small>}
+            </button>
+          ))}
+        </div>
+      )}
       {parts && (
         <div className="retouch-adds">
           <span>Doigt</span>
@@ -129,7 +136,7 @@ export function RetouchMenu({ x, y, octave, content, canHold, duration, holds, n
               .map((g) => {
                 const on = parts.graces.includes(String(g));
                 return (
-                  <button key={g} className={on ? "current" : undefined} onClick={() => amend({ graces: on ? parts.graces.filter((x) => x !== String(g)) : [...parts.graces, String(g)] })} title={on ? "retirer cette petite note" : `${name(g)} joué très vite juste avant`}>
+                  <button key={g} className={on ? "current" : undefined} onClick={() => amend({ graces: on ? parts.graces.filter((x) => x !== String(g)) : [...parts.graces, String(g)] })} title={on ? "retirer cette petite note" : `${name(g) || g} joué très vite juste avant`}>
                     {g}&#8217;
                   </button>
                 );

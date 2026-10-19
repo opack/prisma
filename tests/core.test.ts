@@ -1792,7 +1792,7 @@ describe("ce que montre le curseur", () => {
     "@   Ped.                *",
     "",
   ].join("\n");
-  const at = async (line: number, col: number, names: "latin" | "english" = "latin") => {
+  const at = async (line: number, col: number, names: "latin" | "english" | "none" = "latin") => {
     const { inspect } = await import("../src/core/inspect.ts");
     const lines = text.split("\n");
     return inspect(text, lines.slice(0, line - 1).join("\n").length + (line > 1 ? 1 : 0) + col - 1, names);
@@ -1809,7 +1809,9 @@ describe("ce que montre le curseur", () => {
     const r = await at(9, 8);
     expect([r.line, r.column, r.section, r.bar, r.beat, r.cell, r.staff]).toEqual([9, 8, "A", "12", 1, { index: 2, count: 2 }, 0]);
     expect(r.parts).toEqual([{ name: "Chant", staves: 1 }, { name: "Piano", staves: 2 }]);
-    expect(r.symbol).toEqual({ text: "10", meaning: "la3" });
+    expect(r.symbol).toEqual({ text: "10", meaning: "la3", keys: [10] });
+    // sans noms : le numéro suffit
+    expect((await at(9, 8, "none")).symbol?.meaning).toBe("note");
     expect((await at(9, 8, "english")).symbol?.meaning).toBe("A4");
     expect((await at(15, 5)).staff).toBe(2);
     expect((await at(9, 22)).bar).toBe("13");
@@ -1820,6 +1822,10 @@ describe("ce que montre le curseur", () => {
     expect((await at(9, 21)).symbol?.meaning).toBe("si3, en trille avec do4, doigt 3 (majeur)");
     expect((await at(12, 5)).symbol?.meaning).toBe("petite note : ré4, puis mi4");
     expect((await at(12, 1)).symbol?.meaning).toBe("octave +1 : de do4 à si4");
+    expect((await at(9, 21, "none")).symbol).toMatchObject({ meaning: "note, en trille avec 1, doigt 3 (majeur)", keys: [12], trill: 1 });
+    expect((await at(12, 5)).symbol).toMatchObject({ keys: [5], graces: [3] });
+    expect((await at(9, 12, "none")).symbol).toMatchObject({ meaning: "10 qui continue", keys: [10] });
+    expect((await at(12, 1, "none")).symbol?.meaning).toBe("octave +1");
   });
 
   it("traduit les indications, les barres et les traits", async () => {
@@ -1834,8 +1840,9 @@ describe("ce que montre le curseur", () => {
     expect((await at(10, 5)).symbol?.meaning).toBe("syllabe des paroles");
     const { inspect } = await import("../src/core/inspect.ts");
     const chords = "@c  Am  10;1;5\nm1 |1   |2   ||\n0  |    |    ||\n";
-    expect(inspect(chords, 4).symbol).toEqual({ text: "Am", meaning: "(10;1;5) accord la do mi" });
-    expect(inspect(chords, 8).symbol).toEqual({ text: "10;1;5", meaning: "(Am) accord la do mi" });
+    expect(inspect(chords, 4).symbol).toEqual({ text: "Am", meaning: "(10;1;5) accord la do mi", keys: [10, 1, 5] });
+    expect(inspect(chords, 8).symbol).toEqual({ text: "10;1;5", meaning: "(Am) accord la do mi", keys: [10, 1, 5] });
+    expect(inspect(chords, 4, "none").symbol?.meaning).toBe("(10;1;5) accord 10 1 5");
     expect(inspect("@c  8;3;4\nm1 |1   ||\n0  |    ||\n", 4).symbol?.meaning).toBe("accord sol ré ré♯");
   });
 });

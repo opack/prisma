@@ -40,6 +40,8 @@ const CHORDS: Option<RenderOptions["chords"]>[] = [
 const NOTE_NAMES: Option<RenderOptions["noteNames"]>[] = [
   { value: "latin", label: "Do ré mi", hint: "dans la barre de statut de l'éditeur ; le do central est do3" },
   { value: "english", label: "C D E", hint: "dans la barre de statut de l'éditeur, en notation anglaise ; le do central est C4" },
+  { value: "keyboard", label: "Clavier", hint: "un petit clavier, la note (ou l'accord) marquée sur ses touches ; le choix de la note d'une case se fait sur un clavier" },
+  { value: "none", label: "Aucun", hint: "le numéro Prisma suffit : ni nom ni clavier" },
 ];
 
 const SOURCE_COLORS: Option<RenderOptions["sourceColors"]>[] = [

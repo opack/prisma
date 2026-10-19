@@ -49,6 +49,16 @@ button:disabled { opacity: .5; cursor: default; }
 .retouch-notes button { display: grid; justify-items: center; gap: 1px; padding: 5px 0 4px; }
 .retouch-notes b { font-family: var(--mono); font-size: 15px; }
 .retouch-notes small { font-size: 10.5px; color: var(--muted); }
+/* le choix de la note sur un clavier : les touches blanches, les noires par-dessus */
+.piano { position: relative; height: 84px; }
+.piano-key { position: absolute; top: 0; height: 84px; padding: 0 0 6px; display: flex; align-items: flex-end; justify-content: center; border: 1px solid #b9bcb6; border-radius: 0 0 5px 5px; background: #fff; color: var(--ink); font-family: var(--mono); font-size: 13px; font-weight: 600; }
+.piano-key.black { z-index: 1; height: 50px; background: #2a2d30; border-color: #2a2d30; color: #fff; font-size: 11px; padding-bottom: 4px; }
+.piano-key:hover { background: color-mix(in srgb, var(--accent) 10%, #fff); }
+.piano-key.black:hover { background: #454a4f; }
+.piano-key.current { background: color-mix(in srgb, var(--accent) 22%, #fff); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.piano-key.black.current { background: var(--accent); border-color: var(--accent); box-shadow: none; }
+.piano-key.current { background: var(--accent); border-color: var(--accent); color: #fff; }
+.retouch-notes.bare button { padding: 7px 0; }
 .retouch-more { display: flex; gap: 4px; margin-top: 6px; }
 .retouch-adds { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 13px; }
 .retouch-adds > span { color: var(--muted); }
@@ -66,6 +76,14 @@ button:disabled { opacity: .5; cursor: default; }
 .preview-problem { max-width: 460px; margin: 48px auto; padding: 16px 20px; background: #fff; border: 1px solid var(--line); border-left: 4px solid #d22c2c; border-radius: 6px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06); }
 .preview-problem p { margin: 0 0 8px; }
 .preview-problem-title { font-weight: 600; }
+/* le petit clavier de la barre de statut : la note ou l'accord marqués */
+.mini-keyboard { vertical-align: -5px; margin: 0 4px 0 6px; }
+.mini-keyboard .key { fill: #fff; stroke: #8a8d87; stroke-width: 0.7; }
+.mini-keyboard .key.black { fill: #3a3d40; stroke: #1f2123; }
+/* la note : le jaune de la case en surbrillance, sur une touche blanche ou noire ; la trille et les petites notes, les couleurs de la coloration du texte ; chaque touche garde son contour, pour que deux touches voisines marquées ne fassent pas bloc */
+.mini-keyboard .key.on { fill: #ffc53d; }
+.mini-keyboard .key.trill { fill: #0f7b6c; }
+.mini-keyboard .key.grace { fill: #7a4fb0; }
 /* ce qu'un message cite du texte .prisma, en chasse fixe */
 .preview-problem code, .problem code, .cm-tooltip-lint code { font-family: var(--mono); font-size: 0.92em; padding: 0 4px; border-radius: 3px; background: rgba(27, 29, 31, 0.07); white-space: pre; }
 .preview-problem.fixed { border-left-color: var(--accent); }

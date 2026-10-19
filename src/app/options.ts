@@ -8,6 +8,11 @@ import type { ClickSounds } from "./metronome.ts";
 import type { ClickGrid } from "./performance.ts";
 import type { Align, NoteNames } from "../core/index.ts";
 
+/** Comment nommer une note : par son nom (do ré mi, ou C D E), sur un petit clavier, ou pas du tout (le numéro suffit). */
+export type NameDisplay = NoteNames | "keyboard";
+/** Les noms à écrire : le clavier se dessine, il n'écrit pas de nom. */
+export const writtenNames = (n: NameDisplay): NoteNames => (n === "keyboard" ? "none" : n);
+
 export type OctaveStyle = "arrow" | "sign" | "triangle";
 export type OctavePosition = "top" | "center";
 export type NotePosition = "top" | "center" | "aligned" | "pitch";
@@ -40,8 +45,8 @@ export type RenderOptions = {
   chords: ChordStyle;
   /** Sections : chacune commence une nouvelle ligne, ou suit la précédente sur la même ligne, séparée par un blanc. */
   sections: SectionLayout;
-  /** Éditeur : le nom des notes dans la barre de statut, en do ré mi ou en notation anglaise. */
-  noteNames: NoteNames;
+  /** Éditeur : le nom des notes (barre de statut, choix de la note d'une case) : do ré mi, notation anglaise, un petit clavier, ou rien. */
+  noteNames: NameDisplay;
   /** Éditeur : la coloration du texte, avec les couloirs d'octave, les signes seuls, ou aucune. */
   sourceColors: SourceColors;
   /** Éditeur : la partition et le texte reliés : un clic sur la partition place le curseur du texte sur le signe cliqué, le signe sous le curseur du texte est encadré sur la partition. */
@@ -142,7 +147,7 @@ export function loadOptions(stored?: string | null): RenderOptions {
     const chords = CHORD_STYLES.some((c) => c.value === raw.chords) ? raw.chords : DEFAULT_OPTIONS.chords;
     const simile = SIMILE_DISPLAYS.some((d) => d.value === raw.simile) ? raw.simile : DEFAULT_OPTIONS.simile;
     const sections = SECTION_LAYOUTS.some((d) => d.value === raw.sections) ? raw.sections : DEFAULT_OPTIONS.sections;
-    const noteNames = raw.noteNames === "english" ? "english" : DEFAULT_OPTIONS.noteNames;
+    const noteNames = ["latin", "english", "keyboard", "none"].includes(raw.noteNames) ? raw.noteNames : DEFAULT_OPTIONS.noteNames;
     const sourceColors = ["octaves", "signs", "none"].includes(raw.sourceColors) ? raw.sourceColors : DEFAULT_OPTIONS.sourceColors;
     const scoreToText = typeof raw.scoreToText === "boolean" ? raw.scoreToText : DEFAULT_OPTIONS.scoreToText;
     const lookAhead = typeof raw.lookAhead === "boolean" ? raw.lookAhead : DEFAULT_OPTIONS.lookAhead;

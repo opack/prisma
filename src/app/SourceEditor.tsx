@@ -14,7 +14,9 @@ import { highlightSelectionMatches, search, searchKeymap } from "@codemirror/sea
 import { linter, setDiagnosticsEffect } from "@codemirror/lint";
 import type { Diagnostic } from "@codemirror/lint";
 import { PrismaError, inspect, octaveOffset, parsePrisma } from "../core/index.ts";
-import type { NoteNames } from "../core/index.ts";
+import type { NameDisplay } from "./options.ts";
+import { writtenNames } from "./options.ts";
+import { MiniKeyboard } from "./Keyboard.tsx";
 import { staffNames } from "./staves.ts";
 import { messageNode } from "./message.tsx";
 import { completion } from "./completion.ts";
@@ -38,7 +40,7 @@ type Props = {
   value: string;
   onChange: (text: string) => void;
   editor: Ref<EditorHandle>;
-  noteNames: NoteNames;
+  noteNames: NameDisplay;
   /** La coloration du texte, et la palette des couloirs d'octave (celle de la partition). */
   colors: SourceColors;
   palette: OctaveColors;
@@ -142,7 +144,7 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
             { delay: 300 },
           ),
           coloring.of(sourceColors(colors, palette)),
-          completion(() => names.current),
+          completion(() => writtenNames(names.current)),
           history(),
           drawSelection(),
           search({ top: true }),
@@ -205,7 +207,7 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
     },
   }));
 
-  const info = useMemo(() => inspect(value, Math.min(caret, value.length), noteNames), [value, caret, noteNames]);
+  const info = useMemo(() => inspect(value, Math.min(caret, value.length), writtenNames(noteNames)), [value, caret, noteNames]);
 
   const where: string[] = [];
   if (info.section) where.push(`section ${info.section}`);
@@ -232,7 +234,8 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
         </span>
         {info.symbol && (
           <span className="status-what" title={`${short(info.symbol.text)} : ${info.symbol.meaning}`}>
-            <code>{short(info.symbol.text)}</code> {info.symbol.meaning}
+            <code>{short(info.symbol.text)}</code>
+            {noteNames === "keyboard" && (info.symbol.keys || info.symbol.graces) && <MiniKeyboard keys={info.symbol.keys ?? []} trill={info.symbol.trill} graces={info.symbol.graces} />} {info.symbol.meaning}
           </span>
         )}
       </div>
