@@ -11,9 +11,9 @@ import type { Text } from "@codemirror/state";
 import { EditorView, GutterMarker, gutterLineClass, highlightActiveLineGutter, keymap, lineNumbers, drawSelection } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { highlightSelectionMatches, search, searchKeymap } from "@codemirror/search";
-import { linter, setDiagnosticsEffect } from "@codemirror/lint";
+import { linter, nextDiagnostic, previousDiagnostic, setDiagnosticsEffect } from "@codemirror/lint";
 import type { Diagnostic } from "@codemirror/lint";
-import { PrismaError, inspect, octaveOffset, parsePrisma } from "../core/index.ts";
+import { inspect, octaveOffset, parseErrors } from "../core/index.ts";
 import type { NameDisplay } from "./options.ts";
 import { writtenNames } from "./options.ts";
 import { MiniKeyboard } from "./Keyboard.tsx";
@@ -44,8 +44,8 @@ type Props = {
   /** La coloration du texte, et la palette des couloirs d'octave (celle de la partition). */
   colors: SourceColors;
   palette: OctaveColors;
-  /** À chaque relecture du texte : son erreur (message avec sa place, ligne et colonne), ou rien. */
-  onCheck?: (error: { message: string; line: number; column: number } | null) => void;
+  /** À chaque relecture du texte : ses erreurs (message avec sa place, ligne et colonne), dans l'ordre du texte. */
+  onCheck?: (errors: { message: string; line: number; column: number }[]) => void;
   /** Le curseur a bougé : sa ligne et sa colonne (à partir de 1), dans le texte tel qu'il est. */
   onCaret?: (line: number, column: number, text: string) => void;
   /** Ce qui flotte au-dessus du texte (le bouton de mise en page). */
@@ -56,15 +56,12 @@ type Props = {
 const short = (t: string) => (t.length > 10 ? t.slice(0, 9) + "…" : t);
 
 /**
- * L'erreur de lecture du texte, s'il y en a une : soulignée du signe fautif jusqu'à la fin de son
- * mot (une barre seule pour une barre), ou toute la ligne quand l'erreur est celle de la ligne.
+ * Les erreurs de lecture du texte, toutes en une passe : chacune soulignée du signe fautif jusqu'à
+ * la fin de son mot (une barre seule pour une barre), ou toute la ligne quand l'erreur est celle de
+ * la ligne.
  */
 export function diagnose(doc: Text): Diagnostic[] {
-  try {
-    parsePrisma(doc.toString());
-    return [];
-  } catch (e) {
-    if (!(e instanceof PrismaError)) return [];
+  return parseErrors(doc.toString()).map((e) => {
     const l = doc.line(Math.max(1, Math.min(e.line, doc.lines)));
     let from = l.from;
     let to = l.to;
@@ -80,8 +77,8 @@ export function diagnose(doc: Text): Diagnostic[] {
       if (to < l.to) to++;
       else from = Math.max(l.from, from - 1);
     }
-    return [{ from, to, severity: "error", message: e.reason, renderMessage: () => messageNode(e.reason) }];
-  }
+    return { from, to, severity: "error" as const, message: e.reason, renderMessage: () => messageNode(e.reason) };
+  });
 }
 
 // la ligne de l'erreur, marquée dans la marge des numéros
@@ -103,7 +100,12 @@ const errorLineField = StateField.define<RangeSet<GutterMarker>>({
 });
 
 // Ctrl+Entrée met la partition en page (raccourci de l'application) : l'éditeur n'en fait rien
-const keys = defaultKeymap.filter((k) => k.key !== "Mod-Enter");
+const keys = [
+  ...defaultKeymap.filter((k) => k.key !== "Mod-Enter"),
+  // d'une erreur à l'autre
+  { key: "F8", run: nextDiagnostic },
+  { key: "Shift-F8", run: previousDiagnostic },
+];
 
 export function SourceEditor({ value, onChange, editor, noteNames, colors, palette, onCheck, onCaret, children }: Props) {
   const host = useRef<HTMLDivElement>(null);
@@ -132,13 +134,13 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
           linter(
             (v) => {
               const found = diagnose(v.state.doc);
-              const d = found[0];
-              if (!d) checked.current?.(null);
-              else {
-                const l = v.state.doc.lineAt(d.from);
-                const column = d.from - l.from + 1;
-                checked.current?.({ message: `ligne ${l.number}, col. ${column} : ${d.message}`, line: l.number, column });
-              }
+              checked.current?.(
+                found.map((d) => {
+                  const l = v.state.doc.lineAt(d.from);
+                  const column = d.from - l.from + 1;
+                  return { message: `ligne ${l.number}, col. ${column} : ${d.message}`, line: l.number, column };
+                }),
+              );
               return found;
             },
             { delay: 300 },

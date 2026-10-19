@@ -13,12 +13,21 @@ export class PrismaError extends Error {
   reason: string;
   /** La colonne est-elle celle du signe fautif ? Sinon, c'est la ligne entière. */
   exact: boolean;
-  constructor(message: string, line: number, column?: number) {
+  /**
+   * Une erreur qui tient au système voisin (une mesure à finir, une tenue ou une liaison qui le
+   * traverse, les portées du premier système) : elle peut n'être qu'une suite d'une autre erreur.
+   */
+  cascade: boolean;
+  /** Une erreur du morceau entier, vue après tous les systèmes (sections, ordre de jeu, liaisons). */
+  global: boolean;
+  constructor(message: string, line: number, column?: number, kind?: { cascade?: boolean; global?: boolean }) {
     super(`ligne ${line}, col. ${column ?? 1} : ${message}`);
     this.line = line;
     this.column = column ?? 1;
     this.reason = message;
     this.exact = column !== undefined;
+    this.cascade = !!kind?.cascade;
+    this.global = !!kind?.global;
   }
 }
 

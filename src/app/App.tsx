@@ -653,14 +653,22 @@ export function App() {
   useEffect(() => markCaret(false), [linked, markCaret]);
 
   const { problem: engravedProblem, score } = engraved;
-  // le texte relu pendant la frappe : son erreur, ou rien (undefined : pas encore relu)
-  const [checked, setChecked] = useState<Problem | null | undefined>(undefined);
-  // l'erreur à montrer : celle du texte tel qu'il est, pas celle de la dernière mise en page, qu'on a
-  // pu corriger depuis (une erreur sans place, celle d'un import, reste celle de la mise en page)
-  const textProblem = engravedProblem?.line !== undefined && checked !== undefined ? checked : engravedProblem;
-  const problem = textProblem ?? undefined;
+  // le texte relu pendant la frappe : ses erreurs, toutes (undefined : pas encore relu)
+  const [checked, setChecked] = useState<Problem[] | undefined>(undefined);
+  // les erreurs à montrer : celles du texte tel qu'il est, pas celle de la dernière mise en page,
+  // qu'on a pu corriger depuis (une erreur sans place, celle d'un import, reste celle de la mise en page)
+  const problems: Problem[] = engravedProblem?.line !== undefined && checked !== undefined ? checked : engravedProblem ? [engravedProblem] : [];
+  // celle du bandeau sous l'éditeur, quand il y en a plusieurs : on passe de l'une à l'autre
+  const [shownError, setShownError] = useState(0);
+  const shown = problems.length ? Math.min(shownError, problems.length - 1) : 0;
+  const problem: Problem | undefined = problems[shown];
+  const showError = (k: number) => {
+    const n = (k + problems.length) % problems.length;
+    setShownError(n);
+    goTo(problems[n].line, problems[n].column);
+  };
   // corrigée, mais pas encore remise en page
-  const fixed = !!engravedProblem && engravedProblem.line !== undefined && checked === null;
+  const fixed = !!engravedProblem && engravedProblem.line !== undefined && checked !== undefined && !checked.length;
   // écoute : le morceau gravé, avec le curseur sur la gravure ; arrêtée quand on regrave
   useEffect(() => player.load(score), [score]);
   // portées muettes, propres au morceau : rétablies quand on change ses portées en l'écrivant
@@ -848,9 +856,24 @@ export function App() {
             <EngraveButton dirty={dirty} auto={options.autoEngrave} onEngrave={engraveNow} onAuto={(autoEngrave) => setOptions({ autoEngrave })} />
           </SourceEditor>
           {problem && (
-            <button className="problem" onClick={() => goTo(problem.line, problem.column)}>
-              <Message text={problem.message} />
-            </button>
+            <div className="problem">
+              <button className="problem-message" onClick={() => goTo(problem.line, problem.column)} title="aller à l'erreur">
+                <Message text={problem.message} />
+              </button>
+              {problems.length > 1 && (
+                <span className="problem-nav">
+                  <button onClick={() => showError(shown - 1)} title="erreur précédente (Maj+F8 dans l'éditeur)" aria-label="Erreur précédente">
+                    ‹
+                  </button>
+                  <span>
+                    {shown + 1}/{problems.length}
+                  </span>
+                  <button onClick={() => showError(shown + 1)} title="erreur suivante (F8 dans l'éditeur)" aria-label="Erreur suivante">
+                    ›
+                  </button>
+                </span>
+              )}
+            </div>
           )}
         </section>
 
@@ -893,14 +916,18 @@ export function App() {
           )}
           {problem && (
             <div className="preview-problem" role="alert">
-              <p className="preview-problem-title">{problem.line ? "La partition ne peut pas être mise en page : le texte contient une erreur." : "La partition ne peut pas être affichée."}</p>
+              <p className="preview-problem-title">
+                {problem.line ? `La partition ne peut pas être mise en page : le texte contient ${problems.length > 1 ? `${problems.length} erreurs` : "une erreur"}.` : "La partition ne peut pas être affichée."}
+              </p>
               <p>
-                <Message text={problem.message} />
+                <Message text={problems[0].message} />
               </p>
               {problem.line !== undefined && (
                 <>
-                  <p className="empty">{options.autoEngrave ? "Une fois l'erreur corrigée, la mise en page reprend d'elle-même." : "Une fois l'erreur corrigée, remettez en page (Ctrl+Entrée)."}</p>
-                  <button onClick={() => goTo(problem.line!, problem.column)}>Aller à l'erreur</button>
+                  <p className="empty">
+                    {options.autoEngrave ? `Une fois ${problems.length > 1 ? "les erreurs corrigées" : "l'erreur corrigée"}, la mise en page reprend d'elle-même.` : `Une fois ${problems.length > 1 ? "les erreurs corrigées" : "l'erreur corrigée"}, remettez en page (Ctrl+Entrée).`}
+                  </p>
+                  <button onClick={() => showError(0)}>{problems.length > 1 ? "Aller à la première" : "Aller à l'erreur"}</button>
                 </>
               )}
             </div>

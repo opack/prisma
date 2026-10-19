@@ -9,4 +9,5 @@ export { beatGrids, layout, noteText } from "./layout.ts";
 export type { Align, Column, HairpinSpan, Metrics, PedalLine, System, SystemStaff, SystemRow, Voice, VoiceMark } from "./layout.ts";
 export { writePrisma, DEFAULT_WIDTH, DEFAULT_CELL } from "./prisma-write.ts";
 export { parsePrisma } from "./prisma-parse.ts";
+export { parseErrors } from "./errors.ts";
 export { CHORD_NOTE_SEPARATOR, chordName, chordNotes, chordPrismaText } from "./chords.ts";

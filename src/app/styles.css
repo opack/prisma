@@ -31,8 +31,11 @@ button:disabled { opacity: .5; cursor: default; }
 
 .workspace { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 0; }
 .split { flex: 1; display: grid; grid-template-columns: minmax(360px, 42%) 1fr; min-height: 0; }
-.source { display: grid; grid-template-rows: 1fr auto auto; min-height: 0; border-right: 1px solid var(--line); background: #fff; }
-.problem { margin: 0; border: 0; border-top: 1px solid var(--error); border-radius: 0; background: var(--error-bg); color: var(--error); text-align: left; padding: 10px 16px; }
+.source { display: grid; grid-template-rows: 1fr auto auto; grid-template-columns: minmax(0, 1fr); min-height: 0; border-right: 1px solid var(--line); background: #fff; }
+.problem { display: flex; align-items: center; gap: 8px; min-width: 0; border-top: 1px solid var(--error); background: var(--error-bg); color: var(--error); }
+.problem-message { flex: 1; min-width: 0; margin: 0; border: 0; border-radius: 0; background: none; color: inherit; text-align: left; padding: 10px 16px; }
+.problem-nav { flex-shrink: 0; display: flex; align-items: center; gap: 4px; padding-right: 10px; font-variant-numeric: tabular-nums; font-size: 13px; white-space: nowrap; }
+.problem-nav button { padding: 1px 8px; color: var(--error); border-color: color-mix(in srgb, var(--error) 40%, #fff); background: #fff; }
 
 .preview { overflow: auto; padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 24px; }
 .page { display: block; width: min(100%, 210mm); height: auto; aspect-ratio: 210 / 297; flex: none; box-shadow: 0 1px 3px rgba(0,0,0,.18), 0 6px 18px rgba(0,0,0,.08); background: #fff; }
