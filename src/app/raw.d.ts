@@ -1,4 +1,4 @@
-/** Fichiers importés comme texte brut par Vite (« ?raw ») : la notice. */
+/** Fichiers importés comme texte brut par Vite (« ?raw ») : la référence. */
 declare module "*?raw" {
   const text: string;
   export default text;

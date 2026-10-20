@@ -20,7 +20,7 @@ import { player } from "./player.ts";
 import { follow } from "./follow.ts";
 import { FocusView } from "./FocusView.tsx";
 import { BackIcon } from "./icons.tsx";
-import { NoticeView } from "./NoticeView.tsx";
+import { ReferenceView } from "./ReferenceView.tsx";
 import { LibraryView } from "./LibraryView.tsx";
 import { engraveOptions, engravePages } from "./render.ts";
 import { markOpened } from "./library.ts";
@@ -159,7 +159,7 @@ export function App() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [showOptions]);
-  /** Notice du pianiste, affichée à la place de l'éditeur et de l'aperçu. */
+  /** La référence, affichée à la place de l'éditeur et de l'aperçu. */
   const [showGuide, setShowGuideState] = useState(false);
   /** Bibliothèque, affichée elle aussi à la place de l'éditeur et des pages. */
   const [showLibrary, setShowLibraryState] = useState(false);
@@ -746,6 +746,10 @@ export function App() {
             { label: "Enregistrer sous…", onSelect: () => saveFile(true), shortcut: "Ctrl+Maj+S" },
             "separator",
             { label: "Recharger", onSelect: reloadFile, disabled: !handle },
+            "separator",
+            // le site qui présente Prisma, autour de l'application (app/) ; le navigateur prévient
+            // avant de quitter un morceau aux modifications non enregistrées
+            { label: "Retour au site", onSelect: () => location.assign("../") },
           ]}
         />
         <Menu
@@ -773,7 +777,7 @@ export function App() {
             { label: "Lecture focalisée : deux systèmes", onSelect: () => setView({ fit: "focus", zoom: 1 }), checked: view.fit === "focus" },
           ]}
         />
-        <Menu label="Aide" items={[{ label: "Notice", onSelect: () => setShowGuide((v) => !v), checked: showGuide }]} />
+        <Menu label="Aide" items={[{ label: "Référence", onSelect: () => setShowGuide((v) => !v), checked: showGuide }]} />
         <input
           ref={fileInput}
           type="file"
@@ -831,7 +835,7 @@ export function App() {
           <button className="back icon" onClick={() => setShowGuide(false)} title="Retour à la partition" aria-label="Retour à la partition">
             <BackIcon />
           </button>
-          <NoticeView options={general} />
+          <ReferenceView options={general} />
         </main>
       )}
       {showLibrary && <LibraryView options={general} onOpen={openEntry} onClose={() => setShowLibrary(false)} />}

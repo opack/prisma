@@ -1,6 +1,6 @@
 # Lire et jouer en Prisma
 
-Cette notice s'adresse au musicien. Elle explique comment lire une partition Prisma et pourquoi elle est faite ainsi, en partant de ce que vous connaissez peut-être de la partition classique. Elle ne remplace pas [FORMAT.md](FORMAT.md), qui décrit le format exactement.
+Cette référence s'adresse au musicien. Elle explique comment lire une partition Prisma et pourquoi elle est faite ainsi, en partant de ce que vous connaissez peut-être de la partition classique. Elle ne remplace pas [FORMAT.md](FORMAT.md), qui décrit le format exactement.
 
 Si vous ne lisez pas la partition classique, ignorez simplement les comparaisons : tout ce qu'il faut savoir pour jouer est dit ici.
 
@@ -10,7 +10,7 @@ La notation n'est pas propre à un instrument : elle note des hauteurs et des du
 
 Trois idées suffisent :
 
-1. **Une note, un numéro.** Les douze notes d'une octave (au piano, ses touches blanches et noires) sont numérotées de 1 à 12. Pas de noms de notes, pas de dièses ni de bémols.
+1. **Une note, un numéro.** Les douze notes d'une octave (au piano, ses touches blanches et noires) sont numérotées de `1` à `12`. Pas de noms de notes, pas de dièses ni de bémols.
 2. **La position, c'est le temps.** Une note se lit de gauche à droite sur une règle de comptage, comme sur une frise. Sa place dit quand elle commence, sa longueur combien de temps elle dure.
 3. **Ce qui est aligné verticalement se joue ensemble.** Toutes les portées partagent la même règle.
 
@@ -22,34 +22,34 @@ m1 |1  *  |2  *  |3  *  |4  ||
 -1 |1  -  |-  -  |8  -  |-  ||
 ```
 
-La portée du haut (au piano, la main droite) monte la gamme de do (1, 3, 5, 6, 8, 10, 12) en deux notes par temps. Celle du bas (la main gauche) tient un do pendant deux temps, puis un sol.
+La portée du haut (au piano, la main droite) monte la gamme de *do* (`1`, `3`, `5`, `6`, `8`, `10`, `12`) en deux notes par temps. Celle du bas (la main gauche) tient un *do* pendant deux temps, puis un *sol*.
 
-De haut en bas : la **règle de comptage** (`m1` pour la mesure 1, puis les temps), un trait, les lignes de la portée du haut, un second trait qui sépare les deux portées, puis les lignes de la portée du bas. Le 12 de la fin dure jusqu'au bout du temps 4 : il n'a pas besoin d'autre case.
+De haut en bas : la **règle de comptage** (`m1` pour la mesure 1, puis les temps), un trait, les lignes de la portée du haut, un second trait qui sépare les deux portées, puis les lignes de la portée du bas. Le `12` de la fin dure jusqu'au bout du temps 4 : il n'a pas besoin d'autre case.
 
-Un morceau Prisma existe sous deux formes : un **texte** (le fichier `.prisma`), qu'on tape au clavier, et une **partition**, la page imprimable produite par l'application. Les deux disent exactement la même chose. Dans l'application (bouton « Notice »), chaque exemple de cette notice est montré sous ses deux formes : son texte, puis sa gravure.
+Un morceau Prisma existe sous deux formes : un **texte** (le fichier `.prisma`), qu'on tape au clavier, et une **partition**, la page imprimable produite par l'application. Les deux disent exactement la même chose. Ici, chaque exemple se montre sous ses deux formes : son texte et sa gravure.
 
 ## 2. Les hauteurs
 
 ### Les numéros
 
-| Numéro | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+| Numéro | `1` | `2` | `3` | `4` | `5` | `6` | `7` | `8` | `9` | `10` | `11` | `12` |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Note | do | do♯ ré♭ | ré | ré♯ mi♭ | mi | fa | fa♯ sol♭ | sol | sol♯ la♭ | la | la♯ si♭ | si |
+| Note | *do* | *do♯* *ré♭* | *ré* | *ré♯* *mi♭* | *mi* | *fa* | *fa♯* *sol♭* | *sol* | *sol♯* *la♭* | *la* | *la♯* *si♭* | *si* |
 
-Au piano, les touches noires sont 2, 4, 7, 9 et 11. Le numéro désigne une hauteur, pas un nom : do♯ et ré♭ sonnent pareil, ils ont donc le même numéro. Il n'y a ni armure à retenir, ni altération qui vaut jusqu'à la fin de la mesure. Ce qui est écrit est ce qu'on joue.
+Au piano, les touches noires sont `2`, `4`, `7`, `9` et `11`. Le numéro désigne une hauteur, pas un nom : *do♯* et *ré♭* sonnent pareil, ils ont donc le même numéro. Il n'y a ni armure à retenir, ni altération qui vaut jusqu'à la fin de la mesure. Ce qui est écrit est ce qu'on joue.
 
 ### Les octaves
 
 Chaque ligne de notes appartient à une octave, indiquée à gauche :
 
-- `0` : l'octave qui commence au do central (do3 en France, C4 ailleurs : c'est la même note) ;
+- `0` : l'octave qui commence au *do* central (*do3* en France, *C4* ailleurs : c'est la même note) ;
 - `+1`, `+2`… : les octaves au-dessus ; `-1`, `-2`… : celles du dessous. Un piano de 88 touches va de `-4` à `+4`.
 
 La partition les montre dans un onglet à gauche (▲1, 0, ▼1). Les lignes d'une même octave forment un **couloir** ; les couloirs sont rangés de l'aigu (en haut) au grave (en bas).
 
 Pour apprendre à situer les octaves, l'application peut donner à chaque couloir une couleur pâle, toujours la même pour une octave donnée, dans tous les morceaux (option « Couleurs », onglet Octaves) : on peut alors coller des pastilles de la même couleur sur l'instrument. Le numéro d'octave reste affiché, pour une impression en noir et blanc.
 
-Ce système remplace les clés (sol, fa, ut), les portées, les lignes supplémentaires et les « 8va » : l'octave de chaque note est écrite sur sa ligne, une fois pour toutes.
+Ce système remplace les clés (*sol*, *fa*, *ut*), les portées, les lignes supplémentaires et les « 8va » : l'octave de chaque note est écrite sur sa ligne, une fois pour toutes.
 
 ### Les portées
 
@@ -157,7 +157,7 @@ En 4/4 : `1  *` pour des croches, `1  .  *  .` pour des doubles croches. En 6/8 
   ```
 
 - **Les silences** : une case vide est un silence. Rien à compter, on voit le vide.
-- **Les liaisons de prolongation** : une note qui continue au-delà d'une barre garde son trait `-`. En début de ligne, elle est rappelée en gris : `-7` veut dire « le 7 commencé plus tôt continue ».
+- **Les liaisons de prolongation** : une note qui continue au-delà d'une barre garde son trait `-`. En début de ligne, elle est rappelée en gris : `-7` veut dire « le `7` commencé plus tôt continue ».
 - **Les triolets, duolets, octolets** : la partition classique a besoin d'un chiffre (3, 2, 8…) quand les figures ne savent pas couper le temps comme il faut. Ici, le temps se coupe simplement en autant de cases qu'il faut. Un triolet en 4/4 est un temps de trois cases, `1  *  *` ; un duolet en 9/8, un temps de deux cases, `1  *`.
 
 Quand les deux portées ne coupent pas le temps de la même façon, la règle porte les deux découpages à la fois. Trois notes contre deux donnent six cases : la portée du haut joue toutes les deux cases, celle du bas toutes les trois.
@@ -178,9 +178,9 @@ Les signes qui accompagnent une note se collent à elle, dans sa case. Chacun a 
 
 | Signe | Exemple | Sens | Sur la partition |
 |---|---|---|---|
-| `'` | `3'5` | petite note : un 3 très bref, puis le 5 sur le temps | en petit, en exposant, devant la note |
-| `~` | `5~6` | trille : le 5 (mi) alterne avec le 6 (fa) pendant toute sa durée | la voisine en petit, puis un trait ondulé |
-| `_` | `5_3` | doigté : le 5 se joue avec le doigt 3 (au piano, 1 = pouce) | un chiffre blanc sur une pastille sombre, en bas à droite |
+| `'` | `3'5` | petite note : un `3` très bref, puis le `5` sur le temps | en petit, en exposant, devant la note |
+| `~` | `5~6` | trille : le `5` (*mi*) alterne avec le `6` (*fa*) pendant toute sa durée | la voisine en petit, puis un trait ondulé |
+| `_` | `5_3` | doigté : le `5` se joue avec le doigt 3 (au piano, 1 = pouce) | un chiffre blanc sur une pastille sombre, en bas à droite |
 
 ```prisma
 m1 |1        |2  |3     |4   ||
@@ -191,9 +191,9 @@ m1 |1        |2  |3     |4   ||
 -1 |      1  |8  |5     |1   ||
 ```
 
-- **Petites notes** : il n'y en a qu'une sorte. La partition classique distingue l'appoggiature (non barrée) de l'acciaccature (barrée), mais les éditions ne s'accordent pas sur leur usage, et c'est de toute façon au musicien de les placer. Plusieurs petites notes s'enchaînent (`7'9'5`) et se jouent de gauche à droite dans la case, même réparties sur plusieurs octaves : ci-dessus, 3 (octave du dessus), 7, 9, puis le 5.
+- **Petites notes** : il n'y en a qu'une sorte. La partition classique distingue l'appoggiature (non barrée) de l'acciaccature (barrée), mais les éditions ne s'accordent pas sur leur usage, et c'est de toute façon au musicien de les placer. Plusieurs petites notes s'enchaînent (`7'9'5`) et se jouent de gauche à droite dans la case, même réparties sur plusieurs octaves : ci-dessus, `3` (octave du dessus), `7`, `9`, puis le `5`.
 - **Trilles** : la note voisine est écrite en clair. Sur une partition classique, le signe *tr* ne dit pas avec quelle note alterner : il faut connaître l'armure, ou lire une petite altération au-dessus du signe. Ici, rien à déduire.
-- **Mordants et gruppettos** : leurs notes sont fixées par la convention, alors on les écrit directement en petites notes. En do majeur, un mordant sur mi donne `5'6'5` (mi, fa, mi), un gruppetto `6'5'3'5` (fa, mi, ré, mi). Vous lisez les notes au lieu de décoder un symbole.
+- **Mordants et gruppettos** : leurs notes sont fixées par la convention, alors on les écrit directement en petites notes. En *do* majeur, un mordant sur *mi* donne `5'6'5` (*mi*, *fa*, *mi*), un gruppetto `6'5'3'5` (*fa*, *mi*, *ré*, *mi*). Vous lisez les notes au lieu de décoder un symbole.
 - **Doigtés** : facultatifs, et l'application peut les masquer pour alléger la page.
 
 Deux signes se posent sur une ligne `@`, au-dessus ou sous les notes :
@@ -276,7 +276,7 @@ m1 |1  *  |2  *  ||1   |2  ||
 -1 |10 -  |-  -  ||12  |-  ||
 ```
 
-Un accord s'écrit au choix par son **nom anglais** (`Am`, `G7`, `F#m7b5`, `G/B` pour un sol avec si à la basse), lu partout ailleurs par les accompagnateurs, ou par ses **notes Prisma** séparées par `;`, de la basse vers l'aigu : `Am` s'écrit aussi `10;1;5`. L'ordre compte : `Am7` (`10;1;5;8`) et `C6` (`1;5;8;10`) ont les mêmes notes, seule la basse les distingue. Les notes n'ont pas d'octave : un accord dit quelles notes jouer, pas où.
+Un accord s'écrit au choix par son **nom anglais** (`Am`, `G7`, `F#m7b5`, `G/B` pour un *sol* avec *si* à la basse), lu partout ailleurs par les accompagnateurs, ou par ses **notes Prisma** séparées par `;`, de la basse vers l'aigu : `Am` s'écrit aussi `10;1;5`. L'ordre compte : `Am7` (`10;1;5;8`) et `C6` (`1;5;8;10`) ont les mêmes notes, seule la basse les distingue. Les notes n'ont pas d'octave : un accord dit quelles notes jouer, pas où.
 
 La partition montre le nom, les notes empilées (la basse en bas, comme sur les lignes d'octave), ou les deux (option « Accompagnement », onglet Partition) : l'application calcule l'un à partir de l'autre.
 
@@ -313,7 +313,7 @@ Les indications de caractère et de tempo (`dolce`, `rit.`, `a tempo`…) garden
 
 | Partition classique | Prisma |
 |---|---|
-| noms de notes, dièses, bémols, bécarres | numéros de 1 à 12, un par hauteur |
+| noms de notes, dièses, bémols, bécarres | numéros de `1` à `12`, un par hauteur |
 | armure | rien : chaque numéro est la note jouée |
 | clés, portées | des portées (au piano, les deux mains) séparées par un trait ; un trait double entre deux parties |
 | lignes supplémentaires, 8va, 15ma, loco | numéro d'octave sur chaque ligne (`0`, `+1`, `-1`…) |

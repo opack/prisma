@@ -849,7 +849,7 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
 }
 
 /**
- * Extrait gravé, pour illustrer la notice : les systèmes seuls, sans page ni en-tête,
+ * Extrait gravé, pour illustrer la référence : les systèmes seuls, sans page ni en-tête,
  * recadrés au plus près, précédés de l'ordre de jeu s'il y en a un.
  */
 export function Excerpt({ pages, options, scale = 1 }: { pages: Page[]; options: RenderOptions; scale?: number }) {

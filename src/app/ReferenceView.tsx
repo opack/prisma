@@ -1,31 +1,26 @@
 /**
- * Notice du pianiste (NOTICE.md), affichée dans l'application : chaque exemple ` ```prisma `
- * y est gravé par le vrai moteur de gravure, sous son texte. La notice suit donc toujours
+ * La référence (REFERENCE.md), affichée dans l'application et sur le site : chaque exemple ` ```prisma `
+ * y est gravé par le vrai moteur de gravure, sous son texte (le site les montre à sa façon). La référence suit donc toujours
  * la gravure, sans images à régénérer.
  */
 import { Marked } from "marked";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
-import notice from "../../NOTICE.md?raw";
+import reference from "../../REFERENCE.md?raw";
 import { parsePrisma } from "../core/index.ts";
 import { engrave } from "./engrave.ts";
 import { Excerpt } from "./PageView.tsx";
 import { alignOf } from "./options.ts";
+import { slug } from "./slug.ts";
+import "./reference.css";
 import type { RenderOptions } from "./options.ts";
 
-/** Un titre de la notice, pour la table des matières : son niveau, son texte, son ancre. */
+/** Un titre de la référence, pour la table des matières : son niveau, son texte, son ancre. */
 type Heading = { depth: number; text: string; id: string };
 
-/** L'ancre d'un titre : son texte en minuscules, sans accents ni ponctuation. */
-const slug = (text: string) =>
-  text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
 
-/** HTML de la notice, avec une place réservée pour chaque exemple gravé, et ses titres. */
+/** HTML de la référence, avec une place réservée pour chaque exemple gravé, et ses titres. */
 function render(markdown: string) {
   const examples: string[] = [];
   const headings: Heading[] = [];
@@ -72,11 +67,11 @@ function Example({ text, options }: { text: string; options: RenderOptions }) {
 }
 
 /**
- * La notice, avec à sa gauche la table des matières : ses parties et sous-parties, un clic pour y
+ * La référence, avec à sa gauche la table des matières : ses parties et sous-parties, un clic pour y
  * aller ; celle qu'on lit est mise en évidence pendant qu'on fait défiler.
  */
-export function NoticeView({ options }: { options: RenderOptions }) {
-  const { html, examples, headings } = useMemo(() => render(notice), []);
+export function ReferenceView({ options, example }: { options: RenderOptions; example?: (text: string) => ReactNode }) {
+  const { html, examples, headings } = useMemo(() => render(reference), []);
   const root = useRef<HTMLDivElement>(null);
   const [slots, setSlots] = useState<Element[]>([]);
   const [current, setCurrent] = useState(headings[0]?.id);
@@ -84,15 +79,24 @@ export function NoticeView({ options }: { options: RenderOptions }) {
     setSlots([...(root.current?.querySelectorAll(".example") ?? [])]);
   }, [html]);
 
-  // la partie lue : le dernier titre passé sous le haut de la zone qui défile
+  // une partie demandée par l'adresse (reference.html#… sur le site) : la référence et ses exemples
+  // s'écrivent après le chargement, le navigateur n'a pas pu y aller seul
   useEffect(() => {
-    const pane = root.current?.closest(".guide-pane");
+    const id = decodeURIComponent(location.hash.slice(1));
+    if (slots.length && id) document.getElementById(id)?.scrollIntoView({ behavior: "instant" });
+  }, [slots]);
+
+  // la partie lue : le dernier titre passé sous le haut de la zone qui défile (le panneau de
+  // l'application, ou la page elle-même sur le site)
+  useEffect(() => {
+    const pane = root.current?.closest(".guide-pane") ?? document.scrollingElement;
     if (!pane) return;
+    const scroller = pane === document.scrollingElement ? window : pane;
     let frame = 0;
     const spy = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        const top = pane.getBoundingClientRect().top + 90;
+        const top = (scroller === window ? 0 : pane.getBoundingClientRect().top) + 90;
         let id = headings[0]?.id;
         for (const h of headings) {
           const el = document.getElementById(h.id);
@@ -104,10 +108,10 @@ export function NoticeView({ options }: { options: RenderOptions }) {
       });
     };
     spy();
-    pane.addEventListener("scroll", spy, { passive: true });
+    scroller.addEventListener("scroll", spy, { passive: true });
     return () => {
       cancelAnimationFrame(frame);
-      pane.removeEventListener("scroll", spy);
+      scroller.removeEventListener("scroll", spy);
     };
   }, [headings]);
 
@@ -118,7 +122,7 @@ export function NoticeView({ options }: { options: RenderOptions }) {
 
   return (
     <div className="guide-layout">
-      <nav className="guide-toc" aria-label="Sommaire de la notice">
+      <nav className="guide-toc" aria-label="Sommaire de la référence">
         <p className="guide-toc-title">Sommaire</p>
         <ul>
           {headings.map((h) => (
@@ -132,7 +136,10 @@ export function NoticeView({ options }: { options: RenderOptions }) {
       </nav>
       <article className="guide">
         <div ref={root} dangerouslySetInnerHTML={{ __html: html }} />
-        {slots.map((el, i) => createPortal(<Example text={examples[Number((el as HTMLElement).dataset.example)]} options={options} />, el, String(i)))}
+        {slots.map((el, i) => {
+          const text = examples[Number((el as HTMLElement).dataset.example)];
+          return createPortal(example ? example(text) : <Example text={text} options={options} />, el, String(i));
+        })}
       </article>
     </div>
   );
