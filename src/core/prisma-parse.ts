@@ -676,6 +676,11 @@ export function parsePrisma(text: string): Score {
     if (!/^[A-Z]$/.test(label)) throw new PrismaError(`ordre de jeu : « ${label} » n'est pas une lettre de section (A à Z)`, orderLine, undefined, { global: true });
     if (!markers.some((m) => m.label === label)) throw new PrismaError(`ordre de jeu : aucune section « [${label}] » dans le morceau`, orderLine, undefined, { global: true });
   }
+  // une section que l'ordre ne nomme pas ne serait jamais jouée : un oubli, presque toujours
+  const unplayed = order.length ? markers.find((m) => !order.includes(m.label)) : undefined;
+  if (unplayed) {
+    throw new PrismaError(`la section « [${unplayed.label}] » n'est jamais jouée : ajoutez-la à l'ordre de jeu (« order »), ou retirez-la`, unplayed.line, unplayed.col, { global: true });
+  }
 
   return {
     meta,

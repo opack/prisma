@@ -355,6 +355,11 @@ describe("sections", () => {
     expect(() => parsePrisma(piece("A C", at([3, "[A]"], [bar[1] + 1, "[B]"])))).toThrow(/aucune section « \[C\] »/);
   });
 
+  it("refuse une section que l'ordre de jeu ne joue jamais", () => {
+    expect(() => parsePrisma(piece("A A", at([3, "[A]"], [bar[1] + 1, "[B]"])))).toThrow(/section « \[B\] » n'est jamais jouée/);
+    expect(() => parsePrisma(piece("", at([3, "[A]"], [bar[1] + 1, "[B]"])))).not.toThrow();
+  });
+
   it("refuse un morceau qui commence avant sa première section", () => {
     expect(() => parsePrisma(piece("B", at([bar[1] + 1, "[B]"])))).toThrow(/première mesure/);
   });

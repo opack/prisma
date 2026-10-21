@@ -196,7 +196,7 @@ Un morceau qui ne se joue pas d'un bout à l'autre se découpe en **sections**, 
 
 - `[A]` sur la ligne `@` du haut marque le début de la section A. Une section va jusqu'au début de la suivante (ou jusqu'à la fin du morceau). La première section commence à la première mesure.
 - `order: A B A C` dans le frontmatter donne l'ordre de jeu. Sans `order`, les sections se jouent l'une après l'autre.
-- Le lecteur signale une section posée deux fois, un ordre qui nomme une section absente, un morceau qui commence avant sa première section, et une reprise à cheval sur deux sections.
+- Le lecteur signale une section posée deux fois, un ordre qui nomme une section absente, une section que l'ordre ne joue jamais, un morceau qui commence avant sa première section, et une reprise à cheval sur deux sections.
 
 Chaque section commence un nouveau système, dans le texte comme sur la partition, à la manière des couplets et du refrain d'une chanson ; la précédente se termine par une double barre. Sur la partition, la section porte sa lettre en blanc sur fond noir, un peu d'espace la sépare de la précédente, et l'ordre de jeu est gravé avec les mêmes lettres en tête de chaque page.
 
