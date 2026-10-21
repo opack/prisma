@@ -307,7 +307,7 @@ button:disabled { opacity: .5; cursor: default; }
 .popover-hint { margin: 2px 0 0; color: var(--muted); font-size: 0.85em; line-height: 1.35; white-space: normal; }
 /* graver : un bouton flottant en bas de l'éditeur, contre les pages, et sa flèche vers les réglages
    de la gravure */
-.editor { position: relative; min-height: 0; display: grid; }
+.editor { position: relative; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
 /* l'éditeur (CodeMirror) : le texte à chasse fixe, sans retour à la ligne ; de la place en bas pour le bouton */
 .editor-host { min-height: 0; }
 .editor-host .cm-editor { height: 100%; background: #fff; color: var(--ink); }
