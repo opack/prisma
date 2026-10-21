@@ -81,7 +81,12 @@ const LOSSES: { what: string; why: ReactNode }[] = [
   },
   {
     what: "La tonalité",
-    why: "L'armure annonce la gamme du morceau. Pour jouer, Prisma n'en a pas besoin : chaque note est écrite telle qu'elle se joue. Pour qui veut la connaître, pour improviser ou comprendre l'harmonie, elle se devine aux notes qui reviennent.",
+    why: (
+      <>
+        L'armure rappelle la gamme du morceau à chaque ligne. Pour jouer, Prisma n'en a pas besoin : chaque note est écrite telle qu'elle se joue. Pour qui veut la connaître, pour
+        improviser ou comprendre l'harmonie, l'en-tête peut l'écrire une fois, en tête de la partition (<code>key: 8</code> pour <i>sol</i> majeur), sans rien changer aux notes.
+      </>
+    ),
   },
   {
     what: "Le répertoire",

@@ -38,6 +38,8 @@ Un morceau Prisma existe sous deux formes : un **texte** (le fichier `.prisma`),
 
 Au piano, les touches noires sont `2`, `4`, `7`, `9` et `11`. Le numéro désigne une hauteur, pas un nom : *do♯* et *ré♭* sonnent pareil, ils ont donc le même numéro. Il n'y a ni armure à retenir, ni altération qui vaut jusqu'à la fin de la mesure. Ce qui est écrit est ce qu'on joue.
 
+Pour jouer, la tonalité n'est donc pas nécessaire. Pour qui veut la connaître (improviser, comprendre l'harmonie), l'en-tête peut la donner, une fois pour toutes : `key: 8` pour *sol* majeur, `key: 5:m` pour *mi* mineur (ou en anglais, `key: G`, `key: Em`). C'est une simple information, affichée en tête de la partition : elle ne change aucune note.
+
 ### Les octaves
 
 Chaque ligne de notes appartient à une octave, indiquée à gauche :

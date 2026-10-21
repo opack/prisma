@@ -15,7 +15,7 @@
 import type { Completion, CompletionContext, CompletionResult, CompletionSection } from "@codemirror/autocomplete";
 import { autocompletion } from "@codemirror/autocomplete";
 import type { EditorView } from "@codemirror/view";
-import { FRONTMATTER, INSTRUMENTS, DEFAULT_CELL, inspect, midiOf, noteName } from "../core/index.ts";
+import { FRONTMATTER, INSTRUMENTS, DEFAULT_CELL, guessKey, inspect, keyName, midiOf, noteName, parsePrisma, prismaKey } from "../core/index.ts";
 import type { NoteNames } from "../core/index.ts";
 import { isRuler } from "../core/prisma-parse.ts";
 import { caseAt, extendRuler, noteLine, octaveRoom, rulerSuffixes, systemOf, writeCase } from "./complete.ts";
@@ -80,7 +80,20 @@ function headerKeys(ctx: CompletionContext, line: string, lines: string[], head:
   const options: Completion[] = Object.entries(FRONTMATTER)
     .filter(([k]) => !used.has(k) && k !== "format")
     .map(([k, info]) => ({ label: k, type: "property", detail: info, apply: `${k}: ` }));
+  // la tonalité : celle que les notes font deviner, déjà écrite
+  const key = options.find((o) => o.label === "key");
+  const guess = key && guessed(lines);
+  if (key && guess) Object.assign(key, { apply: `key: ${prismaKey(guess)}`, detail: `tonalité du morceau ; d'après ses notes, ${prismaKey(guess)} (${keyName(guess, "latin")})` });
   return { from: ctx.pos - m[2].length, options, validFor: /^[\w-]*$/ };
+}
+
+/** La tonalité que les notes du texte font deviner ; undefined si le texte ne se lit pas encore. */
+function guessed(lines: string[]) {
+  try {
+    return guessKey(parsePrisma(lines.join("\n")));
+  } catch {
+    return undefined;
+  }
 }
 
 function instruments(ctx: CompletionContext, line: string): CompletionResult | null {

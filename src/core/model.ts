@@ -122,6 +122,8 @@ export type Meta = {
   composer?: string;
   /** Tempo, en temps par minute : le temps de la règle de comptage (la noire pointée d'un 6/8). */
   bpm?: number;
+  /** Tonalité, pour information, telle qu'écrite : « 8 », « 5:m », « G », « Em » (voir key.ts). */
+  key?: string;
   source?: string;
   /** Largeur d'une case dans le texte .prisma (3 par défaut). */
   cell?: number;

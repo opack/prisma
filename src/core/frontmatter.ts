@@ -1,4 +1,5 @@
 import type { Meta } from "./model.ts";
+import { parseKey } from "./key.ts";
 
 /**
  * Frontmatter minimal, sous-ensemble de YAML : une clé par ligne, « clé: valeur ».
@@ -75,6 +76,14 @@ export function parseFrontmatter(lines: string[]): FrontmatterResult {
       meta.bpm = n;
       continue;
     }
+    if (key === "key") {
+      // la tonalité, pour information : gardée telle qu'écrite, Prisma (« 8 », « 5:m ») ou anglaise (« G », « Em »)
+      if (!parseKey(value)) {
+        throw new PrismaError("« key » est la tonalité du morceau : un nombre de 1 à 12, suivi de « :m » pour une tonalité mineure (« key: 8 », « key: 5:m »), ou son nom anglais (« key: G », « key: Em »)", i + 1);
+      }
+      meta.key = value;
+      continue;
+    }
     if (NUMERIC_KEYS.has(key)) {
       const n = Number(value);
       if (!Number.isInteger(n) || n < 2) throw new PrismaError(`« ${key} » doit être un entier ≥ 2`, i + 1);
@@ -87,7 +96,7 @@ export function parseFrontmatter(lines: string[]): FrontmatterResult {
   throw new PrismaError("frontmatter non fermé : il manque la ligne « --- » de fin", lines.length);
 }
 
-const ORDER = ["format", "title", "subtitle", "composer", "bpm", "parts", "source", "order", "division", "cell"];
+const ORDER = ["format", "title", "subtitle", "composer", "bpm", "key", "parts", "source", "order", "division", "cell"];
 
 /** Frontmatter d'un fichier écrit : toujours avec la version du format, en tête. */
 export function writeFrontmatter(meta: Meta): string[] {
@@ -99,7 +108,8 @@ export function writeFrontmatter(meta: Meta): string[] {
   });
   const quote = (v: string | number) => {
     const s = String(v);
-    return /^[\s"']|[:#]|\s$/.test(s) ? JSON.stringify(s) : s;
+    // comme en YAML : seuls « : » suivi d'une espace et « # » précédé d'une espace couperaient la valeur
+    return /^[\s"']|: |\s#|\s$/.test(s) ? JSON.stringify(s) : s;
   };
   return ["---", ...keys.map((k) => `${k}: ${quote(meta[k]!)}`), "---", ""];
 }

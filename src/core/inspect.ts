@@ -7,6 +7,7 @@
 import { chordName, chordNotes, chordPrismaText } from "./chords.ts";
 import { ARPEGGIO_DOWN, FERMATA, FINGER_MARK, GRACE_MARK, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TRILL_MARK, isDynamic, isExtender, isHairpin, isPedalText, isSlur, trillAux } from "./model.ts";
 import { midiOf, octaveOf, parseOctaveLabel } from "./pitch.ts";
+import { keyName, parseKey } from "./key.ts";
 import { CHORD_LINE, isRuler, markTokens, parseRule } from "./prisma-parse.ts";
 
 /** Noms des notes : do ré mi (do central = do3), anglais (C4), ou aucun (le numéro Prisma suffit). */
@@ -59,6 +60,7 @@ export const FRONTMATTER: Record<string, string> = {
   composer: "compositeur",
   source: "source du morceau",
   bpm: "tempo de départ, en temps par minute",
+  key: "tonalité du morceau, pour information : sa tonique de 1 à 12, suivie de « :m » si elle est mineure (« 8 », « 5:m »), ou son nom anglais (« G », « Em »)",
   parts: "noms des parties, de haut en bas, et entre parenthèses l'instrument qui joue chacune à l'écoute (sinon son nom le fait deviner)",
   order: "ordre de jeu des sections",
   cell: "largeur de base d'une case, en caractères, à l'écriture",
@@ -406,6 +408,7 @@ function keyMeaning(key: string, value: string): string {
 /** Ce que règle une clé, sans le détail de ses valeurs possibles (la valeur suit). */
 const FRONTMATTER_SHORT: Record<string, string> = {
   bpm: "tempo de départ",
+  key: "tonalité du morceau",
   cell: "largeur de base d'une case à l'écriture",
   division: "découpage par défaut d'un temps",
 };
@@ -413,6 +416,10 @@ const FRONTMATTER_SHORT: Record<string, string> = {
 function valueOf(key: string, value: string): string | undefined {
   if (key === "format") return `la version ${value}`;
   if (key === "bpm") return `${value} temps par minute`;
+  if (key === "key") {
+    const k = parseKey(value);
+    return k && keyName(k, "latin");
+  }
   if (key === "cell") return `${value} caractères`;
   if (key === "division") return value === "3" ? "ternaire, chaque temps en 3" : value === "2" ? "binaire, chaque temps en 2" : undefined;
   if (key === "order") return value.split(/\s+/).join(" → ");

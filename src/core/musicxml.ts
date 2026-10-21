@@ -15,6 +15,7 @@
  */
 import { XMLParser } from "fast-xml-parser";
 import { chordNameNotes } from "./chords.ts";
+import { guessKey, keysOfSignature, prismaKey } from "./key.ts";
 import { TICKS_PER_BEAT, dynamicInWords, sortArticulations, isDynamic, isPedalText, staffCount, sortGraces, sortLyrics, sortNotes } from "./model.ts";
 import { guessInstrument, instrumentOfProgram } from "./instruments.ts";
 import type { Arpeggio, Articulation, ArticulationKind, Beat, Division, Expression, Grace, Hairpin, Part, Slur, Staff, Lyric, Marker, Meta, Note, Pedal, PedalText, Repeat, Score, TextMark } from "./model.ts";
@@ -755,6 +756,16 @@ export function importMusicXml(xml: string, fileName?: string): Score {
     .map((snd) => Number(attr(snd, "tempo")))
     .find((t) => t > 0);
   if (startTempo && measures.length) meta.bpm = Math.round(startTempo / pulse(measures[0].beats, measures[0].beatType).quarters);
+  // tonalité : l'armure de la première partie au début, ramenée à la hauteur qui sonne pour un
+  // instrument transpositeur. Elle donne deux tonalités (do majeur ou la mineur…) : les notes du
+  // morceau choisissent, une fois lues (le <mode> du fichier est trop souvent laissé à « major »)
+  const firstAttributes = findAll(kids(partNodes[0]), "measure")
+    .slice(0, 1)
+    .flatMap((m) => findAll(kids(m), "attributes").map(kids));
+  const keyNode = firstAttributes.map((a) => find(a, "key")).find((k) => k && find(kids(k), "fifths"));
+  const tr = firstAttributes.map((a) => find(a, "transpose")).find(Boolean);
+  const shift = tr ? num(find(kids(tr), "chromatic")) : 0;
+  const signature = keyNode ? keysOfSignature(num(find(kids(keyNode), "fifths")) + 7 * shift) : undefined;
   const beats: Beat[] = [];
   const raw: (Note & { tieStart: boolean; tieStop: boolean })[] = [];
   const rawGraces: Grace[] = [];
@@ -877,7 +888,10 @@ export function importMusicXml(xml: string, fileName?: string): Score {
     const t = q(x.t);
     if (t < end && !articulations.some((y) => y.staff === x.staff && y.t === t && y.kind === x.kind)) articulations.push({ staff: x.staff, t, kind: x.kind });
   }
-  return { meta, parts, beats, notes: sorted, graces: sortGraces(graces), arpeggios, articulations: sortArticulations(articulations), lyrics: lyricsOf(rawLyrics, rawVoiceNotes, q, end), ...directionsOf(rawDirections, sorted, beats.length, lastStaff), ...sectionsOf(playOrder(measures), measures.length) };
+  const score: Score = { meta, parts, beats, notes: sorted, graces: sortGraces(graces), arpeggios, articulations: sortArticulations(articulations), lyrics: lyricsOf(rawLyrics, rawVoiceNotes, q, end), ...directionsOf(rawDirections, sorted, beats.length, lastStaff), ...sectionsOf(playOrder(measures), measures.length) };
+  const key = signature && guessKey(score, signature);
+  if (key) meta.key = prismaKey(key);
+  return score;
 }
 
 /**

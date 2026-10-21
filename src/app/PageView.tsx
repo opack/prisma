@@ -3,12 +3,15 @@ import type { Meta, PedalLine, SystemRow, Voice } from "../core/index.ts";
 import { FINGER, G, PAGE, splitChord, graceExtra, graceSlotW, headerHeight, leadExtra, lyricTextW, splitNote } from "./engrave.ts";
 import type { Page, PlacedSystem } from "./engrave.ts";
 import type { OctavePosition, OctaveStyle, RenderOptions } from "./options.ts";
+import { writtenNames } from "./options.ts";
 import { octaveTint } from "./colors.ts";
 import { player } from "./player.ts";
 import { follow } from "./follow.ts";
 import { pick } from "./pick.ts";
 import { textMark } from "./textMark.ts";
 import { mainOf } from "../core/locate.ts";
+import { keyName, parseKey, prismaKey } from "../core/key.ts";
+import type { Key, NoteNames } from "../core/index.ts";
 import { glide, timed } from "./glide.ts";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 
@@ -1108,8 +1111,54 @@ export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
   );
 }
 
+/*
+ * Les signes de l'en-tête, dessinés en millimètres sur la ligne du texte (y = 0) : ils ont la hauteur
+ * d'un chiffre (2,2 mm pour un texte de 3,2 mm), centrés comme lui, à mi-hauteur à -1,1 mm.
+ */
+
+/** Un métronome : le tempo. */
+const MetronomeIcon = () => (
+  <g fill="none" stroke={INK} strokeWidth={0.28} strokeLinejoin="round" strokeLinecap="round">
+    <path d="M0 0 L0.65 -2 L1.65 -2 L2.3 0 Z" />
+    <path d="M1.15 -0.45 L1.95 -2.2" />
+  </g>
+);
+
+/** Une clé : la tonalité. */
+const KeyIcon = () => (
+  <g fill="none" stroke={INK} strokeWidth={0.28} strokeLinecap="round">
+    <circle cx={0.7} cy={-1.1} r={0.65} />
+    <path d="M1.35 -1.1 H3 M2.35 -1.1 V-0.45 M2.85 -1.1 V-0.6" />
+  </g>
+);
+
+/** Le tempo et la tonalité, à gauche de l'en-tête, l'un sous l'autre : chacun son signe, puis sa valeur. Le dernier est sur la ligne du compositeur. */
+function HeaderMarks({ y, marks }: { y: number; marks: { icon: React.ReactNode; text: string; title: string }[] }) {
+  const LINE = 4.6;
+  return (
+    <>
+      {marks.map((m, i) => {
+        const base = y - (marks.length - 1 - i) * LINE;
+        return (
+          <g key={m.title}>
+            <title>{m.title}</title>
+            <g transform={`translate(${PAGE.marginX} ${base})`}>{m.icon}</g>
+            <text x={PAGE.marginX + 4.4} y={base} fontSize={3.2} fill={INK}>
+              {m.text}
+            </text>
+          </g>
+        );
+      })}
+    </>
+  );
+}
+
+/** La tonalité en tête de page, comme dans un titre : son nom (« la mineur », « Am »), ou sa forme Prisma sans noms de notes. */
+const keyText = (k: Key, names: NoteNames) => keyName(k, names) || prismaKey(k);
+
 /** still : une page immobile (aperçu de la bibliothèque), sans curseur ni clic pour l'écoute. */
 export function PageView({ page, total, meta, options, still = false }: { page: Page; total: number; meta: Meta; options: RenderOptions; still?: boolean }) {
+  const key = meta.key ? parseKey(meta.key) : undefined;
   return (
     <svg
       className="page"
@@ -1137,11 +1186,13 @@ export function PageView({ page, total, meta, options, still = false }: { page: 
               {meta.composer}
             </text>
           )}
-          {meta.bpm && (
-            <text x={PAGE.marginX} y={PAGE.marginTop + 12 + (meta.subtitle ? G.subtitleH : 0)} fontSize={3.2} fill={INK}>
-              {meta.bpm} bpm
-            </text>
-          )}
+          <HeaderMarks
+            y={PAGE.marginTop + 12 + (meta.subtitle ? G.subtitleH : 0)}
+            marks={[
+              ...(meta.bpm ? [{ icon: <MetronomeIcon />, text: String(meta.bpm), title: `tempo : ${meta.bpm} temps par minute` }] : []),
+              ...(key ? [{ icon: <KeyIcon />, text: keyText(key, writtenNames(options.noteNames)), title: "tonalité" }] : []),
+            ]}
+          />
         </g>
       )}
       {page.order.length > 0 && <OrderLine order={page.order} y={page.header ? PAGE.marginTop + headerHeight(meta) - 1 : PAGE.marginTop - 2} live={!still} />}
