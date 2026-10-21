@@ -5,7 +5,7 @@ Prisma est une notation musicale chromatique : chaque note de l'octave porte un 
 - le **format texte** `.prisma`, décrit exactement dans [FORMAT.md](FORMAT.md) ;
 - l'**application** de gravure et d'écoute, dans le navigateur ;
 - le **site** qui présente la notation et l'apprend ;
-- un **outil en ligne de commande** (import MusicXML, remise en page, vérification).
+- un **outil en ligne de commande** (import et export MusicXML, remise en page, vérification).
 
 Pour lire et jouer en Prisma, c'est [REFERENCE.md](REFERENCE.md). Ce document-ci s'adresse à qui veut comprendre le code ou y contribuer. Ce qui est fait et ce qui reste à faire est dans [ROADMAP.md](ROADMAP.md).
 
@@ -26,6 +26,7 @@ L'outil en ligne de commande :
 
 ```sh
 npm run prisma -- import morceau.musicxml -o morceau.prisma   # MusicXML → .prisma
+npm run prisma -- export morceau.prisma -o morceau.musicxml   # .prisma → MusicXML
 npm run prisma -- format morceau.prisma -o propre.prisma      # remet en page (--largeur 96 par défaut)
 npm run prisma -- check morceau.prisma                        # signale la première erreur, ligne et colonne
 ```
@@ -86,6 +87,10 @@ Le cœur du projet. Le moteur découpe le morceau en **systèmes** qui tiennent 
 
 Un MusicXML « score-partwise » devient un `Score`, que `writePrisma` écrit aussitôt en texte : c'est ce texte qu'on retrouve dans l'éditeur, et c'est lui qui est ensuite lu pour graver et jouer, comme un `.prisma` ouvert (`app/render.ts`). Le texte reste ainsi la seule source, même pour un morceau importé. La structure est d'abord déroulée (reprises, cases, D.C., D.S., coda, Fine), puis redécoupée en sections et en ordre de jeu : Prisma ne garde que des reprises simples. Les liaisons de prolongation sont fusionnées, les mesures composées comptées en temps pointés, les instruments transpositeurs ramenés à la hauteur qui sonne.
 
+### L'export MusicXML (`core/musicxml-export.ts`)
+
+Le chemin inverse, pour ouvrir un morceau dans MuseScore ou un autre logiciel (Fichier › Exporter en MusicXML…, ou l'outil en ligne de commande). La partition classique demande ce que Prisma a retiré, et l'export le reconstitue : le nom des notes et l'armure d'après la tonalité (`key`, ou celle que les notes font deviner) ; les figures de durée, une note qui passe une barre ou qu'aucune figure ne rend devenant des notes liées, un temps coupé en 3 (5, 6, 7) un triolet (un quintolet…) ; les voix, des notes de même début et même fin formant un accord ; la clé de chaque portée, d'après ses notes. Les reprises s'écrivent en barres de reprise. Un ordre de jeu, que MusicXML ne sait pas dire, est déroulé, chaque section marquée de sa lettre (un repère de répétition) : à l'import, une section dont le repère revient avec les mêmes mesures n'est gardée qu'une fois, et l'on retrouve sections et ordre. Le fichier suit le schéma MusicXML 4.0.
+
 ## L'application (`src/app/`)
 
 `App.tsx` assemble l'ensemble : la barre et ses menus, l'éditeur à gauche, les pages à droite, la bibliothèque, la référence, les options.
@@ -114,7 +119,7 @@ Quatre pages à la racine (`index.html`, `apprendre.html`, `reference.html`, `co
 
 ## Tests
 
-`npm test` lance Vitest sur `tests/`. L'essentiel est dans `core.test.ts`, organisé par sujet : règles du format, reprises et sections, import MusicXML (avec la Gymnopédie n° 1 de Satie en exemple), nuances, pédale, ornements, accords, paroles, et l'écoute (déroulé, intensités, métronome…). Les autres fichiers couvrent les erreurs en une passe, la complétion, le chemin de la partition au texte, la retouche et les réglages d'un morceau.
+`npm test` lance Vitest sur `tests/`. L'essentiel est dans `core.test.ts`, organisé par sujet : règles du format, reprises et sections, import MusicXML (avec la Gymnopédie n° 1 de Satie en exemple), nuances, pédale, ornements, accords, paroles, et l'écoute (déroulé, intensités, métronome…). `export.test.ts` fait l'aller-retour de l'export : la Gymnopédie et chaque exemple de la référence, exportés puis réimportés, redonnent les mêmes notes, les mêmes indications, les mêmes sections et le même ordre de jeu. Les autres fichiers couvrent les erreurs en une passe, la complétion, le chemin de la partition au texte, la retouche et les réglages d'un morceau.
 
 `reference.test.ts` vérifie chaque exemple de la référence : il doit se lire sans erreur et être écrit exactement comme l'application l'écrirait. La documentation ne peut donc pas montrer un exemple faux ou mal mis en forme.
 

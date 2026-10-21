@@ -4,7 +4,8 @@
  * - Une partie par <part>, une portée par <staff> (le piano en a deux) ; les parties nommées d'après
  *   <part-name> quand il y a plusieurs parties.
  * - Structure : le morceau est déroulé (reprises, cases, D.C., D.S., To Coda, Fine), puis
- *   découpé en sections et en ordre de jeu ; seules restent des reprises simples.
+ *   découpé en sections et en ordre de jeu ; seules restent des reprises simples. Une partie
+ *   écrite plusieurs fois, sous le même repère de répétition, n'est gardée qu'une fois.
  * - Mesures composées (6/8, 9/8, 12/8) comptées en noires pointées, découpage ternaire.
  * - Anacrouse : la première mesure incomplète commence au temps voulu (ex. temps 3 en 3/4).
  *   Elle est numérotée 0 seulement si le fichier l'exclut du décompte (implicit="yes") ;
@@ -187,6 +188,8 @@ type RawMeasure = {
   endRepeat: boolean;
   times: number;
   endings?: number[];
+  /** Repère de répétition (<rehearsal>) en tête de mesure : « A », « B »… */
+  rehearsal?: string;
 };
 
 function readMeasures(partNode: XNode, base: Staff, staves: number): RawMeasure[] {
@@ -211,6 +214,7 @@ function readMeasures(partNode: XNode, base: Staff, staves: number): RawMeasure[
     // petites notes en attente de leur note principale, par voix
     const waiting = new Map<string, Omit<RawGrace, "on">[]>();
     const directions: RawDirection[] = [];
+    let rehearsal: string | undefined;
     const structure: RawStructure[] = [];
     let startRepeat = false, endRepeat = false, times = 2;
     let endings = openEnding;
@@ -269,6 +273,8 @@ function readMeasures(partNode: XNode, base: Staff, staves: number): RawMeasure[
               directions.push({ staff, at, kind: "wedge", text: attr(c, "type") ?? "", number: String(attr(c, "number") ?? "1") });
             } else if (ct === "pedal") {
               directions.push({ staff, at, kind: "pedal", text: attr(c, "type") ?? "" });
+            } else if (ct === "rehearsal") {
+              rehearsal ??= text(c).trim() || undefined;
             } else if (ct === "words") {
               // certains logiciels laissent des balises de mise en forme dans le texte (« <font …> »)
               const w = plainDynamics(text(c)).replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
@@ -450,9 +456,40 @@ function readMeasures(partNode: XNode, base: Staff, staves: number): RawMeasure[
       length: maxCursor,
       implicit: attr(measure, "implicit") === "yes",
       notes, graces, arpeggios, articulations, lyrics, voiceNotes, directions, structure, startRepeat, endRepeat, times, endings,
+      ...(rehearsal ? { rehearsal } : {}),
     });
   }
   return out;
+}
+
+/**
+ * Un morceau écrit tout déroulé, dont les repères de répétition reviennent (« A », « B », « A »…) :
+ * c'est ainsi que Prisma exporte un ordre de jeu. Une partie dont le repère revient avec
+ * exactement les mêmes mesures n'est gardée qu'une fois, et rejouée à son tour : on retrouve
+ * les sections et l'ordre. Undefined si aucun repère ne revient à l'identique.
+ */
+function foldRehearsals(ms: RawMeasure[]): { measures: RawMeasure[]; kept: number[] } | undefined {
+  const starts = ms.flatMap((m, i) => (i === 0 || m.rehearsal ? [i] : []));
+  const spans = starts.map((from, k) => ({ label: ms[from].rehearsal, bars: ms.slice(from, starts[k + 1] ?? ms.length) }));
+  // le contenu d'une mesure, hors numéros (de mesure, de liaison, de soufflet)
+  const content = (m: RawMeasure) => JSON.stringify(m, (k, v) => (k === "number" || k === "rehearsal" || k === "implicit" ? undefined : v));
+  const measures: RawMeasure[] = [];
+  const kept: number[] = []; // la mesure gardée pour chaque mesure du fichier
+  const first = new Map<string, { at: number; bars: string[] }>();
+  let folded = false;
+  for (const span of spans) {
+    const bars = span.bars.map(content);
+    const seen = span.label !== undefined ? first.get(span.label) : undefined;
+    if (seen && seen.bars.length === bars.length && seen.bars.every((b, i) => b === bars[i])) {
+      kept.push(...bars.map((_, i) => seen.at + i));
+      folded = true;
+      continue;
+    }
+    if (span.label !== undefined && !seen) first.set(span.label, { at: measures.length, bars });
+    kept.push(...span.bars.map((_, i) => measures.length + i));
+    measures.push(...span.bars);
+  }
+  return folded ? { measures, kept } : undefined;
 }
 
 type PlayMeasure = Pick<RawMeasure, "startRepeat" | "endRepeat" | "times" | "endings"> & { structure?: RawStructure[]; length?: number };
@@ -741,6 +778,13 @@ export function importMusicXml(xml: string, fileName?: string): Score {
       into.length = Math.max(into.length, m.length);
     });
   }
+  // l'ordre de jeu : celui des reprises et renvois, puis des repères qui reviennent
+  let seq = playOrder(measures);
+  const folded = foldRehearsals(measures);
+  if (folded) {
+    measures.splice(0, measures.length, ...folded.measures);
+    seq = seq.map((i) => folded.kept[i]);
+  }
   const lastStaff = (p: Staff) => {
     let end = 0;
     for (const x of parts) {
@@ -888,7 +932,7 @@ export function importMusicXml(xml: string, fileName?: string): Score {
     const t = q(x.t);
     if (t < end && !articulations.some((y) => y.staff === x.staff && y.t === t && y.kind === x.kind)) articulations.push({ staff: x.staff, t, kind: x.kind });
   }
-  const score: Score = { meta, parts, beats, notes: sorted, graces: sortGraces(graces), arpeggios, articulations: sortArticulations(articulations), lyrics: lyricsOf(rawLyrics, rawVoiceNotes, q, end), ...directionsOf(rawDirections, sorted, beats.length, lastStaff), ...sectionsOf(playOrder(measures), measures.length) };
+  const score: Score = { meta, parts, beats, notes: sorted, graces: sortGraces(graces), arpeggios, articulations: sortArticulations(articulations), lyrics: lyricsOf(rawLyrics, rawVoiceNotes, q, end), ...directionsOf(rawDirections, sorted, beats.length, lastStaff), ...sectionsOf(seq, measures.length) };
   const key = signature && guessKey(score, signature);
   if (key) meta.key = prismaKey(key);
   return score;

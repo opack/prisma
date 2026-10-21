@@ -154,7 +154,7 @@ export const chordWriting = (text: string): "prisma" | "english" | "notes" =>
  * sorte d'accord (le suffixe usuel) et sa basse. La basse est d'abord essayée comme fondamentale ;
  * sinon l'accord est un renversement. Undefined si les notes ne forment aucun accord connu.
  */
-function recognize(notes: number[]): { root: number; quality: string; bass: number } | undefined {
+export function recognize(notes: number[]): { root: number; quality: string; bass: number } | undefined {
   const set = new Set(notes.map((n) => n - 1));
   const bass = notes[0] - 1;
   const same = (iv: number[], root: number) => iv.length === set.size && iv.every((i) => set.has(pc(root + i)));

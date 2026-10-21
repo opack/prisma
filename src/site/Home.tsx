@@ -164,7 +164,7 @@ export function Home() {
             <h2>Vos morceaux</h2>
             <p>
               Importez un fichier MusicXML, exporté de MuseScore par exemple : l'application l'écrit en Prisma. Ou tapez le vôtre : l'éditeur complète ce que vous écrivez, souligne
-              les erreurs, et un double-clic sur la partition retouche une note.
+              les erreurs, et un double-clic sur la partition retouche une note. Et dans l'autre sens, un morceau s'exporte en MusicXML, pour l'ouvrir en partition classique.
             </p>
             <p>
               Vous connaissez déjà la partition classique ? <a href="comparaison.html">Voyez ce que Prisma garde, ce qu'il retire, et ce qu'il perd.</a>

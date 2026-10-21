@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { DEFAULT_WIDTH, PrismaError, importMusicXml, parsePrisma, writePrisma } from "../core/index.ts";
+import { DEFAULT_WIDTH, PrismaError, exportMusicXml, importMusicXml, parsePrisma, writePrisma } from "../core/index.ts";
 import type { Score } from "../core/index.ts";
 import { Menu } from "./Menu.tsx";
 import { ListenControls } from "./ListenControls.tsx";
@@ -32,7 +32,7 @@ import type { RenderOptions } from "./options.ts";
 import { scoreInstrument, staffInstruments, instrumentsOf } from "./instruments.ts";
 import { PIECE_KEYS, isEmpty, isPieceKey, parseSettings, readSettings, saveSettings, settingsName, writeSettings } from "./piece.ts";
 import type { PieceKey, PieceSettings } from "./piece.ts";
-import { OPENABLE, canWriteInPlace, download, droppedFile, pickFile, pickSaveTarget, targetIn, writeFile } from "./files.ts";
+import { OPENABLE, canWriteInPlace, download, droppedFile, pickExportTarget, pickFile, pickSaveTarget, targetIn, writeFile } from "./files.ts";
 
 /** Délai sans frappe avant la gravure automatique. */
 const AUTO_ENGRAVE_DELAY = 600;
@@ -349,6 +349,31 @@ export function App() {
       setNotice(`Enregistrement impossible : ${(e as Error).message}`);
     }
   }, [handle, fileName, source, saveDir]);
+
+  /** Exporte le texte, tel qu'il est, en MusicXML : un fichier à part, le .prisma ne change pas. */
+  const exportFile = useCallback(async () => {
+    let xml: string;
+    try {
+      xml = exportMusicXml(parsePrisma(source));
+    } catch (e) {
+      setNotice(`Export impossible : ${(e as Error).message}`);
+      return;
+    }
+    const name = fileName.replace(/\.(prisma|txt|musicxml|xml)$/i, "") + ".musicxml";
+    try {
+      if (canWriteInPlace) {
+        const target = await pickExportTarget(name);
+        if (!target) return; // annulé
+        await writeFile(target, xml);
+        setNotice(`Exporté dans ${target.name}`);
+      } else {
+        download(name, xml);
+        setNotice(`Exporté sous le nom ${name}`);
+      }
+    } catch (e) {
+      setNotice(`Export impossible : ${(e as Error).message}`);
+    }
+  }, [source, fileName]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -744,6 +769,7 @@ export function App() {
             "separator",
             { label: "Enregistrer", onSelect: () => saveFile(), shortcut: "Ctrl+S" },
             { label: "Enregistrer sous…", onSelect: () => saveFile(true), shortcut: "Ctrl+Maj+S" },
+            { label: "Exporter en MusicXML…", onSelect: exportFile },
             "separator",
             { label: "Recharger", onSelect: reloadFile, disabled: !handle },
             "separator",

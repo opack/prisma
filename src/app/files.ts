@@ -40,6 +40,16 @@ export async function pickSaveTarget(suggestedName: string): Promise<FileSystemF
   }
 }
 
+/** Demande où enregistrer un MusicXML exporté. Renvoie null si l'utilisateur annule. */
+export async function pickExportTarget(suggestedName: string): Promise<FileSystemFileHandle | null> {
+  try {
+    return await w.showSaveFilePicker!({ suggestedName, types: [XML] });
+  } catch (e) {
+    if (isAbort(e)) return null;
+    throw e;
+  }
+}
+
 /** Formats ouverts par l'application. */
 export const OPENABLE = /\.(prisma|txt|musicxml|xml)$/i;
 

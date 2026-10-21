@@ -97,7 +97,7 @@ const LOSSES: { what: string; why: ReactNode }[] = [
     why: (
       <>
         Un professeur, un chef de chœur, un autre musicien lisent la portée, et pas encore Prisma. En attendant, l'application affiche à la demande le nom des notes (<i>do</i>,{" "}
-        <i>ré</i>, <i>mi</i>, ou <i>C</i>, <i>D</i>, <i>E</i>), pour se comprendre.
+        <i>ré</i>, <i>mi</i>, ou <i>C</i>, <i>D</i>, <i>E</i>), et exporte le morceau en MusicXML : MuseScore l'ouvre en partition classique, pour ceux qui la lisent.
       </>
     ),
   },
