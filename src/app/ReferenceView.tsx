@@ -53,11 +53,11 @@ function render(markdown: string) {
 function Example({ text, options }: { text: string; options: RenderOptions }) {
   const result = useMemo(() => {
     try {
-      return { pages: engrave(parsePrisma(text), { compact: options.density === "compact", chords: options.chords, align: alignOf(options.notePosition), reminders: options.holdReminders, inlineSections: options.sections === "inline" }) };
+      return { pages: engrave(parsePrisma(text), { compact: options.density === "compact", chords: options.chords, chordNames: options.chordNames, align: alignOf(options.notePosition), reminders: options.holdReminders, inlineSections: options.sections === "inline" }) };
     } catch (e) {
       return { error: (e as Error).message };
     }
-  }, [text, options.density, options.chords, options.notePosition, options.holdReminders, options.sections]);
+  }, [text, options.density, options.chords, options.chordNames, options.notePosition, options.holdReminders, options.sections]);
   return (
     <>
       <pre className="example-text">{text}</pre>

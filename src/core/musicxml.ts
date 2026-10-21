@@ -14,7 +14,7 @@
  *   (rit., a tempo…) vont au-dessus du système. Pédale de résonance.
  */
 import { XMLParser } from "fast-xml-parser";
-import { chordNameNotes } from "./chords.ts";
+import { chordNameNotes, prismaNameOf } from "./chords.ts";
 import { guessKey, keysOfSignature, prismaKey } from "./key.ts";
 import { TICKS_PER_BEAT, dynamicInWords, sortArticulations, isDynamic, isPedalText, staffCount, sortGraces, sortLyrics, sortNotes } from "./model.ts";
 import { guessInstrument, instrumentOfProgram } from "./instruments.ts";
@@ -940,7 +940,8 @@ function directionsOf(dirs: (RawDirection & { t: number })[], notes: Note[], bea
     }
     // un accord peut aussi être écrit en simple texte (« A7 » au-dessus de la portée) : tout le texte doit être un nom d'accord
     if (d.kind === "chord" || (d.kind === "words" && chordNameNotes(d.text.trim()))) {
-      if (t < end && !chords.some((c) => c.t === t)) chords.push({ t, text: d.text.trim() });
+      // écrit par son nom Prisma, l'écriture privilégiée
+      if (t < end && !chords.some((c) => c.t === t)) chords.push({ t, text: prismaNameOf(d.text.trim()) ?? d.text.trim() });
       continue;
     }
     if (d.kind === "fermata") {

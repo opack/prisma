@@ -4,7 +4,7 @@
  * l'en-tête…), pour la barre de statut de l'éditeur. La lecture est indulgente : un texte en
  * cours d'écriture, même faux, se décrit au mieux.
  */
-import { chordName, chordNotes, chordPrismaText } from "./chords.ts";
+import { chordName, chordNotes, chordPrismaName, chordPrismaText, chordWriting } from "./chords.ts";
 import { ARPEGGIO_DOWN, FERMATA, FINGER_MARK, GRACE_MARK, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TRILL_MARK, isDynamic, isExtender, isHairpin, isPedalText, isSlur, trillAux } from "./model.ts";
 import { midiOf, octaveOf, parseOctaveLabel } from "./pitch.ts";
 import { keyName, parseKey } from "./key.ts";
@@ -339,10 +339,14 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
     const notes = chordNotes(word);
     if (!notes) return void symbol(word, "accord inconnu");
     const list = notes.map((n) => pitchClass(n, names)).join(" ");
-    // au plus près du signe, son autre écriture : les chiffres Prisma d'un accord nommé, le nom d'un
-    // accord écrit en chiffres (s'il en a un) ; puis ses notes
-    const other = /^\d/.test(word) ? chordName(notes) : chordPrismaText(notes);
-    symbol(word, `${other ? `(${other}) ` : ""}accord ${list}`, { keys: notes.map((n) => ((n - 1) % 12) + 1) });
+    // au plus près du signe, ses autres écritures : son nom Prisma, son nom anglais, ses notes Prisma ; puis ses notes
+    const writing = chordWriting(word);
+    const others = [
+      writing !== "prisma" && chordPrismaName(notes),
+      writing !== "english" && chordName(notes),
+      writing !== "notes" && chordPrismaText(notes),
+    ].filter(Boolean);
+    symbol(word, `${others.length ? `(${others.join(", ")}) ` : ""}accord ${list}`, { keys: notes.map((n) => ((n - 1) % 12) + 1) });
   }
 
   function noteMeaning(content: string, oct: number, row: string, p: NonNullable<ReturnType<typeof placeOf>>): string {

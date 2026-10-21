@@ -284,7 +284,7 @@ export function parsePrisma(text: string): Score {
           const a = anchors.find((x) => x.from === col);
           if (!a) throw new PrismaError(`accord « ${w[0]} » : il doit commencer exactement sur une case de la règle de comptage`, li + 1, col + 1);
           if (!chordNotes(w[0])) {
-            throw new PrismaError(`accord inconnu « ${w[0]} » : nom anglais (Am, G7, F#m7b5, G/B…) ou notes Prisma séparées par « ; », de la basse vers l'aigu (10;1;5)`, li + 1, col + 1);
+            throw new PrismaError(`accord inconnu « ${w[0]} » : nom Prisma (10:m, 8:7, 7:m7b5, 8/12…), nom anglais (Am, G7, G/B…) ou notes Prisma séparées par des virgules, de la basse vers l'aigu (10,1,5)`, li + 1, col + 1);
           }
           if (chords.some((c) => c.t === a.t)) throw new PrismaError("deux accords sur une même case", li + 1, col + 1);
           chords.push({ t: a.t, text: w[0] });

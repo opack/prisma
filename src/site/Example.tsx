@@ -19,11 +19,11 @@ function Score({ text, options = {}, scale = 1.5 }: Omit<Engraved, "label">) {
   const o = { ...DEFAULT_OPTIONS, ...options };
   const result = useMemo(() => {
     try {
-      return { pages: engrave(parsePrisma(text), { compact: o.density === "compact", chords: o.chords, align: alignOf(o.notePosition), reminders: o.holdReminders, inlineSections: o.sections === "inline" }) };
+      return { pages: engrave(parsePrisma(text), { compact: o.density === "compact", chords: o.chords, chordNames: o.chordNames, align: alignOf(o.notePosition), reminders: o.holdReminders, inlineSections: o.sections === "inline" }) };
     } catch (e) {
       return { error: (e as Error).message };
     }
-  }, [text, o.density, o.chords, o.notePosition, o.holdReminders, o.sections]);
+  }, [text, o.density, o.chords, o.chordNames, o.notePosition, o.holdReminders, o.sections]);
   return result.pages ? <Excerpt pages={result.pages} options={o} scale={scale} /> : <p className="caption">{result.error}</p>;
 }
 

@@ -748,7 +748,7 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
       ))}
       {/* accords : le nom en haut, les notes Prisma empilées dessous, la basse en bas */}
       {sys.chords.map((c, i) => {
-        const { notes, name } = splitChord(c.text);
+        const { notes, name } = splitChord(c.text, options.chordNames);
         const x = xs[sys.anchors[c.anchor]] + leadExtra(sys, c.anchor) + 0.5;
         const named = !!name && options.chords !== "notes";
         const stacked = options.chords !== "name" || !name;

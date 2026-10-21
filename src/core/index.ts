@@ -12,4 +12,4 @@ export { parsePrisma } from "./prisma-parse.ts";
 export { parseErrors } from "./errors.ts";
 export { guessKey, keyName, keysOfSignature, parseKey, prismaKey } from "./key.ts";
 export type { Key } from "./key.ts";
-export { CHORD_NOTE_SEPARATOR, chordName, chordNotes, chordPrismaText } from "./chords.ts";
+export { CHORD_NOTE_SEPARATOR, CHORD_QUALITY_SEPARATOR, chordName, chordNotes, chordPrismaName, chordPrismaText, chordWriting } from "./chords.ts";

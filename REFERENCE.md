@@ -270,17 +270,19 @@ m1 |1    |2  |3  |4  ||1     |2  |3  |4  ||
 Les accords à jouer par un accompagnateur (guitare, ou un pianiste qui improvise) s'écrivent sur une ligne `@c` (*chords*), au-dessus de la règle, chacun sur la case où il commence :
 
 ```prisma
-@c  Am             G/B
-m1 |1  *  |2  *  ||1   |2  ||
-───┼──────┼──────┼┼────┼───┼┼
-0  |5  3  |1  3  ||3   |-  ||
-───┼──────┼──────┼┼────┼───┼┼
--1 |10 -  |-  -  ||12  |-  ||
+@c  10:m             8/12
+m1 |1    *  |2  *  ||1    |2  ||
+───┼────────┼──────┼┼─────┼───┼┼
+0  |5    3  |1  3  ||3    |-  ||
+───┼────────┼──────┼┼─────┼───┼┼
+-1 |10   -  |-  -  ||12   |-  ||
 ```
 
-Un accord s'écrit au choix par son **nom anglais** (`Am`, `G7`, `F#m7b5`, `G/B` pour un *sol* avec *si* à la basse), lu partout ailleurs par les accompagnateurs, ou par ses **notes Prisma** séparées par `;`, de la basse vers l'aigu : `Am` s'écrit aussi `10;1;5`. L'ordre compte : `Am7` (`10;1;5;8`) et `C6` (`1;5;8;10`) ont les mêmes notes, seule la basse les distingue. Les notes n'ont pas d'octave : un accord dit quelles notes jouer, pas où.
+Un accord s'écrit de préférence par son **nom Prisma** : sa fondamentale en nombre, puis, après un `:`, la sorte d'accord, et après un `/` la basse si elle diffère. `10:m` est *la* mineur, `8:7` *sol* 7, `8/12` *sol* avec *si* à la basse ; l'accord majeur n'a pas de `:` (`8`, *sol* majeur). Les sortes d'accords sont celles des noms habituels : `m`, `7`, `maj7`, `m7`, `dim`, `sus4`…
 
-La partition montre le nom, les notes empilées (la basse en bas, comme sur les lignes d'octave), ou les deux (option « Accompagnement », onglet Partition) : l'application calcule l'un à partir de l'autre.
+On peut aussi l'écrire par son **nom anglais** (`Am`, `G7`, `G/B`), lu par les accompagnateurs du monde entier, ou par ses **notes Prisma** séparées par des virgules, de la basse vers l'aigu : `10:m` s'écrit aussi `10,1,5`. L'ordre compte : `10:m7` (`10,1,5,8`) et `1:6` (`1,5,8,10`) ont les mêmes notes, seule la basse les distingue. Les notes n'ont pas d'octave : un accord dit quelles notes jouer, pas où.
+
+La partition montre le nom, les notes empilées (la basse en bas, comme sur les lignes d'octave), ou les deux (option « Accompagnement », onglet Partition), et le nom en Prisma ou en anglais (option « Nom des accords ») : l'application calcule l'un à partir de l'autre. Dans l'éditeur, Ctrl+Espace sur une case d'une ligne `@c` propose l'accord des notes qui y sonnent.
 
 ### Les paroles
 
@@ -336,5 +338,5 @@ Les indications de caractère et de tempo (`dolce`, `rit.`, `a tempo`…) garden
 | liaisons d'expression | `(-----)` sous la portée concernée |
 | staccato, accent, marcato | `.`, `!`, `!!` sous la portée concernée ; le tenuto n'a pas de signe |
 | pédale | `Ped.`, `*`, `*Ped.`, tracés en trait continu |
-| accords d'accompagnement (Am, G/B) | ligne `@c` : le nom, ou les notes de la basse vers l'aigu (`10;1;5`) |
+| accords d'accompagnement (Am, G/B) | ligne `@c` : le nom Prisma (`10:m`, `8/12`), le nom anglais, ou les notes de la basse vers l'aigu (`10,1,5`) |
 | paroles, traits d'union, mélismes | une ligne `@l` par couplet, sous la portée qui chante : `lu- ne`, `men ---` |

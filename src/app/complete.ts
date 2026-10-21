@@ -10,7 +10,7 @@
  * réécrites et la place du curseur après l'écriture.
  */
 import { isRuler, markTokens, parseRule } from "../core/prisma-parse.ts";
-import { CENTRAL_OCTAVE, parseOctaveLabel } from "../core/pitch.ts";
+import { CENTRAL_OCTAVE, midiOf, parseOctaveLabel } from "../core/pitch.ts";
 
 /** Les lignes d'un système : de first à last, dont sa règle de comptage. */
 export type System = { first: number; last: number; ruler: number };
@@ -223,4 +223,43 @@ export function noteLine(ruler: string, label: string) {
   let out = label.padEnd(pipe);
   for (let c = pipe; c < ruler.trimEnd().length; c++) out += ruler[c] === "|" ? "|" : " ";
   return out;
+}
+
+/**
+ * Les notes qui sonnent dans une colonne d'un système : sur chaque ligne de notes, celle de la case
+ * (ou celle qu'une tenue prolonge), à sa hauteur ; de la plus grave à la plus aiguë.
+ */
+export function soundingAt(lines: string[], sys: { ruler: number; last: number }, C: number): number[] {
+  const ruler = lines[sys.ruler];
+  const first = ruler.indexOf("|");
+  const midis: number[] = [];
+  let octave: number | undefined;
+  for (let k = sys.ruler + 1; k <= sys.last; k++) {
+    const line = lines[k];
+    const bar = line.indexOf("|");
+    if (line.startsWith("@") || bar < 0 || /^[─━\-=═+┼╪|\s]+$/.test(line.trim())) {
+      if (/^[─━\-=═+┼╪|\s]+$/.test(line.trim())) octave = undefined; // un trait : une autre portée
+      continue;
+    }
+    const label = line.slice(0, bar).trim();
+    if (label) octave = parseOctaveLabel(label);
+    if (octave === undefined) continue;
+    // la case de la colonne, ou, pour une tenue, la case de la note qu'elle prolonge
+    for (let col = C; col > first; ) {
+      const c = caseAt(ruler, col);
+      if (!c) break;
+      const content = line.slice(c.start, c.end).trim().replace(/^(\d+')+/, "");
+      const n = content.match(/^-?(\d+)/);
+      if (n) {
+        const v = Number(n[1]);
+        if (v >= 1 && v <= 12) midis.push(midiOf(octave, v));
+        break;
+      }
+      if (!content.startsWith("-")) break;
+      // la case d'avant, de l'autre côté de sa barre (simple ou double)
+      col = c.start - 1;
+      while (col > first && !caseAt(ruler, col)) col--;
+    }
+  }
+  return midis.sort((a, b) => a - b);
 }

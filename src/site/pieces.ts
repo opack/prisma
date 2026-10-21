@@ -73,7 +73,7 @@ export const CHORDS = `---
 format: 1
 ---
 
-@c  C   Cm  C7  Cdim
+@c  1   1:m 1:7 1:dim
 m1 |1  |2  |3  |4  ||
 0  |   |   |11 |   ||
    |8  |8  |8  |7  ||
@@ -86,7 +86,7 @@ export const TWO_CHORDS = `---
 format: 1
 ---
 
-@c  C   Em
+@c  1   5:m
 m1 |1  |2  ||
 0  |8  |12 ||
    |5  |8  ||

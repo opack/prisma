@@ -216,6 +216,10 @@ export function Comparison() {
               Pour lire un accord, on fait l'inverse : on regarde les écarts. Et pour en changer, on change un nombre : de <i>do</i> majeur à <i>do</i> mineur, le <code>5</code> devient <code>4</code>. La recette vaut
               pour toutes les fondamentales : <i>ré</i> mineur, c'est <code>3 6 10</code>.
             </p>
+            <p>
+              Le nom d'un accord se lit de même : sa fondamentale, puis sa sorte. <code>1</code> est <i>do</i> majeur, <code>1:m</code> <i>do</i> mineur, <code>8:7</code>{" "}
+              <i>sol</i> 7. Pas de lettre à traduire en note : le nombre est déjà la note.
+            </p>
           </div>
           <Example text={CHORDS} options={{ notePosition: "aligned", chords: "name" }} label="Do majeur, do mineur, do septième, do diminué : les nombres changent d'un ou deux" />
         </section>

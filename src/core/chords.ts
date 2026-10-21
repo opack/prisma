@@ -1,14 +1,20 @@
 /**
- * Accords d'accompagnement (ligne `@c`) : un accord s'écrit soit par son nom anglais
- * (« Am », « G7 », « F#m7b5 », « G/B »), soit par ses notes Prisma séparées par « ; », du grave
- * à l'aigu à partir de la basse (« 10;1;5 »). Les notes n'ont pas d'octave : un accord dit
- * quelles notes jouer, pas où.
+ * Accords d'accompagnement (ligne `@c`). Un accord s'écrit de trois façons :
  *
- * Les notes sont des numéros Prisma de 1 (do) à 12 (si).
+ * - par son nom Prisma, l'écriture privilégiée : la fondamentale en nombre, puis, après un « : »,
+ *   la sorte d'accord, et après un « / » la basse si elle diffère (« 8 » sol majeur, « 10:m »,
+ *   « 8:7 », « 7:m7b5 », « 1/8 » do sur sol) ; l'accord majeur n'a pas de « : » ;
+ * - par son nom anglais (« Am », « G7 », « F#m7b5 », « G/B ») ;
+ * - par ses notes Prisma séparées par des virgules, de la basse vers l'aigu (« 10,1,5 »).
+ *
+ * Les notes n'ont pas d'octave : un accord dit quelles notes jouer, pas où. Ce sont des numéros
+ * Prisma de 1 (do) à 12 (si).
  */
 
-/** Séparateur des notes d'un accord écrit en Prisma. */
-export const CHORD_NOTE_SEPARATOR = ";";
+/** Séparateur des notes d'un accord écrit en notes Prisma. */
+export const CHORD_NOTE_SEPARATOR = ",";
+/** Séparateur, dans un nom Prisma, de la fondamentale et de la sorte d'accord. */
+export const CHORD_QUALITY_SEPARATOR = ":";
 
 const STEP: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 /** Nom d'une fondamentale : dièses pour do♯ et fa♯, bémols pour mi♭, la♭, si♭ (l'usage). */
@@ -68,7 +74,7 @@ function readNote(s: string): { pitch: number; rest: string } | undefined {
   return { pitch: pc(STEP[m[1]] + alter), rest: s.slice(m[0].length) };
 }
 
-/** Notes (numéros Prisma) d'un accord écrit par son nom, de la basse vers l'aigu ; undefined s'il est inconnu. */
+/** Notes (numéros Prisma) d'un accord écrit par son nom anglais, de la basse vers l'aigu ; undefined s'il est inconnu. */
 export function chordNameNotes(name: string): number[] | undefined {
   const root = readNote(name);
   if (!root) return undefined;
@@ -80,43 +86,97 @@ export function chordNameNotes(name: string): number[] | undefined {
     bass = readNote(slash[2])!.pitch;
     rest = slash[1];
   }
-  const quality = SUFFIXES.find((q) => q.n === rest);
+  return notesOf(root.pitch, rest, bass);
+}
+
+/** Le nom Prisma d'un accord écrit par son nom anglais, sa sorte d'accord telle qu'écrite : « Am7/G » → « 10:m7/8 » ; undefined s'il est inconnu. */
+export function prismaNameOf(english: string): string | undefined {
+  if (!chordNameNotes(english)) return undefined;
+  const root = readNote(english)!;
+  let rest = root.rest;
+  let bass = "";
+  const slash = rest.match(/^(.*)\/([A-G][#b♯♭]?)$/);
+  if (slash && slash[1] !== "6") {
+    bass = "/" + numero(readNote(slash[2])!.pitch);
+    rest = slash[1];
+  }
+  return `${numero(root.pitch)}${rest ? CHORD_QUALITY_SEPARATOR + rest : ""}${bass}`;
+}
+
+/** Notes d'un accord écrit par son nom Prisma (« 10:m », « 8:7 », « 1/8 ») ; undefined s'il n'en est pas un. */
+export function chordPrismaNameNotes(name: string): number[] | undefined {
+  const m = name.match(/^(1[0-2]|[1-9])(.*)$/);
+  if (!m) return undefined;
+  let rest = m[2];
+  let bass: number | undefined;
+  // basse : « /8 » à la fin (sauf dans « :6/9 », qui est une sorte d'accord)
+  const slash = rest.match(/^(.*)\/(1[0-2]|[1-9])$/);
+  if (slash && slash[1] !== ":6") {
+    bass = Number(slash[2]) - 1;
+    rest = slash[1];
+  }
+  // la sorte d'accord, toujours après un « : » ; l'accord majeur n'en a pas
+  if (rest && !rest.startsWith(CHORD_QUALITY_SEPARATOR)) return undefined;
+  const quality = rest.slice(1);
+  if (rest && !quality) return undefined;
+  return notesOf(Number(m[1]) - 1, quality, bass);
+}
+
+/** Les notes d'une fondamentale (0 = do), d'une sorte d'accord et d'une basse éventuelle, de la basse vers l'aigu. */
+function notesOf(root: number, suffix: string, bass: number | undefined): number[] | undefined {
+  const quality = SUFFIXES.find((q) => q.n === suffix);
   if (!quality) return undefined;
-  const notes = [...new Set(quality.iv.map((i) => pc(root.pitch + i)))];
+  const notes = [...new Set(quality.iv.map((i) => pc(root + i)))];
   // de la basse vers l'aigu : la basse (la fondamentale sans « / »), puis les autres notes
   // dans l'ordre où elles montent au-dessus d'elle, au plus serré
-  const low = bass ?? root.pitch;
+  const low = bass ?? root;
   const above = notes.filter((n) => n !== low).sort((a, b) => pc(a - low) - pc(b - low));
   return [low, ...above].map(numero);
 }
 
-/** Notes d'un accord écrit en Prisma (« 10;1;5 ») ; undefined si l'écriture n'en est pas une. */
+/** Notes d'un accord écrit en notes Prisma (« 10,1,5 ») ; undefined si l'écriture n'en est pas une. */
 export function chordPrismaNotes(text: string): number[] | undefined {
-  if (!/^\d{1,2}(;\d{1,2})+$/.test(text)) return undefined;
+  if (!/^\d{1,2}(,\d{1,2})+$/.test(text)) return undefined;
   const notes = text.split(CHORD_NOTE_SEPARATOR).map(Number);
   if (notes.some((n) => n < 1 || n > 12) || new Set(notes).size !== notes.length) return undefined;
   return notes;
 }
 
 /** Notes d'un accord, quelle que soit son écriture ; undefined s'il n'est pas reconnu. */
-export const chordNotes = (text: string) => chordPrismaNotes(text) ?? chordNameNotes(text);
+export const chordNotes = (text: string) => chordPrismaNotes(text) ?? chordPrismaNameNotes(text) ?? chordNameNotes(text);
+
+/** L'écriture d'un accord : son nom Prisma, son nom anglais, ou ses notes. */
+export const chordWriting = (text: string): "prisma" | "english" | "notes" =>
+  /^[A-G]/.test(text) ? "english" : text.includes(CHORD_NOTE_SEPARATOR) ? "notes" : "prisma";
 
 /**
- * Nom anglais d'un accord donné par ses notes (de la basse vers l'aigu). La basse est d'abord
- * essayée comme fondamentale ; sinon l'accord est un renversement noté « /basse ». Undefined
- * si les notes ne forment aucun accord connu.
+ * Un accord donné par ses notes (de la basse vers l'aigu), reconnu : sa fondamentale (0 = do), sa
+ * sorte d'accord (le suffixe usuel) et sa basse. La basse est d'abord essayée comme fondamentale ;
+ * sinon l'accord est un renversement. Undefined si les notes ne forment aucun accord connu.
  */
-export function chordName(notes: number[]): string | undefined {
+function recognize(notes: number[]): { root: number; quality: string; bass: number } | undefined {
   const set = new Set(notes.map((n) => n - 1));
   const bass = notes[0] - 1;
   const same = (iv: number[], root: number) => iv.length === set.size && iv.every((i) => set.has(pc(root + i)));
   const roots = [bass, ...[...set].filter((p) => p !== bass)];
   for (const root of roots) {
     const q = QUALITIES.find(([, iv]) => same(iv, root));
-    if (q) return NAMES[root] + q[0][0] + (root === bass ? "" : "/" + NAMES[bass]);
+    if (q) return { root, quality: q[0][0], bass };
   }
   return undefined;
 }
 
-/** Écriture Prisma d'un accord : ses notes séparées par « ; ». */
+/** Nom anglais d'un accord donné par ses notes : « Am », « G/B ». */
+export function chordName(notes: number[]): string | undefined {
+  const r = recognize(notes);
+  return r && NAMES[r.root] + r.quality + (r.root === r.bass ? "" : "/" + NAMES[r.bass]);
+}
+
+/** Nom Prisma d'un accord donné par ses notes : « 10:m », « 8/12 ». */
+export function chordPrismaName(notes: number[]): string | undefined {
+  const r = recognize(notes);
+  return r && `${r.root + 1}${r.quality ? CHORD_QUALITY_SEPARATOR + r.quality : ""}${r.root === r.bass ? "" : "/" + (r.bass + 1)}`;
+}
+
+/** Écriture d'un accord en notes Prisma : ses notes séparées par des virgules. */
 export const chordPrismaText = (notes: number[]) => notes.join(CHORD_NOTE_SEPARATOR);

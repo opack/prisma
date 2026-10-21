@@ -116,7 +116,10 @@ export function Home() {
                 Les sections à la ligne : un morceau découpé en parties (A, B…) se lit comme une chanson. Chaque partie est écrite une fois et commence sa propre ligne ; l'ordre
                 de jeu, ici <code>A A B A</code>, est écrit en tête. Ou bien à la suite, pour une partition plus courte.
               </li>
-              <li>Les accords d'accompagnement écrits en notes Prisma, à côté de leur nom.</li>
+              <li>
+                Les accords d'accompagnement par leur nom Prisma (<code>10:m</code> pour <i>la</i> mineur), leurs notes (<code>10 1 5</code>), ou les deux ; ou par leur nom
+                anglais (<i>Am</i>), pour qui le connaît.
+              </li>
               <li>Une portée à la fois : coupez le son de celle que vous jouez (une main au piano, votre voix dans le chœur), l'application joue les autres.</li>
               <li>L'écoute au tempo de votre choix, avec un métronome, et la partition qui suit le curseur.</li>
               <li>

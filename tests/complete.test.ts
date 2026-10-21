@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { caseAt, extendRuler, noteLine, octaveRoom, rulerSuffixes, systemOf, writeCase } from "../src/app/complete.ts";
+import { caseAt, extendRuler, noteLine, octaveRoom, rulerSuffixes, soundingAt, systemOf, writeCase } from "../src/app/complete.ts";
 import { parsePrisma } from "../src/core/index.ts";
 
 const sys = [
@@ -96,5 +96,20 @@ describe("écrire dans un système", () => {
     // au-dessus d'une ligne sans numéro : seulement la même octave
     const t = ["m1 |1  ||", "0  |1  ||", "", "   |3  ||"];
     expect(octaveRoom(t, systemOf(t, 2)!, 2)).toEqual({ same: true, octaves: [] });
+  });
+});
+
+describe("l'accord qui sonne dans une colonne", () => {
+  const lines = ["@c", "m1 |1  |2  |3  |4  ||", "0  |8  |-  |10 |-  ||", "   |5  |-  |6  |-  ||", "---", "-1 |1  |-  |-  |-  ||"];
+  const at = (col: number) => soundingAt(lines, { ruler: 1, last: 5 }, col);
+  it("prend sur chaque ligne la note de la case, ou celle que sa tenue prolonge, du grave à l'aigu", () => {
+    expect(at(4)).toEqual([48, 64, 67]);
+    expect(at(8)).toEqual([48, 64, 67]);
+    expect(at(12)).toEqual([48, 65, 69]);
+  });
+
+  it("suit une tenue par-dessus la barre de mesure", () => {
+    const over = ["@c", "m1 |1  |2  ||1  |2  ||", "0  |8  |5  ||-  |-  ||", "---", "-1 |1  |-  ||-  |-  ||"];
+    expect(soundingAt(over, { ruler: 1, last: 4 }, 17)).toEqual([48, 64]);
   });
 });

@@ -32,9 +32,14 @@ const TABS = [
 type Tab = (typeof TABS)[number]["id"];
 
 const CHORDS: Option<RenderOptions["chords"]>[] = [
-  { value: "both", label: "Nom et notes", hint: "le nom anglais (Am), avec les notes Prisma dessous (10 1 5)" },
-  { value: "name", label: "Nom", hint: "le nom anglais : Am, G/B" },
+  { value: "both", label: "Nom et notes", hint: "le nom de l'accord (10:m), avec ses notes Prisma dessous (10 1 5)" },
+  { value: "name", label: "Nom", hint: "le nom de l'accord : 10:m, 8/12" },
   { value: "notes", label: "Notes", hint: "les notes Prisma empilées, la basse en bas : 10 1 5" },
+];
+
+const CHORD_NAMES: Option<RenderOptions["chordNames"]>[] = [
+  { value: "prisma", label: "Prisma", hint: "la fondamentale en nombre, puis la sorte d'accord : 10:m, 8:7, 8/12" },
+  { value: "english", label: "Anglais", hint: "le nom anglais, lu par les accompagnateurs : Am, G7, G/B" },
 ];
 
 const NOTE_NAMES: Option<RenderOptions["noteNames"]>[] = [
@@ -187,6 +192,7 @@ const labelOf = <T extends string>(list: { value: T; label: string }[], v: T) =>
 /** Le nom, en clair, de la valeur d'une option du rendu (pour dire celle de l'autre portée). */
 const DESCRIBE: Record<string, (o: RenderOptions) => string> = {
   chords: (o) => labelOf(CHORDS, o.chords),
+  chordNames: (o) => labelOf(CHORD_NAMES, o.chordNames),
   namesEverySystem: (o) => (o.namesEverySystem ? "à chaque système" : "au premier système"),
   sections: (o) => labelOf(SECTIONS, o.sections),
   simile: (o) => labelOf(SIMILE, o.simile),
@@ -370,6 +376,16 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
         {tab === "score" && (
           <>
             <Choice id="chords" label="Accompagnement" value={options.chords} options={CHORDS} onChange={(chords) => setOptions({ chords })} scope={scope(["chords"], "chords")} />
+            {options.chords !== "notes" && (
+              <Choice
+                id="chord-names"
+                label="Nom des accords"
+                value={options.chordNames}
+                options={CHORD_NAMES}
+                onChange={(chordNames) => setOptions({ chordNames })}
+                scope={scope(["chordNames"], "chordNames")}
+              />
+            )}
             <Check
               id="names-every-system"
               label="Parties"

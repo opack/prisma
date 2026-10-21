@@ -180,16 +180,19 @@ Pour la première mesure d'un système, `[A]` se place sur le `|` de la colonne 
 
 Une ligne qui commence par `@c` (*chords*), **au-dessus** de la règle de comptage (avec les autres lignes `@` du haut), porte les accords d'accompagnement. Chaque mot est un accord, qui commence exactement sur sa case ; contrairement aux autres lignes `@`, deux mots voisins sont toujours deux accords.
 
-Un accord s'écrit de deux façons :
+Un accord s'écrit de trois façons :
 
 | Écriture | Exemple | Sens |
 |---|---|---|
+| nom Prisma (l'écriture privilégiée) | `8`, `10:m`, `8:7`, `1:maj7`, `7:m7b5`, `3:sus4`, `1:6/9`, `8/12`, `1:7/5` | la fondamentale, de `1` à `12` ; puis, après un `:`, la qualité (rien pour un accord majeur) ; puis `/` et la basse, de `1` à `12`, si elle diffère |
 | nom anglais | `Am`, `G7`, `Cmaj7`, `F#m7b5`, `Bb`, `Dsus4`, `C6/9`, `G/B` | la fondamentale (`A` à `G`, suivie de `#` ou `b`), la qualité, puis `/` et la basse si elle diffère |
-| notes Prisma | `10;1;5`, `12;3;8` | les notes séparées par `;`, **de la basse vers l'aigu**, sans octave |
+| notes Prisma | `10,1,5`, `12,3,8` | les notes séparées par des virgules, **de la basse vers l'aigu**, sans octave |
 
-Qualités reconnues : `` (majeur), `m`, `dim`, `aug`, `sus2`, `sus4`, `5`, `6`, `m6`, `7`, `maj7`, `m7`, `mMaj7`, `dim7`, `m7b5`, `aug7`, `7sus4`, `7b5`, `add9`, `madd9`, `6/9`, `9`, `maj9`, `m9`, `7b9`, `7#9`, `11`, `m11`, `13`, `maj13`, `m13` (et leurs variantes usuelles : `min`, `-`, `M7`, `Δ`, `°`, `ø`, `+`). Un accord inconnu est une erreur.
+Le `:` du nom Prisma est toujours écrit devant la qualité, jamais ailleurs : sans lui, `87` (sol 7) ou `117` (si♭ 7) ne se liraient pas. Il distingue aussi le nom de la liste des notes : `8:7` est sol 7, `8,7` les notes sol et fa♯.
 
-L'ordre des notes Prisma compte : `Am7` (`10;1;5;8`) et `C6` (`1;5;8;10`) ont les mêmes notes, seule la basse les distingue. Le fichier garde l'écriture choisie ; la partition affiche le nom, les notes empilées (la basse en bas), ou les deux, en calculant l'un à partir de l'autre. À l'import MusicXML, les accords viennent de `<harmony>`, ou d'un simple texte dont tout le contenu est un nom d'accord (`A7` écrit au-dessus de la portée).
+Qualités reconnues, les mêmes pour les deux noms : `` (majeur), `m`, `dim`, `aug`, `sus2`, `sus4`, `5`, `6`, `m6`, `7`, `maj7`, `m7`, `mMaj7`, `dim7`, `m7b5`, `aug7`, `7sus4`, `7b5`, `add9`, `madd9`, `6/9`, `9`, `maj9`, `m9`, `7b9`, `7#9`, `11`, `m11`, `13`, `maj13`, `m13` (et leurs variantes usuelles : `min`, `-`, `M7`, `Δ`, `°`, `ø`, `+`). Un accord inconnu est une erreur.
+
+L'ordre des notes Prisma compte : `10:m7` (`10,1,5,8`) et `1:6` (`1,5,8,10`) ont les mêmes notes, seule la basse les distingue. Le fichier garde l'écriture choisie ; la partition affiche le nom, les notes empilées (la basse en bas), ou les deux, en calculant l'un à partir de l'autre, et le nom en notation Prisma ou anglaise (options « Accompagnement » et « Nom des accords », onglet Partition ; Prisma par défaut). Dans l'éditeur, sur une ligne `@c`, la complétion propose l'accord des notes qui sonnent dans la case : son nom Prisma, son nom anglais, ses notes. À l'import MusicXML, les accords viennent de `<harmony>`, ou d'un simple texte dont tout le contenu est un nom d'accord (`A7` écrit au-dessus de la portée), et s'écrivent par leur nom Prisma (`10:7`).
 
 ## Sections et ordre de jeu
 

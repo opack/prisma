@@ -3,7 +3,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { FORMAT_VERSION, TICKS_PER_BEAT as T, guessKey, importMusicXml, keyName, keysOfSignature, layout, parseKey, parsePrisma, prismaKey, writePrisma } from "../src/core/index.ts";
 import type { Align, Score } from "../src/core/index.ts";
 import { playOrder, sectionsOf } from "../src/core/musicxml.ts";
-import { chordName, chordNameNotes, chordNotes } from "../src/core/chords.ts";
+import { chordName, chordNameNotes, chordNotes, chordPrismaName } from "../src/core/chords.ts";
+import { splitChord } from "../src/app/engrave.ts";
 import { musicXml, q } from "./helpers.ts";
 
 const C4 = 60;
@@ -977,14 +978,14 @@ describe("version du format", () => {
 
 describe("accords", () => {
   it("calcule les notes d'un accord nommé, de la basse vers l'aigu", () => {
-    const n = (name: string) => chordNameNotes(name)?.join(";");
-    expect(n("C")).toBe("1;5;8");
-    expect(n("Am")).toBe("10;1;5");
-    expect(n("Am7")).toBe("10;1;5;8");
-    expect(n("G/B")).toBe("12;3;8");
-    expect(n("F#m7b5")).toBe("7;10;1;5");
-    expect(n("Bb")).toBe("11;3;6");
-    expect(n("C6/9")).toBe("1;3;5;8;10");
+    const n = (name: string) => chordNameNotes(name)?.join(",");
+    expect(n("C")).toBe("1,5,8");
+    expect(n("Am")).toBe("10,1,5");
+    expect(n("Am7")).toBe("10,1,5,8");
+    expect(n("G/B")).toBe("12,3,8");
+    expect(n("F#m7b5")).toBe("7,10,1,5");
+    expect(n("Bb")).toBe("11,3,6");
+    expect(n("C6/9")).toBe("1,3,5,8,10");
     expect(n("Xm")).toBeUndefined();
     expect(n("Cfoo")).toBeUndefined();
   });
@@ -995,19 +996,43 @@ describe("accords", () => {
     expect(chordName([1, 5, 8, 10])).toBe("C6");
     expect(chordName([12, 3, 8])).toBe("G/B");
     expect(chordName([1, 2, 3])).toBeUndefined();
-    expect(chordNotes("10;1;5")).toEqual([10, 1, 5]);
-    expect(chordNotes("10;13")).toBeUndefined();
+    expect(chordNotes("10,1,5")).toEqual([10, 1, 5]);
+    expect(chordNotes("10,13")).toBeUndefined();
+    expect(chordNotes("10;1;5")).toBeUndefined();
+  });
+
+  it("lit le nom Prisma d'un accord : la fondamentale, « : » et la sorte d'accord, « / » et la basse", () => {
+    const n = (name: string) => chordNotes(name)?.join(",");
+    expect(n("8")).toBe("8,12,3");
+    expect(n("5:m")).toBe("5,8,12");
+    expect(n("8:7")).toBe("8,12,3,6");
+    expect(n("7:m7b5")).toBe("7,10,1,5");
+    expect(n("1/8")).toBe("8,1,5");
+    expect(n("1:7/5")).toBe("5,8,11,1");
+    expect(n("1:6/9")).toBe("1,3,5,8,10");
+    for (const bad of ["8:", "5m", "13", "1:xx", "0"]) expect(chordNotes(bad)).toBeUndefined();
+    expect(chordPrismaName([10, 1, 5, 8])).toBe("10:m7");
+    expect(chordPrismaName([12, 3, 8])).toBe("8/12");
+    expect(chordPrismaName([1, 5, 8])).toBe("1");
   });
 
   const piece = (chords: string) => [chords, "m1      |1  |2  |3  |4  ||", "0       |1  |-  |5  |-  ||", "---", ""].join("\n");
 
-  it("lit la ligne @c, en nom anglais ou en notes Prisma, et l'écrit au-dessus de la règle", () => {
-    const s = parsePrisma(piece("@c       C       10;1;5"));
-    expect(s.chords).toEqual([{ t: 0, text: "C" }, { t: 2 * T, text: "10;1;5" }]);
+  it("lit la ligne @c, en nom Prisma, en nom anglais ou en notes Prisma, et l'écrit au-dessus de la règle", () => {
+    const s = parsePrisma(piece("@c       1       Am  10,1,5"));
+    expect(s.chords).toEqual([{ t: 0, text: "1" }, { t: 2 * T, text: "Am" }, { t: 3 * T, text: "10,1,5" }]);
     const { text, back } = roundTrip(s);
     expect(back.chords).toEqual(s.chords);
     const lines = text.split("\n");
-    expect(lines[lines.findIndex((l) => l.startsWith("m1")) - 1]).toMatch(/^@c +C +10;1;5$/);
+    expect(lines[lines.findIndex((l) => l.startsWith("m1")) - 1]).toMatch(/^@c +1 +Am +10,1,5$/);
+  });
+
+  it("grave le nom dans la notation choisie, Prisma par défaut", () => {
+    expect(splitChord("Am").name).toBe("10:m");
+    expect(splitChord("10,1,5").name).toBe("10:m");
+    expect(splitChord("10:m", "english").name).toBe("Am");
+    expect(splitChord("G/B", "english").name).toBe("G/B");
+    expect(splitChord("10,1,5").notes).toEqual([10, 1, 5]);
   });
 
   it("tient dans la colonne de gauche la plus étroite", () => {
@@ -1034,7 +1059,7 @@ describe("accords", () => {
         ],
       },
     ]);
-    expect(importMusicXml(xml).chords).toEqual([{ t: 0, text: "Am7" }, { t: 2 * T, text: "G/B" }]);
+    expect(importMusicXml(xml).chords).toEqual([{ t: 0, text: "10:m7" }, { t: 2 * T, text: "8/12" }]);
   });
 
   it("lit les lettres de nuance de la police musicale, et sépare une nuance en tête de texte", () => {
@@ -1056,7 +1081,7 @@ describe("accords", () => {
       },
     ]);
     const s = importMusicXml(xml);
-    expect(s.chords).toEqual([{ t: 0, text: "A7" }, { t: 2 * T, text: "E7" }]);
+    expect(s.chords).toEqual([{ t: 0, text: "10:7" }, { t: 2 * T, text: "5:7" }]);
     expect(s.expressions.map((e) => e.text)).toEqual(["dolce"]);
   });
 });
@@ -1844,11 +1869,12 @@ describe("ce que montre le curseur", () => {
     expect((await at(11, 1)).symbol?.meaning).toBe("trait double : sépare deux parties ; il porte le nom de la partie « Piano »");
     expect((await at(10, 5)).symbol?.meaning).toBe("syllabe des paroles");
     const { inspect } = await import("../src/core/inspect.ts");
-    const chords = "@c  Am  10;1;5\nm1 |1   |2   ||\n0  |    |    ||\n";
-    expect(inspect(chords, 4).symbol).toEqual({ text: "Am", meaning: "(10;1;5) accord la do mi", keys: [10, 1, 5] });
-    expect(inspect(chords, 8).symbol).toEqual({ text: "10;1;5", meaning: "(Am) accord la do mi", keys: [10, 1, 5] });
-    expect(inspect(chords, 4, "none").symbol?.meaning).toBe("(10;1;5) accord 10 1 5");
-    expect(inspect("@c  8;3;4\nm1 |1   ||\n0  |    ||\n", 4).symbol?.meaning).toBe("accord sol ré ré♯");
+    const chords = "@c  Am  10,1,5  10:m\nm1 |1   |2   |3   ||\n0  |    |    |    ||\n";
+    expect(inspect(chords, 4).symbol).toEqual({ text: "Am", meaning: "(10:m, 10,1,5) accord la do mi", keys: [10, 1, 5] });
+    expect(inspect(chords, 8).symbol).toEqual({ text: "10,1,5", meaning: "(10:m, Am) accord la do mi", keys: [10, 1, 5] });
+    expect(inspect(chords, 16).symbol).toEqual({ text: "10:m", meaning: "(Am, 10,1,5) accord la do mi", keys: [10, 1, 5] });
+    expect(inspect(chords, 4, "none").symbol?.meaning).toBe("(10:m, 10,1,5) accord 10 1 5");
+    expect(inspect("@c  8,3,4\nm1 |1   ||\n0  |    ||\n", 4).symbol?.meaning).toBe("accord sol ré ré♯");
   });
 });
 

@@ -2,7 +2,7 @@
  * Gravure : place les systèmes calculés par le moteur de mise en page sur des pages A4.
  * Toutes les dimensions sont en millimètres.
  */
-import { FINGER_MARK, firstStaves, staffCount, TRILL_MARK, chordName, chordNotes, graceDigits, layout, noteText } from "../core/index.ts";
+import { FINGER_MARK, firstStaves, staffCount, TRILL_MARK, chordName, chordNotes, chordPrismaName, chordWriting, graceDigits, layout, noteText } from "../core/index.ts";
 import type { Align, Score, System, Voice } from "../core/index.ts";
 
 export const PAGE = { w: 210, h: 297, marginX: 15, marginTop: 14, marginBottom: 16 };
@@ -56,13 +56,15 @@ const lyricW = (text: string, hyphen: boolean) => 0.5 + lyricTextW(text) + (hyph
 const lyricExtra = (sys: System, a: number, cellW: number) =>
   Math.max(0, ...sys.staves.flatMap((p) => p.voice.lyrics.flatMap((l) => l.syllables.filter((x) => x.anchor === a).map((x) => lyricW(x.text, x.hyphen) - cellW))));
 
-/** Affichage des accords : nom anglais, notes Prisma empilées, ou les deux. */
+/** Affichage des accords : leur nom, leurs notes Prisma empilées, ou les deux. */
 export type ChordStyle = "name" | "notes" | "both";
+/** Le nom des accords : en notation Prisma (« 10:m »), ou en anglais (« Am »). */
+export type ChordNames = "prisma" | "english";
 
-/** Notes d'un accord (de la basse vers l'aigu) et nom à graver : celui écrit, ou celui reconnu. */
-export function splitChord(text: string) {
+/** Notes d'un accord (de la basse vers l'aigu) et nom à graver : celui écrit s'il est dans la notation choisie, sinon celui reconnu. */
+export function splitChord(text: string, names: ChordNames = "prisma") {
   const notes = chordNotes(text) ?? [];
-  const name = /^[A-G]/.test(text) ? text : chordName(notes);
+  const name = chordWriting(text) === names ? text : names === "english" ? chordName(notes) : chordPrismaName(notes);
   return { notes, name };
 }
 const showName = (style: ChordStyle, name?: string) => !!name && style !== "notes";
@@ -78,8 +80,8 @@ const chordH = (s: System, style: ChordStyle) => {
   return (named ? G.chordNameH : 0.8) + stack * G.chordNoteH;
 };
 /** Largeur que demande un accord : son nom ; ses notes empilées tiennent dans une case. */
-const chordW = (text: string, style: ChordStyle) => {
-  const p = splitChord(text);
+const chordW = (text: string, style: ChordStyle, names: ChordNames) => {
+  const p = splitChord(text, names);
   return showName(style, p.name) ? 0.5 + p.name!.length * G.chordChar + 0.6 : 0;
 };
 
@@ -239,8 +241,8 @@ const barSepWidth = (c: Extract<System["columns"][number], { kind: "barSep" }>) 
  * dernière ligne d'une section (ou du morceau) le reprend, sans dépasser la largeur : ses
  * cases ont la même taille que celles du dessus, et une ligne courte reste courte.
  */
-function place(sys: System, isLast: boolean, y: number, cellW: number, chords: ChordStyle, prevStretch?: number, reminders = true, rowH: number = G.rowH): PlacedSystem {
-  const chordAt = new Map(sys.chords.map((c) => [c.anchor, chordW(c.text, chords)]));
+function place(sys: System, isLast: boolean, y: number, cellW: number, chords: ChordStyle, names: ChordNames, prevStretch?: number, reminders = true, rowH: number = G.rowH): PlacedSystem {
+  const chordAt = new Map(sys.chords.map((c) => [c.anchor, chordW(c.text, chords, names)]));
   const anchorOf = (ci: number) => sys.anchors.indexOf(ci);
   const cells = sys.anchors.length;
   const fixed = sys.width - cells * cellW;
@@ -267,7 +269,7 @@ function place(sys: System, isLast: boolean, y: number, cellW: number, chords: C
  * de système, de la note tenue depuis le système précédent ; inlineSections : une nouvelle section
  * suit sur la même ligne, séparée par un blanc, au lieu de commencer une ligne.
  */
-export function engrave(score: Score, { compact = false, chords = "both" as ChordStyle, align = undefined as Align | undefined, reminders = true, inlineSections = false } = {}): Page[] {
+export function engrave(score: Score, { compact = false, chords = "both" as ChordStyle, chordNames = "prisma" as ChordNames, align = undefined as Align | undefined, reminders = true, inlineSections = false } = {}): Page[] {
   const cellW = compact ? G.compactCell : G.cell;
   const rowH = compact ? G.compactRowH : G.rowH;
   const systems = layout(score, {
@@ -281,7 +283,7 @@ export function engrave(score: Score, { compact = false, chords = "both" as Chor
       // une note annotée ou une syllabe trop longue élargit sa case (l'une sous l'autre : la plus large compte)
       Math.max(0, ...score.notes.filter((n) => n.start === t).map((n) => noteW(noteText(n), cellW)), ...score.lyrics.filter((l) => l.t === t).map((l) => lyricW(l.text, !!l.hyphen) - cellW)) +
       // un nom d'accord trop long élargit sa case
-      Math.max(0, ...score.chords.filter((c) => c.t === t).map((c) => chordW(c.text, chords) - cellW)),
+      Math.max(0, ...score.chords.filter((c) => c.t === t).map((c) => chordW(c.text, chords, chordNames) - cellW)),
     beatSep: G.beatSep,
     barSep: G.barSep,
     repeatDots: G.repeatDots,
@@ -305,7 +307,7 @@ export function engrave(score: Score, { compact = false, chords = "both" as Chor
     }
     // la ligne précédente, si elle est de la même section
     const prev = i > 0 && !sys.section && !systems[i - 1].endsSection ? lastStretch : undefined;
-    const placed = place(sys, i === systems.length - 1, y, cellW, chords, prev, reminders, rowH);
+    const placed = place(sys, i === systems.length - 1, y, cellW, chords, chordNames, prev, reminders, rowH);
     lastStretch = placed.stretch;
     page.systems.push(placed);
     y += h + (compact ? G.compactSystemGap : G.systemGap);

@@ -15,10 +15,10 @@
 import type { Completion, CompletionContext, CompletionResult, CompletionSection } from "@codemirror/autocomplete";
 import { autocompletion } from "@codemirror/autocomplete";
 import type { EditorView } from "@codemirror/view";
-import { FRONTMATTER, INSTRUMENTS, DEFAULT_CELL, guessKey, inspect, keyName, midiOf, noteName, parsePrisma, prismaKey } from "../core/index.ts";
+import { FRONTMATTER, INSTRUMENTS, DEFAULT_CELL, chordName, chordPrismaName, chordPrismaText, guessKey, inspect, keyName, midiOf, noteName, parsePrisma, prismaKey } from "../core/index.ts";
 import type { NoteNames } from "../core/index.ts";
 import { isRuler } from "../core/prisma-parse.ts";
-import { caseAt, extendRuler, noteLine, octaveRoom, rulerSuffixes, systemOf, writeCase } from "./complete.ts";
+import { caseAt, extendRuler, noteLine, octaveRoom, rulerSuffixes, soundingAt, systemOf, writeCase } from "./complete.ts";
 import type { Rewrite } from "./complete.ts";
 
 const FINGERS = ["pouce", "index", "majeur", "annulaire", "auriculaire"];
@@ -186,6 +186,32 @@ function notes(ctx: CompletionContext, lines: string[], L: number, C: number, bo
   return { from: Math.min(from, ctx.pos), options, validFor: /^[\d_~'-]*$/ };
 }
 
+/** Sur une ligne @c, dans une case : l'accord des notes qui sonnent là, par son nom Prisma, son nom anglais ou ses notes. */
+function chordAt(ctx: CompletionContext, lines: string[], L: number, C: number, body: number): CompletionResult | null {
+  if (!/^@c(\s|$)/.test(lines[L])) return null;
+  const sys = systemOf(lines, L, body);
+  if (!sys || L >= sys.ruler) return null;
+  const ruler = lines[sys.ruler];
+  const c = caseAt(ruler, C);
+  if (!c) return null;
+  // les notes, de la basse vers l'aigu, chacune une fois
+  const notes = [...new Set(soundingAt(lines, sys, C).map((m) => (m % 12) + 1))];
+  if (notes.length < 2) return null;
+  const words = [chordPrismaName(notes), chordName(notes), chordPrismaText(notes)].filter((w): w is string => !!w);
+  const line = lines[L];
+  const word = line.slice(c.start).match(/^\S*/)![0];
+  const from = ctx.state.doc.lineAt(ctx.pos).from + Math.min(c.start, line.length);
+  const pad = " ".repeat(Math.max(0, c.start - line.length));
+  const options: Completion[] = words.map((w, i) => ({
+    label: w,
+    type: "constant",
+    boost: -i,
+    detail: i === 0 ? "l'accord des notes qui sonnent ici" : undefined,
+    apply: pad + w,
+  }));
+  return { from, to: from + (line.length >= c.start ? word.length : 0), options, filter: false };
+}
+
 /** La complétion, avec le nom des notes choisi. */
 export function completion(names: () => NoteNames) {
   const source = (ctx: CompletionContext): CompletionResult | null => {
@@ -201,7 +227,7 @@ export function completion(names: () => NoteNames) {
     const starts = lineStarts(ctx, lines, L, line.slice(0, C), body);
     if (starts) return starts;
     if (!ctx.explicit) return null;
-    return rulerEnd(ctx, lines, L, C) ?? notes(ctx, lines, L, C, body, names());
+    return chordAt(ctx, lines, L, C, body) ?? rulerEnd(ctx, lines, L, C) ?? notes(ctx, lines, L, C, body, names());
   };
   return autocompletion({ override: [source], icons: false });
 }
