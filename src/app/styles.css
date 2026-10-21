@@ -30,7 +30,9 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 button:disabled { opacity: .5; cursor: default; }
 
 .workspace { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 0; }
-.split { flex: 1; display: grid; grid-template-columns: minmax(360px, 42%) 1fr; min-height: 0; }
+/* la largeur de l'éditeur (--editor, réglée par la barre qui le sépare de la partition), en gardant
+   de la place à chacun */
+.split { --editor-width: clamp(300px, var(--editor, 42%), calc(100% - 260px)); flex: 1; display: grid; grid-template-columns: var(--editor-width) minmax(0, 1fr); min-height: 0; }
 .source { display: grid; grid-template-rows: 1fr auto auto; grid-template-columns: minmax(0, 1fr); min-height: 0; border-right: 1px solid var(--line); background: #fff; }
 .problem { display: flex; align-items: center; gap: 8px; min-width: 0; border-top: 1px solid var(--error); background: var(--error-bg); color: var(--error); }
 .problem-message { flex: 1; min-width: 0; margin: 0; border: 0; border-radius: 0; background: none; color: inherit; text-align: left; padding: 10px 16px; }
@@ -94,7 +96,15 @@ button:disabled { opacity: .5; cursor: default; }
 .split { position: relative; }
 .edge { position: absolute; z-index: 3; top: 50%; left: 0; transform: translateY(-50%); display: grid; justify-items: center; gap: 6px; width: 22px; padding: 10px 0; border-left: 0; border-radius: 0 6px 6px 0; background: var(--panel); color: var(--muted); box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.08); }
 .edge:hover { color: var(--accent); border-color: var(--accent); }
-.split:not(.reading) .edge { left: calc(max(360px, 42%) - 1px); }
+.split:not(.reading) .edge { left: calc(var(--editor-width) - 1px); }
+/* la barre de redimensionnement : invisible, elle se montre au survol, sur le bord de l'éditeur */
+.splitter { position: absolute; z-index: 2; top: 0; bottom: 0; left: var(--editor-width); width: 9px; transform: translateX(-5px); cursor: col-resize; touch-action: none; }
+.splitter::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 3px; background: transparent; transition: background .15s; }
+.splitter:hover::after, .splitter:focus-visible::after, .split.resizing .splitter::after { background: var(--accent); }
+.splitter:focus-visible { outline: none; }
+/* pendant le glissé : le curseur partout, et rien ne se sélectionne */
+.split.resizing { cursor: col-resize; user-select: none; }
+.split.resizing .preview, .split.resizing .source { pointer-events: none; }
 /* mode lecture : sans l'éditeur, les pages côte à côte, chacune de toute la hauteur, qu'on fait
    défiler de côté une page à la fois */
 @media screen {
@@ -199,7 +209,7 @@ button:disabled { opacity: .5; cursor: default; }
 @page { size: A4 portrait; margin: 0; }
 @media print {
   body { background: #fff; }
-  .bar, .source, .drawer, .edge, .focus { display: none !important; }
+  .bar, .source, .drawer, .edge, .splitter, .focus { display: none !important; }
   .text-mark { display: none; }
   .app, .split { display: block; height: auto; }
   .preview { overflow: visible; padding: 0; gap: 0; display: block; }

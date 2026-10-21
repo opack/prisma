@@ -64,14 +64,21 @@ const ZOOMS = [0.5, 0.67, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3];
 /** Ajustement en lecture : pages à la hauteur de l'écran, à sa largeur, ou deux systèmes seuls (lecture focalisée). */
 type Fit = "height" | "width" | "focus";
 const FITS: Fit[] = ["height", "width", "focus"];
-type View = { zoom: number; fit: Fit };
+/** La largeur de l'éditeur, en part de la largeur de l'écran : par défaut, et ses bornes. */
+const EDITOR_WIDTH = 0.42;
+const clampWidth = (w: number) => Math.round(Math.min(0.8, Math.max(0.2, w)) * 1000) / 1000;
+type View = { zoom: number; fit: Fit; editorWidth: number };
 const VIEW_KEY = "prisma:view";
 const loadView = (): View => {
   try {
     const raw = JSON.parse(localStorage.getItem(VIEW_KEY) ?? "{}");
-    return { zoom: ZOOMS.includes(raw.zoom) ? raw.zoom : 1, fit: FITS.includes(raw.fit) ? raw.fit : "height" };
+    return {
+      zoom: ZOOMS.includes(raw.zoom) ? raw.zoom : 1,
+      fit: FITS.includes(raw.fit) ? raw.fit : "height",
+      editorWidth: typeof raw.editorWidth === "number" ? clampWidth(raw.editorWidth) : EDITOR_WIDTH,
+    };
   } catch {
-    return { zoom: 1, fit: "height" };
+    return { zoom: 1, fit: "height", editorWidth: EDITOR_WIDTH };
   }
 };
 const persist = (s: string) => {
@@ -228,6 +235,42 @@ export function App() {
     });
   // en lecture focalisée, les deux systèmes remplissent l'écran : pas de zoom
   const focused = view.fit === "focus";
+  /**
+   * La barre entre l'éditeur et la partition : on la tire pour régler la largeur de l'éditeur, au
+   * clavier avec les flèches ; un double-clic rend la largeur par défaut. Pendant le glissé, seule
+   * la variable CSS change ; la largeur est retenue au lâcher.
+   */
+  const split = useRef<HTMLElement>(null);
+  const dragSplitter = (e: React.PointerEvent<HTMLDivElement>) => {
+    const host = split.current;
+    if (!host || e.button !== 0) return;
+    e.preventDefault();
+    const bar = e.currentTarget;
+    bar.setPointerCapture(e.pointerId);
+    const rect = host.getBoundingClientRect();
+    let width = view.editorWidth;
+    const move = (ev: PointerEvent) => {
+      width = clampWidth((ev.clientX - rect.left) / rect.width);
+      host.style.setProperty("--editor", `${width * 100}%`);
+    };
+    const up = () => {
+      bar.removeEventListener("pointermove", move);
+      bar.removeEventListener("pointerup", up);
+      bar.removeEventListener("pointercancel", up);
+      host.classList.remove("resizing");
+      setView({ editorWidth: width });
+    };
+    host.classList.add("resizing");
+    bar.addEventListener("pointermove", move);
+    bar.addEventListener("pointerup", up);
+    bar.addEventListener("pointercancel", up);
+  };
+  const keySplitter = (e: React.KeyboardEvent) => {
+    const step = e.key === "ArrowLeft" ? -0.02 : e.key === "ArrowRight" ? 0.02 : 0;
+    if (!step) return;
+    e.preventDefault();
+    setView({ editorWidth: clampWidth(view.editorWidth + step) });
+  };
   const focusRef = useRef(false);
   focusRef.current = focused;
   const zoomByRef = useRef(zoomBy);
@@ -865,7 +908,12 @@ export function App() {
         </main>
       )}
       {showLibrary && <LibraryView options={general} onOpen={openEntry} onClose={() => setShowLibrary(false)} />}
-      <main className={"split" + (reading ? " reading" : "") + ` fit-${view.fit}` + (view.zoom > 1 ? " zoomed" : "")} hidden={showGuide || showLibrary}>
+      <main
+        ref={split}
+        className={"split" + (reading ? " reading" : "") + ` fit-${view.fit}` + (view.zoom > 1 ? " zoomed" : "")}
+        style={{ "--editor": `${view.editorWidth * 100}%` } as React.CSSProperties}
+        hidden={showGuide || showLibrary}
+      >
         {/* la languette de l'éditeur, sur le bord où il apparaît : on le tire, on le repousse */}
         <button
           className="edge"
@@ -881,6 +929,22 @@ export function App() {
             <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d={editing ? "M10 3 5 8l5 5" : "M6 3l5 5-5 5"} />
           </svg>
         </button>
+        {editing && (
+          <div
+            className="splitter"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Largeur de l'éditeur"
+            aria-valuenow={Math.round(view.editorWidth * 100)}
+            aria-valuemin={20}
+            aria-valuemax={80}
+            tabIndex={0}
+            title="Tirer pour régler la largeur de l'éditeur (double-clic : largeur par défaut)"
+            onPointerDown={dragSplitter}
+            onKeyDown={keySplitter}
+            onDoubleClick={() => setView({ editorWidth: EDITOR_WIDTH })}
+          />
+        )}
         <section className="source" hidden={reading}>
           <SourceEditor value={source} onChange={setSource} editor={editor} noteNames={options.noteNames} colors={options.sourceColors} palette={options.octaveColors} onCheck={setChecked} onCaret={(line, column, text) => ((caretAt.current = [line, column, text]), markCaret(true))}>
             <EngraveButton dirty={dirty} auto={options.autoEngrave} onEngrave={engraveNow} onAuto={(autoEngrave) => setOptions({ autoEngrave })} />
