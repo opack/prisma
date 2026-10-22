@@ -82,9 +82,26 @@ m1 |1  |2  ||
     expect(s.notes.map((n) => [n.staff, n.string, n.midi])).toEqual([[0, undefined, 64], [1, 2, 63], [0, undefined, 67]]);
   });
 
-  it("met sur des cordes les notes d'une partie de guitare importée", () => {
-    const s = parsePrisma(ARPEGGIO);
-    const back = importMusicXml(exportMusicXml(s));
+  it("exporte une tablature, que l'import relit telle quelle", () => {
+    // mi4 sur la 2ᵉ corde (case 3 au capo 2) plutôt qu'à vide sur la 1ʳᵉ : le choix de l'arrangeur revient
+    const text = writePrisma(parsePrisma(piece("Guitare (drop-d, capo 2)", ["1  |      |      |0     |      ||", "2  |      |   3  |      |      ||", "6  |0  -  |-  -  |      |      ||"])));
+    const xml = exportMusicXml(parsePrisma(text));
+    expect(xml).toContain("<sign>TAB</sign>");
+    expect(xml).toContain("<capo>2</capo>");
+    expect(xml).toContain("<technical><string>2</string><fret>3</fret></technical>");
+    // la tonalité, devinée à l'export, revient en plus
+    expect(writePrisma(importMusicXml(xml)).replace(/^key: .*\n/m, "")).toBe(text);
+  });
+
+  it("met sur des cordes les notes d'une partie de guitare importée sans tablature", () => {
+    // les mêmes notes en octaves, dans une partie qui ne dit son instrument qu'à l'import
+    const s = parsePrisma(`m1 |1  *  |2  *  |3  *  |4  *  ||
+───┼──────┼──────┼──────┼──────┼┼
+0  |      |   1  |5  1  |      ||
+-1 |   5  |10    |      |10 5  ||
+-2 |10    |      |      |      ||
+`);
+    const back = importMusicXml(exportMusicXml(s).replace("<part-name>Piano</part-name>", "<part-name>Guitare</part-name>").replace(/<midi-program>\d+</, "<midi-program>25<"));
     expect(back.parts[0].strings).toBeDefined();
     expect(back.notes.every((n) => n.string !== undefined)).toBe(true);
     expect(back.notes.map((n) => n.midi)).toEqual(s.notes.map((n) => n.midi));
