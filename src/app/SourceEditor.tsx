@@ -24,6 +24,23 @@ import { sourceColors } from "./sourceColors.ts";
 import type { SourceColors } from "./sourceColors.ts";
 import type { OctaveColors } from "./colors.ts";
 
+/** Les mots du panneau de recherche et remplacement de CodeMirror. */
+const SEARCH_PHRASES: Record<string, string> = {
+  Find: "Rechercher",
+  Replace: "Remplacer par",
+  next: "suivant",
+  previous: "précédent",
+  all: "tout sélectionner",
+  "match case": "respecter la casse",
+  regexp: "expression régulière",
+  "by word": "mot entier",
+  replace: "remplacer",
+  "replace all": "tout remplacer",
+  close: "fermer",
+  "current match": "occurrence",
+  "on line": "à la ligne",
+};
+
 /** Ce que l'application demande à l'éditeur. */
 export type EditorHandle = {
   focus(): void;
@@ -150,6 +167,8 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
           history(),
           drawSelection(),
           search({ top: true }),
+          // le panneau de recherche (Ctrl+F), en français
+          EditorState.phrases.of(SEARCH_PHRASES),
           highlightSelectionMatches(),
           keymap.of([...keys, ...historyKeymap, ...searchKeymap]),
           EditorView.contentAttributes.of({ "aria-label": "Source .prisma", spellcheck: "false", autocorrect: "off", autocapitalize: "off" }),
