@@ -17,8 +17,9 @@
 import { XMLParser } from "fast-xml-parser";
 import { chordNameNotes, prismaNameOf } from "./chords.ts";
 import { guessKey, keysOfSignature, prismaKey } from "./key.ts";
-import { TICKS_PER_BEAT, dynamicInWords, sortArticulations, isDynamic, isPedalText, staffCount, sortGraces, sortLyrics, sortNotes } from "./model.ts";
+import { TICKS_PER_BEAT, dynamicInWords, sortArticulations, isDynamic, isPedalText, staffCount, sortGraces, sortLyrics, sortNotes, stringsOfStaff } from "./model.ts";
 import { guessInstrument, instrumentOfProgram } from "./instruments.ts";
+import { stringParts } from "./strings.ts";
 import type { Arpeggio, Articulation, ArticulationKind, Beat, Division, Expression, Grace, Hairpin, Part, Slur, Staff, Lyric, Marker, Meta, Note, Pedal, PedalText, Repeat, Score, TextMark } from "./model.ts";
 
 /**
@@ -932,7 +933,11 @@ export function importMusicXml(xml: string, fileName?: string): Score {
     const t = q(x.t);
     if (t < end && !articulations.some((y) => y.staff === x.staff && y.t === t && y.kind === x.kind)) articulations.push({ staff: x.staff, t, kind: x.kind });
   }
-  const score: Score = { meta, parts, beats, notes: sorted, graces: sortGraces(graces), arpeggios, articulations: sortArticulations(articulations), lyrics: lyricsOf(rawLyrics, rawVoiceNotes, q, end), ...directionsOf(rawDirections, sorted, beats.length, lastStaff), ...sectionsOf(seq, measures.length) };
+  // une partie de guitare ou de basse s'écrit en cordes : chaque note sur une corde
+  const played = stringParts(parts, sorted, graces);
+  // une petite note sans corde dans une partie à cordes n'a pas de ligne où s'écrire
+  const kept = graces.filter((g) => g.string !== undefined || !stringsOfStaff(parts, g.staff));
+  const score: Score = { meta, parts, beats, notes: played, graces: sortGraces(kept), arpeggios, articulations: sortArticulations(articulations), lyrics: lyricsOf(rawLyrics, rawVoiceNotes, q, end), ...directionsOf(rawDirections, played, beats.length, lastStaff), ...sectionsOf(seq, measures.length) };
   const key = signature && guessKey(score, signature);
   if (key) meta.key = prismaKey(key);
   return score;

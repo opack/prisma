@@ -278,15 +278,16 @@ export function engrave(score: Score, { compact = false, chords = "both" as Chor
     cell: cellW,
     cellAt: (t) =>
       cellW +
-      Math.max(...Array.from({ length: staffCount(score.parts) }, (_, k) => graceW(graceDigits(score.graces, k, t)))) +
+      Math.max(...Array.from({ length: staffCount(score.parts) }, (_, k) => graceW(graceDigits(score.graces, k, t, score.parts)))) +
       (score.arpeggios.some((x) => x.t === t) ? G.arpeggioW : 0) +
       // une note annotée ou une syllabe trop longue élargit sa case (l'une sous l'autre : la plus large compte)
-      Math.max(0, ...score.notes.filter((n) => n.start === t).map((n) => noteW(noteText(n), cellW)), ...score.lyrics.filter((l) => l.t === t).map((l) => lyricW(l.text, !!l.hyphen) - cellW)) +
+      Math.max(0, ...score.notes.filter((n) => n.start === t).map((n) => noteW(noteText(n, score.parts), cellW)), ...score.lyrics.filter((l) => l.t === t).map((l) => lyricW(l.text, !!l.hyphen) - cellW)) +
       // un nom d'accord trop long élargit sa case
       Math.max(0, ...score.chords.filter((c) => c.t === t).map((c) => chordW(c.text, chords, chordNames) - cellW)),
     beatSep: G.beatSep,
     barSep: G.barSep,
     repeatDots: G.repeatDots,
+    allStrings: true,
     align,
     sectionSep: inlineSections ? G.sectionSep : undefined,
   });

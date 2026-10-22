@@ -10,8 +10,18 @@ import { TICKS_PER_BEAT } from "./model.ts";
 import { parseOctaveLabel } from "./pitch.ts";
 import { isRuler, parseRule } from "./prisma-parse.ts";
 
-/** Un signe de la partition : son instant, sa portée, son octave et le contenu de sa case. */
+/**
+ * Un signe de la partition : son instant, sa portée, son couloir et le contenu de sa case. Le
+ * couloir est une octave, ou pour un instrument à cordes une corde : STRING_LANE plus son numéro.
+ */
 export type ScorePlace = { t: number; staff: number; octave?: number; content?: string };
+
+/** Le couloir d'une corde, dans ScorePlace.octave : au-delà de toute octave. */
+export const STRING_LANE = 100;
+/** Le couloir que nomme le début d'une ligne : une octave (« 0 », « +1 »), ou une corde (« 1 » à « 6 »). */
+export const laneOf = (label: string) => parseOctaveLabel(label) ?? (/^[1-9]$/.test(label) ? STRING_LANE + Number(label) : undefined);
+/** Le couloir d'une ligne gravée. */
+export const rowLane = (r: { octave: number; string?: number }) => (r.string !== undefined ? STRING_LANE + r.string : r.octave);
 
 const isRule = (line: string) => {
   try {
@@ -135,7 +145,7 @@ export function textPlace(text: string, L: number, C: number): ScorePlace | unde
     if (staff < 0) staff = 0;
     if (l.startsWith("@") || !l.includes("|")) continue;
     const label = l.slice(0, l.indexOf("|")).trim();
-    if (label) octave = parseOctaveLabel(label);
+    if (label) octave = laneOf(label);
   }
   const line = lines[k];
   if (isRule(line)) return { t: at.t, staff: Math.max(0, staff) };
@@ -169,7 +179,7 @@ function place(lines: string[], R: number, end: number, c: { start: number; end:
     if (staff < 0) staff = 0;
     if (l.startsWith("@") || !l.includes("|")) continue;
     const label = l.slice(0, l.indexOf("|")).trim();
-    if (label) octave = parseOctaveLabel(label);
+    if (label) octave = laneOf(label);
     if (staff === at.staff) {
       const content = l.slice(c.start, c.end);
       // une tenue se reconnaît à la note qu'elle prolonge

@@ -3,7 +3,7 @@ export * from "./pitch.ts";
 export * from "./instruments.ts";
 export { FORMAT_VERSION, PrismaError } from "./frontmatter.ts";
 export { importMusicXml } from "./musicxml.ts";
-export { FRONTMATTER, inspect, noteName } from "./inspect.ts";
+export { FRONTMATTER, inspect, noteName, pitchClass } from "./inspect.ts";
 export type { Inspection, NoteNames } from "./inspect.ts";
 export { beatGrids, layout, noteText } from "./layout.ts";
 export type { Align, Column, HairpinSpan, Metrics, PedalLine, System, SystemStaff, SystemRow, Voice, VoiceMark } from "./layout.ts";
@@ -14,3 +14,5 @@ export { guessKey, keyName, keysOfSignature, parseKey, prismaKey } from "./key.t
 export { exportMusicXml } from "./musicxml-export.ts";
 export type { Key } from "./key.ts";
 export { CHORD_NOTE_SEPARATOR, CHORD_QUALITY_SEPARATOR, chordName, chordNotes, chordPrismaName, chordPrismaText, chordWriting } from "./chords.ts";
+export { MAX_FRET, fretOf, isStringInstrument, soundingOf, tuningsOf } from "./strings.ts";
+export type { Strings } from "./strings.ts";

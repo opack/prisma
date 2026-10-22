@@ -99,6 +99,28 @@ Les lignes sans numéro d'octave continuent le couloir du dessus. Dans le texte 
 
 Dans le fichier, chaque accord se range depuis le haut de son couloir. Sur la partition, l'option « Position » de l'onglet Notes, à « Alignées », garde sur sa ligne une note rejouée d'un temps à l'autre, quitte à laisser des lignes vides : après `8 5 1`, un accord `5 1` reste sur les deux lignes du bas au lieu de remonter, et l'on suit des yeux les notes qui reviennent. Le fichier ne change pas.
 
+### Les instruments à cordes
+
+Une partie de guitare ou de basse s'écrit comme une tablature : chaque ligne est une **corde**, numérotée de `1`, la plus aiguë, en haut, à `6` (`4` pour la basse), et le nombre est la **case** où appuyer, de `0` (la corde à vide) à `24`. Le principe ne change pas : au piano, le couloir dit l'octave et le nombre la touche ; ici, le couloir dit la corde et le nombre la case. On lit et on joue sans calcul. Voici un arpège de *la* mineur, la corde de *la* à vide tenue pendant trois temps :
+
+```prisma
+---
+parts: Guitare
+---
+
+m1 |1  *  |2  *  |3  *  |4  *  ||
+───┼─ Guitare ───┼──────┼──────┼┼
+1  |      |      |0     |      ||
+2  |      |   1  |   1  |      ||
+3  |      |2     |      |2     ||
+4  |   2  |      |      |   2  ||
+5  |0  -  |-  -  |-  -  |      ||
+```
+
+Le choix de la corde est celui de qui écrit le morceau : une même note se joue sur plusieurs cordes, et la tablature dit laquelle. Le rythme est celui de toute partition Prisma, sur la règle de comptage, et la tenue `-` dit combien de temps la corde sonne : on voit ce qu'on laisse sonner et ce qu'on étouffe. Une corde ne joue qu'une note à la fois : une ligne par corde, chacune écrite une seule fois par système. La partition montre toujours toutes les cordes, avec le nom de leur note à vide.
+
+L'instrument se reconnaît au nom de la partie (« Guitare », « Basse électrique »), ou s'écrit entre parenthèses (`guitar`, `electric-bass`). Après lui viennent, s'il le faut, l'accordage et le capo : `parts: Guitare (drop-d, capo 2)`. Les accordages de la guitare : `standard` (par défaut), `drop-d` (la 6ᵉ corde baissée en *ré*), `dadgad`, `open-g`, `open-d` ; de la basse : `standard`, `drop-d`. Avec un capo, les cases se comptent depuis lui, comme en tablature : `0` est la corde jouée au capo.
+
 ## 3. Le temps
 
 ### Ce que veut dire 4/4, 3/4, 6/8…
@@ -321,6 +343,7 @@ Les indications de caractère et de tempo (`dolce`, `rit.`, `a tempo`…) garden
 | armure | rien : chaque numéro est la note jouée |
 | clés, portées | des portées (au piano, les deux mains) séparées par un trait ; un trait double entre deux parties |
 | lignes supplémentaires, 8va, 15ma, loco | numéro d'octave sur chaque ligne (`0`, `+1`, `-1`…) |
+| tablature (guitare, basse) | une ligne par corde (`1`, l'aiguë, en haut), le nombre est la case (`0` à vide) ; le rythme sur la règle |
 | ronde, blanche, noire, croche… et points | la longueur de la note sur la règle (`-`) |
 | silences | case vide |
 | liaison de prolongation | la note continue (`-`), rappelée `-N` en début de ligne |

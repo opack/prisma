@@ -6,10 +6,12 @@
  */
 import { chordNotes } from "./chords.ts";
 import { PrismaError, parseFrontmatter } from "./frontmatter.ts";
-import { ARPEGGIO_DOWN, FERMATA, articulationOf, isArticulationSign, HYPHEN, LYRIC_LINE, isExtender, sortLyrics, FINGER_MARK, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isSlur, isPedalText, joinsText, sortArticulations, sortGraces, sortNotes } from "./model.ts";
+import { ARPEGGIO_DOWN, FERMATA, articulationOf, isArticulationSign, HYPHEN, LYRIC_LINE, isExtender, sortLyrics, FINGER_MARK, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isSlur, isPedalText, joinsText, sortArticulations, sortGraces, sortNotes, stringsOfStaff } from "./model.ts";
 import type { Arpeggio, Articulation, Beat, Division, Expression, Grace, Hairpin, Part, Lyric, Marker, Note, Staff, Pedal, PedalText, Repeat, Score, Slur, TextMark } from "./model.ts";
 import { CENTRAL_OCTAVE, midiOf, parseOctaveLabel } from "./pitch.ts";
-import { INSTRUMENTS, isInstrument, splitPartEntry } from "./instruments.ts";
+import { INSTRUMENTS, guessInstrument, isInstrument, splitPartEntry, splitParts } from "./instruments.ts";
+import { MAX_CAPO, MAX_FRET, isStringInstrument, soundingOf, stringsOf, tuningsOf } from "./strings.ts";
+import type { Strings } from "./strings.ts";
 import type { InstrumentName } from "./instruments.ts";
 
 /** Un temps de la règle de comptage, et la barre qui le termine. */
@@ -121,19 +123,48 @@ export function markTokens(line: string) {
   return out;
 }
 
+/**
+ * Ce qui précise une partie, entre parenthèses dans `parts:` : son instrument, et pour un
+ * instrument à cordes (écrit, ou deviné d'après le nom) son accordage et son capo. Une partie
+ * à cordes a ses cordes, même sans rien de précisé.
+ */
+export function partExtras(name: string, extras: string[], line: number): { instrument?: InstrumentName; strings?: Strings } {
+  const instrument = extras.find(isInstrument);
+  const played = instrument ?? guessInstrument(name);
+  let tuning: string | undefined, capo = 0;
+  for (const x of extras) {
+    if (x === instrument) continue;
+    const c = x.match(/^capo\s*(\d+)$/);
+    if (c) {
+      capo = Number(c[1]);
+      if (capo < 1 || capo > MAX_CAPO) throw new PrismaError(`« parts » : capo ${capo} pour « ${name} » : de 1 à ${MAX_CAPO}`, line);
+      continue;
+    }
+    if (isStringInstrument(played) && tuningsOf(played).includes(x)) {
+      tuning = x;
+      continue;
+    }
+    if (isStringInstrument(played)) throw new PrismaError(`« parts » : « ${x} » pour « ${name} » n'est ni un instrument, ni un accordage (${tuningsOf(played).join(", ")}), ni un capo (capo 2)`, line);
+    throw new PrismaError(`« parts » : instrument « ${x} » inconnu pour « ${name} » ; les instruments : ${INSTRUMENTS.join(", ")}`, line);
+  }
+  if (!isStringInstrument(played)) {
+    if (capo) throw new PrismaError(`« parts » : « ${name} » n'est pas un instrument à cordes : pas de capo`, line);
+    return instrument ? { instrument } : {};
+  }
+  return { ...(instrument ? { instrument } : {}), strings: stringsOf(played, tuning ?? "standard", capo)! };
+}
+
 export function parsePrisma(text: string): Score {
   const lines = text.replace(/\t/g, "    ").split(/\r?\n/);
   const { meta, bodyStartLine } = parseFrontmatter(lines);
   // parties déclarées : « parts: Chant (flute), Piano », chacune nommée sur le trait au-dessus de sa
   // première portée ; entre parenthèses, l'instrument qui la joue à l'écoute
   const partsLine = lines.findIndex((l, i) => i < bodyStartLine && /^parts\s*:/.test(l)) + 1;
-  const entries = meta.parts === undefined ? undefined : String(meta.parts).split(",").map(splitPartEntry);
+  const entries = meta.parts === undefined ? undefined : splitParts(String(meta.parts)).map(splitPartEntry).map((e) => ({ name: e.name, ...partExtras(e.name, e.extras, partsLine) }));
   const declared = entries?.map((e) => e.name);
   delete meta.parts;
   if (declared) {
     if (declared.some((x) => !x)) throw new PrismaError("« parts » : les noms des parties, séparés par des virgules (parts: Chant, Piano)", partsLine);
-    const unknown = entries!.find((e) => e.instrument !== undefined && !isInstrument(e.instrument));
-    if (unknown) throw new PrismaError(`« parts » : instrument « ${unknown.instrument} » inconnu pour « ${unknown.name} » ; les instruments : ${INSTRUMENTS.join(", ")}`, partsLine);
     const twice = declared.find((x, i) => declared.indexOf(x) !== i);
     if (twice) throw new PrismaError(`« parts » : la partie « ${twice} » est nommée deux fois`, partsLine);
   }
@@ -358,7 +389,11 @@ export function parsePrisma(text: string): Score {
       }
     });
     if (declared && here.length < declared.length) throw new PrismaError(`il manque des parties : « parts » en déclare ${declared.length} (${declared.join(", ")})`, L, 1, { cascade: true });
-    if (!parts) parts = here.map(({ name, staves }, k) => ({ ...(name ? { name } : {}), staves, ...(entries?.[k]?.instrument ? { instrument: entries[k].instrument as InstrumentName } : {}) }));
+    if (!parts) {
+      parts = here.map(({ name, staves }, k) => ({ ...(name ? { name } : {}), staves, ...(entries?.[k]?.instrument ? { instrument: entries[k].instrument } : {}), ...(entries?.[k]?.strings ? { strings: entries[k].strings } : {}) }));
+      const multi = parts.find((x) => x.strings && x.staves > 1);
+      if (multi) throw new PrismaError(`« ${multi.name} » est un instrument à cordes : une seule portée, une ligne par corde`, L, 1);
+    }
     else if (here.length !== parts.length || here.some((x, k) => x.staves !== parts![k].staves)) {
       const shape = (xs: { staves: number }[]) => xs.map((x) => x.staves).join(" + ");
       throw new PrismaError(`ce système n'a pas les mêmes portées que le premier (${shape(here)} au lieu de ${shape(parts)}) : chaque système écrit toutes les portées, même vides`, L, 1, { cascade: true });
@@ -468,7 +503,7 @@ export function parsePrisma(text: string): Score {
 
     const nextPending: Note[] = [];
     // petites notes du bloc, par portée et instant : leur rang se lit de gauche à droite dans la case
-    const blockGraces = new Map<string, { staff: Staff; t: number; col: number; midi: number }[]>();
+    const blockGraces = new Map<string, { staff: Staff; t: number; col: number; midi: number; string?: number }[]>();
     const lastOctave: (number | undefined)[] = Array(staffTotal).fill(undefined);
     const voiceLine: boolean[] = Array(staffTotal).fill(false);
     const verses: number[] = Array(staffTotal).fill(0); // couplets : les lignes @l d'une portée, de haut en bas
@@ -507,7 +542,19 @@ export function parsePrisma(text: string): Score {
       const extra = row.slice(end).search(/\S/);
       if (extra >= 0) throw new PrismaError("rien ne s'écrit après la dernière barre de la règle de comptage", R, end + extra + 1);
       const lab = row.slice(0, pipe).trim();
-      if (lab) {
+      // instrument à cordes : chaque ligne est une corde, numérotée de l'aiguë (1, en haut) à la plus grave
+      const strs = stringsOfStaff(parts!, staff);
+      if (strs) {
+        const count = strs.open.length;
+        if (!lab) throw new PrismaError(`une ligne par corde : chaque ligne commence par le numéro de sa corde (1 à ${count})`, R, 1);
+        const k = /^\d+$/.test(lab) ? Number(lab) : NaN;
+        if (!(k >= 1 && k <= count)) throw new PrismaError(`corde invalide : « ${lab} » (attendu 1, la plus aiguë, à ${count})`, R, 1);
+        const above = lastOctave[staff];
+        if (above !== undefined && k <= above) {
+          throw new PrismaError(k === above ? `corde « ${lab} » écrite deux fois dans le système : une corde ne joue qu'une note à la fois` : `corde « ${lab} » sous la corde « ${above} » : les cordes vont de l'aiguë (1, en haut) à la plus grave`, R, 1);
+        }
+        lastOctave[staff] = k;
+      } else if (lab) {
         const oct = parseOctaveLabel(lab);
         if (oct === undefined) {
           throw new PrismaError(`octave invalide : « ${lab} » (attendu 0 pour l'octave du do central, +1, -1, +2…)`, R, 1);
@@ -528,6 +575,12 @@ export function parsePrisma(text: string): Score {
       }
       const octave = lastOctave[staff];
       if (octave === undefined) throw new PrismaError("la première ligne de chaque portée doit indiquer son octave", R, 1);
+      // la hauteur d'un nombre de la ligne : une note de l'octave, ou une case de la corde
+      const string = strs ? octave : undefined;
+      const pitch = (k: number) => (strs ? soundingOf(strs, octave, k) : midiOf(octave, k));
+      const [lo, hi] = strs ? [0, MAX_FRET] : [1, 12];
+      const what = strs ? `une case de 0 à ${MAX_FRET}` : "un numéro de 1 à 12";
+      const onString = string !== undefined ? { string } : {};
 
       let open: Note | undefined;
       const close = (t: number) => {
@@ -541,10 +594,10 @@ export function parsePrisma(text: string): Score {
         for (const g of raw.matchAll(/(\d+)'/g)) {
           const gc = a.from + g.index! + 1;
           const k = Number(g[1]);
-          if (k < 1 || k > 12) throw new PrismaError(`petite note invalide « ${g[0]} » : attendu un numéro de 1 à 12 suivi de « ${GRACE_MARK} »`, R, gc);
+          if (k < lo || k > hi) throw new PrismaError(`petite note invalide « ${g[0]} » : attendu ${what} suivi de « ${GRACE_MARK} »`, R, gc);
           const key = staff + ":" + a.t;
           if (!blockGraces.has(key)) blockGraces.set(key, []);
-          blockGraces.get(key)!.push({ staff, t: a.t, col: gc, midi: midiOf(octave, k) });
+          blockGraces.get(key)!.push({ staff, t: a.t, col: gc, midi: pitch(k), ...onString });
           graceEnd = g.index! + g[0].length;
         }
         if (graceEnd) {
@@ -555,11 +608,11 @@ export function parsePrisma(text: string): Score {
         const c = raw.trim();
         const col = a.from + 1 + (raw.length - raw.trimStart().length);
         const m = c.match(/^(-?)(\d{0,2})(?:~(\d{1,2}))?(?:_(\d))?$/);
-        const bad = (k?: string) => !!k && (Number(k) < 1 || Number(k) > 12);
+        const bad = (k?: string) => !!k && (Number(k) < lo || Number(k) > hi);
         const badFinger = m && m[4] && (Number(m[4]) < 1 || Number(m[4]) > 5 || m[1] || !m[2]);
         if (!m || bad(m[2]) || bad(m[3]) || (!m[1] && !m[2] && c) || (m[3] && (m[1] || !m[2])) || badFinger) {
           throw new PrismaError(
-            `case invalide « ${c} » : attendu un numéro de 1 à 12, « - », « -N », une trille « N${TRILL_MARK}N », un doigté « N${FINGER_MARK}D » (doigt de 1 à 5), des petites notes « N' » ou une case vide`,
+            `case invalide « ${c} » : attendu ${what}, « - », « -N », une trille « N${TRILL_MARK}N », un doigté « N${FINGER_MARK}D » (doigt de 1 à 5), des petites notes « N' » ou une case vide`,
             R, col,
           );
         }
@@ -567,9 +620,11 @@ export function parsePrisma(text: string): Score {
         if (!c) return close(a.t);
         if (!dash) {
           close(a.t);
-          const midi = midiOf(octave, Number(digits));
+          const midi = pitch(Number(digits));
           if (aux && Number(aux) === Number(digits)) throw new PrismaError("une trille alterne avec une autre note", R, col);
-          open = { staff, midi, start: a.t, end: t1, ...(aux ? { trill: trillAux(midi, Number(aux)) } : {}), ...(finger ? { finger: Number(finger) } : {}) };
+          // sur une corde, la voisine d'une trille est une case de la même corde
+          const trill = aux ? (strs ? pitch(Number(aux)) : trillAux(midi, Number(aux))) : undefined;
+          open = { staff, midi, start: a.t, end: t1, ...(trill !== undefined ? { trill } : {}), ...(finger ? { finger: Number(finger) } : {}), ...onString };
           notes.push(open);
           return;
         }
@@ -581,18 +636,18 @@ export function parsePrisma(text: string): Score {
             R, col, ai === 0 ? { cascade: true } : undefined,
           );
         }
-        const midi = midiOf(octave, Number(digits));
+        const midi = pitch(Number(digits));
         if (open) {
-          if (open.midi !== midi) throw new PrismaError(`« -${digits} » prolonge une note différente (${(open.midi % 12) + 1})`, R, col, { cascade: true });
+          if (open.midi !== midi) throw new PrismaError(`« -${digits} » prolonge une note différente (${strs ? open.midi - pitch(0) : (open.midi % 12) + 1})`, R, col, { cascade: true });
           return;
         }
-        const prev = ai === 0 ? pending.find((p) => p.staff === staff && p.midi === midi && p.end === t0) : undefined;
+        const prev = ai === 0 ? pending.find((p) => p.staff === staff && p.midi === midi && p.string === string && p.end === t0) : undefined;
         if (prev) {
           pending = pending.filter((p) => p !== prev);
           open = prev;
         } else {
           // tenue sans origine connue (début de fichier, saisie partielle) : la note commence ici
-          open = { staff, midi, start: a.t, end: t1 };
+          open = { staff, midi, start: a.t, end: t1, ...onString };
           notes.push(open);
         }
       });
@@ -604,7 +659,7 @@ export function parsePrisma(text: string): Score {
     pending = nextPending;
     for (const list of blockGraces.values()) {
       const cols = [...new Set(list.map((g) => g.col))].sort((x, y) => x - y);
-      for (const g of list) graces.push({ staff: g.staff, midi: g.midi, t: g.t, slot: cols.indexOf(g.col) });
+      for (const g of list) graces.push({ staff: g.staff, midi: g.midi, t: g.t, slot: cols.indexOf(g.col), ...(g.string !== undefined ? { string: g.string } : {}) });
     }
 
     // pédale : dans l'ordre du temps, en relâchant avant d'enfoncer à un même instant

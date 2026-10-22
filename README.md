@@ -63,6 +63,8 @@ Le temps se compte en **ticks** depuis le début du morceau, avec une valeur fix
 
 Une note est une hauteur MIDI ; le nombre Prisma (1 à 12) et le couloir d'octave (`0` pour celle du do central) s'en déduisent (`core/pitch.ts`).
 
+Une partie de guitare ou de basse a ses **cordes** (`Part.strings`, `core/strings.ts`) : leur accordage et le capo. Ses couloirs sont alors des cordes, et ses nombres des cases. Chaque note garde sa hauteur MIDI, pour l'écoute et l'export, et porte en plus sa corde (`Note.string`) : le choix de la corde est écrit dans le texte, il ne se déduit pas. La case se recalcule (la hauteur, moins la corde à vide et le capo). Seul un MusicXML importé sans tablature reçoit des cordes choisies par l'application.
+
 ### La lecture (`core/prisma-parse.ts`)
 
 Le texte se lit système par système. Les sauts de ligne sont libres : l'instant de chaque note se reconstitue à partir des règles de comptage, si bien qu'un même morceau peut s'écrire à n'importe quelle largeur. Une erreur est une `PrismaError` qui porte sa ligne et sa colonne.
@@ -119,7 +121,7 @@ Quatre pages à la racine (`index.html`, `apprendre.html`, `reference.html`, `co
 
 ## Tests
 
-`npm test` lance Vitest sur `tests/`. L'essentiel est dans `core.test.ts`, organisé par sujet : règles du format, reprises et sections, import MusicXML (avec la Gymnopédie n° 1 de Satie en exemple), nuances, pédale, ornements, accords, paroles, et l'écoute (déroulé, intensités, métronome…). `export.test.ts` fait l'aller-retour de l'export : la Gymnopédie et chaque exemple de la référence, exportés puis réimportés, redonnent les mêmes notes, les mêmes indications, les mêmes sections et le même ordre de jeu. Les autres fichiers couvrent les erreurs en une passe, la complétion, le chemin de la partition au texte, la retouche et les réglages d'un morceau.
+`npm test` lance Vitest sur `tests/`. L'essentiel est dans `core.test.ts`, organisé par sujet : règles du format, reprises et sections, import MusicXML (avec la Gymnopédie n° 1 de Satie en exemple), nuances, pédale, ornements, accords, paroles, et l'écoute (déroulé, intensités, métronome…). `export.test.ts` fait l'aller-retour de l'export : la Gymnopédie et chaque exemple de la référence, exportés puis réimportés, redonnent les mêmes notes, les mêmes indications, les mêmes sections et le même ordre de jeu. `strings.test.ts` couvre les instruments à cordes : cordes et cases, accordage et capo, erreurs, parties mêlées, import. Les autres fichiers couvrent les erreurs en une passe, la complétion, le chemin de la partition au texte, la retouche et les réglages d'un morceau.
 
 `reference.test.ts` vérifie chaque exemple de la référence : il doit se lire sans erreur et être écrit exactement comme l'application l'écrirait. La documentation ne peut donc pas montrer un exemple faux ou mal mis en forme.
 

@@ -5,9 +5,11 @@
  * Le moteur ne connaît que des « unités » de largeur : des caractères pour le texte,
  * des millimètres pour le rendu graphique. Seules les mesures changent.
  */
-import { ARPEGGIO_DOWN, ARPEGGIO_UP, ARTICULATION_SIGNS, FINGER_MARK, staffCount, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, TRILL_MARK, beatStart, graceDigits, repeatOf } from "./model.ts";
+import { ARPEGGIO_DOWN, ARPEGGIO_UP, ARTICULATION_SIGNS, FINGER_MARK, staffCount, stringsOfStaff, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, TRILL_MARK, beatStart, graceDigits, repeatOf } from "./model.ts";
 import type { Beat, Division, Hairpin, Part, Note, Staff, Score } from "./model.ts";
-import { numberOf, octaveOf } from "./pitch.ts";
+import { CENTRAL_OCTAVE, numberOf, octaveOf } from "./pitch.ts";
+import { fretOf } from "./strings.ts";
+import type { Strings } from "./strings.ts";
 
 export type Metrics = {
   /** Largeur totale disponible pour un système. */
@@ -37,6 +39,8 @@ export type Metrics = {
    * commence une nouvelle ligne.
    */
   sectionSep?: number;
+  /** Instruments à cordes : toutes les cordes, même celles qui ne jouent rien dans le système (gravure). */
+  allStrings?: boolean;
 };
 
 export type Align = "replayed" | "pitch";
@@ -59,7 +63,10 @@ export type Column =
 
 export type SystemRow = {
   staff: Staff;
+  /** Couloir d'octave ; sur une corde, l'octave du do central, sans autre sens. */
   octave: number;
+  /** Instrument à cordes : la corde de la ligne (1 : la plus aiguë) ; ses cases sont des numéros de case. */
+  string?: number;
   /** Faux pour les lignes suivantes d'un même groupe d'octave : on n'écrit le numéro qu'une fois. */
   showOctave: boolean;
   /** Contenu de chaque ancre : "", "-", "-N" (rappel en début de système), "N", "N~N" (trille), "N_D" (doigté). */
@@ -332,7 +339,7 @@ function breakSystems(score: Score, grids: BeatGrid[], m: Metrics): number[][] {
 }
 
 /** Une ligne d'un couloir d'octave. */
-type Lane = { staff: Staff; octave: number; notes: Note[] };
+type Lane = { staff: Staff; octave: number; notes: Note[]; string?: number };
 
 /**
  * Bloc : suite de notes d'un même couloir qui se chevauchent (directement ou de proche
@@ -342,7 +349,7 @@ type Lane = { staff: Staff; octave: number; notes: Note[] };
 type Block = { start: number; end: number; size: number };
 
 /** Couloir d'octave d'une portée : ses lignes et ses blocs. */
-type Group = { staff: Staff; octave: number; lanes: Lane[]; blocks: Block[] };
+type Group = { staff: Staff; octave: number; lanes: Lane[]; blocks: Block[]; string?: number };
 
 /**
  * Répartit les notes d'un système en couloirs (une portée, une octave), puis en lignes
@@ -351,7 +358,15 @@ type Group = { staff: Staff; octave: number; lanes: Lane[]; blocks: Block[] };
  * Dans chaque bloc, les notes sont rangées de haut en bas, la plus aiguë en premier :
  * une note seule est toujours sur la ligne du haut, quel que soit le reste du couloir.
  */
-function groups(notes: Note[], t0: number, align?: Align, barOf?: (t: number) => number): Group[] {
+function groups(notes: Note[], t0: number, align?: Align, barOf?: (t: number) => number, strs?: Strings): Group[] {
+  if (strs) {
+    // une ligne par corde, de l'aiguë à la plus grave
+    const used = [...new Set(notes.map((n) => n.string!))].sort((a, b) => a - b);
+    return used.map((string) => {
+      const list = notes.filter((n) => n.string === string).sort((a, b) => a.start - b.start);
+      return { staff: list[0].staff, octave: CENTRAL_OCTAVE, string, lanes: [{ staff: list[0].staff, octave: CENTRAL_OCTAVE, string, notes: list }], blocks: [] };
+    });
+  }
   const byKey = new Map<string, Note[]>();
   for (const n of notes) {
     const key = n.staff + ":" + octaveOf(n.midi);
@@ -447,16 +462,29 @@ function alignedLanes(list: Note[], t0: number, staff: Staff, octave: number, ba
   return lanes;
 }
 
-/** Texte d'une attaque : le numéro, puis la voisine d'une trille (« 5~7 ») et le doigt (« 5_3 »). */
-export const noteText = (n: Note) =>
-  String(numberOf(n.midi)) + (n.trill !== undefined ? TRILL_MARK + numberOf(n.trill) : "") + (n.finger ? FINGER_MARK + n.finger : "");
+/**
+ * Le nombre d'une hauteur sur sa ligne : son numéro dans l'octave, ou sur une corde (strs
+ * donné), sa case.
+ */
+const numberOn = (midi: number, strs?: Strings, string?: number) => (strs && string !== undefined ? fretOf(strs, string, midi) : numberOf(midi));
 
-function cell(lane: Lane, t: number, t0: number): string {
+/**
+ * Texte d'une attaque : le numéro, puis la voisine d'une trille (« 5~7 ») et le doigt (« 5_3 ») ;
+ * avec les parties (parts), la case d'une note jouée sur une corde.
+ */
+export const noteText = (n: Note, parts?: Part[]) => {
+  const strs = parts && n.string !== undefined ? stringsOfStaff(parts, n.staff) : undefined;
+  const k = (midi: number) => numberOn(midi, strs, n.string);
+  return String(k(n.midi)) + (n.trill !== undefined ? TRILL_MARK + k(n.trill) : "") + (n.finger ? FINGER_MARK + n.finger : "");
+};
+
+function cell(lane: Lane, t: number, t0: number, parts: Part[]): string {
   const attack = lane.notes.find((n) => n.start === t);
-  if (attack) return noteText(attack);
-  const held = lane.notes.find((n) => n.start < t && n.end > t);
+  if (attack) return noteText(attack, parts);
+  // sur une corde, la dernière note attaquée est celle qui sonne
+  const held = lane.notes.filter((n) => n.start < t && n.end > t).at(-1);
   if (!held) return "";
-  return t === t0 ? "-" + numberOf(held.midi) : "-";
+  return t === t0 ? "-" + numberOn(held.midi, stringsOfStaff(parts, held.staff), held.string) : "-";
 }
 
 export function layout(score: Score, m: Metrics): System[] {
@@ -508,24 +536,34 @@ export function layout(score: Score, m: Metrics): System[] {
 
     const inSystem = score.notes.filter((n) => n.start < t1 && n.end > t0);
     const anchorT = anchors.map((ci) => (columns[ci] as { t: number }).t);
-    const digits = (staff: Staff) => anchorT.map((t) => graceDigits(score.graces, staff, t));
+    const digits = (staff: Staff) => anchorT.map((t) => graceDigits(score.graces, staff, t, score.parts));
     const barOf = (t: number) => score.beats[Math.min(score.beats.length - 1, Math.floor(t / T))].barIndex;
     const toRows = (staff: Staff): SystemRow[] => {
-      const gs = groups(inSystem.filter((n) => n.staff === staff), t0, m.align, barOf);
+      const strs = stringsOfStaff(score.parts, staff);
+      const gs = groups(inSystem.filter((n) => n.staff === staff), t0, m.align, barOf, strs);
+      // toutes les cordes, à la gravure : une tablature se lit sur une grille fixe
+      if (strs && m.allStrings) {
+        for (let string = 1; string <= strs.open.length; string++) {
+          if (!gs.some((g) => g.string === string)) gs.push({ staff, octave: CENTRAL_OCTAVE, string, lanes: [{ staff, octave: CENTRAL_OCTAVE, string, notes: [] }], blocks: [] });
+        }
+        gs.sort((a, b) => a.string! - b.string!);
+      }
       // petites notes : sur la première ligne libre de leur couloir d'octave (créé au besoin)
       const graces = score.graces.filter((g) => g.staff === staff && g.t >= t0 && g.t < t1);
       const slotsAt = digits(staff);
       const placed = new Map<Lane, string[][]>();
       for (const g of graces) {
-        const octave = octaveOf(g.midi);
-        let group = gs.find((x) => x.octave === octave);
+        const octave = strs ? CENTRAL_OCTAVE : octaveOf(g.midi);
+        // sur une corde : la ligne de sa corde
+        let group = strs ? gs.find((x) => x.string === g.string) : gs.find((x) => x.octave === octave);
         if (!group) {
-          group = { staff, octave, lanes: [], blocks: [] };
+          group = strs ? { staff, octave, string: g.string, lanes: [{ staff, octave, string: g.string, notes: [] }], blocks: [] } : { staff, octave, lanes: [], blocks: [] };
           gs.push(group);
-          gs.sort((x, y) => y.octave - x.octave);
+          gs.sort((x, y) => (strs ? x.string! - y.string! : y.octave - x.octave));
         }
         const a = anchorT.indexOf(g.t);
         let lane = group.lanes.find((l) => !placed.get(l)?.[a]?.[g.slot]);
+        if (!lane && strs) continue; // une corde ne joue qu'une petite note à la fois
         if (!lane) {
           lane = { staff, octave, notes: [] };
           group.lanes.push(lane);
@@ -533,14 +571,15 @@ export function layout(score: Score, m: Metrics): System[] {
         if (!placed.has(lane)) placed.set(lane, anchorT.map(() => []));
         const cellGraces = placed.get(lane)![a];
         while (cellGraces.length < slotsAt[a].length) cellGraces.push("");
-        cellGraces[g.slot] = String(numberOf(g.midi));
+        cellGraces[g.slot] = String(numberOn(g.midi, strs, g.string));
       }
       return gs.flatMap((g) =>
         g.lanes.map((lane, i) => ({
           staff,
           octave: g.octave,
+          ...(g.string !== undefined ? { string: g.string } : {}),
           showOctave: i === 0,
-          cells: anchorT.map((t) => cell(lane, t, t0)),
+          cells: anchorT.map((t) => cell(lane, t, t0, score.parts)),
           trill: anchorT.map((t) => lane.notes.some((n) => n.trill !== undefined && n.start <= t && n.end > t)),
           graces: placed.get(lane) ?? anchorT.map(() => []),
           // décalage pour centrer chaque bloc dans son couloir (rendu graphique, option)

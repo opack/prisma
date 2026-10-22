@@ -169,7 +169,10 @@ function notes(ctx: CompletionContext, lines: string[], L: number, C: number, bo
   if (!c) return null;
   const content = line.slice(c.start, c.end).trim();
   const lead = line.slice(c.start, c.end).length - line.slice(c.start, c.end).trimStart().length;
-  const octave = inspect(ctx.state.doc.toString(), ctx.pos, names).octave;
+  const here = inspect(ctx.state.doc.toString(), ctx.pos, names);
+  // une corde : ses cases ne sont pas encore proposées
+  if (here.string !== undefined) return null;
+  const octave = here.octave;
   const name = (n: number) => (octave === undefined ? "" : noteName(midiOf(octave, n), names));
   const options: Completion[] = [];
   const note = (text: string, detail: string, section: string) => options.push({ label: text, detail, section: SECTIONS[section], boost: -options.length, type: "variable", apply: inCase(text, ctx.pos) });

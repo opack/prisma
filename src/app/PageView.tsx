@@ -1,4 +1,4 @@
-import { FINGER_MARK, TRILL_MARK, octaveOffset } from "../core/index.ts";
+import { FINGER_MARK, TRILL_MARK, numberOf, octaveOffset, pitchClass, stringsOfStaff } from "../core/index.ts";
 import type { Meta, PedalLine, SystemRow, Voice } from "../core/index.ts";
 import { FINGER, G, PAGE, splitChord, graceExtra, graceSlotW, headerHeight, leadExtra, lyricTextW, splitNote } from "./engrave.ts";
 import type { Page, PlacedSystem } from "./engrave.ts";
@@ -9,7 +9,7 @@ import { player } from "./player.ts";
 import { follow } from "./follow.ts";
 import { pick } from "./pick.ts";
 import { textMark } from "./textMark.ts";
-import { mainOf } from "../core/locate.ts";
+import { STRING_LANE, mainOf, rowLane } from "../core/locate.ts";
 import { keyName, parseKey, prismaKey } from "../core/key.ts";
 import type { Key, NoteNames } from "../core/index.ts";
 import { glide, timed } from "./glide.ts";
@@ -97,10 +97,11 @@ function OctaveMark({ cx, cy, offset, style }: { cx: number; cy: number; offset:
 }
 
 /** Onglet vertical pâle couvrant les lignes d'un groupe d'octave ; numéro en haut ou au centre selon les options. */
-function OctaveTabs({ rows, top, style, position, tabFill, rowH }: { rows: SystemRow[]; top: number; style: OctaveStyle; position: OctavePosition; tabFill: (octave: number) => string; rowH: number }) {
-  const groups: { octave: number; first: number; count: number }[] = [];
+function OctaveTabs({ rows, top, style, position, tabFill, rowH, stringName }: { rows: SystemRow[]; top: number; style: OctaveStyle; position: OctavePosition; tabFill: (row: SystemRow) => string; rowH: number; stringName: (string: number) => string }) {
+  if (rows.some((r) => r.string !== undefined)) return <StringTabs rows={rows} top={top} tabFill={tabFill} rowH={rowH} stringName={stringName} />;
+  const groups: { row: SystemRow; first: number; count: number }[] = [];
   rows.forEach((r, i) => {
-    if (r.showOctave || !groups.length) groups.push({ octave: r.octave, first: i, count: 1 });
+    if (r.showOctave || !groups.length) groups.push({ row: r, first: i, count: 1 });
     else groups[groups.length - 1].count++;
   });
   const x = PAGE.marginX + 0.6;
@@ -112,13 +113,41 @@ function OctaveTabs({ rows, top, style, position, tabFill, rowH }: { rows: Syste
         const h = g.count * rowH - 0.5;
         return (
           <g key={g.first}>
-            <rect x={x} y={y} width={w} height={h} rx={0.6} fill={tabFill(g.octave)} />
+            <rect x={x} y={y} width={w} height={h} rx={0.6} fill={tabFill(g.row)} />
             <OctaveMark
               cx={x + w / 2}
               cy={position === "top" ? top + g.first * rowH + rowH / 2 : y + h / 2}
-              offset={octaveOffset(g.octave)}
+              offset={octaveOffset(g.row.octave)}
               style={style}
             />
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+/** Onglets d'un instrument à cordes : un par corde, son numéro, puis le nom de la note à vide. */
+function StringTabs({ rows, top, tabFill, rowH, stringName }: { rows: SystemRow[]; top: number; tabFill: (row: SystemRow) => string; rowH: number; stringName: (string: number) => string }) {
+  const x = PAGE.marginX + 0.6;
+  const w = G.prefix - 1.4;
+  return (
+    <g>
+      {rows.map((r, i) => {
+        const y = top + i * rowH + 0.25;
+        const cy = top + i * rowH + rowH / 2;
+        const name = stringName(r.string!);
+        return (
+          <g key={i}>
+            <rect x={x} y={y} width={w} height={rowH - 0.5} rx={0.6} fill={tabFill(r)} />
+            <text x={x + (name ? 1.2 : w / 2)} y={cy + 0.95} fontSize={2.7} fontWeight={600} textAnchor="middle" fill={TAB_TEXT}>
+              {r.string}
+            </text>
+            {name && (
+              <text x={x + w - 0.4} y={cy + 0.7} fontSize={1.8} textAnchor="end" fill={TAB_TEXT}>
+                {name}
+              </text>
+            )}
           </g>
         );
       })}
@@ -680,14 +709,21 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
   const alternate = (rows: SystemRow[]) => {
     let group = -1;
     return rows.map((r) => {
-      if (r.showOctave) group++;
+      if (r.showOctave || r.string !== undefined) group++;
       return group % 2 === 1;
     });
   };
-  // couleur par octave (option) ; sans palette, une bande grise un couloir sur deux
-  const tint = (octave: number) => octaveTint(options.octaveColors, octaveOffset(octave));
-  const bandFill = (octave: number, alt: boolean) => tint(octave)?.band ?? (alt ? BAND : undefined);
-  const tabFill = (octave: number) => tint(octave)?.tab ?? TAB;
+  // couleur par octave (option), ou par corde, chacune la sienne ; sans palette, une bande grise un couloir sur deux
+  const tint = (r: SystemRow) => octaveTint(options.octaveColors, r.string !== undefined ? 4 - r.string : octaveOffset(r.octave));
+  const bandFill = (r: SystemRow, alt: boolean) => tint(r)?.band ?? (alt ? BAND : undefined);
+  const tabFill = (r: SystemRow) => tint(r)?.tab ?? TAB;
+  // le nom d'une corde, celui de sa note à vide dans l'accordage (le capo n'y change rien, comme
+  // pour le guitariste), selon l'option des noms de notes
+  const stringName = (k: number) => (string: number) => {
+    const strs = stringsOfStaff(sys.parts, k);
+    const names = writtenNames(options.noteNames);
+    return strs && names !== "none" ? pitchClass(numberOf(strs.open[string - 1]), names) : "";
+  };
   const centered = options.notePosition === "center";
   // articulations de chaque portée : portées par sa note la plus aiguë attaquée dans la case (une fois pour l'accord)
   const articulationsOf = (k: number, i: number) => {
@@ -786,13 +822,13 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
       })}
 
       {sys.staves.map((p, k) => (
-        <OctaveTabs key={"ot" + k} rows={p.rows} top={ps.staves[k].rowsTop} style={options.octaveStyle} position={options.octavePosition} tabFill={tabFill} rowH={ps.rowH} />
+        <OctaveTabs key={"ot" + k} rows={p.rows} top={ps.staves[k].rowsTop} style={options.octaveStyle} position={options.octavePosition} tabFill={tabFill} rowH={ps.rowH} stringName={stringName(k)} />
       ))}
       {/* fonds des couloirs d'abord : les notes, dessinées ensuite, ne sont jamais recouvertes */}
       {sys.staves.map((p, k) => {
         const alt = alternate(p.rows);
         return p.rows.map((r, i) => {
-          const fill = bandFill(r.octave, alt[i]);
+          const fill = bandFill(r, alt[i]);
           return fill && spans(left, right).map(([a, b], j) => <rect key={`bd${k}-${i}-${j}`} x={a} y={rowY(k, i)} width={b - a} height={ps.rowH} fill={fill} />);
         });
       })}
@@ -1013,7 +1049,7 @@ export function TextMarks({ systems }: { systems: PlacedSystem[] }) {
   const staff = at.staff >= 0 ? ps.staves[at.staff] : undefined;
   if (staff) {
     const rows = sys.staves[at.staff].rows;
-    const lane = rows.map((r, i) => ({ r, i })).filter((x) => x.r.octave === at.octave);
+    const lane = rows.map((r, i) => ({ r, i })).filter((x) => rowLane(x.r) === at.octave);
     const want = at.content === undefined ? undefined : mainOf(at.content);
     const hit = lane.find((x) => want && mainOf(x.r.cells[a] ?? "") === want) ?? lane[0];
     top = ps.y + staff.rowsTop + (hit ? hit.i : 0) * ps.rowH;
@@ -1086,7 +1122,7 @@ export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
         if (!c.startsWith("-")) break;
       }
     }
-    return { at: { t, staff: rows[0]?.staff ?? k0, octave: row?.octave, content }, where: { x: e.clientX, y: e.clientY } };
+    return { at: { t, staff: rows[0]?.staff ?? k0, octave: row && rowLane(row), content }, where: { x: e.clientX, y: e.clientY } };
   };
   // un clic place l'écoute (et le curseur du texte) ; un double-clic ouvre la retouche de la case
   const seek = (ps: PlacedSystem, e: React.MouseEvent<SVGRectElement>) => {
@@ -1098,7 +1134,8 @@ export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
   };
   const edit = (ps: PlacedSystem, e: React.MouseEvent<SVGRectElement>) => {
     const p = placeOf(ps, e);
-    if (p) pick.emit(p.at, p.where, "edit");
+    // la retouche ne connaît pas encore les cordes : seul le clic simple y mène au texte
+    if (p && !(p.at.octave !== undefined && p.at.octave >= STRING_LANE)) pick.emit(p.at, p.where, "edit");
   };
   return (
     <g className="seek">

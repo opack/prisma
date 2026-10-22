@@ -13,6 +13,7 @@ import { Decoration, EditorView, ViewPlugin } from "@codemirror/view";
 import type { DecorationSet, ViewUpdate } from "@codemirror/view";
 import { isArpeggioSign, isArticulationSign, isDynamic, isHairpin, isPedalSign, isPedalText, isSlur, isStructureSign, FERMATA, octaveOffset } from "../core/index.ts";
 import { parseOctaveLabel } from "../core/pitch.ts";
+import { STRING_LANE } from "../core/locate.ts";
 import { CHORD_LINE, isRuler, markTokens, parseRule } from "../core/prisma-parse.ts";
 import { octaveTint } from "./colors.ts";
 import type { OctaveColors } from "./colors.ts";
@@ -159,12 +160,15 @@ function readLine(text: string, s: State, mode: SourceColors, palette: OctaveCol
   const pipe = text.indexOf("|");
   if (pipe < 0) return line;
   const label = text.slice(0, pipe).trim();
-  const o = label ? parseOctaveLabel(label) : undefined;
+  // une octave (« 0 », « +1 »), ou une corde (« 1 » à « 9 », jamais un nom d'octave) : chacune sa teinte, comme sur la partition
+  const string = /^[1-9]$/.test(label) ? Number(label) : undefined;
+  const o = string !== undefined ? STRING_LANE + string : label ? parseOctaveLabel(label) : undefined;
   if (o !== undefined) {
     if (s.octave !== undefined) s.lane++;
     s.octave = o;
   }
-  const tint = mode === "octaves" && s.octave !== undefined ? octaveTint(palette, octaveOffset(s.octave)) : undefined;
+  const offset = (lane: number) => (lane >= STRING_LANE ? 4 - (lane - STRING_LANE) : octaveOffset(lane));
+  const tint = mode === "octaves" && s.octave !== undefined ? octaveTint(palette, offset(s.octave)) : undefined;
   if (mode === "octaves" && s.octave !== undefined) line.band = tint?.band ?? (s.lane % 2 === 1 ? BAND : undefined);
   if (label) {
     const at = text.indexOf(label);

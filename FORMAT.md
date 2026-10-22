@@ -12,7 +12,7 @@ Entre deux lignes `---`, une clé par ligne, sous la forme `clé: valeur`.
 | `title`, `subtitle`, `composer`, `source` | Informations affichées : le sous-titre (« Op. 9 n° 2 », « Suite bergamasque, 3ᵉ mouvement »…) sous le titre. |
 | `bpm` | Tempo de départ, en temps (*beats*) par minute : `bpm: 78`, affiché en tête de la partition, à gauche, après le signe d'un métronome. Le temps est celui de la règle de comptage, donc la noire pointée d'un 6/8 : le nombre se lit sans ambiguïté, comme sur un métronome. Les indications en mots (`Andante`, `rit.`) vont sur la ligne `@` au-dessus de la règle. À l'import MusicXML, il vient du premier `<sound tempo>`, converti des noires en temps. Sans `bpm`, l'écoute joue à 80. |
 | `key` | Tonalité du morceau, facultative et purement informative : elle ne change aucune note. Sa tonique de `1` à `12`, suivie de `:m` pour une tonalité mineure (`key: 8` sol majeur, `key: 5:m` mi mineur), ou son nom anglais (`key: G`, `key: Em`, `key: F#m`, `key: Bb`). Le fichier garde l'écriture choisie ; la partition l'affiche en tête, à gauche, sous le tempo : le signe d'une clé, puis son nom (« sol majeur », ou « G » en notation anglaise ; sa forme Prisma si les noms de notes sont masqués). À l'import MusicXML, elle vient de l'armure du début, ramenée à la hauteur qui sonne ; une armure ne disant pas le mode (sans altération, *do* majeur ou *la* mineur), les notes du morceau choisissent entre les deux. La complétion de l'éditeur propose celle que les notes font deviner. |
-| `parts` | Noms des parties, de haut en bas, séparés par des virgules, chacun suivi s'il le faut de l'instrument qui la joue à l'écoute, entre parenthèses : `parts: Chant, Chœur de droite (flute), Piano` (voir « Portées et parties »). |
+| `parts` | Noms des parties, de haut en bas, séparés par des virgules, chacun suivi s'il le faut, entre parenthèses, de l'instrument qui la joue à l'écoute et, pour un instrument à cordes, de son accordage et de son capo : `parts: Chant, Chœur de droite (flute), Guitare (drop-d, capo 2)` (voir « Portées et parties » et « Instruments à cordes »). |
 | `order` | Ordre de jeu des sections, par leur lettre : `order: A A B C B D A` (voir « Sections et ordre de jeu »). |
 | `cell` | Largeur de base d'une case en caractères, à l'écriture. Vaut 3 par défaut. |
 | `division` | Découpage par défaut d'un temps : `2` (binaire, par défaut) ou `3` (ternaire, pour le 6/8 par exemple). |
@@ -139,6 +139,30 @@ L'import calcule les voisines d'après l'armure, les altérations déjà posées
 - Cette référence ne dépend d'aucune convention nationale : le do central s'appelle do3 en France et C4 dans la notation internationale, mais c'est la même touche.
 - Une ligne ne porte jamais deux notes en même temps. Un accord occupe une ligne par note.
 - Tous les `|` d'une ligne sont alignés sur ceux de la règle. Les espaces en fin de ligne peuvent être omis.
+
+### Instruments à cordes
+
+Une partie de guitare (`guitar`) ou de basse (`electric-bass`), écrite entre parenthèses ou devinée d'après son nom, s'écrit comme une tablature :
+
+- À gauche du premier `|`, la **corde** : `1` pour la plus aiguë, en haut, jusqu'à `6` (`4` pour la basse). Chaque ligne porte son numéro, et les cordes se suivent de l'aiguë à la plus grave, chacune écrite au plus une fois par système (une corde ne joue qu'une note à la fois). Une corde qui ne joue rien dans un système peut être omise ; la partition les montre toutes, avec le nom de leur note à vide.
+- Le nombre d'une case est la **case** où appuyer : de `0` (la corde à vide) à `24`. La hauteur qui sonne est celle de la corde à vide, plus le capo, plus la case. Une tenue `-N` nomme sa case ; une petite note `N'` et la voisine d'une trille `N~M` sont des cases de la même corde ; le doigté `_` est celui de la main gauche.
+- Après l'instrument, entre parenthèses dans `parts:`, l'**accordage** : `standard` (par défaut), `drop-d`, `dadgad`, `open-g`, `open-d` pour la guitare, `standard`, `drop-d` pour la basse ; et le **capo**, `capo 1` à `capo 12`. Avec un capo, les cases se comptent depuis lui. Un instrument à cordes n'a qu'une portée.
+
+```
+---
+parts: Guitare (capo 2)
+---
+
+m1 |1  *  |2  *  |3  *  |4  *  ||
+───┼─ Guitare ───┼──────┼──────┼┼
+1  |      |      |0     |      ||
+2  |      |   1  |   1  |      ||
+3  |      |2     |      |2     ||
+4  |   2  |      |      |   2  ||
+5  |0  -  |-  -  |-  -  |      ||
+```
+
+À l'import MusicXML, une partie de guitare ou de basse d'une seule portée reçoit l'accordage standard, et chaque note la corde la plus aiguë qui la joue et que rien d'autre ne fait sonner ; une partie dont une note ne trouve pas de corde garde ses couloirs d'octave.
 
 ### Les sauts de ligne
 

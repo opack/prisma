@@ -106,11 +106,29 @@ export function instrumentOfProgram(program: number): InstrumentName | undefined
   return undefined;
 }
 
+/** Les entrées de `parts:`, séparées par des virgules, sauf entre parenthèses (« Guitare (guitar, capo 2), Chant »). */
+export function splitParts(list: string): string[] {
+  const out: string[] = [];
+  let depth = 0, from = 0;
+  for (let i = 0; i < list.length; i++) {
+    if (list[i] === "(") depth++;
+    else if (list[i] === ")") depth = Math.max(0, depth - 1);
+    else if (list[i] === "," && depth === 0) {
+      out.push(list.slice(from, i));
+      from = i + 1;
+    }
+  }
+  out.push(list.slice(from));
+  return out;
+}
+
 /**
- * Une entrée de `parts:` : le nom de la partie, et son instrument entre parenthèses s'il est
- * écrit (« Chœur de droite (flute) »).
+ * Une entrée de `parts:` : le nom de la partie, et entre parenthèses ce qui la précise, séparé
+ * par des virgules : son instrument, et pour un instrument à cordes son accordage et son capo
+ * (« Chœur de droite (flute) », « Guitare (guitar, drop-d, capo 2) »).
  */
-export function splitPartEntry(entry: string): { name: string; instrument?: string } {
+export function splitPartEntry(entry: string): { name: string; extras: string[] } {
   const m = entry.match(/^(.*?)\s*\(\s*([^()]*?)\s*\)\s*$/);
-  return m ? { name: m[1].trim(), instrument: m[2].toLowerCase() } : { name: entry.trim() };
+  if (!m) return { name: entry.trim(), extras: [] };
+  return { name: m[1].trim(), extras: m[2].split(",").map((x) => x.trim().toLowerCase().replace(/\s+/g, " ")).filter(Boolean) };
 }

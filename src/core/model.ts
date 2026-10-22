@@ -8,6 +8,7 @@
  * mesures composées et quintolets tombent sur des valeurs entières.
  */
 import type { InstrumentName } from "./instruments.ts";
+import type { Strings } from "./strings.ts";
 
 export const TICKS_PER_BEAT = 2880;
 
@@ -23,7 +24,8 @@ export type Staff = number;
  * instrument : celui qui la joue à l'écoute, écrit après son nom (« Chœur (flute) ») ; absent,
  * son nom le fait deviner.
  */
-export type Part = { name?: string; staves: number; instrument?: InstrumentName };
+/** strings : une partie d'instrument à cordes (une seule portée), ses couloirs sont ses cordes. */
+export type Part = { name?: string; staves: number; instrument?: InstrumentName; strings?: Strings };
 
 /** Partie de chaque portée : son rang dans la liste des parties. */
 export function partOf(parts: Part[], staff: Staff): number {
@@ -37,6 +39,9 @@ export function partOf(parts: Part[], staff: Staff): number {
 
 /** Première portée de chaque partie. */
 export const firstStaves = (parts: Part[]) => parts.map((_, i) => parts.slice(0, i).reduce((n, x) => n + x.staves, 0));
+
+/** Les cordes d'une portée, quand elle est celle d'un instrument à cordes. */
+export const stringsOfStaff = (parts: Part[], staff: Staff): Strings | undefined => parts[partOf(parts, staff)]?.strings;
 
 /** Nombre total de portées. */
 export const staffCount = (parts: Part[]) => parts.reduce((n, x) => n + x.staves, 0);
@@ -66,6 +71,8 @@ export type Note = {
   trill?: number;
   /** Doigté : le doigt qui joue la note (1 = pouce, 5 = auriculaire). */
   finger?: number;
+  /** Instrument à cordes : la corde qui joue la note (1 : la plus aiguë). */
+  string?: number;
 };
 
 /** Doigté dans une case : la note, « _ », puis le doigt (« 5_3 ») ; gravé en indice. */
@@ -110,7 +117,7 @@ export const isArticulationSign = (t: string) => articulationOf(t) !== undefined
  * slot : rang dans la suite des petites notes de cette portée à cet instant (0 en premier) ;
  * deux petites notes de même rang se jouent ensemble.
  */
-export type Grace = { staff: Staff; midi: number; t: number; slot: number };
+export type Grace = { staff: Staff; midi: number; t: number; slot: number; string?: number };
 
 /** Marque d'une petite note dans une case : son numéro suivi d'une apostrophe (« 3'5 »). */
 export const GRACE_MARK = "'";
@@ -311,11 +318,14 @@ export function sortGraces(graces: Grace[]): Grace[] {
  * Rangs des petites notes d'une portée à un instant : pour chaque rang, le nombre de
  * chiffres le plus grand (1 ou 2), qui fixe sa largeur. Vide s'il n'y en a pas.
  */
-export function graceDigits(graces: Grace[], staff: Staff, t: number): number[] {
+export function graceDigits(graces: Grace[], staff: Staff, t: number, parts?: Part[]): number[] {
   const out: number[] = [];
+  const strs = parts && stringsOfStaff(parts, staff);
   for (const g of graces) {
     if (g.staff !== staff || g.t !== t) continue;
-    out[g.slot] = Math.max(out[g.slot] ?? 1, String((g.midi % 12) + 1).length);
+    // sur une corde, le nombre est la case
+    const k = strs && g.string !== undefined ? g.midi - strs.open[g.string - 1] - strs.capo : (g.midi % 12) + 1;
+    out[g.slot] = Math.max(out[g.slot] ?? 1, String(k).length);
   }
   return Array.from(out, (d) => d ?? 1);
 }

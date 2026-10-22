@@ -100,7 +100,7 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
     return g.trim() || r.cells[a] ? g.padEnd(graceW[a]) + r.cells[a] : "";
   };
   const rows = (list: SystemRow[]) =>
-    list.map((r) => ((r.showOctave ? octaveLabel(r.octave) : "").padEnd(prefix - 1) + "|" + line((a) => cellText(r, a))).trimEnd());
+    list.map((r) => ((r.string !== undefined ? String(r.string) : r.showOctave ? octaveLabel(r.octave) : "").padEnd(prefix - 1) + "|" + line((a) => cellText(r, a))).trimEnd());
   // « ] » sur le premier « | » de sa barre, « [ » sur le dernier ; -1 : barre de gauche du
   // système (le « | » de la colonne de gauche, ou celui de « |: » si le système commence par une reprise)
   const sepText = (ci: number) => separatorText(sys.columns[ci] as Exclude<Column, { kind: "anchor" }>);
@@ -231,12 +231,12 @@ function cellWidths(score: Score, cell: number, widen: Set<number> = new Set()):
   const trillNeed = new Map<number, number>();
   for (const n of score.notes) {
     if (n.trill === undefined && !n.finger) continue;
-    const len = noteText(n).length + 1;
+    const len = noteText(n, score.parts).length + 1;
     trillNeed.set(n.start, Math.max(trillNeed.get(n.start) ?? cell, len));
     want(n.start, len);
   }
   for (const g of score.graces) {
-    const graces = Math.max(...Array.from({ length: staffCount(score.parts) }, (_, k) => graceWidth(graceDigits(score.graces, k, g.t))));
+    const graces = Math.max(...Array.from({ length: staffCount(score.parts) }, (_, k) => graceWidth(graceDigits(score.graces, k, g.t, score.parts))));
     want(g.t, graces + (trillNeed.get(g.t) ?? cell));
   }
   for (const tm of score.texts) if (widen.has(tm.t)) want(tm.t, tm.text.length + 2);
@@ -271,7 +271,9 @@ export function writePrisma(score: Score, opts: WriteOptions = {}): string {
   else delete meta.division;
   if (score.order.length) meta.order = score.order.join(" ");
   // noms des parties : déclarés ici, avec l'instrument qui les joue s'il est écrit, et sur le trait de chacune
-  if (score.parts.some((x) => x.name)) meta.parts = score.parts.map((x) => (x.instrument ? `${x.name} (${x.instrument})` : x.name)).join(", ");
+  // et pour un instrument à cordes, son accordage (hors accordage standard) et son capo
+  const extras = (x: Score["parts"][number]) => [x.instrument, x.strings && x.strings.tuning !== "standard" ? x.strings.tuning : undefined, x.strings?.capo ? `capo ${x.strings.capo}` : undefined].filter(Boolean);
+  if (score.parts.some((x) => x.name)) meta.parts = score.parts.map((x) => (extras(x).length ? `${x.name} (${extras(x).join(", ")})` : x.name)).join(", ");
   const out = writeFrontmatter(meta);
   systems.forEach((s, i) => {
     if (i) out.push("");
