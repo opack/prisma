@@ -97,8 +97,11 @@
    - **Ce qu'on y perd** : la transposition n'est plus gratuite ; un arrangement pour guitare est un doigté, le transposer, c'est le refaire.
    - **Les étapes** : le format (les couloirs-cordes, l'accordage, le capo) avec l'écoute et la gravure ; l'import et l'export MusicXML ; la conversion ; les grilles d'accords ; les techniques et le sens du médiator.
    - **Plus tard** : les instruments sans frettes (violon, violoncelle : le nombre serait la distance en demi-tons depuis la corde à vide, à valider avec un violoniste, qui pense en positions et en doigts) ; le ukulélé et ses accordages.
-2. **Logo** : l'application et le site écrivent « Prisma » en attendant.
-3. **Accompagnement en clavier** : une valeur « Clavier » de plus pour l'accompagnement (onglet Partition), qui dessine chaque accord sur un petit clavier au-dessus de la règle, avec le composant de la barre de statut. À régler : la place dans la bande des accords (des accords rapprochés), et l'impression en noir et blanc (les touches marquées d'un point noir, blanc sur les noires) ; à essayer sur Moonlight.
+2. **Confort d'écriture** :
+   - **La complétion de `parts:`** propose, en plus des instruments entre parenthèses, quelques parties toutes faites, Piano et Guitare en tête (la guitare a son écriture en cordes) ; le message d'erreur de `parts` cite aussi la guitare en exemple (`parts: Chant, Guitare`).
+   - **Fichier › Nouveau** propose un modèle pour démarrer, dans une petite fenêtre : vide (rien, comme aujourd'hui) ; minimal (l'en-tête habituel et une première mesure vide, pour le piano) ; guitare (le même, pour la guitare, ses cordes en couloirs).
+3. **Logo** : l'application et le site écrivent « Prisma » en attendant.
+4. **Accompagnement en clavier** : une valeur « Clavier » de plus pour l'accompagnement (onglet Partition), qui dessine chaque accord sur un petit clavier au-dessus de la règle, avec le composant de la barre de statut. À régler : la place dans la bande des accords (des accords rapprochés), et l'impression en noir et blanc (les touches marquées d'un point noir, blanc sur les noires) ; à essayer sur Moonlight.
 
 ## Hors v1 pour l'instant
 
