@@ -18,6 +18,7 @@
  */
 import { recognize } from "./chords.ts";
 import { chordNotes } from "./chords.ts";
+import { gridStrings, parseShape, splitShape } from "./shapes.ts";
 import { guessInstrument } from "./instruments.ts";
 import type { InstrumentName } from "./instruments.ts";
 import { guessKey, parseKey } from "./key.ts";
@@ -679,7 +680,7 @@ function directionsOf(ctx: Ctx, p: number, staff: Staff, bar: Bar): Direction[] 
   }
   if (firstOfPart && p === 0) {
     for (const c of score.chords.filter((x) => inBar(x.t))) {
-      const xml = harmonyXml(c.text);
+      const xml = harmonyXml(c.text, gridStrings(score.parts.map((x) => x.strings)));
       if (xml) out.push({ t: c.t, xml: (offset: number) => `      ${xml.replace("</harmony>", `${offset ? `<offset>${offset}</offset>` : ""}${staffNo}</harmony>`)}` });
     }
   }
@@ -714,11 +715,24 @@ const KINDS: Record<string, string> = {
 const ROOT = ["C", "C", "D", "E", "E", "F", "F", "G", "A", "A", "B", "B"];
 const ROOT_ALTER = [0, 1, 0, -1, 0, 0, 1, 0, -1, 0, -1, 0];
 
-/** Un accord d'accompagnement en <harmony> : sa fondamentale, sa qualité, sa basse ; undefined s'il n'a pas de qualité MusicXML. */
-function harmonyXml(text: string): string | undefined {
+/**
+ * Un accord d'accompagnement en <harmony> : sa fondamentale, sa qualité, sa basse, et sa grille si
+ * elle est écrite (<frame> : la case de chaque corde jouée, la 1 l'aiguë) ; undefined s'il n'a pas
+ * de qualité MusicXML.
+ */
+function harmonyXml(text: string, strs: Strings): string | undefined {
   const notes = chordNotes(text);
   const r = notes && recognize(notes);
   if (!r || KINDS[r.quality] === undefined) return undefined;
   const note = (tag: string, p: number) => `<${tag}><${tag}-step>${ROOT[p]}</${tag}-step>${ROOT_ALTER[p] ? `<${tag}-alter>${ROOT_ALTER[p]}</${tag}-alter>` : ""}</${tag}>`;
-  return `<harmony>${note("root", r.root)}<kind>${KINDS[r.quality]}</kind>${r.bass !== r.root ? note("bass", r.bass) : ""}</harmony>`;
+  const { shape } = splitShape(text);
+  const frets = shape === undefined ? undefined : parseShape(shape);
+  let frame = "";
+  if (frets) {
+    const pressed = frets.filter((f): f is number => !!f);
+    const first = pressed.length && Math.max(...pressed) > 4 ? Math.min(...pressed) : 1;
+    const notesXml = frets.map((f, k) => (f === null ? "" : `<frame-note><string>${frets.length - k}</string><fret>${f}</fret></frame-note>`)).join("");
+    frame = `<frame><frame-strings>${strs.open.length}</frame-strings><frame-frets>4</frame-frets>${first > 1 ? `<first-fret>${first}</first-fret>` : ""}${notesXml}</frame>`;
+  }
+  return `<harmony>${note("root", r.root)}<kind>${KINDS[r.quality]}</kind>${r.bass !== r.root ? note("bass", r.bass) : ""}${frame}</harmony>`;
 }

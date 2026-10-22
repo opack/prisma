@@ -7,9 +7,13 @@
  * - par son nom anglais (« Am », « G7 », « F#m7b5 », « G/B ») ;
  * - par ses notes Prisma séparées par des virgules, de la basse vers l'aigu (« 10,1,5 »).
  *
+ * Après un « = », une grille pour la guitare peut suivre (« 10:m=x02210 », voir shapes.ts).
+ *
  * Les notes n'ont pas d'octave : un accord dit quelles notes jouer, pas où. Ce sont des numéros
  * Prisma de 1 (do) à 12 (si).
  */
+
+import { splitShape } from "./shapes.ts";
 
 /** Séparateur des notes d'un accord écrit en notes Prisma. */
 export const CHORD_NOTE_SEPARATOR = ",";
@@ -142,12 +146,20 @@ export function chordPrismaNotes(text: string): number[] | undefined {
   return notes;
 }
 
-/** Notes d'un accord, quelle que soit son écriture ; undefined s'il n'est pas reconnu. */
-export const chordNotes = (text: string) => chordPrismaNotes(text) ?? chordPrismaNameNotes(text) ?? chordNameNotes(text);
+/** L'accord d'un mot de la ligne `@c`, sans sa grille (« 10:m=x02210 » → « 10:m »). */
+export const chordOf = (word: string) => splitShape(word).chord;
+
+/** Notes d'un accord, quelle que soit son écriture (sa grille éventuelle mise à part) ; undefined s'il n'est pas reconnu. */
+export const chordNotes = (word: string) => {
+  const text = chordOf(word);
+  return chordPrismaNotes(text) ?? chordPrismaNameNotes(text) ?? chordNameNotes(text);
+};
 
 /** L'écriture d'un accord : son nom Prisma, son nom anglais, ou ses notes. */
-export const chordWriting = (text: string): "prisma" | "english" | "notes" =>
-  /^[A-G]/.test(text) ? "english" : text.includes(CHORD_NOTE_SEPARATOR) ? "notes" : "prisma";
+export const chordWriting = (word: string): "prisma" | "english" | "notes" => {
+  const text = chordOf(word);
+  return /^[A-G]/.test(text) ? "english" : text.includes(CHORD_NOTE_SEPARATOR) ? "notes" : "prisma";
+};
 
 /**
  * Un accord donné par ses notes (de la basse vers l'aigu), reconnu : sa fondamentale (0 = do), sa

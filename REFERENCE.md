@@ -306,6 +306,8 @@ On peut aussi l'écrire par son **nom anglais** (`Am`, `G7`, `G/B`), lu par les 
 
 La partition montre le nom, les notes empilées (la basse en bas, comme sur les lignes d'octave), ou les deux (option « Accompagnement », onglet Partition), et le nom en Prisma ou en anglais (option « Nom des accords ») : l'application calcule l'un à partir de l'autre. Dans l'éditeur, Ctrl+Espace sur une case d'une ligne `@c` propose l'accord des notes qui y sonnent.
 
+Pour la guitare, l'option « Accompagnement » a une valeur de plus, « Nom et grille » : sous le nom de l'accord, sa grille, le manche debout (la corde la plus grave à gauche), un point par doigt, un trait pour un barré, `×` au-dessus d'une corde qu'on ne joue pas et `o` d'une corde à vide. L'application prend la forme la plus simple qui joue l'accord sur la guitare du morceau (son accordage, son capo) : les accords ouverts que tout guitariste connaît, sinon les barrés. Pour une autre forme, on l'écrit après le nom et un `=`, de la corde la plus grave à la plus aiguë, `x` pour une corde qu'on ne joue pas, `0` à vide, sinon la case : `10:m=x02210`, `8=355433` ; un trait sépare les cases quand l'une a deux chiffres (`x-12-14-14-13-x`). Avec un capo, les cases se comptent depuis lui, et l'accord reste celui qui sonne : au capo 2, `3=x32010` (*ré*, la forme de *do*). Une grille ne joue que des notes de son accord. Pour garder la partition légère, une case de l'onglet Partition, « Récapituler les grilles en tête de partition », les dessine une fois sous le titre, chaque accord du morceau dans l'ordre où il vient, comme sur un recueil de chansons : avec l'accompagnement à « Nom », on lit le nom en jouant et l'on regarde la forme en tête. Dans l'éditeur, une grille tapée seule (`x02210`), puis Ctrl+Espace, propose l'accord qu'elle joue sur la guitare du morceau (`10:m=x02210`) ; un accord tapé sans grille, l'accord avec la sienne.
+
 ### Les paroles
 
 Les paroles s'écrivent sur une ligne `@l` (*lyrics*) sous les lignes de la portée qui chante, chaque syllabe sur la case de sa note. Un couplet par ligne, le premier en haut :
@@ -362,4 +364,5 @@ Les indications de caractère et de tempo (`dolce`, `rit.`, `a tempo`…) garden
 | staccato, accent, marcato | `.`, `!`, `!!` sous la portée concernée ; le tenuto n'a pas de signe |
 | pédale | `Ped.`, `*`, `*Ped.`, tracés en trait continu |
 | accords d'accompagnement (Am, G/B) | ligne `@c` : le nom Prisma (`10:m`, `8/12`), le nom anglais, ou les notes de la basse vers l'aigu (`10,1,5`) |
+| grille d'accord, pour la guitare | après le nom et `=`, la case de chaque corde, de la plus grave à la plus aiguë (`10:m=x02210`) |
 | paroles, traits d'union, mélismes | une ligne `@l` par couplet, sous la portée qui chante : `lu- ne`, `men ---` |

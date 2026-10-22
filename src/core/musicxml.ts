@@ -15,7 +15,9 @@
  *   (rit., a tempo…) vont au-dessus du système. Pédale de résonance.
  */
 import { XMLParser } from "fast-xml-parser";
-import { chordNameNotes, prismaNameOf } from "./chords.ts";
+import { chordNameNotes, chordNotes, prismaNameOf } from "./chords.ts";
+import { SHAPE_SEPARATOR, gridStrings, parseShape, shapePitches, shapeText, splitShape } from "./shapes.ts";
+import type { Shape } from "./shapes.ts";
 import { guessKey, keysOfSignature, prismaKey } from "./key.ts";
 import { TICKS_PER_BEAT, dynamicInWords, sortArticulations, isDynamic, isPedalText, staffCount, sortGraces, sortLyrics, sortNotes, stringsOfStaff } from "./model.ts";
 import { guessInstrument, instrumentOfProgram } from "./instruments.ts";
@@ -299,7 +301,16 @@ function readMeasures(partNode: XNode, base: Staff, staves: number, tab?: number
             suffix +
             (bass.length ? "/" + STEP_NAME(text(find(bass, "bass-step")), num(find(bass, "bass-alter"))) : "");
           const offset = find(h, "offset") ? num(find(h, "offset")) / divisions : 0;
-          directions.push({ staff: base, at: cursor + offset, kind: "chord", text: name });
+          // sa grille, s'il en a une : la case de chaque corde jouée (la 1, l'aiguë) ; les autres ne se jouent pas
+          const frame = kids(find(h, "frame"));
+          const count = num(find(frame, "frame-strings"));
+          const shape: Shape = new Array(count).fill(null);
+          for (const fn of findAll(frame, "frame-note")) {
+            const string = num(find(kids(fn), "string")), fret = num(find(kids(fn), "fret"));
+            if (string >= 1 && string <= count) shape[count - string] = fret;
+          }
+          const grid = count && shape.some((f) => f !== null) ? SHAPE_SEPARATOR + shapeText(shape) : "";
+          directions.push({ staff: base, at: cursor + offset, kind: "chord", text: name + grid });
         }
       } else if (t === "direction") {
         const d = kids(item);
@@ -986,6 +997,15 @@ export function importMusicXml(xml: string, fileName?: string): Score {
   // une petite note sans corde dans une partie à cordes n'a pas de ligne où s'écrire
   const kept = graces.filter((g) => g.string !== undefined || !stringsOfStaff(parts, g.staff));
   const score: Score = { meta, parts, beats, notes: played, graces: sortGraces(kept), arpeggios, articulations: sortArticulations(articulations), lyrics: lyricsOf(rawLyrics, rawVoiceNotes, q, end), ...directionsOf(rawDirections, played, beats.length, lastStaff), ...sectionsOf(seq, measures.length) };
+  // une grille qui ne va pas avec la guitare du morceau (une autre, ou un autre capo) : l'accord la perd
+  const strs = gridStrings(parts.map((p) => p.strings));
+  score.chords = score.chords.map((c) => {
+    const { chord, shape } = splitShape(c.text);
+    const frets = shape === undefined ? undefined : parseShape(shape);
+    const notes = new Set((chordNotes(c.text) ?? []).map((n) => (n - 1) % 12));
+    const fits = frets && frets.length === strs.open.length && shapePitches(frets, strs).every((p) => notes.has(p));
+    return shape === undefined || fits ? c : { ...c, text: chord };
+  });
   const key = signature && guessKey(score, signature);
   if (key) meta.key = prismaKey(key);
   return score;
@@ -1038,7 +1058,8 @@ function directionsOf(dirs: (RawDirection & { t: number })[], notes: Note[], bea
     // un accord peut aussi être écrit en simple texte (« A7 » au-dessus de la portée) : tout le texte doit être un nom d'accord
     if (d.kind === "chord" || (d.kind === "words" && chordNameNotes(d.text.trim()))) {
       // écrit par son nom Prisma, l'écriture privilégiée
-      if (t < end && !chords.some((c) => c.t === t)) chords.push({ t, text: prismaNameOf(d.text.trim()) ?? d.text.trim() });
+      const { chord, shape } = splitShape(d.text.trim());
+      if (t < end && !chords.some((c) => c.t === t)) chords.push({ t, text: (prismaNameOf(chord) ?? chord) + (shape ? SHAPE_SEPARATOR + shape : "") });
       continue;
     }
     if (d.kind === "fermata") {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { caseAt, extendRuler, noteLine, octaveRoom, rulerSuffixes, soundingAt, systemOf, writeCase } from "../src/app/complete.ts";
+import { caseAt, extendRuler, noteLine, octaveRoom, rulerSuffixes, soundingAt, systemOf, writeCase, writeChord } from "../src/app/complete.ts";
 import { parsePrisma } from "../src/core/index.ts";
 
 const sys = [
@@ -111,5 +111,26 @@ describe("l'accord qui sonne dans une colonne", () => {
   it("suit une tenue par-dessus la barre de mesure", () => {
     const over = ["@c", "m1 |1  |2  ||1  |2  ||", "0  |8  |5  ||-  |-  ||", "---", "-1 |1  |-  ||-  |-  ||"];
     expect(soundingAt(over, { ruler: 1, last: 4 }, 17)).toEqual([48, 64]);
+  });
+});
+
+describe("écrire un accord sur la ligne @c", () => {
+  const lines = ["@c  x02210  8", "m1 |1  |2  |3  |4  ||", "───┼─ Guitare ────┼┼", "1  |0  |   |   |   ||"];
+  const text = (l: string[]) => `---\nparts: Guitare\n---\n\n${l.join("\n")}\n`;
+  const sys = { first: 0, last: 3, ruler: 1 };
+
+  it("élargit la case d'un accord trop long, comme celle d'une note ; les accords suivants gardent la leur", () => {
+    const out = apply(lines, writeChord(lines, sys, 0, 4, 6, "10:m=x02210"));
+    expect(out.slice(0, 2)).toEqual(["@c  10:m=x02210      8", "m1 |1           |2  |3  |4  ||"]);
+    expect(parsePrisma(text(out)).chords.map((c) => [c.t / 2880, c.text])).toEqual([[0, "10:m=x02210"], [2, "8"]]);
+    // le dernier accord de la ligne aussi
+    const last = apply(lines, writeChord(lines, sys, 0, 12, 1, "8=320003"));
+    expect(last.slice(0, 2)).toEqual(["@c  x02210  8=320003", "m1 |1  |2  |3        |4  ||"]);
+  });
+
+  it("n'élargit rien quand l'accord tient dans sa case", () => {
+    const r = writeChord(lines, sys, 0, 4, 6, "Am");
+    expect([...r.lines.keys()]).toEqual([0]);
+    expect(r.lines.get(0)).toBe("@c  Am      8");
   });
 });

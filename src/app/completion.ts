@@ -15,10 +15,10 @@
 import type { Completion, CompletionContext, CompletionResult, CompletionSection } from "@codemirror/autocomplete";
 import { autocompletion } from "@codemirror/autocomplete";
 import type { EditorView } from "@codemirror/view";
-import { FRONTMATTER, INSTRUMENTS, DEFAULT_CELL, chordName, chordPrismaName, chordPrismaText, guessKey, inspect, keyName, midiOf, noteName, parsePrisma, prismaKey } from "../core/index.ts";
+import { FRONTMATTER, INSTRUMENTS, DEFAULT_CELL, SHAPE_SEPARATOR, chordName, chordNotes, chordPrismaName, chordPrismaText, chordShape, gridStrings, parseShape, partExtras, shapeNotes, shapeText, splitPartEntry, splitParts, guessKey, inspect, keyName, midiOf, noteName, parsePrisma, prismaKey } from "../core/index.ts";
 import type { NoteNames } from "../core/index.ts";
 import { isRuler } from "../core/prisma-parse.ts";
-import { caseAt, extendRuler, noteLine, octaveRoom, rulerSuffixes, soundingAt, systemOf, writeCase } from "./complete.ts";
+import { caseAt, extendRuler, noteLine, octaveRoom, rulerSuffixes, soundingAt, systemOf, writeCase, writeChord } from "./complete.ts";
 import type { Rewrite } from "./complete.ts";
 
 const FINGERS = ["pouce", "index", "majeur", "annulaire", "auriculaire"];
@@ -189,30 +189,63 @@ function notes(ctx: CompletionContext, lines: string[], L: number, C: number, bo
   return { from: Math.min(from, ctx.pos), options, validFor: /^[\d_~'-]*$/ };
 }
 
-/** Sur une ligne @c, dans une case : l'accord des notes qui sonnent là, par son nom Prisma, son nom anglais ou ses notes. */
-function chordAt(ctx: CompletionContext, lines: string[], L: number, C: number, body: number): CompletionResult | null {
+/** Les cordes des grilles du morceau : celles de sa première guitare, d'après `parts:` dans l'en-tête. */
+function gridOf(lines: string[], head?: [number, number]) {
+  const line = head ? lines.slice(head[0] + 1, head[1]).find((l) => /^parts\s*:/.test(l)) : undefined;
+  try {
+    const parts = line ? splitParts(line.replace(/^parts\s*:/, "")).map(splitPartEntry).map((e) => partExtras(e.name, e.extras, 0)) : [];
+    return gridStrings(parts.map((p) => p.strings));
+  } catch {
+    return gridStrings([]);
+  }
+}
+
+/**
+ * Sur une ligne @c, dans une case : l'accord des notes qui sonnent là, par son nom Prisma, son nom
+ * anglais ou ses notes. Sur une grille tapée seule (« x02210 »), l'accord qu'elle joue sur la
+ * guitare du morceau, avec elle ; sur un accord tapé sans grille, l'accord et sa grille.
+ */
+function chordAt(ctx: CompletionContext, lines: string[], L: number, C: number, body: number, head?: [number, number]): CompletionResult | null {
   if (!/^@c(\s|$)/.test(lines[L])) return null;
   const sys = systemOf(lines, L, body);
   if (!sys || L >= sys.ruler) return null;
   const ruler = lines[sys.ruler];
-  const c = caseAt(ruler, C);
-  if (!c) return null;
-  // les notes, de la basse vers l'aigu, chacune une fois
-  const notes = [...new Set(soundingAt(lines, sys, C).map((m) => (m % 12) + 1))];
-  if (notes.length < 2) return null;
-  const words = [chordPrismaName(notes), chordName(notes), chordPrismaText(notes)].filter((w): w is string => !!w);
   const line = lines[L];
-  const word = line.slice(c.start).match(/^\S*/)![0];
-  const from = ctx.state.doc.lineAt(ctx.pos).from + Math.min(c.start, line.length);
-  const pad = " ".repeat(Math.max(0, c.start - line.length));
-  const options: Completion[] = words.map((w, i) => ({
+  // le mot sous le curseur, ou qui finit au curseur : il commence sur sa case, même s'il en déborde
+  // (« x02210 » est plus long qu'une case) ; ailleurs, la case du curseur, vide
+  let s0 = Math.min(C, line.length);
+  while (s0 > 0 && line[s0 - 1] !== " ") s0--;
+  const inWord = s0 < Math.min(C, line.length) || (C < line.length && line[C] !== " ");
+  const c = caseAt(ruler, inWord ? s0 : C);
+  if (!c) return null;
+  const start = inWord ? s0 : c.start;
+  const word = inWord ? line.slice(s0).match(/^\S*/)![0] : line[c.start - 1] && line[c.start - 1] !== " " ? "" : (line.slice(c.start).match(/^\S*/)?.[0] ?? "");
+  const strs = gridOf(lines, head);
+  // les notes, de la basse vers l'aigu, chacune une fois : celles de la grille tapée, sinon celles qui sonnent ici
+  const typed = word && !word.includes(SHAPE_SEPARATOR) ? parseShape(word) : undefined;
+  const shaped = typed && typed.length === strs.open.length ? typed : undefined;
+  const notes = shaped ? shapeNotes(shaped, strs) : [...new Set(soundingAt(lines, sys, start).map((m) => (m % 12) + 1))];
+  const named = !shaped && word && !word.includes(SHAPE_SEPARATOR) ? chordNotes(word) : undefined;
+  let words: { w: string; detail?: string }[];
+  if (shaped) words = [chordPrismaName(notes), chordName(notes), chordPrismaText(notes)].filter((w): w is string => !!w).map((w, i) => ({ w: w + SHAPE_SEPARATOR + word, detail: i === 0 ? "l'accord que joue cette grille" : undefined }));
+  else if (named) {
+    const grid = chordShape(named, strs);
+    words = grid ? [{ w: word + SHAPE_SEPARATOR + shapeText(grid), detail: "l'accord, et sa grille pour la guitare" }] : [];
+  } else {
+    if (notes.length < 2) return null;
+    words = [chordPrismaName(notes), chordName(notes), chordPrismaText(notes)].filter((w): w is string => !!w).map((w, i) => ({ w, detail: i === 0 ? "l'accord des notes qui sonnent ici" : undefined }));
+  }
+  if (!words.length) return null;
+  const from = ctx.state.doc.lineAt(ctx.pos).from + Math.min(start, line.length);
+  // l'accord remplace le mot de sa case ; les accords suivants gardent la leur (le système s'élargit s'il le faut)
+  const options: Completion[] = words.map(({ w, detail }, i) => ({
     label: w,
     type: "constant",
     boost: -i,
-    detail: i === 0 ? "l'accord des notes qui sonnent ici" : undefined,
-    apply: pad + w,
+    detail,
+    apply: (view: EditorView) => rewrite(view, writeChord(view.state.doc.toString().split("\n"), sys, L, start, word.length, w)),
   }));
-  return { from, to: from + (line.length >= c.start ? word.length : 0), options, filter: false };
+  return { from, to: from + (line.length >= start ? word.length : 0), options, filter: false };
 }
 
 /** La complétion, avec le nom des notes choisi. */
@@ -230,7 +263,7 @@ export function completion(names: () => NoteNames) {
     const starts = lineStarts(ctx, lines, L, line.slice(0, C), body);
     if (starts) return starts;
     if (!ctx.explicit) return null;
-    return chordAt(ctx, lines, L, C, body) ?? rulerEnd(ctx, lines, L, C) ?? notes(ctx, lines, L, C, body, names());
+    return chordAt(ctx, lines, L, C, body, head) ?? rulerEnd(ctx, lines, L, C) ?? notes(ctx, lines, L, C, body, names());
   };
   return autocompletion({ override: [source], icons: false });
 }

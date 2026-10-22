@@ -1,6 +1,6 @@
-import { FINGER_MARK, TRILL_MARK, numberOf, octaveOffset, pitchClass, stringsOfStaff } from "../core/index.ts";
-import type { Meta, PedalLine, SystemRow, Voice } from "../core/index.ts";
-import { FINGER, G, PAGE, splitChord, graceExtra, graceSlotW, headerHeight, leadExtra, lyricTextW, splitNote } from "./engrave.ts";
+import { FINGER_MARK, TRILL_MARK, barreOf, numberOf, octaveOffset, pitchClass, stringsOfStaff } from "../core/index.ts";
+import type { Meta, PedalLine, Shape, SystemRow, Voice } from "../core/index.ts";
+import { FINGER, G, PAGE, chordGrid, splitChord, graceExtra, graceSlotW, headerHeight, leadExtra, lyricTextW, splitNote } from "./engrave.ts";
 import type { Page, PlacedSystem } from "./engrave.ts";
 import type { OctavePosition, OctaveStyle, RenderOptions } from "./options.ts";
 import { writtenNames } from "./options.ts";
@@ -160,6 +160,51 @@ function StringTabs({ rows, top, tabFill, rowH, stringName }: { rows: SystemRow[
  * côte à côte : staccato (point), accent (« > »), marcato (« ^ »). cx : milieu des chiffres ;
  * cy : milieu des signes.
  */
+/**
+ * Une grille d'accord : les cordes debout (la plus grave à gauche), les cases en travers, un point
+ * par doigt, un trait pour un barré ; au-dessus, « x » pour une corde qu'on ne joue pas, « o » à
+ * vide. Une forme haute commence à sa première case, numérotée à droite ; sinon le sillet, épais.
+ */
+function ChordGrid({ shape, x, y }: { shape: Shape; x: number; y: number }) {
+  const n = shape.length, s = G.gridString, f = G.gridFret, rows = G.gridFrets;
+  const pressed = shape.filter((v): v is number => !!v);
+  const high = pressed.length ? Math.max(...pressed) : 0;
+  const start = high <= rows ? 1 : Math.min(...pressed);
+  const top = y + G.gridMarks;
+  const right = x + (n - 1) * s;
+  const bottom = top + rows * f;
+  const barre = barreOf(shape);
+  const at = (k: number) => x + k * s;
+  const mid = (fret: number) => top + (fret - start + 0.5) * f;
+  return (
+    <g>
+      {Array.from({ length: n }, (_, k) => (
+        <line key={"s" + k} x1={at(k)} x2={at(k)} y1={top} y2={bottom} stroke={INK} strokeWidth={0.15} />
+      ))}
+      {Array.from({ length: rows + 1 }, (_, r) => (
+        <line key={"f" + r} x1={x} x2={right} y1={top + r * f} y2={top + r * f} stroke={INK} strokeWidth={r === 0 && start === 1 ? 0.6 : 0.15} />
+      ))}
+      {start > 1 && (
+        <text x={right + 0.7} y={mid(start) + 0.75} fontSize={2.1} fill={INK}>
+          {start}
+        </text>
+      )}
+      {shape.map((v, k) =>
+        v === null ? (
+          <text key={"m" + k} x={at(k)} y={top - 0.45} fontSize={1.7} textAnchor="middle" fill={INK}>
+            ×
+          </text>
+        ) : v === 0 ? (
+          <circle key={"m" + k} cx={at(k)} cy={top - 0.85} r={0.42} fill="none" stroke={INK} strokeWidth={0.15} />
+        ) : barre && v === barre.fret && k >= barre.from ? null : (
+          <circle key={"d" + k} cx={at(k)} cy={mid(v)} r={0.52} fill={INK} />
+        ),
+      )}
+      {barre && <rect x={at(barre.from) - 0.52} y={mid(barre.fret) - 0.52} width={at(barre.to) - at(barre.from) + 1.04} height={1.04} rx={0.52} fill={INK} />}
+    </g>
+  );
+}
+
 function articulationSigns(signs: string[], cx: number, cy: number) {
   const k = G.articulationScale;
   return signs.map((sign, i) => {
@@ -782,12 +827,13 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
       {spans(left, right).map(([a, b], j) => (
         <line key={"rl" + j} x1={a} x2={b} y1={y + G.rulerH} y2={y + G.rulerH} stroke={LIGHT} strokeWidth={0.25} />
       ))}
-      {/* accords : le nom en haut, les notes Prisma empilées dessous, la basse en bas */}
+      {/* accords : le nom en haut, les notes Prisma empilées dessous, la basse en bas ; ou la grille sous le nom */}
       {sys.chords.map((c, i) => {
         const { notes, name } = splitChord(c.text, options.chordNames);
         const x = xs[sys.anchors[c.anchor]] + leadExtra(sys, c.anchor) + 0.5;
         const named = !!name && options.chords !== "notes";
-        const stacked = options.chords !== "name" || !name;
+        const grid = options.chords === "grid" ? chordGrid(c.text, sys.parts) : undefined;
+        const stacked = !grid && (options.chords === "notes" || options.chords === "both" || !name);
         return (
           <g key={"ch" + i}>
             {named && (
@@ -795,6 +841,7 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
                 {name}
               </text>
             )}
+            {grid && <ChordGrid shape={grid} x={x + 0.3} y={chordTop + (named ? G.chordNameH : 0.8)} />}
             {stacked &&
               notes.map((n, k) => (
                 <text key={k} x={x} y={y - 0.6 - k * G.chordNoteH} fontSize={2.2} fontWeight={600} fill={TAB_TEXT}>
@@ -1231,6 +1278,15 @@ export function PageView({ page, total, meta, options, still = false }: { page: 
           />
         </g>
       )}
+      {/* le récapitulatif des grilles, sous le titre : chaque accord du morceau, une fois */}
+      {page.chart?.map((c, i) => (
+        <g key={"cc" + i}>
+          <text x={c.x} y={c.y + 3.4} fontSize={3.4} fontWeight={700} fill={INK}>
+            {c.name}
+          </text>
+          <ChordGrid shape={c.shape} x={c.x + 0.3} y={c.y + G.chordNameH} />
+        </g>
+      ))}
       {page.order.length > 0 && <OrderLine order={page.order} y={page.header ? PAGE.marginTop + headerHeight(meta) - 1 : PAGE.marginTop - 2} live={!still} />}
       {/* noms des instruments : au premier système du morceau, comme sur une partition, ou à chaque système (option) */}
       {page.systems.map((ps, i) => (

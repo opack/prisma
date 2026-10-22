@@ -45,6 +45,8 @@ export type RenderOptions = {
   chords: ChordStyle;
   /** Nom des accords : en notation Prisma (« 10:m ») ou en anglais (« Am »). */
   chordNames: ChordNames;
+  /** Les grilles de guitare des accords du morceau, récapitulées en tête de partition. */
+  chordChart: boolean;
   /** Sections : chacune commence une nouvelle ligne, ou suit la précédente sur la même ligne, séparée par un blanc. */
   sections: SectionLayout;
   /** Éditeur : le nom des notes (barre de statut, choix de la note d'une case) : do ré mi, notation anglaise, un petit clavier, ou rien. */
@@ -69,7 +71,7 @@ export type RenderOptions = {
   clickVolume: number;
 };
 
-export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal", fingerings: true, namesEverySystem: false, holdReminders: true, octaveColors: "rainbow", chords: "both", chordNames: "prisma", sections: "newLine", noteNames: "latin", sourceColors: "octaves", scoreToText: true, simile: "pedals", lookAhead: true, metronome: false, clickSounds: DEFAULT_CLICK_SOUNDS, clickGrid: "cells", countIn: false, clickVolume: 1 };
+export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal", fingerings: true, namesEverySystem: false, holdReminders: true, octaveColors: "rainbow", chords: "both", chordNames: "prisma", chordChart: false, sections: "newLine", noteNames: "latin", sourceColors: "octaves", scoreToText: true, simile: "pedals", lookAhead: true, metronome: false, clickSounds: DEFAULT_CLICK_SOUNDS, clickGrid: "cells", countIn: false, clickVolume: 1 };
 
 export const OCTAVE_STYLES: { value: OctaveStyle; label: string; sample: string }[] = [
   { value: "arrow", label: "Flèches", sample: "↑1  0  ↓1" },
@@ -104,6 +106,7 @@ export const CHORD_STYLES: { value: ChordStyle; label: string; sample: string }[
   { value: "name", label: "Nom", sample: "10:m" },
   { value: "notes", label: "Notes", sample: "10 1 5" },
   { value: "both", label: "Les deux", sample: "10:m + 10 1 5" },
+  { value: "grid", label: "Nom et grille", sample: "10:m + x02210" },
 ];
 
 export type SectionLayout = "newLine" | "inline";
@@ -148,6 +151,7 @@ export function loadOptions(stored?: string | null): RenderOptions {
     const octaveColors = OCTAVE_COLORS.some((c) => c.value === raw.octaveColors) ? raw.octaveColors : DEFAULT_OPTIONS.octaveColors;
     const chords = CHORD_STYLES.some((c) => c.value === raw.chords) ? raw.chords : DEFAULT_OPTIONS.chords;
     const chordNames = raw.chordNames === "english" || raw.chordNames === "prisma" ? raw.chordNames : DEFAULT_OPTIONS.chordNames;
+    const chordChart = typeof raw.chordChart === "boolean" ? raw.chordChart : DEFAULT_OPTIONS.chordChart;
     const simile = SIMILE_DISPLAYS.some((d) => d.value === raw.simile) ? raw.simile : DEFAULT_OPTIONS.simile;
     const sections = SECTION_LAYOUTS.some((d) => d.value === raw.sections) ? raw.sections : DEFAULT_OPTIONS.sections;
     const noteNames = ["latin", "english", "keyboard", "none"].includes(raw.noteNames) ? raw.noteNames : DEFAULT_OPTIONS.noteNames;
@@ -162,7 +166,7 @@ export function loadOptions(stored?: string | null): RenderOptions {
     const clickSounds = Object.fromEntries(
       Object.entries(DEFAULT_CLICK_SOUNDS).map(([level, d]) => [level, CLICK_SOUNDS.some((c) => c.value === sounds[level]) ? sounds[level] : d]),
     ) as ClickSounds;
-    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density, fingerings, namesEverySystem, holdReminders, octaveColors, chords, chordNames, sections, noteNames, sourceColors, scoreToText, simile, lookAhead, metronome, clickSounds, clickGrid, countIn, clickVolume };
+    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density, fingerings, namesEverySystem, holdReminders, octaveColors, chords, chordNames, chordChart, sections, noteNames, sourceColors, scoreToText, simile, lookAhead, metronome, clickSounds, clickGrid, countIn, clickVolume };
   } catch {
     return DEFAULT_OPTIONS;
   }

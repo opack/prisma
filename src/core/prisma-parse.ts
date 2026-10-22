@@ -5,6 +5,7 @@
  * de comptage. Voir FORMAT.md pour la grammaire complète.
  */
 import { chordNotes } from "./chords.ts";
+import { gridStrings, parseShape, shapePitches, splitShape } from "./shapes.ts";
 import { PrismaError, parseFrontmatter } from "./frontmatter.ts";
 import { ARPEGGIO_DOWN, FERMATA, articulationOf, isArticulationSign, HYPHEN, LYRIC_LINE, isExtender, sortLyrics, FINGER_MARK, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isSlur, isPedalText, joinsText, sortArticulations, sortGraces, sortNotes, stringsOfStaff } from "./model.ts";
 import type { Arpeggio, Articulation, Beat, Division, Expression, Grace, Hairpin, Part, Lyric, Marker, Note, Staff, Pedal, PedalText, Repeat, Score, Slur, TextMark } from "./model.ts";
@@ -316,6 +317,18 @@ export function parsePrisma(text: string): Score {
           if (!a) throw new PrismaError(`accord « ${w[0]} » : il doit commencer exactement sur une case de la règle de comptage`, li + 1, col + 1);
           if (!chordNotes(w[0])) {
             throw new PrismaError(`accord inconnu « ${w[0]} » : nom Prisma (10:m, 8:7, 7:m7b5, 8/12…), nom anglais (Am, G7, G/B…) ou notes Prisma séparées par des virgules, de la basse vers l'aigu (10,1,5)`, li + 1, col + 1);
+          }
+          const { shape } = splitShape(w[0]);
+          if (shape !== undefined) {
+            // la grille : une case par corde de la guitare du morceau, qui ne joue que des notes de l'accord
+            const at = col + w[0].indexOf("=") + 2;
+            const frets = parseShape(shape);
+            const strs = gridStrings((entries ?? []).map((e) => e.strings));
+            if (!frets) throw new PrismaError(`grille « ${shape} » : une case par corde, de la plus grave à la plus aiguë, x pour une corde qu'on ne joue pas (x02210, ou x-12-14-14-13-x quand une case a deux chiffres)`, li + 1, at);
+            if (frets.length !== strs.open.length) throw new PrismaError(`grille « ${shape} » : ${frets.length} cordes pour une guitare de ${strs.open.length}`, li + 1, at);
+            const notes = new Set(chordNotes(w[0])!.map((n) => (n - 1) % 12));
+            const stray = shapePitches(frets, strs).find((p) => !notes.has(p));
+            if (stray !== undefined) throw new PrismaError(`grille « ${shape} » : elle joue le ${stray + 1}${strs.capo ? ` (capo ${strs.capo} compris : les cases se comptent depuis le capo)` : ""}, qui n'est pas dans l'accord`, li + 1, at);
           }
           if (chords.some((c) => c.t === a.t)) throw new PrismaError("deux accords sur une même case", li + 1, col + 1);
           chords.push({ t: a.t, text: w[0] });

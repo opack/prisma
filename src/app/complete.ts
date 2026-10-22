@@ -147,6 +147,28 @@ export function writeCase(lines: string[], sys: System, L: number, c: Case, cont
 }
 
 /**
+ * Écrit un accord sur la ligne @c L, dans la case qui commence à la colonne start, à la place du
+ * mot de old caractères qui s'y trouvait. Comme une note, l'accord tient dans sa case : trop long,
+ * la case s'élargit sur tout le système, et les accords suivants restent sur la leur.
+ */
+export function writeChord(lines: string[], sys: System, L: number, start: number, old: number, chord: string): Rewrite {
+  const c = caseAt(lines[sys.ruler], start)!;
+  // le mot d'avant s'efface (même s'il débordait de sa case), puis l'accord s'écrit
+  const blank = lines[L].padEnd(Math.max(c.end, start + old));
+  const line = blank.slice(0, start) + " ".repeat(old) + blank.slice(start + old);
+  const span = c.end - c.start;
+  const extra = Math.max(0, chord.length + 1 - span);
+  const out = new Map<number, string>();
+  for (let i = sys.first; i <= sys.last && extra; i++) {
+    if (i === L) continue;
+    const w = widen(lines[i], c.end, extra);
+    if (w !== lines[i]) out.set(i, w);
+  }
+  out.set(L, (line.slice(0, start) + chord.padEnd(span + extra) + line.slice(c.end)).trimEnd());
+  return { lines: out, caret: { line: L, col: start + chord.length } };
+}
+
+/**
  * Prolonge la règle de comptage de text (ajouté après sa dernière barre, ou à la place d'une
  * barre simple finale changée en double). Les traits et les lignes de notes qui vont jusqu'au bout
  * de la règle la suivent : du trait (et un croisement sous chaque barre), de l'espace et des barres.

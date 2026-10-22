@@ -35,6 +35,7 @@ const CHORDS: Option<RenderOptions["chords"]>[] = [
   { value: "both", label: "Nom et notes", hint: "le nom de l'accord (10:m), avec ses notes Prisma dessous (10 1 5)" },
   { value: "name", label: "Nom", hint: "le nom de l'accord : 10:m, 8/12" },
   { value: "notes", label: "Notes", hint: "les notes Prisma empilées, la basse en bas : 10 1 5" },
+  { value: "grid", label: "Nom et grille", hint: "le nom de l'accord, avec sa grille pour la guitare : celle écrite (10:m=x02210), sinon la plus simple" },
 ];
 
 const CHORD_NAMES: Option<RenderOptions["chordNames"]>[] = [
@@ -386,6 +387,15 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
                 scope={scope(["chordNames"], "chordNames")}
               />
             )}
+            <Check
+              id="chord-chart"
+              label="Grilles"
+              text="Récapituler les grilles en tête de partition"
+              checked={options.chordChart}
+              onChange={(chordChart) => setOptions({ chordChart })}
+              hint={options.chordChart ? "la grille de guitare de chaque accord du morceau, une fois, sous le titre" : "les grilles seulement sur la partition, avec l'accompagnement « Nom et grille »"}
+              scope={scope(["chordChart"], "chordChart")}
+            />
             <Check
               id="names-every-system"
               label="Parties"

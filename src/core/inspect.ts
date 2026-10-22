@@ -5,6 +5,7 @@
  * cours d'écriture, même faux, se décrit au mieux.
  */
 import { chordName, chordNotes, chordPrismaName, chordPrismaText, chordWriting } from "./chords.ts";
+import { splitShape } from "./shapes.ts";
 import { ARPEGGIO_DOWN, FERMATA, FINGER_MARK, GRACE_MARK, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TRILL_MARK, isDynamic, isExtender, isHairpin, isPedalText, isSlur, trillAux } from "./model.ts";
 import { midiOf, numberOf, octaveOf, parseOctaveLabel } from "./pitch.ts";
 import { MAX_FRET, soundingOf } from "./strings.ts";
@@ -368,7 +369,8 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
       writing !== "english" && chordName(notes),
       writing !== "notes" && chordPrismaText(notes),
     ].filter(Boolean);
-    symbol(word, `${others.length ? `(${others.join(", ")}) ` : ""}accord ${list}`, { keys: notes.map((n) => ((n - 1) % 12) + 1) });
+    const { shape } = splitShape(word);
+    symbol(word, `${others.length ? `(${others.join(", ")}) ` : ""}accord ${list}${shape ? `, grille ${shape}` : ""}`, { keys: notes.map((n) => ((n - 1) % 12) + 1) });
   }
 
   function noteMeaning(content: string, row: string, p: NonNullable<ReturnType<typeof placeOf>>): string {

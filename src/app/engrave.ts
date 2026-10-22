@@ -2,8 +2,8 @@
  * Gravure : place les systèmes calculés par le moteur de mise en page sur des pages A4.
  * Toutes les dimensions sont en millimètres.
  */
-import { FINGER_MARK, firstStaves, staffCount, TRILL_MARK, chordName, chordNotes, chordPrismaName, chordWriting, graceDigits, layout, noteText } from "../core/index.ts";
-import type { Align, Score, System, Voice } from "../core/index.ts";
+import { FINGER_MARK, firstStaves, staffCount, TRILL_MARK, chordName, chordNotes, chordOf, chordPrismaName, chordShape, chordWriting, graceDigits, gridStrings, layout, noteText, parseShape, splitShape } from "../core/index.ts";
+import type { Align, Part, Score, Shape, System, Voice } from "../core/index.ts";
 
 export const PAGE = { w: 210, h: 297, marginX: 15, marginTop: 14, marginBottom: 16 };
 export const CONTENT_W = PAGE.w - 2 * PAGE.marginX;
@@ -41,6 +41,12 @@ export const G = {
   chordNameH: 4.6, // bande du nom d'un accord (« Am »)
   chordNoteH: 2.4, // hauteur d'une note dans un accord écrit en notes Prisma empilées
   chordChar: 1.9, // largeur d'un caractère du nom d'un accord
+  gridString: 1.25, // grille d'accord : l'écart entre deux cordes
+  gridFret: 1.5, // la hauteur d'une case
+  gridFrets: 4, // les cases montrées
+  gridMarks: 1.7, // la bande des « x » et « o », au-dessus des cordes
+  gridLabel: 2.4, // la case de départ d'une forme haute (« 5 »), à droite de la grille
+  chartGap: 4, // récapitulatif des grilles en tête de partition : l'écart entre deux grilles
   lyricH: 4.2, // une ligne de paroles (un couplet)
   lyricChar: 1.6, // largeur d'un caractère de paroles
   hyphenW: 2.2, // place d'un trait d'union après une syllabe
@@ -56,33 +62,49 @@ const lyricW = (text: string, hyphen: boolean) => 0.5 + lyricTextW(text) + (hyph
 const lyricExtra = (sys: System, a: number, cellW: number) =>
   Math.max(0, ...sys.staves.flatMap((p) => p.voice.lyrics.flatMap((l) => l.syllables.filter((x) => x.anchor === a).map((x) => lyricW(x.text, x.hyphen) - cellW))));
 
-/** Affichage des accords : leur nom, leurs notes Prisma empilées, ou les deux. */
-export type ChordStyle = "name" | "notes" | "both";
+/** Affichage des accords : leur nom, leurs notes Prisma empilées, les deux, ou leur nom et leur grille de guitare. */
+export type ChordStyle = "name" | "notes" | "both" | "grid";
 /** Le nom des accords : en notation Prisma (« 10:m »), ou en anglais (« Am »). */
 export type ChordNames = "prisma" | "english";
 
 /** Notes d'un accord (de la basse vers l'aigu) et nom à graver : celui écrit s'il est dans la notation choisie, sinon celui reconnu. */
 export function splitChord(text: string, names: ChordNames = "prisma") {
   const notes = chordNotes(text) ?? [];
-  const name = chordWriting(text) === names ? text : names === "english" ? chordName(notes) : chordPrismaName(notes);
+  const name = chordWriting(text) === names ? chordOf(text) : names === "english" ? chordName(notes) : chordPrismaName(notes);
   return { notes, name };
 }
-const showName = (style: ChordStyle, name?: string) => !!name && style !== "notes";
-// sans nom reconnu, les notes s'affichent toujours
-const showNotes = (style: ChordStyle, name?: string) => style !== "name" || !name;
+/**
+ * La grille d'un accord sur la guitare du morceau : celle écrite après son nom (« =x02210 »), sinon
+ * la plus simple qui le joue ; undefined si rien ne le joue.
+ */
+export function chordGrid(text: string, parts: Part[]): Shape | undefined {
+  const { shape } = splitShape(text);
+  const notes = chordNotes(text);
+  if (shape !== undefined) return parseShape(shape);
+  return notes && chordShape(notes, gridStrings(parts.map((p) => p.strings)));
+}
+/** La grille gravée : ses cordes, et la place de la case de départ à sa droite. */
+export const gridW = (strings = 6) => (strings - 1) * G.gridString + 0.6 + G.gridLabel;
+export const gridH = () => G.gridMarks + G.gridFrets * G.gridFret + 1;
 
-/** Hauteur de la bande des accords d'un système : le nom, et/ou les notes empilées. */
+const showName = (style: ChordStyle, name?: string) => !!name && style !== "notes";
+// sans nom reconnu, les notes s'affichent toujours (sauf avec une grille, qui les montre sur le manche)
+const showNotes = (style: ChordStyle, name?: string) => style !== "name" && style !== "grid" ? true : !name;
+
+/** Hauteur de la bande des accords d'un système : le nom, et/ou les notes empilées, ou la grille. */
 const chordH = (s: System, style: ChordStyle) => {
   if (!s.chords.length) return 0;
-  const chords = s.chords.map((c) => splitChord(c.text));
+  const chords = s.chords.map((c) => ({ ...splitChord(c.text), grid: style === "grid" ? chordGrid(c.text, s.parts) : undefined }));
   const named = chords.some((p) => showName(style, p.name));
-  const stack = Math.max(0, ...chords.filter((p) => showNotes(style, p.name)).map((p) => p.notes.length));
-  return (named ? G.chordNameH : 0.8) + stack * G.chordNoteH;
+  const stack = Math.max(0, ...chords.filter((p) => !p.grid && showNotes(style, p.name)).map((p) => p.notes.length));
+  const grid = chords.some((p) => p.grid) ? gridH() : 0;
+  return (named ? G.chordNameH : 0.8) + Math.max(stack * G.chordNoteH, grid);
 };
-/** Largeur que demande un accord : son nom ; ses notes empilées tiennent dans une case. */
+/** Largeur que demande un accord : son nom, ou sa grille ; ses notes empilées tiennent dans une case. */
 const chordW = (text: string, style: ChordStyle, names: ChordNames) => {
   const p = splitChord(text, names);
-  return showName(style, p.name) ? 0.5 + p.name!.length * G.chordChar + 0.6 : 0;
+  const name = showName(style, p.name) ? 0.5 + p.name!.length * G.chordChar + 0.6 : 0;
+  return style === "grid" ? Math.max(name, 0.5 + gridW() + 0.6) : name;
 };
 
 /** Bande des paroles d'une portée : une ligne par couplet, un peu d'air au-dessus. */
@@ -182,7 +204,9 @@ export type StaffPlace = {
 };
 
 /** order : ordre de jeu des sections, gravé en tête de chaque page (vide s'il n'y a pas de section). */
-export type Page = { index: number; systems: PlacedSystem[]; header: boolean; order: string[] };
+/** Une grille du récapitulatif en tête de partition : le nom de l'accord, sa grille, et sa place. */
+export type ChartItem = { name: string; shape: Shape; x: number; y: number };
+export type Page = { index: number; systems: PlacedSystem[]; header: boolean; order: string[]; chart?: ChartItem[] };
 
 // l'arpège se dessine devant l'accord, pas dans la bande des nuances
 // l'arpège et les articulations se dessinent sur la note, pas dans la bande des nuances
@@ -264,12 +288,52 @@ function place(sys: System, isLast: boolean, y: number, cellW: number, chords: C
 }
 
 /**
+ * Le récapitulatif des grilles, en tête de partition : chaque accord du morceau une fois (le même
+ * nom avec une autre grille écrite compte à part), dans l'ordre où il vient, en rangées centrées
+ * à partir de top. Un accord que rien ne joue sur la guitare n'y est pas.
+ */
+export function chordChart(score: Score, names: ChordNames, top: number) {
+  const seen = new Set<string>();
+  const found: { name: string; shape: Shape }[] = [];
+  for (const c of [...score.chords].sort((a, b) => a.t - b.t)) {
+    const name = splitChord(c.text, names).name ?? chordOf(c.text);
+    const shape = chordGrid(c.text, score.parts);
+    const key = name + "=" + shape?.join(",");
+    if (!shape || seen.has(key)) continue;
+    seen.add(key);
+    found.push({ name, shape });
+  }
+  const w = (name: string) => Math.max(name.length * G.chordChar, gridW()) + G.chartGap;
+  const rowH = G.chordNameH + gridH() + 1.5;
+  // en rangées : autant qu'il en tient sur la largeur, chaque rangée centrée
+  const rows: { name: string; shape: Shape }[][] = [[]];
+  let used = 0;
+  for (const f of found) {
+    if (used + w(f.name) > CONTENT_W && rows[rows.length - 1].length) {
+      rows.push([]);
+      used = 0;
+    }
+    rows[rows.length - 1].push(f);
+    used += w(f.name);
+  }
+  const items: ChartItem[] = rows.flatMap((row, r) => {
+    let x = PAGE.marginX + (CONTENT_W - row.reduce((n, f) => n + w(f.name), 0) + G.chartGap) / 2;
+    return row.map((f) => {
+      const item = { ...f, x, y: top + r * rowH };
+      x += w(f.name);
+      return item;
+    });
+  });
+  return { items, height: found.length ? rows.length * rowH : 0 };
+}
+
+/**
  * compact : cases plus étroites, donc plus de mesures par ligne ; chords : affichage des
  * accords ; align : notes alignées, une note rejouée gardant sa ligne, ou une ligne par note (voir layout) ; reminders : rappel, en début
  * de système, de la note tenue depuis le système précédent ; inlineSections : une nouvelle section
  * suit sur la même ligne, séparée par un blanc, au lieu de commencer une ligne.
  */
-export function engrave(score: Score, { compact = false, chords = "both" as ChordStyle, chordNames = "prisma" as ChordNames, align = undefined as Align | undefined, reminders = true, inlineSections = false } = {}): Page[] {
+export function engrave(score: Score, { compact = false, chords = "both" as ChordStyle, chordNames = "prisma" as ChordNames, chart = false, align = undefined as Align | undefined, reminders = true, inlineSections = false } = {}): Page[] {
   const cellW = compact ? G.compactCell : G.cell;
   const rowH = compact ? G.compactRowH : G.rowH;
   const systems = layout(score, {
@@ -296,6 +360,13 @@ export function engrave(score: Score, { compact = false, chords = "both" as Chor
   const orderH = order.length ? G.orderH : 0;
   let page: Page = { index: 0, systems: [], header: true, order };
   let y = PAGE.marginTop + headerHeight(score.meta) + orderH;
+  if (chart) {
+    const c = chordChart(score, chordNames, y);
+    if (c.items.length) {
+      page.chart = c.items;
+      y += c.height + G.systemGap;
+    }
+  }
   const bottom = PAGE.h - PAGE.marginBottom;
   let lastStretch: number | undefined;
   systems.forEach((sys, i) => {
