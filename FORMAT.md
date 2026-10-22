@@ -162,7 +162,7 @@ m1 |1  *  |2  *  |3  *  |4  *  ||
 5  |0  -  |-  -  |-  -  |      ||
 ```
 
-À l'import MusicXML, une partie de guitare ou de basse d'une seule portée reçoit l'accordage standard, et chaque note la corde la plus aiguë qui la joue et que rien d'autre ne fait sonner ; une partie dont une note ne trouve pas de corde garde ses couloirs d'octave.
+À l'import MusicXML, une partie qui a une tablature (une portée en clé `TAB`, d'un accordage connu, comme les exporte MuseScore) se lit sur elle : son accordage, son capo, la corde de chaque note ; la partition classique qui la double est laissée de côté, sauf ses nuances, textes et paroles. Sans tablature, une partie de guitare ou de basse d'une seule portée reçoit l'accordage standard, et chaque note la corde la plus aiguë qui la joue et que rien d'autre ne fait sonner ; une partie dont une note ne trouve pas de corde garde ses couloirs d'octave.
 
 ### Les sauts de ligne
 

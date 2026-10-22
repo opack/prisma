@@ -63,7 +63,7 @@ Le temps se compte en **ticks** depuis le début du morceau, avec une valeur fix
 
 Une note est une hauteur MIDI ; le nombre Prisma (1 à 12) et le couloir d'octave (`0` pour celle du do central) s'en déduisent (`core/pitch.ts`).
 
-Une partie de guitare ou de basse a ses **cordes** (`Part.strings`, `core/strings.ts`) : leur accordage et le capo. Ses couloirs sont alors des cordes, et ses nombres des cases. Chaque note garde sa hauteur MIDI, pour l'écoute et l'export, et porte en plus sa corde (`Note.string`) : le choix de la corde est écrit dans le texte, il ne se déduit pas. La case se recalcule (la hauteur, moins la corde à vide et le capo). Seul un MusicXML importé sans tablature reçoit des cordes choisies par l'application.
+Une partie de guitare ou de basse a ses **cordes** (`Part.strings`, `core/strings.ts`) : leur accordage et le capo. Ses couloirs sont alors des cordes, et ses nombres des cases. Chaque note garde sa hauteur MIDI, pour l'écoute et l'export, et porte en plus sa corde (`Note.string`) : le choix de la corde est écrit dans le texte, il ne se déduit pas. La case se recalcule (la hauteur, moins la corde à vide et le capo). Un MusicXML importé avec sa tablature (une portée en clé `TAB`) garde ses cordes, et la partition classique qui la double est laissée de côté ; seul un MusicXML sans tablature reçoit des cordes choisies par l'application.
 
 ### La lecture (`core/prisma-parse.ts`)
 

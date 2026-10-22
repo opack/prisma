@@ -79,10 +79,26 @@ export function assignStrings<N extends { midi: number; start: number; end: numb
 }
 
 /**
- * Les parties d'instrument à cordes d'un morceau importé, d'une seule portée : leurs cordes
- * (l'accordage standard), et une corde pour chaque note et petite note. Une partie dont une note
- * ne trouve pas de corde (trop grave pour l'instrument) garde ses couloirs d'octave. Rend les
- * notes, sans celles qu'une autre note a entièrement recouvertes sur leur corde.
+ * L'instrument et l'accordage qui ont ces cordes à vide (de la 1, l'aiguë, à la plus grave),
+ * parmi ceux que connaît Prisma ; undefined pour un autre accordage.
+ */
+export function tuningOf(open: number[], capo: number): { instrument: InstrumentName; strings: Strings } | undefined {
+  for (const [instrument, tunings] of Object.entries(TUNINGS) as [InstrumentName, Record<string, number[]>][]) {
+    for (const [tuning, notes] of Object.entries(tunings)) {
+      if (notes.length === open.length && notes.every((m, k) => m === open[k])) return { instrument, strings: { tuning, open: notes, capo } };
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Les cordes des parties d'instrument à cordes d'un morceau importé, d'une seule portée. Une
+ * partie lue d'une tablature a déjà ses cordes, et ses notes la leur ; les autres reçoivent
+ * l'accordage standard. Une note sans corde (ou dont la corde ne la joue pas) prend la plus aiguë
+ * qui la joue et que rien d'autre ne fait sonner ; sans tablature, une partie dont une note ne
+ * trouve pas de corde (trop grave pour l'instrument) garde ses couloirs d'octave. Rend les notes,
+ * sans celles qui n'ont pas de corde dans une tablature, ni celles qu'une autre note a
+ * entièrement recouvertes sur leur corde.
  */
 export function stringParts(parts: Part[], notes: Note[], graces: Grace[]): Note[] {
   let first = 0;
@@ -91,24 +107,27 @@ export function stringParts(parts: Part[], notes: Note[], graces: Grace[]): Note
     const staff = first;
     first += part.staves;
     const instrument = part.instrument ?? guessInstrument(part.name);
-    if (!isStringInstrument(instrument) || part.staves !== 1) continue;
-    const strs = defaultStrings(instrument);
+    const tab = !!part.strings;
+    if (!tab && (!isStringInstrument(instrument) || part.staves !== 1)) continue;
+    const strs = part.strings ?? defaultStrings(instrument);
+    const plays = (k: number, midi: number) => k >= 1 && k <= strs.open.length && fretOf(strs, k, midi) >= 0 && fretOf(strs, k, midi) <= MAX_FRET;
     const mine = notes.filter((n) => n.staff === staff);
-    const fits = (midi: number) => strs.open.some((_, k) => fretOf(strs, k + 1, midi) >= 0 && fretOf(strs, k + 1, midi) <= MAX_FRET);
-    if (!mine.every((n) => fits(n.midi))) continue;
-    const trial = mine.map((n) => ({ ...n }));
+    if (!tab && !mine.every((n) => strs.open.some((_, k) => plays(k + 1, n.midi)))) continue;
+    const trial = mine.map((n) => ({ ...n, ...(n.string !== undefined && !plays(n.string, n.midi) ? { string: undefined } : {}) }));
     assignStrings(trial, strs);
-    if (trial.some((n) => n.string === undefined)) continue;
+    if (!tab && trial.some((n) => n.string === undefined)) continue;
     part.strings = strs;
     trial.forEach((t, i) => {
       Object.assign(mine[i], { string: t.string, end: t.end });
-      if (mine[i].end <= mine[i].start) dropped.add(mine[i]);
+      if (t.string === undefined || mine[i].end <= mine[i].start) dropped.add(mine[i]);
     });
-    // une petite note : sur la corde de sa note, sinon sur la plus aiguë qui la joue
+    // une petite note : sur sa corde, sinon sur celle de sa note, sinon sur la plus aiguë qui la joue
     for (const g of graces.filter((x) => x.staff === staff)) {
-      const main = mine.find((n) => n.start === g.t && !dropped.has(n) && fretOf(strs, n.string!, g.midi) >= 0);
-      const k = main?.string ?? strs.open.findIndex((_, k) => fretOf(strs, k + 1, g.midi) >= 0 && fretOf(strs, k + 1, g.midi) <= MAX_FRET) + 1;
+      if (g.string !== undefined && plays(g.string, g.midi)) continue;
+      const main = mine.find((n) => n.start === g.t && !dropped.has(n) && plays(n.string!, g.midi));
+      const k = main?.string ?? strs.open.findIndex((_, k) => plays(k + 1, g.midi)) + 1;
       if (k > 0) g.string = k;
+      else delete g.string;
     }
   }
   return notes.filter((n) => !dropped.has(n));

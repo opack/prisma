@@ -93,6 +93,25 @@ m1 |1  |2  ||
     expect(writePrisma(back)).toMatch(/^1 {2}\|/m);
   });
 
+  it("lit une tablature MusicXML : ses cordes, sans la partition qui la double", () => {
+    // mi4 joué sur la 2ᵉ corde, case 5 (et non sur la 1ʳᵉ à vide), puis la2 à vide ; accordage drop-d, capo 2
+    const tuning = [["D", 2], ["A", 2], ["D", 3], ["G", 3], ["B", 3], ["E", 4]]
+      .map(([step, octave], i) => `<staff-tuning line="${i + 1}"><tuning-step>${step}</tuning-step><tuning-octave>${octave}</tuning-octave></staff-tuning>`)
+      .join("");
+    const note = (staff: number, step: string, octave: number, tab = "") =>
+      `<note><pitch><step>${step}</step><octave>${octave}</octave></pitch><duration>1</duration><voice>${staff}</voice><type>quarter</type><staff>${staff}</staff>${tab}</note>`;
+    const tech = (string: number, fret: number) => `<notations><technical><string>${string}</string><fret>${fret}</fret></technical></notations>`;
+    const xml = `<?xml version="1.0"?><score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Guitare</part-name></score-part></part-list>
+<part id="P1"><measure number="1"><attributes><divisions>1</divisions><time><beats>2</beats><beat-type>4</beat-type></time><staves>2</staves>
+<clef number="1"><sign>G</sign><line>2</line></clef><clef number="2"><sign>TAB</sign></clef>
+<staff-details number="2"><staff-lines>6</staff-lines>${tuning}<capo>2</capo></staff-details></attributes>
+${note(1, "F", 4)}${note(1, "B", 2)}<backup><duration>2</duration></backup>${note(2, "F", 4, tech(2, 4))}${note(2, "B", 2, tech(5, 0))}</measure></part></score-partwise>`;
+    const s = importMusicXml(xml);
+    expect(s.parts).toEqual([{ name: "Guitare", staves: 1, strings: { tuning: "drop-d", open: [64, 59, 55, 50, 45, 38], capo: 2 } }]);
+    expect(s.notes.map((n) => [n.string, n.midi])).toEqual([[2, 65], [5, 47]]);
+    expect(writePrisma(s)).toContain("parts: Guitare (drop-d, capo 2)");
+  });
+
   it("dit dans la barre de statut la corde et la note d'une case", () => {
     const at = (line: number, column: number) => {
       const lines = ARPEGGIO.split("\n");
