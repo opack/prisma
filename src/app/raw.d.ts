@@ -1,3 +1,6 @@
+/** L'heure de la construction de l'application (vite.config.ts). */
+declare const __BUILD__: string;
+
 /** Fichiers importés comme texte brut par Vite (« ?raw ») : la référence. */
 declare module "*?raw" {
   const text: string;

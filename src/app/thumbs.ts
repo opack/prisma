@@ -1,8 +1,9 @@
 /**
  * Aperçus de la bibliothèque : la première page de chaque morceau, calculée à la demande (quand
  * le morceau paraît à l'écran), un morceau à la fois, hors de l'interface. Le résultat se garde
- * dans le navigateur, pour chaque morceau : il ne se recalcule que si le fichier a changé ou si
- * les options de gravure ne sont plus les mêmes. Ce n'est qu'un cache : perdu, il se refait.
+ * dans le navigateur, pour chaque morceau : il ne se recalcule que si le fichier a changé, si les
+ * options de gravure ne sont plus les mêmes ou si l'application a changé (une lecture qui
+ * échouait peut réussir, une gravure changer). Ce n'est qu'un cache : perdu, il se refait.
  */
 import type { Meta } from "../core/index.ts";
 import type { Page } from "./engrave.ts";
@@ -15,8 +16,6 @@ import type { ThumbRequest } from "./thumbs.worker.ts";
 export type Thumb = { page: Page; total: number; meta: Meta } | null;
 type Cached = { modified: number; options: string; thumb?: Thumb; error?: string };
 
-/** À changer quand la forme des pages (Page) change. */
-const THUMBS_VERSION = 2;
 const memory = new Map<string, Cached>();
 let worker: Worker | undefined;
 let nextId = 0;
@@ -43,8 +42,8 @@ const inFlight = new Map<string, Promise<Cached>>();
 
 /** L'aperçu d'un morceau, du cache ou calculé ; une erreur de lecture le remplace par son message. */
 export function thumbOf(entry: LibraryEntry, options: EngraveOptions): Promise<Cached> {
-  // la version des pages gardées : un aperçu fait par une version d'avant, aux données d'une autre forme, se refait
-  const key = JSON.stringify({ v: THUMBS_VERSION, options });
+  // un aperçu fait par une autre version de l'application se refait
+  const key = JSON.stringify({ build: __BUILD__, options });
   const fresh = (c?: Cached) => c && c.modified === entry.modified && c.options === key;
   const hit = memory.get(entry.path);
   if (fresh(hit)) return Promise.resolve(hit!);
