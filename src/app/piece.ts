@@ -22,6 +22,8 @@ export type PieceSettings = {
   muted?: number[];
   /** L'instrument choisi pour chaque partie, dans l'ordre ; null : celui que son nom fait deviner. */
   instruments?: (string | null)[];
+  /** Le volume de chaque partie à l'écoute, dans l'ordre : en décibels, 0 tel quel. */
+  volumes?: number[];
   /** Les options du rendu définies pour ce morceau : elles priment sur les générales. */
   options?: Partial<Pick<RenderOptions, PieceKey>>;
 };
@@ -29,12 +31,15 @@ export type PieceSettings = {
 const FORMAT = 1;
 export const MIN_TEMPO = 20;
 export const MAX_TEMPO = 300;
+/** Les volumes d'une partie : de beaucoup moins fort à un peu plus fort (en décibels). */
+export const MIN_VOLUME = -12;
+export const MAX_VOLUME = 6;
 
 /** Le fichier des réglages d'un morceau. */
 export const settingsName = (pieceName: string) => `${pieceName}.json`;
 
 /** Rien à retenir ? */
-export const isEmpty = (s: PieceSettings) => s.tempo === undefined && !s.muted?.length && !s.instruments?.some((t) => t !== null) && !Object.keys(s.options ?? {}).length;
+export const isEmpty = (s: PieceSettings) => s.tempo === undefined && !s.muted?.length && !s.instruments?.some((t) => t !== null) && !s.volumes?.some((v) => v !== 0) && !Object.keys(s.options ?? {}).length;
 
 /**
  * Lit des réglages : ce qui n'est pas compris est laissé de côté (une option inconnue, une valeur
@@ -54,6 +59,10 @@ export function parseSettings(text: string): PieceSettings {
     const instruments = raw.instruments.map((t: unknown) => (isInstrument(t) ? t : null));
     if (instruments.some((t: string | null) => t !== null)) out.instruments = instruments;
   }
+  if (Array.isArray(raw.volumes)) {
+    const volumes = raw.volumes.map((v: unknown) => (Number.isInteger(v) ? Math.min(MAX_VOLUME, Math.max(MIN_VOLUME, v as number)) : 0));
+    if (volumes.some((v: number) => v !== 0)) out.volumes = volumes;
+  }
   if (raw.options && typeof raw.options === "object") {
     // les valeurs se valident comme celles des options générales : une valeur refusée y reprend la valeur par défaut
     const checked = loadOptionsFrom(raw.options);
@@ -69,6 +78,7 @@ export function writeSettings(s: PieceSettings): string {
   if (s.tempo !== undefined) out.tempo = s.tempo;
   if (s.muted?.length) out.muted = s.muted;
   if (s.instruments?.some((t) => t !== null)) out.instruments = s.instruments;
+  if (s.volumes?.some((v) => v !== 0)) out.volumes = s.volumes;
   if (s.options && Object.keys(s.options).length) out.options = s.options;
   return JSON.stringify(out, null, 2) + "\n";
 }

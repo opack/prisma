@@ -806,9 +806,16 @@ export function App() {
   useEffect(() => {
     player.setInstruments(staffInstruments(parts, instruments));
   }, [parts, instruments]);
+  // volumes, propres au morceau : un par partie, 0 tel quel
+  const volumes = useMemo(() => parts.map((_, i) => piece.volumes?.[i] ?? 0), [parts, piece.volumes]);
+  const setVolume = (part: number, db: number) => {
+    const next = volumes.map((v, i) => (i === part ? db : v));
+    updatePiece({ volumes: next.some((v) => v !== 0) ? next : undefined });
+  };
+  const gains = useMemo(() => parts.flatMap((p, i) => Array.from({ length: p.staves }, () => volumes[i])), [parts, volumes]);
   const partsKey = JSON.stringify(score?.parts ?? []);
   // tempo choisi, propre au morceau : un nouveau tempo écrit dans la partition reprend la main ;
-  // de nouvelles parties effacent les portées muettes et les instruments choisis
+  // de nouvelles parties effacent les portées muettes, les instruments et les volumes choisis
   const written = score?.meta.bpm;
   const seen = useRef({ pieceId, partsKey, written });
   useEffect(() => {
@@ -817,7 +824,7 @@ export function App() {
     const before = seen.current;
     seen.current = { pieceId, partsKey, written };
     if (before.pieceId !== pieceId) return; // un autre morceau : ses réglages viennent d'être lus
-    if (before.partsKey !== partsKey && (piece.muted || piece.instruments)) updatePiece({ muted: undefined, instruments: undefined });
+    if (before.partsKey !== partsKey && (piece.muted || piece.instruments || piece.volumes)) updatePiece({ muted: undefined, instruments: undefined, volumes: undefined });
     if (before.written !== written && piece.tempo !== undefined) updatePiece({ tempo: undefined });
   }, [pieceId, partsKey, written]);
   // enregistrement des réglages du morceau, à côté de lui, peu après le dernier changement ; il
@@ -837,12 +844,13 @@ export function App() {
       player.setSound({
         metronome: options.metronome,
         muted,
+        gains,
         clickSounds: options.clickSounds,
         clickGrid: options.clickGrid,
         countIn: options.countIn,
         clickVolume: options.clickVolume,
       }),
-    [options.metronome, muted, options.clickSounds, options.clickGrid, options.countIn, options.clickVolume],
+    [options.metronome, muted, gains, options.clickSounds, options.clickGrid, options.countIn, options.clickVolume],
   );
 
   return (
@@ -930,6 +938,8 @@ export function App() {
           onMuted={setMuted}
           instruments={instruments}
           onInstrument={setInstrument}
+          volumes={volumes}
+          onVolume={setVolume}
           tempo={piece.tempo ?? null}
           onTempo={(tempo) => updatePiece({ tempo: tempo ?? undefined })}
         />

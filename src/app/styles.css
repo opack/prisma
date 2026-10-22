@@ -320,6 +320,9 @@ button:disabled { opacity: .5; cursor: default; }
 .bar .parts-list .part-instrument button.reset { width: auto; padding: 1px 6px; margin: 0; border-radius: 4px; color: var(--accent); background: #fff; }
 .parts-list .part-row select { font: inherit; padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: #fff; max-width: 11em; }
 .parts-list .part-name { font-weight: 600; }
+.parts-list .part-volume { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; }
+.parts-list .part-volume input { width: 72px; accent-color: var(--accent); }
+.parts-list .part-volume output { min-width: 3.6em; text-align: right; font-variant-numeric: tabular-nums; }
 .parts-list .part-staff { padding-left: 14px; }
 .parts-list .part-group { display: grid; gap: 4px; }
 .popover-hint { margin: 2px 0 0; color: var(--muted); font-size: 0.85em; line-height: 1.35; white-space: normal; }

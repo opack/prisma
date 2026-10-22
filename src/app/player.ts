@@ -9,7 +9,7 @@
  * petites notes, trilles, arpèges, points d'orgue, articulations ; un métronome sur les temps, avec
  * ou sans les instruments ; des portées muettes, pour les jouer soi-même.
  */
-import { PIANO, instrumentLabel, soundOf } from "./instruments.ts";
+import { PIANO, boostOf, instrumentLabel, soundOf } from "./instruments.ts";
 import { TICKS_PER_BEAT } from "../core/index.ts";
 import type { Score } from "../core/index.ts";
 import { clicks, countIn, entryAt, entryStart, holds, inFirstBar, nextTick, passages, playedLength, playedNotes, playedTick, scoreTick, stretched, unstretched } from "./performance.ts";
@@ -101,7 +101,8 @@ export type PlayerSnapshot = {
 };
 
 /** Ce que l'on entend : le métronome et ses réglages, et les portées rendues muettes (leurs numéros). */
-type Sound = { metronome: boolean; muted: number[]; clickSounds: ClickSounds; clickGrid: ClickGrid; countIn: boolean; clickVolume: number };
+/** Ce qu'on entend : le métronome, les portées muettes, le volume de chaque portée (en décibels), les clics. */
+type Sound = { metronome: boolean; muted: number[]; gains: number[]; clickSounds: ClickSounds; clickGrid: ClickGrid; countIn: boolean; clickVolume: number };
 
 /** Un instrument chargé : il joue une note et rend de quoi l'arrêter. */
 type Voice = { start(n: { note: number; velocity: number; time: number; duration: number }): () => void };
@@ -126,7 +127,7 @@ class Player {
   private clicks: Click[] = [];
   private tick?: AudioBuffer;
   /** Ce que l'on entend : le métronome, les portées (sauf les muettes), le son de chaque niveau du métronome. */
-  private sound: Sound = { metronome: false, muted: [], clickSounds: DEFAULT_CLICK_SOUNDS, clickGrid: "cells", countIn: false, clickVolume: 1 };
+  private sound: Sound = { metronome: false, muted: [], gains: [], clickSounds: DEFAULT_CLICK_SOUNDS, clickGrid: "cells", countIn: false, clickVolume: 1 };
   /** Instant joué de la pause (le curseur, lui, montre l'instant du morceau). */
   private pos = 0;
   private bpm = DEFAULT_BPM;
@@ -193,7 +194,9 @@ class Player {
     await Promise.all(
       ids.map(async (id) => {
         try {
-          const voice = id === PIANO ? await SplendidGrandPiano(this.context!).load : await Soundfont(this.context!, { instrument: soundOf(id) }).load;
+          // un son General MIDI, remonté au niveau du piano : le gain que smplr lui ajoute déjà (5), plus celui de l'instrument
+          const extraGain = 5 * 10 ** (boostOf(id) / 20);
+          const voice = id === PIANO ? await SplendidGrandPiano(this.context!).load : await Soundfont(this.context!, { instrument: soundOf(id), extraGain }).load;
           this.voicesBy.set(id, voice as Voice);
         } catch {
           throw new Error(`Impossible de charger le son ${id === PIANO ? "du piano" : `« ${instrumentLabel(id)} »`} (connexion internet ?)`);
@@ -225,11 +228,11 @@ class Player {
     if (error) this.set({ error });
   }
 
-  /** Métronome et portées muettes ; en cours de lecture, la suite repart ainsi. */
+  /** Métronome, portées muettes et volumes ; en cours de lecture, la suite repart ainsi. */
   setSound(sound: Sound) {
     if (this.context) clickVolume(this.context, sound.clickVolume);
     // le volume s'applique aussitôt, le décompte au prochain départ : rien à reprogrammer
-    const heard = (s: Sound) => JSON.stringify([s.metronome, s.muted, s.clickSounds, s.clickGrid]);
+    const heard = (s: Sound) => JSON.stringify([s.metronome, s.muted, s.gains, s.clickSounds, s.clickGrid]);
     const restart = heard(sound) !== heard(this.sound);
     if (sound.clickGrid !== this.sound.clickGrid && this.score) this.clicks = clicks(this.score, this.passages, sound.clickGrid);
     this.sound = sound;
@@ -353,6 +356,9 @@ class Player {
     // chaque portée avec l'instrument de sa partie ; un instrument qui n'a pas pu se charger : le piano
     const fallback = this.voicesBy.get(PIANO);
     const voiceOf = (staff: number) => this.voicesBy.get(this.instruments[staff] ?? PIANO) ?? fallback;
+    // le volume d'une portée joue sur l'intensité des notes (le son va comme son carré), dans les bornes MIDI
+    const factor = this.sound.gains.map((db) => 10 ** (db / 40));
+    const velocityOf = (n: PlayNote) => (factor[n.staff] ? Math.max(1, Math.min(127, Math.round(n.velocity * factor[n.staff]))) : n.velocity);
     const hs = this.holds;
     // une portée muette n'est pas jouée : on la joue soi-même pendant que l'app joue les autres
     const muted = new Set(this.sound.muted);
@@ -388,7 +394,7 @@ class Player {
         const n = notes[next];
         const voice = voiceOf(n.staff);
         if (!voice) continue;
-        const stop = voice.start({ note: n.midi, velocity: n.velocity, time: start + n.time, duration: n.duration });
+        const stop = voice.start({ note: n.midi, velocity: velocityOf(n), time: start + n.time, duration: n.duration });
         this.voices.push({ end: start + n.time + n.duration + RELEASE, stop });
       }
       for (; nextBeat < beats.length && beats[nextBeat].time < now - start + LOOKAHEAD; nextBeat++) {

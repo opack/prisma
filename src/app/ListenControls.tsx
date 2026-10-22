@@ -4,6 +4,7 @@ import { DEFAULT_BPM, player } from "./player.ts";
 import { follow } from "./follow.ts";
 import { MAX_TEMPO, MIN_TEMPO } from "./piece.ts";
 import { INSTRUMENTS, PIANO, instrumentLabel, scoreInstrument } from "./instruments.ts";
+import { MAX_VOLUME, MIN_VOLUME } from "./piece.ts";
 import { staffNames } from "./staves.ts";
 import { usePopover } from "./popover.ts";
 
@@ -37,12 +38,15 @@ type Props = {
   /** L'instrument de chaque partie, et son changement. */
   instruments: string[];
   onInstrument: (part: number, instrument: string) => void;
+  /** Le volume de chaque partie (en décibels, 0 tel quel), et son changement. */
+  volumes: number[];
+  onVolume: (part: number, db: number) => void;
   /** Le tempo choisi pour ce morceau, ou null : celui de la partition. */
   tempo: number | null;
   onTempo: (bpm: number | null) => void;
 };
 
-export function ListenControls({ score, disabled, metronome, onMetronome, muted, onMuted, instruments, onInstrument, tempo, onTempo }: Props) {
+export function ListenControls({ score, disabled, metronome, onMetronome, muted, onMuted, instruments, onInstrument, volumes, onVolume, tempo, onTempo }: Props) {
   const { state, error, entry: playing, entries } = useSyncExternalStore(player.subscribe, player.getSnapshot);
   const following = useSyncExternalStore(follow.subscribe, follow.enabled);
   const entry = playing ?? 0;
@@ -135,7 +139,7 @@ export function ListenControls({ score, disabled, metronome, onMetronome, muted,
         >
           <Icon d="M6.2 1.5h3.6L13 14.5H3zM7 4.5l-.9 8h3.8l-.9-8zM8 11.8 12.6 3.6l.9.5-4.4 8z" />
         </button>
-        <PartsMenu score={score} muted={muted} onMuted={onMuted} instruments={instruments} onInstrument={onInstrument} />
+        <PartsMenu score={score} muted={muted} onMuted={onMuted} instruments={instruments} onInstrument={onInstrument} volumes={volumes} onVolume={onVolume} />
       </span>
     </>
   );
@@ -147,7 +151,9 @@ export function ListenControls({ score, disabled, metronome, onMetronome, muted,
  * chacune à cocher pour l'entendre ou la rendre muette (pour la jouer soi-même). La musique
  * rendue retrouve les portées choisies avant.
  */
-function PartsMenu({ score, muted, onMuted, instruments, onInstrument }: { score?: Score; muted: number[]; onMuted: (staves: number[]) => void; instruments: string[]; onInstrument: (part: number, instrument: string) => void }) {
+type PartsProps = { score?: Score; muted: number[]; onMuted: (staves: number[]) => void; instruments: string[]; onInstrument: (part: number, instrument: string) => void; volumes: number[]; onVolume: (part: number, db: number) => void };
+
+function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, onVolume }: PartsProps) {
   const { open, setOpen, root } = usePopover<HTMLSpanElement>();
   // le dernier choix où une portée au moins jouait : la musique rendue le retrouve
   const before = useRef<number[]>([]);
@@ -203,6 +209,14 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument }: { score
                 )}
               </span>
             );
+            // le volume de la partie : un réglage fin, pour équilibrer les parties (un double-clic le remet à 0)
+            const db = volumes[i] ?? 0;
+            const volume = (
+              <label className="part-volume" title="Le volume de la partie à l'écoute, pour ce morceau (double-clic : tel quel)">
+                <input type="range" min={MIN_VOLUME} max={MAX_VOLUME} step={1} value={db} onChange={(e) => onVolume(i, Number(e.target.value))} onDoubleClick={() => onVolume(i, 0)} aria-label={`Volume${g.name ? ` : ${g.name}` : ""}`} />
+                <output>{db > 0 ? `+${db}` : db < 0 ? `−${-db}` : "0"} dB</output>
+              </label>
+            );
             // une partie d'une portée : une seule ligne ; sinon son nom et son instrument, puis ses portées
             if (g.staves.length === 1)
               return (
@@ -212,6 +226,7 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument }: { score
                     {g.staves[0].label}
                   </label>
                   {instrument}
+                  {volume}
                 </div>
               );
             return (
@@ -219,6 +234,7 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument }: { score
                 <div className="part-row">
                   <span className="part-name">{g.name || "Partie"}</span>
                   {instrument}
+                  {volume}
                 </div>
                 {g.staves.map((p) => (
                   <label key={p.k} className="part-staff">
@@ -237,7 +253,7 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument }: { score
               Aucune
             </button>
           </div>
-          <p className="popover-hint">Une portée muette n'est pas jouée : à vous de la jouer, avec le métronome au besoin. L'instrument d'une partie est celui que la partition écrit après son nom, ou que son nom fait deviner ; un autre choix vaut pour ce morceau.</p>
+          <p className="popover-hint">Une portée muette n'est pas jouée : à vous de la jouer, avec le métronome au besoin. L'instrument d'une partie est celui que la partition écrit après son nom, ou que son nom fait deviner ; un autre choix, comme le volume, vaut pour ce morceau.</p>
         </div>
       )}
     </span>

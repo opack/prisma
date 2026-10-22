@@ -22,6 +22,13 @@ describe("réglages d'un morceau", () => {
     expect(parseSettings(text)).toEqual({ muted: [0, 2], options: { sections: "inline", octaveStyle: "sign" } });
   });
 
+  it("gardent le volume de chaque partie, borné ; tous à 0, rien à retenir", () => {
+    expect(parseSettings(writeSettings({ volumes: [3, 0, -6] }))).toEqual({ volumes: [3, 0, -6] });
+    expect(parseSettings(JSON.stringify({ format: 1, volumes: [20, "x", -40, 1.5] }))).toEqual({ volumes: [6, 0, -12, 0] });
+    expect(isEmpty({ volumes: [0, 0] })).toBe(true);
+    expect(JSON.parse(writeSettings({ volumes: [0, 0] }))).toEqual({ format: 1 });
+  });
+
   it("refusent une autre version du format, en le disant", () => {
     expect(() => parseSettings(JSON.stringify({ format: 2 }))).toThrow(/version 2/);
     expect(() => parseSettings("pas du json")).toThrow();
