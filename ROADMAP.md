@@ -95,7 +95,8 @@
    - **Export MusicXML** : la hauteur, et la corde et la case de chaque note, avec l'accordage de la portée : il s'ouvre en tablature.
    - **Guitar Pro** : pas de documentation officielle du format (`.gp3` à `.gp5` binaires, décrits par rétro-ingénierie ; `.gpx` puis `.gp`, une archive avec un XML `score.gpif`). On passe par le MusicXML (MuseScore ouvre les fichiers Guitar Pro) ; un import direct du `.gp` viendra s'il manque.
    - **Ce qu'on y perd** : la transposition n'est plus gratuite ; un arrangement pour guitare est un doigté, le transposer, c'est le refaire.
-   - **Les étapes** : le format (les couloirs-cordes, l'accordage, le capo) avec l'écoute et la gravure ; l'import et l'export MusicXML ; la conversion ; les grilles d'accords ; les techniques et le sens du médiator.
+   - **Le site** : une page sur les instruments à cordes frettées, la guitare en tête, qui montre comment les noter en Prisma (les cordes en couloirs, les cases, le rythme sur la règle, la tenue qui dit ce qu'on laisse sonner), et ce que Prisma apporte par rapport à une tablature ; la page d'accueil et la référence y renvoient.
+   - **Les étapes** : le format (les couloirs-cordes, l'accordage, le capo) avec l'écoute et la gravure ; l'import et l'export MusicXML ; la conversion ; les grilles d'accords ; les techniques et le sens du médiator ; la page du site.
    - **Plus tard** : les instruments sans frettes (violon, violoncelle : le nombre serait la distance en demi-tons depuis la corde à vide, à valider avec un violoniste, qui pense en positions et en doigts) ; le ukulélé et ses accordages.
 2. **Confort d'écriture** :
    - **La complétion de `parts:`** propose, en plus des instruments entre parenthèses, quelques parties toutes faites, Piano et Guitare en tête (la guitare a son écriture en cordes) ; le message d'erreur de `parts` cite aussi la guitare en exemple (`parts: Chant, Guitare`).
