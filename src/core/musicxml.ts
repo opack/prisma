@@ -835,9 +835,12 @@ export function importMusicXml(xml: string, fileName?: string): Score {
     }
     return p;
   };
-  // tempo de départ : <sound tempo> (en noires par minute) au début, converti en temps de la règle
+  // tempo de départ : <sound tempo> (en noires par minute) au début, converti en temps de la règle ;
+  // après une anacrouse, il est souvent écrit sur la première mesure entière
+  const head = measures[0] && pulse(measures[0].beats, measures[0].beatType);
+  const pickup = !!head && measures[0].length > 1e-6 && measures[0].length < head.count * head.quarters - 1e-6;
   const startTempo = findAll(kids(partNodes[0]), "measure")
-    .slice(0, 1)
+    .slice(0, pickup ? 2 : 1)
     .flatMap((m) => kids(m).flatMap((x) => (tag(x) === "sound" ? [x] : tag(x) === "direction" ? findAll(kids(x), "sound") : [])))
     .map((snd) => Number(attr(snd, "tempo")))
     .find((t) => t > 0);
