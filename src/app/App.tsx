@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { DEFAULT_WIDTH, PrismaError, exportMusicXml, importMusicXml, parsePrisma, writePrisma } from "../core/index.ts";
-import type { ExportOptions, Score } from "../core/index.ts";
+import { DEFAULT_WIDTH, PrismaError, convertToStrings, exportMusicXml, importMusicXml, parsePrisma, stringsOfStaff, writePrisma } from "../core/index.ts";
+import type { ConversionOptions, ExportOptions, Part, Score } from "../core/index.ts";
+import { ConvertDialog } from "./ConvertDialog.tsx";
 import { ExportDialog } from "./ExportDialog.tsx";
 import { Menu } from "./Menu.tsx";
 import { ListenControls } from "./ListenControls.tsx";
@@ -8,10 +9,10 @@ import { EngraveButton } from "./EngraveButton.tsx";
 import { SourceEditor } from "./SourceEditor.tsx";
 import { Message } from "./message.tsx";
 import { pick as scorePick } from "./pick.ts";
-import { locate, textPlace } from "../core/locate.ts";
+import { STRING_LANE, locate, textPlace } from "../core/locate.ts";
 import type { ScorePlace } from "../core/locate.ts";
 import type { ScreenPoint } from "./pick.ts";
-import { cellOf, durationOf, holdChoices, holdIn, moveOctave, octaveRoomOf, resize, retouch } from "./retouch.ts";
+import { cellOf, durationOf, holdChoices, holdIn, freeStrings, moveOctave, octaveRoomOf, placeOnString, resize, retouch } from "./retouch.ts";
 import { RetouchMenu } from "./RetouchMenu.tsx";
 import { textMark } from "./textMark.ts";
 import type { EditorHandle } from "./SourceEditor.tsx";
@@ -642,6 +643,11 @@ export function App() {
   sourceNow.current = source;
   type Retouch = { at: ScorePlace; where: ScreenPoint; content: string; canHold: boolean; duration?: ReturnType<typeof durationOf>; holds: string[] };
   const [retouchAt, setRetouchAt] = useState<Retouch | null>(null);
+  // la corde choisie dans le choix d'une case de corde, pour y placer la note
+  const [retouchLane, setRetouchLane] = useState<number | undefined>(undefined);
+  const retouchNow = useRef<{ at: ScorePlace; lane?: number } | null>(null);
+  retouchNow.current = retouchAt && { at: retouchAt.at, lane: retouchLane };
+  useEffect(() => setRetouchLane(undefined), [retouchAt]);
   // ce que le choix montre d'une case : son contenu, la durée de sa note, les notes qu'elle peut tenir
   const describe = (text: string, at: ScorePlace, where: ScreenPoint): Retouch | null => {
     const cell = at.octave !== undefined ? cellOf(text, at) : undefined;
@@ -665,6 +671,13 @@ export function App() {
     [reading, options.scoreToText],
   );
   const closeRetouch = useCallback(() => setRetouchAt(null), []);
+  // les cordes de la portée d'une case de corde (celles de la dernière mise en page)
+  const stringsAt = (at: ScorePlace) => (at.octave !== undefined && at.octave >= STRING_LANE && engraved.score ? stringsOfStaff(engraved.score.parts, at.staff) : undefined);
+  // la corde d'une case, ce que font sonner les cordes à vide (capo compris), et celles où la note peut passer
+  const stringOf = (at: ScorePlace) => {
+    const strs = stringsAt(at);
+    return strs && { string: at.octave! - STRING_LANE, open: strs.open.map((m) => m + strs.capo), free: freeStrings(sourceNow.current, at, strs.open.length) };
+  };
   // l'écoute qui démarre ferme le choix
   useEffect(() => {
     const off = player.subscribe(() => playing() && setRetouchAt(null));
@@ -677,6 +690,30 @@ export function App() {
     engraveAfter.current = true;
     editor.current?.replace(r.text, r.line, r.column);
     return true;
+  };
+  // la conversion pour la guitare ou la basse : ses options d'abord, sur les parties du texte
+  const [converting, setConverting] = useState<Part[] | null>(null);
+  const startConversion = () => {
+    try {
+      setConverting(parsePrisma(sourceNow.current).parts);
+    } catch (e) {
+      setNotice(`Conversion impossible : ${(e as Error).message}`);
+    }
+  };
+  const convert = (part: number, conversion: ConversionOptions) => {
+    setConverting(null);
+    try {
+      const { score, report } = convertToStrings(parsePrisma(sourceNow.current), part, conversion);
+      write({ text: writePrisma(score), line: 1, column: 1 });
+      const changes = [
+        report.octave && conversion.octave === undefined ? "une octave plus bas" : "",
+        report.moved ? `${report.moved} note${report.moved > 1 ? "s" : ""} ramenée${report.moved > 1 ? "s" : ""} dans la tessiture` : "",
+        report.dropped ? `${report.dropped} note${report.dropped > 1 ? "s" : ""} retirée${report.dropped > 1 ? "s" : ""}` : "",
+      ].filter(Boolean);
+      setNotice(`Converti${changes.length ? " : " + changes.join(", ") : ""} (Ctrl+Z pour revenir)`);
+    } catch (e) {
+      setNotice(`Conversion impossible : ${(e as Error).message}`);
+    }
   };
   const applyRetouch = (content: string) => {
     if (retouchAt) write(retouch(sourceNow.current, retouchAt.at, content));
@@ -700,6 +737,11 @@ export function App() {
     const r = moveOctave(sourceNow.current, retouchAt.at, dir);
     if (write(r)) setRetouchAt(describe(r!.text, { ...retouchAt.at, octave: r!.octave }, retouchAt.where));
   };
+  // sur une corde : la note passe à la case choisie, sur cette corde ou une autre
+  const applyString = (string: number, fret: number) => {
+    if (retouchAt) write(placeOnString(sourceNow.current, retouchAt.at, string, fret));
+    setRetouchAt(null);
+  };
   const applyHold = (note: string) => {
     if (retouchAt) write(holdIn(sourceNow.current, retouchAt.at, note));
     setRetouchAt(null);
@@ -718,11 +760,17 @@ export function App() {
   const linkedNow = useRef(linked);
   linkedNow.current = linked;
   const markCaret = useCallback((reveal: boolean) => {
+    // le choix d'une case ouvert : c'est elle qui est encadrée (ou, sur une autre corde choisie, la case où la note ira)
+    const r = retouchNow.current;
+    if (r) {
+      textMark.set({ place: r.lane === undefined ? r.at : { ...r.at, octave: r.lane, content: undefined }, reveal: false });
+      return;
+    }
     const c = caretAt.current;
     const place = linkedNow.current && c ? textPlace(c[2], c[0], c[1]) : undefined;
     textMark.set(place ? { place, reveal: reveal && player.getSnapshot().state !== "playing" } : null);
   }, []);
-  useEffect(() => markCaret(false), [linked, markCaret]);
+  useEffect(() => markCaret(false), [linked, markCaret, retouchAt, retouchLane]);
 
   const { problem: engravedProblem, score } = engraved;
   // le texte relu pendant la frappe : ses erreurs, toutes (undefined : pas encore relu)
@@ -832,6 +880,8 @@ export function App() {
             { label: "Mettre en page automatiquement", onSelect: () => setOptions({ autoEngrave: !options.autoEngrave }), checked: options.autoEngrave },
             { label: "Options", onSelect: () => setShowOptions((v) => !v), checked: showOptions },
             "separator",
+            { label: "Convertir pour la guitare ou la basse…", onSelect: startConversion },
+            "separator",
             { label: "Imprimer…", onSelect: () => window.print(), shortcut: "Ctrl+P", disabled: !pages.length || showGuide || showLibrary },
           ]}
         />
@@ -913,6 +963,7 @@ export function App() {
       )}
       {showLibrary && <LibraryView options={general} onOpen={openEntry} onClose={() => setShowLibrary(false)} />}
       {exporting && <ExportDialog onExport={exportFile} onClose={() => setExporting(false)} />}
+      {converting && <ConvertDialog parts={converting} noteNames={options.noteNames === "english" ? "english" : "latin"} onConvert={convert} onClose={() => setConverting(null)} />}
       <main
         ref={split}
         className={"split" + (reading ? " reading" : "") + ` fit-${view.fit}` + (view.zoom > 1 ? " zoomed" : "")}
@@ -1000,7 +1051,10 @@ export function App() {
               onResize={applyResize}
               onHold={applyHold}
               onAmend={applyAmend}
-              octaves={retouchAt.duration ? octaveRoomOf(retouchAt.at) : undefined}
+              strings={stringOf(retouchAt.at)}
+              onString={applyString}
+              onTarget={(string) => setRetouchLane(string === retouchAt.at.octave! - STRING_LANE ? undefined : STRING_LANE + string)}
+              octaves={retouchAt.duration && !stringsAt(retouchAt.at) ? octaveRoomOf(retouchAt.at) : undefined}
               onOctave={applyOctave}
               onClose={closeRetouch}
             />

@@ -15,5 +15,7 @@ export { exportMusicXml } from "./musicxml-export.ts";
 export type { ExportOptions } from "./musicxml-export.ts";
 export type { Key } from "./key.ts";
 export { CHORD_NOTE_SEPARATOR, CHORD_QUALITY_SEPARATOR, chordName, chordNotes, chordPrismaName, chordPrismaText, chordWriting } from "./chords.ts";
-export { MAX_FRET, fretOf, isStringInstrument, soundingOf, tuningsOf } from "./strings.ts";
+export { MAX_CAPO, MAX_FRET, fretOf, isStringInstrument, soundingOf, stringsOf, tuningsOf } from "./strings.ts";
+export { convertToStrings } from "./convert.ts";
+export type { ConversionOptions, ConversionReport } from "./convert.ts";
 export type { Strings } from "./strings.ts";

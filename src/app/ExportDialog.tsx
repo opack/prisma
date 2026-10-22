@@ -39,7 +39,7 @@ export function ExportDialog({ onExport, onClose }: { onExport: (options: Export
     onExport(options);
   };
   return (
-    <dialog ref={ref} className="export-dialog" aria-labelledby="export-title" onClose={onClose} onCancel={onClose}>
+    <dialog ref={ref} className="dialog" aria-labelledby="export-title" onClose={onClose} onCancel={onClose}>
       <form
         method="dialog"
         onSubmit={(e) => {
@@ -51,22 +51,22 @@ export function ExportDialog({ onExport, onClose }: { onExport: (options: Export
         <fieldset>
           <legend>L'ordre de jeu</legend>
           {REPEATS.map((r) => (
-            <label key={r.value} className={"export-choice" + (options.repeats === r.value ? " on" : "")}>
+            <label key={r.value} className={"dialog-choice" + (options.repeats === r.value ? " on" : "")}>
               <input type="radio" name="repeats" value={r.value} checked={options.repeats === r.value} onChange={() => setOptions({ ...options, repeats: r.value })} />
               <span>
-                <span className="export-choice-label">{r.label}</span>
-                <span className="export-choice-hint">{r.hint}</span>
+                <span className="dialog-choice-label">{r.label}</span>
+                <span className="dialog-choice-hint">{r.hint}</span>
               </span>
             </label>
           ))}
           {options.repeats === "traditional" && (
-            <label className="export-check">
+            <label className="dialog-check">
               <input type="checkbox" checked={options.letters !== false} onChange={(e) => setOptions({ ...options, letters: e.target.checked })} />
               Écrire aussi la lettre de chaque section (A, B…)
             </label>
           )}
         </fieldset>
-        <div className="export-actions">
+        <div className="dialog-actions">
           <button type="button" onClick={onClose}>
             Annuler
           </button>

@@ -107,7 +107,13 @@ function marksOf(line: string) {
  */
 function widen(line: string, x: number, n: number): string {
   if (line.length <= x) return line;
-  if (isRuleLine(line)) return line.slice(0, x) + ruleChar(line).repeat(n) + line.slice(x);
+  if (isRuleLine(line)) {
+    // au milieu du nom d'une partie, écrit sur le trait : le trait s'allonge après le nom
+    const h = ruleChar(line);
+    let at = x;
+    if (/[^─━=═\-┼╪+|]/.test(line[x - 1] ?? "") && /[^─━=═\-┼╪+|]/.test(line[x])) while (at < line.length && /[^─━=═\-┼╪+|]/.test(line[at])) at++;
+    return line.slice(0, at) + h.repeat(n) + line.slice(at);
+  }
   if (line.startsWith("@")) {
     const t = marksOf(line).find((m) => m.col < x && x < m.col + m.text.length);
     if (t) {

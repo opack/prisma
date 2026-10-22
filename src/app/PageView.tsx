@@ -9,7 +9,7 @@ import { player } from "./player.ts";
 import { follow } from "./follow.ts";
 import { pick } from "./pick.ts";
 import { textMark } from "./textMark.ts";
-import { STRING_LANE, mainOf, rowLane } from "../core/locate.ts";
+import { mainOf, rowLane } from "../core/locate.ts";
 import { keyName, parseKey, prismaKey } from "../core/key.ts";
 import type { Key, NoteNames } from "../core/index.ts";
 import { glide, timed } from "./glide.ts";
@@ -1134,8 +1134,7 @@ export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
   };
   const edit = (ps: PlacedSystem, e: React.MouseEvent<SVGRectElement>) => {
     const p = placeOf(ps, e);
-    // la retouche ne connaît pas encore les cordes : seul le clic simple y mène au texte
-    if (p && !(p.at.octave !== undefined && p.at.octave >= STRING_LANE)) pick.emit(p.at, p.where, "edit");
+    if (p) pick.emit(p.at, p.where, "edit");
   };
   return (
     <g className="seek">

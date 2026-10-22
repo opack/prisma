@@ -1,16 +1,29 @@
 /**
  * Retouche sur place : changer, depuis la partition, la note d'une case. Le signe cliqué se
  * retrouve dans le texte (voir locate), sa case y est réécrite sans casser l'alignement (voir
- * complete.ts). Un clic dans un couloir d'octave que ce système du texte n'a pas encore y ouvre la
- * ligne de cette octave, à sa place dans la portée (de l'aigu au grave).
+ * complete.ts). Un clic dans un couloir que ce système du texte n'a pas encore y ouvre sa ligne, à
+ * sa place dans la portée (les octaves de l'aigu au grave, les cordes de la 1 à la plus grave).
+ * Une corde n'a qu'une ligne par système : une note n'y prend pas une case déjà prise.
  */
-import { CENTRAL_OCTAVE, parseOctaveLabel } from "../core/pitch.ts";
-import { findRow, textPlace } from "../core/locate.ts";
+import { CENTRAL_OCTAVE } from "../core/pitch.ts";
+import { MAX_FRET } from "../core/index.ts";
+import { STRING_LANE, findRow, laneOf as laneOfLabel, textPlace } from "../core/locate.ts";
 import { TICKS_PER_BEAT } from "../core/model.ts";
 import type { ScorePlace } from "../core/locate.ts";
 import { isRuler, parseRule } from "../core/prisma-parse.ts";
 import { cases, noteLine, systemOf, writeCase } from "./complete.ts";
 import type { Case, System } from "./complete.ts";
+
+/** Un couloir de corde (et non d'octave). */
+const isString = (lane?: number) => lane !== undefined && lane >= STRING_LANE;
+/** Le numéro qui ouvre la ligne d'un couloir : « +1 », « -2 » pour une octave, « 3 » pour une corde. */
+const laneLabel = (lane: number) => {
+  if (isString(lane)) return String(lane - STRING_LANE);
+  const o = lane - CENTRAL_OCTAVE;
+  return o > 0 ? `+${o}` : String(o);
+};
+/** L'ordre des couloirs dans une portée, de haut en bas : l'octave la plus aiguë, la corde 1 d'abord. */
+const rankOf = (lane: number) => (isString(lane) ? lane : -lane);
 
 const isRule = (line: string) => {
   try {
@@ -59,8 +72,7 @@ export function retouch(text: string, at: ScorePlace, content: string): { text: 
     const sys = systemOf(lines, L);
     if (!sys) return undefined;
     L = insertionLine(lines, sys.ruler, sys.last, at.staff, at.octave);
-    const o = at.octave - CENTRAL_OCTAVE;
-    lines = [...lines.slice(0, L), noteLine(lines[sys.ruler], o > 0 ? `+${o}` : String(o)), ...lines.slice(L)];
+    lines = [...lines.slice(0, L), noteLine(lines[sys.ruler], laneLabel(at.octave)), ...lines.slice(L)];
   }
   const sys = systemOf(lines, L);
   if (!sys) return undefined;
@@ -122,8 +134,8 @@ function clearHolds(lines: string[], L: number, k: number, note: string | undefi
 }
 
 /**
- * Où ouvrir la ligne d'une octave dans une portée : après les lignes des octaves plus aiguës (et
- * leurs lignes sans numéro), avant celles des plus graves et les lignes @.
+ * Où ouvrir la ligne d'un couloir dans une portée : après les lignes des couloirs d'au-dessus (et
+ * leurs lignes sans numéro), avant celles d'en dessous et les lignes @.
  */
 function insertionLine(lines: string[], R: number, last: number, staff: number, octave: number) {
   let s = -1;
@@ -145,10 +157,10 @@ function insertionLine(lines: string[], R: number, last: number, staff: number, 
     if (s !== staff) continue;
     if (l.startsWith("@")) return at;
     if (isRuler(l) || l.startsWith("#") || !l.includes("|")) continue;
-    const label = parseOctaveLabel(l.slice(0, l.indexOf("|")).trim());
+    const label = laneOfLabel(l.slice(0, l.indexOf("|")).trim());
     if (label !== undefined) current = label;
-    // une ligne d'une octave plus aiguë : la nouvelle ligne vient après elle
-    if (current !== undefined && current > octave) at = k + 1;
+    // une ligne d'un couloir d'au-dessus : la nouvelle ligne vient après elle
+    if (current !== undefined && rankOf(current) < rankOf(octave)) at = k + 1;
     else return at;
   }
   return at >= 0 ? at : last + 1;
@@ -296,9 +308,10 @@ export function durationOf(text: string, at: ScorePlace) {
   const c = casesAt(lines, start.L)!;
   const place = textPlace(text, start.L + 1, c.all[start.k].start + 1);
   const attack: ScorePlace = { t: place?.t ?? at.t, staff: at.staff, octave: at.octave, content: cellAt(lines, start).startsWith("-") ? cellAt(lines, start) : n.note };
-  // elle peut toujours s'allonger, sauf au bout du morceau (une case prise la fait changer de ligne)
+  // elle peut toujours s'allonger, sauf au bout du morceau (une case prise la fait changer de
+  // ligne) ; sur une corde, seulement si la case d'après est libre
   const here = casesAt(lines, end.L)!;
-  const longer = end.k + 1 < here.all.length || !!nextSystem(lines, here.sys, 1);
+  const longer = isString(at.octave) ? !!resize(text, attack, 1) : end.k + 1 < here.all.length || !!nextSystem(lines, here.sys, 1);
   return { note: n.note, count: n.chain.length, longer, shorter: n.chain.length > 1, attack };
 }
 
@@ -320,6 +333,7 @@ export function resize(text: string, at: ScorePlace, by: 1 | -1): Done | undefin
     // elle a la place (ou sur une ligne de plus), avec ses cases de ce système, puis s'allonge
     const ks = n.chain.filter((c) => c.L === end.L).map((c) => c.k);
     const free = freeLine(lines, here.sys, lane.staff, lane.octave, [...ks, next.k], end.L);
+    if (!free) return undefined;
     lines = free.lines;
     const from = end.L;
     for (const k of ks) {
@@ -336,19 +350,21 @@ export function resize(text: string, at: ScorePlace, by: 1 | -1): Done | undefin
   const ns = nextSystem(lines, here.sys, 1);
   if (!ns) return undefined;
   const free = freeLine(lines, ns, lane.staff, lane.octave, [0]);
+  if (!free) return undefined;
   const to = { L: free.L, k: 0 };
   return done(write(free.lines, to, "-" + n.note), to);
 }
 
 /**
- * Une ligne d'une octave d'un système dont les cases ks sont libres (autre que la ligne except) ;
- * sans elle, une ligne de plus, ouverte sous les lignes de l'octave (ou à sa place dans la portée
- * quand le système n'a pas encore cette octave).
+ * Une ligne d'un couloir d'un système dont les cases ks sont libres (autre que la ligne except) ;
+ * sans elle, une ligne de plus, ouverte sous les lignes du couloir (ou à sa place dans la portée
+ * quand le système n'a pas encore ce couloir). Rien pour une corde dont la ligne a ces cases prises.
  */
 function freeLine(lines: string[], sys: System, staff: number, octave: number | undefined, ks: number[], except?: number) {
   const rows = laneLines(lines, sys, staff, octave);
   const L = rows.find((L) => L !== except && ks.every((k) => !cellAt(lines, { L, k })));
   if (L !== undefined) return { lines, L };
+  if (rows.length && isString(octave)) return undefined;
   const ruler = lines[sys.ruler];
   let at: number;
   let label = "";
@@ -356,8 +372,7 @@ function freeLine(lines: string[], sys: System, staff: number, octave: number | 
   else {
     if (octave === undefined) return { lines, L: sys.ruler + 1 };
     at = insertionLine(lines, sys.ruler, sys.last, staff, octave);
-    const o = octave - CENTRAL_OCTAVE;
-    label = o > 0 ? `+${o}` : String(o);
+    label = laneLabel(octave);
   }
   return { lines: [...lines.slice(0, at), noteLine(ruler, label), ...lines.slice(at)], L: at };
 }
@@ -471,12 +486,95 @@ const LOWEST = CENTRAL_OCTAVE - 4, HIGHEST = CENTRAL_OCTAVE + 4;
  * plus ouverte à sa place dans la portée. Rien au-delà des octaves du clavier.
  */
 export function moveOctave(text: string, at: ScorePlace, dir: 1 | -1): (Done & { octave: number }) | undefined {
+  if (at.octave === undefined || isString(at.octave)) return undefined;
+  const target = at.octave + dir;
+  if (target < LOWEST || target > HIGHEST) return undefined;
+  return moveLane(text, at, target, (c) => c);
+}
+
+/**
+ * Place la note d'une case sur une corde, à la case fret (une autre note, ou la même au même son) :
+ * son attaque et ses tenues y passent ; ses petites notes et sa trille gardent leur écart, celles
+ * qui sortent du manche disparaissent ; le doigté reste. Comme sur l'instrument, la note coupe
+ * celle qui sonnait encore sur cette corde, et s'arrête où la corde attaque une autre note. Une
+ * case vide écrit simplement la case sur cette corde. Rien si la corde attaque déjà une note au
+ * même instant.
+ */
+export function placeOnString(text: string, at: ScorePlace, string: number, fret: number): (Done & { octave: number }) | undefined {
+  if (!isString(at.octave)) return undefined;
+  const target = STRING_LANE + string;
+  const cell = cellOf(text, at);
+  const duration = cell?.content ? durationOf(text, at) : undefined;
+  const start = duration?.attack ?? at;
+  const there = { t: start.t, staff: at.staff, octave: target };
+  if (target !== at.octave && attacks(text, there)) return undefined;
+  if (!duration) {
+    const r = retouch(text, { ...there, content: cellOf(text, there)?.exact ? cellOf(text, there)!.content : "" }, String(fret));
+    return r && { ...r, octave: target };
+  }
+  const shift = fret - Number(duration.note);
+  const recount = (c: string) => {
+    const [head, finger] = c.split("_");
+    const parts = splitCell(head);
+    const fits = (x: string) => Number(x) + shift >= 0 && Number(x) + shift <= MAX_FRET;
+    const out = parts
+      ? joinCell({ graces: parts.graces.filter(fits).map((g) => String(Number(g) + shift)), note: String(fret), ...(parts.trill && fits(parts.trill) ? { trill: String(Number(parts.trill) + shift) } : {}) })
+      : head.replace(/\d+/, String(fret)); // une tenue nommée (« -5 ») nomme sa nouvelle case
+    return finger === undefined ? out : out + "_" + finger;
+  };
+  let lines = text.split("\n");
+  const chain = noteAt(lines, posOf(text, start)!)!.chain;
+  // la même corde : la note change de case sur place, avec ses tenues
+  if (target === at.octave) {
+    for (const c of chain) lines = write(lines, c, recount(cellAt(lines, c)));
+    return { ...done(lines, chain[0]), octave: target };
+  }
+  // les cases de la note, par instant : vidées sur sa corde, puis écrites sur l'autre
+  const cells = chain.map((c) => {
+    const k = casesAt(lines, c.L)!.all[c.k];
+    return { t: textPlace(text, c.L + 1, k.start + 1)!.t, content: recount(cellAt(lines, c)) };
+  });
+  for (const c of chain) lines = write(lines, c, "");
+  let out = lines.join("\n");
+  let first: Done | undefined;
+  for (const [i, c] of cells.entries()) {
+    const here = { t: c.t, staff: at.staff, octave: target };
+    // une autre note attaquée sur cette corde : la note s'arrête là
+    if (i > 0 && attacks(out, here)) break;
+    const now = cellOf(out, here);
+    const r = retouch(out, { ...here, content: now?.exact ? now.content : "" }, c.content);
+    if (!r) return undefined;
+    out = r.text;
+    first ??= r;
+  }
+  // la ligne que la note a laissée vide disparaît, système par système (du dernier au premier)
+  lines = out.split("\n");
+  for (const c of [...cells].reverse()) {
+    const r = findRow(lines.join("\n"), { t: c.t, staff: at.staff, octave: at.octave });
+    if (r && r.octave === at.octave) lines = dropIfEmpty(lines, r.line - 1);
+  }
+  const back = findRow(lines.join("\n"), { ...there, content: cells[0].content });
+  return { text: lines.join("\n"), line: back?.line ?? first!.line, column: back?.column ?? first!.column, octave: target };
+}
+
+/** Si une corde (un couloir) attaque une note à un instant : sa case y porte une note, et non une tenue. */
+function attacks(text: string, at: ScorePlace) {
+  const c = cellOf(text, at);
+  return !!c?.exact && !!c.content && !c.content.startsWith("-");
+}
+
+/** Si la note (ou la case vide) d'une case peut passer sur chaque corde : une par corde, de la 1 à la plus grave. */
+export function freeStrings(text: string, at: ScorePlace, count: number): boolean[] {
+  const start = (cellOf(text, at)?.content && durationOf(text, at)?.attack) || at;
+  return Array.from({ length: count }, (_, k) => STRING_LANE + k + 1 === at.octave || !attacks(text, { t: start.t, staff: at.staff, octave: STRING_LANE + k + 1 }));
+}
+
+/** Fait passer une note (son attaque et ses tenues) dans le couloir target, chaque case réécrite par change. */
+function moveLane(text: string, at: ScorePlace, target: number, change: (cell: string) => string): (Done & { octave: number }) | undefined {
   let lines = text.split("\n");
   const p = posOf(text, at);
   const n = p && noteAt(lines, p);
-  if (!n || at.octave === undefined) return undefined;
-  const target = at.octave + dir;
-  if (target < LOWEST || target > HIGHEST) return undefined;
+  if (!n) return undefined;
   const lane = laneOf(lines, n.chain[0].L);
   if (!lane) return undefined;
   // les cases de la note, système par système (une ligne par système), du dernier au premier :
@@ -495,13 +593,14 @@ export function moveOctave(text: string, at: ScorePlace, dir: 1 | -1): (Done & {
     const ks = g.map((c) => c.k);
     const count = lines.length;
     const free = freeLine(lines, sys, lane.staff, target, ks);
+    if (!free) return undefined;
     lines = free.lines;
     // une ligne ouverte au-dessus de la note la décale d'une ligne
     if (lines.length > count && free.L <= from) from++;
     for (const k of ks) {
       const content = cellAt(lines, { L: from, k });
       lines = write(lines, { L: from, k }, "");
-      lines = write(lines, { L: free.L, k }, content);
+      lines = write(lines, { L: free.L, k }, change(content));
     }
     let to = free.L;
     const dropped = dropIfEmpty(lines, from);

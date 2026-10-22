@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { exportMusicXml, importMusicXml, inspect, parsePrisma, writePrisma } from "../src/core/index.ts";
+import { convertToStrings, exportMusicXml, importMusicXml, inspect, parsePrisma, writePrisma } from "../src/core/index.ts";
+import type { Note } from "../src/core/index.ts";
 
 /** Un morceau d'une partie de guitare (ou d'une autre partie déclarée), ses lignes sous la règle. */
 const piece = (parts: string, lines: string[], ruler = "m1 |1  *  |2  *  |3  *  |4  *  ||") => {
@@ -138,5 +139,68 @@ ${note(1, "F", 4)}${note(1, "B", 2)}<backup><duration>2</duration></backup>${not
     expect(at(11, 1).symbol?.meaning).toBe("corde 5 : la1 à vide");
     expect(at(10, 8).symbol?.meaning).toContain("case 2 : mi2");
     expect(at(10, 8).string).toBe(4);
+  });
+
+  describe("conversion", () => {
+    const DUO = `---
+parts: Piano, Chant
+---
+
+m1 |1  |2  |3  |4  ||
+───┼─ Piano ─┼───┼┼
+0  |5  |8  |12 |-  ||
+───┼───┼───┼───┼───┼┼
+-1 |1  |-  |8  |-  ||
+@   Ped.        *
+═══╪═ Chant ═╪═══╪╪
+0  |5  |6  |8  |   ||
+`;
+    // deux notes qui sonnent ensemble ne partagent jamais une corde
+    const apart = (notes: Note[]) => notes.every((a) => notes.every((b) => a === b || a.string !== b.string || a.end <= b.start || b.end <= a.start));
+
+    it("réunit les portées d'une partie en une partie de guitare, sur des cordes", () => {
+      const { score, report } = convertToStrings(parsePrisma(DUO), 0, { instrument: "guitar", octave: 0 });
+      expect(score.parts).toMatchObject([{ name: "Guitare", staves: 1, strings: { tuning: "standard", capo: 0 } }, { name: "Chant", staves: 1 }]);
+      const guitar = score.notes.filter((n) => n.staff === 0);
+      expect(guitar.map((n) => n.midi).sort()).toEqual([48, 55, 64, 67, 71]);
+      expect(guitar.every((n) => n.string !== undefined)).toBe(true);
+      expect(apart(guitar)).toBe(true);
+      // le chant remonte d'une portée ; la pédale du piano disparaît
+      expect(score.notes.filter((n) => n.staff === 1).map((n) => n.midi)).toEqual([64, 65, 67]);
+      expect(score.pedals).toEqual([]);
+      expect(report).toEqual({ octave: 0, moved: 0, dropped: 0, notes: 5 });
+      // le texte converti se relit tel quel
+      const text = writePrisma(score);
+      expect(writePrisma(parsePrisma(text))).toBe(text);
+    });
+
+    it("rend jouable : octave voisine, unissons réunis, accords réduits à leur aigu et leur basse", () => {
+      const s = parsePrisma(DUO);
+      const at = (midi: number, staff = 0): Note => ({ staff, midi, start: 4 * 2880, end: 5 * 2880 });
+      // un do grave hors de la guitare, et un accord de sept notes dont un unisson entre les mains
+      s.beats.push(...[4, 5, 6, 7].map((i) => ({ ...s.beats[i % 4], barIndex: 1, bar: "2", label: (i % 4) + 1 })));
+      s.notes.push(at(24, 1), ...[48, 52, 55, 60, 64, 67, 72].map((m) => at(m)), at(60, 1));
+      const { score, report } = convertToStrings(s, 0, { instrument: "guitar", octave: 0 });
+      const chord = score.notes.filter((n) => n.staff === 0 && n.start === 4 * 2880).map((n) => n.midi);
+      expect(chord.length).toBeLessThanOrEqual(6);
+      expect(chord).toContain(72);
+      expect(chord).toContain(48);
+      expect(Math.min(...chord)).toBe(48);
+      expect(report.moved).toBe(1);
+      expect(report.dropped).toBeGreaterThanOrEqual(2);
+      expect(apart(score.notes.filter((n) => n.staff === 0))).toBe(true);
+    });
+
+    it("choisit l'octave : telle quelle ou, comme l'écriture de la guitare, une octave plus bas", () => {
+      const s = parsePrisma(DUO);
+      const low = convertToStrings(s, 0, { instrument: "guitar", octave: -1 });
+      expect(low.score.notes.filter((n) => n.staff === 0).map((n) => n.midi).sort()).toEqual([43, 48, 52, 55, 59]);
+      // le do2 descendu sous le mi grave remonte : une note déplacée
+      expect(low.report).toMatchObject({ octave: -1, moved: 1 });
+      expect([0, -1]).toContain(convertToStrings(s, 0, { instrument: "guitar" }).report.octave);
+      const bass = convertToStrings(s, 0, { instrument: "electric-bass", octave: 0 });
+      expect(bass.score.parts[0]).toMatchObject({ name: "Basse", instrument: "electric-bass" });
+      expect(bass.score.parts[0].strings!.open).toHaveLength(4);
+    });
   });
 });
