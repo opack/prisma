@@ -362,3 +362,21 @@ button:disabled { opacity: .5; cursor: default; }
 .engrave > button.more { width: 22px; padding: 0; border-radius: 0 6px 6px 0; border-left: 1px solid rgba(255, 255, 255, 0.35); }
 .engrave > button:hover:not(:disabled) { filter: brightness(1.12); }
 .engrave .popover { top: auto; bottom: calc(100% + 8px); }
+
+/* les options de l'export : une fenêtre au centre, un choix par carte */
+.export-dialog { width: min(460px, calc(100% - 32px)); padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18); }
+.export-dialog::backdrop { background: rgba(27, 29, 31, 0.32); }
+.export-dialog form { display: grid; gap: 14px; padding: 18px 20px 16px; }
+.export-dialog h2 { margin: 0; font-size: 1.05rem; }
+.export-dialog fieldset { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; }
+.export-dialog legend { margin-bottom: 6px; padding: 0; font-weight: 600; }
+.export-choice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: #fff; cursor: pointer; }
+.export-choice.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, #fff); }
+.export-choice input { margin: 3px 0 0; accent-color: var(--accent); }
+.export-choice-label { display: block; font-weight: 600; }
+.export-choice-hint { display: block; margin-top: 2px; color: var(--muted); font-size: 0.92em; line-height: 1.35; }
+.export-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.export-actions .primary { border-color: var(--accent); background: var(--accent); color: #fff; }
+.export-actions .primary:hover { background: color-mix(in srgb, var(--accent) 85%, #000); }
+.export-check { display: flex; gap: 8px; align-items: center; margin: 2px 0 0 12px; cursor: pointer; }
+.export-check input { margin: 0; accent-color: var(--accent); }

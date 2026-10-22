@@ -81,6 +81,29 @@ m3 |1  |2  |3  |4  ||
     expect(writePrisma(again(score))).toBe(writePrisma(score));
   });
 
+  it("écrit en option un ordre de jeu en reprises et en cases, que l'import relit", () => {
+    const section = (label: string, bar: number, note: number) => `@  [${label}]\nm${bar} |1  |2  ||\n0  |${String(note).padEnd(3)}|-  ||\n`;
+    const text = `---\nkey: 1\norder: A A B C B D E\n---\n\n${section("A", 1, 1)}\n${section("B", 2, 3)}\n${section("C", 3, 5)}\n${section("D", 4, 6)}\n${section("E", 5, 8)}`;
+    const score = parsePrisma(text);
+    const xml = exportMusicXml(score, { repeats: "traditional" });
+    // A reprise ; B, puis C en case 1, B à nouveau, D en case 2 ; E à la suite : chaque section écrite une fois
+    expect(xml.match(/<measure /g)).toHaveLength(5);
+    expect(xml.match(/<repeat direction="forward"\/>/g)).toHaveLength(2);
+    expect(xml).toContain('<ending number="1" type="start">1.</ending>');
+    expect(xml).toContain('<ending number="2" type="discontinue"/>');
+    // relu comme l'export des sections (où A A devient, à l'import, une reprise de A)
+    expect(writePrisma(importMusicXml(xml))).toBe(writePrisma(again(score)));
+    // un ordre qui ne se ramène pas à des reprises se déroule
+    const free = parsePrisma(text.replace("order: A A B C B D E", "order: A B C A D E"));
+    expect(exportMusicXml(free, { repeats: "traditional" }).match(/<measure /g)).toHaveLength(6);
+    expect(writePrisma(importMusicXml(exportMusicXml(free, { repeats: "traditional" })))).toBe(writePrisma(again(free)));
+    // sans les lettres des sections, en option
+    expect(xml).toContain("<rehearsal>A</rehearsal>");
+    expect(exportMusicXml(score, { repeats: "traditional", letters: false })).not.toContain("<rehearsal>");
+    // par défaut, les sections de Prisma, déroulées
+    expect(exportMusicXml(score).match(/<measure /g)).toHaveLength(7);
+  });
+
   it("lie les deux portées d'une partie sans confondre leurs liaisons", () => {
     const score = parsePrisma(`m1 |1  |2  |3  |4  ||
 0  |1  |3  |5  |6  ||

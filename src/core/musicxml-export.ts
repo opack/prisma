@@ -147,17 +147,95 @@ function timeOf(bar: Bar, full: number) {
   return bar.compound ? { beats: full * 3, type: 8 } : { beats: full, type: 4 };
 }
 
-/** L'ordre des mesures à écrire : déroulé selon l'ordre de jeu, ou tel quel (les reprises en barres). */
-function barOrder(score: Score, bars: Bar[]): number[] {
-  if (!score.order.length) return bars.map((_, i) => i);
+/**
+ * Les options de l'export. repeats : un ordre de jeu s'écrit déroulé, ses sections à la suite,
+ * comme Prisma l'affiche (« sections ») ; ou, quand c'est possible, en reprises et en cases, comme
+ * une partition classique (« traditional ») : une suite de sections jouée plusieurs fois de suite
+ * devient une reprise, une section reprise avec des fins différentes (A B A C) une reprise avec
+ * des cases 1 et 2. Le reste de l'ordre se déroule. letters : en reprises, la lettre de chaque
+ * section (A, B…) s'écrit aussi, en repère, au début de la section (par défaut) ; déroulé, elle
+ * s'écrit toujours, l'import s'en sert pour retrouver les sections.
+ */
+export type ExportOptions = { repeats?: "sections" | "traditional"; letters?: boolean };
+
+/**
+ * Une mesure à écrire : la mesure de Prisma (bi, son rang dans bars), la lettre de sa section, et
+ * ses barres : début de reprise, fin de reprise (et le nombre de passages), début et fin d'une case.
+ */
+type Written = { bi: number; marker?: string; forward?: boolean; backward?: number; ending?: number; endingStart?: boolean; endingStop?: "stop" | "discontinue" };
+
+/** Les mesures à écrire, dans l'ordre. */
+function writtenBars(score: Score, bars: Bar[], options: ExportOptions): Written[] {
+  // les reprises écrites dans Prisma, sur leurs mesures
+  const plain = (bi: number): Written => {
+    const r = score.repeats.find((x) => x.barIndex === bars[bi].index);
+    return { bi, ...(r?.start ? { forward: true } : {}), ...(r?.end ? { backward: r.times ?? 2 } : {}) };
+  };
+  if (!score.order.length) return bars.map((_, i) => plain(i));
   const starts = score.markers.map((m) => ({ ...m, at: bars.findIndex((b) => b.index === m.barIndex) }));
-  const out: number[] = [];
-  for (const label of score.order) {
+  const span = (label: string) => {
     const m = starts.find((x) => x.label === label);
-    if (!m) continue;
+    if (!m) return [];
     const next = starts.filter((x) => x.at > m.at).sort((a, b) => a.at - b.at)[0];
-    const end = next ? next.at : bars.length;
-    for (let i = m.at; i < end; i++) out.push(i);
+    return Array.from({ length: (next ? next.at : bars.length) - m.at }, (_, k) => m.at + k);
+  };
+  // une section qui a ses propres reprises ne s'emboîte pas dans une autre
+  const repeated = (label: string) => span(label).some((bi) => score.repeats.some((r) => r.barIndex === bars[bi].index));
+  const section = (label: string) => span(label).map((bi, k) => ({ ...plain(bi), ...(k === 0 ? { marker: label } : {}) }));
+  const order = score.order;
+  const out: Written[] = [];
+  for (let i = 0; i < order.length; ) {
+    if (options.repeats === "traditional") {
+      // une suite de sections jouée plusieurs fois de suite (la plus courte d'abord) : une reprise
+      let done = false;
+      for (let len = 1; len <= 3 && !done; len++) {
+        const block = order.slice(i, i + len);
+        if (block.length < len || block.some(repeated)) continue;
+        let times = 1;
+        while (order.slice(i + times * len, i + (times + 1) * len).join(" ") === block.join(" ")) times++;
+        if (times < 2) continue;
+        const written = block.flatMap(section);
+        if (!written.length) continue;
+        written[0].forward = true;
+        written[written.length - 1].backward = times;
+        out.push(...written);
+        i += times * len;
+        done = true;
+      }
+      if (done) continue;
+      // une section reprise avec des fins différentes : X E1 X E2 (X E3…), en cases 1, 2…
+      const x = order[i];
+      let k = 0;
+      while (order[i + 2 * k] === x && order[i + 2 * k + 1] !== undefined && order[i + 2 * k + 1] !== x) k++;
+      const ends = Array.from({ length: k }, (_, e) => order[i + 2 * e + 1]);
+      // les cases qui reprennent ne s'emboîtent pas ; la dernière, qui ne reprend pas, le peut
+      if (k >= 2 && !repeated(x) && !ends.slice(0, -1).some(repeated)) {
+        const head = section(x);
+        if (head.length) {
+          head[0].forward = true;
+          out.push(...head);
+          for (let e = 0; e < k; e++) {
+            const end = section(ends[e]);
+            if (!end.length) continue;
+            end[0].ending = e + 1;
+            end[0].endingStart = true;
+            // la dernière case s'arrête où commence une reprise de sa section : la suite n'est plus une fin
+            const inner = e < k - 1 ? -1 : end.findIndex((x, j) => j > 0 && x.forward);
+            const last = end[(inner > 0 ? inner : end.length) - 1];
+            last.ending = e + 1;
+            if (e < k - 1) {
+              last.endingStop = "stop";
+              last.backward = 2;
+            } else last.endingStop = "discontinue";
+            out.push(...end);
+          }
+          i += 2 * k;
+          continue;
+        }
+      }
+    }
+    out.push(...section(order[i]));
+    i++;
   }
   return out;
 }
@@ -202,14 +280,14 @@ type Ctx = {
 };
 
 /** Un morceau en MusicXML. */
-export function exportMusicXml(score: Score): string {
+export function exportMusicXml(score: Score, options: ExportOptions = {}): string {
   const key = (score.meta.key ? parseKey(score.meta.key) : undefined) ?? guessKey(score) ?? { tonic: 1, minor: false };
   const fifths = fifthsOf(key);
   const bars = barsOf(score);
   const voices = new Map([...new Set(score.notes.map((n) => n.staff))].map((s) => [s, voicesOf(score.notes.filter((n) => n.staff === s))]));
   const firstStaff = firstStaves(score.parts);
   const ctx: Ctx = { score, fifths, bars, firstStaff, voices, slurMarks: slurMarks(score, voices, firstStaff, bars) };
-  const order = barOrder(score, bars);
+  const order = writtenBars(score, bars, options);
   const fullBeats = Math.max(1, ...bars.filter((b) => !b.implicit).map((b) => b.beats));
 
   const out: string[] = [];
@@ -243,14 +321,17 @@ export function exportMusicXml(score: Score): string {
     const clefs = strs ? [] : staves.map((s) => clefOf(score.notes.filter((n) => n.staff === s)));
     out.push(`  <part id="P${p + 1}">`);
     let lastTime = "";
-    order.forEach((bi, k) => {
-      const bar = bars[bi];
+    order.forEach((w, k) => {
+      const bar = bars[w.bi];
       // déroulé, les mesures se numérotent à la suite, à partir du numéro de la première
       const number = score.order.length ? String((Number(bars[0].number) || 0) + k) : bar.number;
       // une anacrouse numérotée 0 est hors décompte ; numérotée 1, elle compte
       out.push(`    <measure number="${esc(number)}"${bar.implicit && k === 0 && bar.number === "0" ? ' implicit="yes"' : ""}>`);
-      const repeat = score.repeats.find((r) => r.barIndex === bar.index);
-      if (repeat?.start) out.push('      <barline location="left"><bar-style>heavy-light</bar-style><repeat direction="forward"/></barline>');
+      // à gauche : le début d'une reprise, d'une case
+      if (w.forward || w.endingStart) {
+        const ending = w.endingStart ? `<ending number="${w.ending}" type="start">${w.ending}.</ending>` : "";
+        out.push(`      <barline location="left">${w.forward ? "<bar-style>heavy-light</bar-style>" : ""}${ending}${w.forward ? '<repeat direction="forward"/>' : ""}</barline>`);
+      }
       const time = timeOf(bar, bar.implicit ? fullBeats : bar.beats);
       const timeText = `${time.beats}/${time.type}`;
       if (k === 0 || timeText !== lastTime) {
@@ -275,11 +356,13 @@ export function exportMusicXml(score: Score): string {
           `      <direction placement="above"><direction-type><metronome><beat-unit>quarter</beat-unit>${bar.compound ? "<beat-unit-dot/>" : ""}<per-minute>${score.meta.bpm}</per-minute></metronome></direction-type><sound tempo="${+(score.meta.bpm * quarters).toFixed(2)}"/></direction>`,
         );
       }
-      const marker = p === 0 ? score.markers.find((m) => m.barIndex === bar.index) : undefined;
-      if (marker) out.push(`      <direction placement="above"><direction-type><rehearsal>${marker.label}</rehearsal></direction-type></direction>`);
+      if (p === 0 && w.marker && (options.repeats !== "traditional" || options.letters !== false)) out.push(`      <direction placement="above"><direction-type><rehearsal>${w.marker}</rehearsal></direction-type></direction>`);
       out.push(...measureBody(ctx, p, staves, voices, bar, !!strs));
-      if (repeat?.end) out.push(`      <barline location="right"><bar-style>light-heavy</bar-style><repeat direction="backward"${(repeat.times ?? 2) !== 2 ? ` times="${repeat.times}"` : ""}/></barline>`);
-      else if (k === order.length - 1) out.push('      <barline location="right"><bar-style>light-heavy</bar-style></barline>');
+      // à droite : la fin d'une case, d'une reprise, du morceau
+      const final = k === order.length - 1;
+      const ending = w.endingStop ? `<ending number="${w.ending}" type="${w.endingStop}"/>` : "";
+      const backward = w.backward !== undefined ? `<repeat direction="backward"${w.backward !== 2 ? ` times="${w.backward}"` : ""}/>` : "";
+      if (backward || final || ending) out.push(`      <barline location="right">${backward || final ? "<bar-style>light-heavy</bar-style>" : ""}${ending}${backward}</barline>`);
       out.push("    </measure>");
     });
     out.push("  </part>");

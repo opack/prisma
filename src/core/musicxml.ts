@@ -510,8 +510,10 @@ function readMeasures(partNode: XNode, base: Staff, staves: number, tab?: number
 function foldRehearsals(ms: RawMeasure[]): { measures: RawMeasure[]; kept: number[] } | undefined {
   const starts = ms.flatMap((m, i) => (i === 0 || m.rehearsal ? [i] : []));
   const spans = starts.map((from, k) => ({ label: ms[from].rehearsal, bars: ms.slice(from, starts[k + 1] ?? ms.length) }));
-  // le contenu d'une mesure, hors numéros (de mesure, de liaison, de soufflet)
-  const content = (m: RawMeasure) => JSON.stringify(m, (k, v) => (k === "number" || k === "rehearsal" || k === "implicit" ? undefined : v));
+  // le contenu d'une mesure, hors numéros (de mesure, de liaison, de soufflet) et barres de reprise :
+  // une partie reprise une fois, et écrite à nouveau plus loin, reste la même partie
+  const BARS = new Set(["number", "rehearsal", "implicit", "startRepeat", "endRepeat", "times", "endings"]);
+  const content = (m: RawMeasure) => JSON.stringify(m, (k, v) => (BARS.has(k) ? undefined : v));
   const measures: RawMeasure[] = [];
   const kept: number[] = []; // la mesure gardée pour chaque mesure du fichier
   const first = new Map<string, { at: number; bars: string[] }>();

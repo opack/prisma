@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_WIDTH, PrismaError, exportMusicXml, importMusicXml, parsePrisma, writePrisma } from "../core/index.ts";
-import type { Score } from "../core/index.ts";
+import type { ExportOptions, Score } from "../core/index.ts";
+import { ExportDialog } from "./ExportDialog.tsx";
 import { Menu } from "./Menu.tsx";
 import { ListenControls } from "./ListenControls.tsx";
 import { EngraveButton } from "./EngraveButton.tsx";
@@ -394,10 +395,13 @@ export function App() {
   }, [handle, fileName, source, saveDir]);
 
   /** Exporte le texte, tel qu'il est, en MusicXML : un fichier à part, le .prisma ne change pas. */
-  const exportFile = useCallback(async () => {
+  // l'export demande d'abord ses options
+  const [exporting, setExporting] = useState(false);
+  const exportFile = useCallback(async (options: ExportOptions) => {
+    setExporting(false);
     let xml: string;
     try {
-      xml = exportMusicXml(parsePrisma(source));
+      xml = exportMusicXml(parsePrisma(source), options);
     } catch (e) {
       setNotice(`Export impossible : ${(e as Error).message}`);
       return;
@@ -812,7 +816,7 @@ export function App() {
             "separator",
             { label: "Enregistrer", onSelect: () => saveFile(), shortcut: "Ctrl+S" },
             { label: "Enregistrer sous…", onSelect: () => saveFile(true), shortcut: "Ctrl+Maj+S" },
-            { label: "Exporter en MusicXML…", onSelect: exportFile },
+            { label: "Exporter en MusicXML…", onSelect: () => setExporting(true) },
             "separator",
             { label: "Recharger", onSelect: reloadFile, disabled: !handle },
             "separator",
@@ -908,6 +912,7 @@ export function App() {
         </main>
       )}
       {showLibrary && <LibraryView options={general} onOpen={openEntry} onClose={() => setShowLibrary(false)} />}
+      {exporting && <ExportDialog onExport={exportFile} onClose={() => setExporting(false)} />}
       <main
         ref={split}
         className={"split" + (reading ? " reading" : "") + ` fit-${view.fit}` + (view.zoom > 1 ? " zoomed" : "")}

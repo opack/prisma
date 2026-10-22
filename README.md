@@ -26,7 +26,7 @@ L'outil en ligne de commande :
 
 ```sh
 npm run prisma -- import morceau.musicxml -o morceau.prisma   # MusicXML → .prisma
-npm run prisma -- export morceau.prisma -o morceau.musicxml   # .prisma → MusicXML
+npm run prisma -- export morceau.prisma -o morceau.musicxml   # .prisma → MusicXML (--reprises : en reprises et en cases)
 npm run prisma -- format morceau.prisma -o propre.prisma      # remet en page (--largeur 96 par défaut)
 npm run prisma -- check morceau.prisma                        # signale la première erreur, ligne et colonne
 ```
@@ -91,7 +91,7 @@ Un MusicXML « score-partwise » devient un `Score`, que `writePrisma` écrit au
 
 ### L'export MusicXML (`core/musicxml-export.ts`)
 
-Le chemin inverse, pour ouvrir un morceau dans MuseScore ou un autre logiciel (Fichier › Exporter en MusicXML…, ou l'outil en ligne de commande). La partition classique demande ce que Prisma a retiré, et l'export le reconstitue : le nom des notes et l'armure d'après la tonalité (`key`, ou celle que les notes font deviner) ; les figures de durée, une note qui passe une barre ou qu'aucune figure ne rend devenant des notes liées, un temps coupé en 3 (5, 6, 7) un triolet (un quintolet…) ; les voix, des notes de même début et même fin formant un accord ; la clé de chaque portée, d'après ses notes ; une partie de guitare ou de basse, en partition et en tablature (une portée en clé `TAB`, avec son accordage, son capo, la corde et la case de chaque note). Les reprises s'écrivent en barres de reprise. Un ordre de jeu, que MusicXML ne sait pas dire, est déroulé, chaque section marquée de sa lettre (un repère de répétition) : à l'import, une section dont le repère revient avec les mêmes mesures n'est gardée qu'une fois, et l'on retrouve sections et ordre. Le fichier suit le schéma MusicXML 4.0.
+Le chemin inverse, pour ouvrir un morceau dans MuseScore ou un autre logiciel (Fichier › Exporter en MusicXML…, ou l'outil en ligne de commande). La partition classique demande ce que Prisma a retiré, et l'export le reconstitue : le nom des notes et l'armure d'après la tonalité (`key`, ou celle que les notes font deviner) ; les figures de durée, une note qui passe une barre ou qu'aucune figure ne rend devenant des notes liées, un temps coupé en 3 (5, 6, 7) un triolet (un quintolet…) ; les voix, des notes de même début et même fin formant un accord ; la clé de chaque portée, d'après ses notes ; une partie de guitare ou de basse, en partition et en tablature (une portée en clé `TAB`, avec son accordage, son capo, la corde et la case de chaque note). Les reprises s'écrivent en barres de reprise. Un ordre de jeu, que MusicXML ne sait pas dire, est déroulé, chaque section marquée de sa lettre (un repère de répétition) ; en option (la fenêtre de l'export, ou `--reprises`), il s'écrit quand c'est possible en reprises et en cases 1 et 2, comme une partition classique (avec ou sans la lettre de chaque section), et se déroule pour le reste. Dans les deux cas, l'import retrouve l'ordre : une section dont le repère revient avec les mêmes mesures n'est gardée qu'une fois, et l'on retrouve sections et ordre. Le fichier suit le schéma MusicXML 4.0.
 
 ## L'application (`src/app/`)
 
