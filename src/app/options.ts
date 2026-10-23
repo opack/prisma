@@ -121,10 +121,10 @@ export const SIMILE_DISPLAYS: { value: SimileDisplay; label: string }[] = [
   { value: "text", label: "Mention seule" },
 ];
 
-export const CLICK_GRIDS: { value: ClickGrid; label: string }[] = [
-  { value: "cells", label: "Cases écrites" },
-  { value: "attacks", label: "Attaques" },
-  { value: "beats", label: "Temps et divisions" },
+export const CLICK_GRIDS: { value: ClickGrid; label: string; hint: string }[] = [
+  { value: "cells", label: "Cases écrites", hint: "un coup par case écrite : il fait entendre quand jouer" },
+  { value: "attacks", label: "Attaques", hint: "seulement là où une note commence : ni les tenues, ni les silences" },
+  { value: "beats", label: "Temps et divisions", hint: "une grille régulière, quelles que soient les cases écrites" },
 ];
 
 export const DENSITIES: { value: Density; label: string }[] = [

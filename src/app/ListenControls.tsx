@@ -7,6 +7,8 @@ import { INSTRUMENTS, PIANO, instrumentLabel, scoreInstrument } from "./instrume
 import { MAX_VOLUME, MIN_VOLUME } from "./piece.ts";
 import { staffNames } from "./staves.ts";
 import { usePopover } from "./popover.ts";
+import { CLICK_GRIDS } from "./options.ts";
+import type { ClickGrid } from "./performance.ts";
 
 const labels = { idle: "Écouter", loading: "Chargement du piano… (cliquer pour annuler)", playing: "Pause", paused: "Reprendre" };
 
@@ -32,6 +34,9 @@ type Props = {
   disabled: boolean;
   metronome: boolean;
   onMetronome: (on: boolean) => void;
+  /** Ce que bat le métronome (l'option « Battre »), et son changement. */
+  clickGrid: ClickGrid;
+  onClickGrid: (grid: ClickGrid) => void;
   /** Les portées muettes (leurs numéros) : on les joue soi-même pendant que l'app joue les autres. */
   muted: number[];
   onMuted: (staves: number[]) => void;
@@ -46,7 +51,7 @@ type Props = {
   onTempo: (bpm: number | null) => void;
 };
 
-export function ListenControls({ score, disabled, metronome, onMetronome, muted, onMuted, instruments, onInstrument, volumes, onVolume, tempo, onTempo }: Props) {
+export function ListenControls({ score, disabled, metronome, onMetronome, clickGrid, onClickGrid, muted, onMuted, instruments, onInstrument, volumes, onVolume, tempo, onTempo }: Props) {
   const { state, error, entry: playing, entries } = useSyncExternalStore(player.subscribe, player.getSnapshot);
   const following = useSyncExternalStore(follow.subscribe, follow.enabled);
   const entry = playing ?? 0;
@@ -130,18 +135,46 @@ export function ListenControls({ score, disabled, metronome, onMetronome, muted,
         </button>
       </span>
       <span className="transport toggles">
-        <button
-          className={metronome ? "on" : undefined}
-          aria-pressed={metronome}
-          onClick={() => onMetronome(!metronome)}
-          title={metronome ? "Métronome : marque les temps" : "Métronome : coupé"}
-          aria-label="Métronome"
-        >
-          <Icon d="M6.2 1.5h3.6L13 14.5H3zM7 4.5l-.9 8h3.8l-.9-8zM8 11.8 12.6 3.6l.9.5-4.4 8z" />
-        </button>
+        <MetronomeMenu metronome={metronome} onMetronome={onMetronome} clickGrid={clickGrid} onClickGrid={onClickGrid} />
         <PartsMenu score={score} muted={muted} onMuted={onMuted} instruments={instruments} onInstrument={onInstrument} volumes={volumes} onVolume={onVolume} />
       </span>
     </>
+  );
+}
+
+/**
+ * Le métronome : un bouton qui l'allume ou le coupe, et sa flèche, qui ouvre le choix de ce qu'il
+ * bat (l'option « Battre », la même que dans les options).
+ */
+type MetronomeProps = { metronome: boolean; onMetronome: (on: boolean) => void; clickGrid: ClickGrid; onClickGrid: (grid: ClickGrid) => void };
+
+function MetronomeMenu({ metronome, onMetronome, clickGrid, onClickGrid }: MetronomeProps) {
+  const { open, setOpen, root } = usePopover<HTMLSpanElement>();
+  return (
+    <span className="toggle-menu" ref={root}>
+      <button className={metronome ? "on" : undefined} aria-pressed={metronome} onClick={() => onMetronome(!metronome)} title={metronome ? "Métronome : marque les temps" : "Métronome : coupé"} aria-label="Métronome">
+        <Icon d="M6.2 1.5h3.6L13 14.5H3zM7 4.5l-.9 8h3.8l-.9-8zM8 11.8 12.6 3.6l.9.5-4.4 8z" />
+      </button>
+      <button className={`more${open ? " open" : ""}`} aria-haspopup="true" aria-expanded={open} onClick={() => setOpen((v) => !v)} title="Ce que bat le métronome" aria-label="Battre">
+        <svg width="8" height="16" viewBox="0 0 8 16" aria-hidden="true">
+          <path d="M1 6.5h6L4 10z" fill="currentColor" />
+        </svg>
+      </button>
+      {open && (
+        <div className="popover metronome-list" role="dialog" aria-label="Battre">
+          <p className="popover-title">Battre</p>
+          {CLICK_GRIDS.map((g) => (
+            <label key={g.value}>
+              <input type="radio" name="click-grid-bar" checked={clickGrid === g.value} onChange={() => onClickGrid(g.value)} />
+              <span>
+                {g.label}
+                <span className="popover-hint">{g.hint}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      )}
+    </span>
   );
 }
 
@@ -177,7 +210,7 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, 
   if (!silent) before.current = muted;
   const music = () => onMuted(silent ? before.current : all);
   return (
-    <span className="parts-menu" ref={root}>
+    <span className="toggle-menu" ref={root}>
       <button className={state} aria-pressed={!silent} onClick={music} disabled={!names.length} title={title} aria-label="Musique">
         <Icon d="M6 2.5 13 1v9.2a2.3 2.3 0 1 1-1.5-2.15V4.1L7.5 5v6.7A2.3 2.3 0 1 1 6 9.55z" />
       </button>

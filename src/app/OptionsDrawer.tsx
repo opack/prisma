@@ -3,7 +3,8 @@ import type { ReactNode } from "react";
 import { octaveTint } from "./colors.ts";
 import type { OctaveColors } from "./colors.ts";
 import { CLICK_SOUNDS } from "./metronome.ts";
-import type { ClickGrid, ClickLevel } from "./performance.ts";
+import type { ClickLevel } from "./performance.ts";
+import { CLICK_GRIDS } from "./options.ts";
 import type { RenderOptions } from "./options.ts";
 import type { PieceKey } from "./piece.ts";
 
@@ -98,11 +99,6 @@ const DENSITIES: Option<RenderOptions["density"]>[] = [
   { value: "compact", label: "Compact", hint: "des cases serrées, pour les partitions chargées" },
 ];
 
-const GRIDS: Option<ClickGrid>[] = [
-  { value: "cells", label: "Cases écrites", hint: "un coup par case écrite : il fait entendre quand jouer" },
-  { value: "attacks", label: "Attaques", hint: "seulement là où une note commence : ni les tenues, ni les silences" },
-  { value: "beats", label: "Temps et divisions", hint: "une grille régulière, quelles que soient les cases écrites" },
-];
 
 const CLICK_LEVELS: { value: ClickLevel; label: string; hint: string }[] = [
   { value: "downbeat", label: "Premier temps", hint: "le 1 de la mesure" },
@@ -459,7 +455,7 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
               <span className="slider-value">{Math.round(options.clickVolume * 100)} %</span>
             </Row>
             <Check id="count-in" label="Décompte" text="Une mesure avant de jouer" checked={options.countIn} onChange={(countIn) => setOptions({ countIn })} hint="au départ et à la reprise, même métronome coupé" />
-            <Choice id="click-grid" label="Battre" value={options.clickGrid} options={GRIDS} onChange={(clickGrid) => setOptions({ clickGrid })} />
+            <Choice id="click-grid" label="Battre" value={options.clickGrid} options={CLICK_GRIDS} onChange={(clickGrid) => setOptions({ clickGrid })} />
             {CLICK_LEVELS.map((l) => {
               const index = CLICK_SOUNDS.findIndex((c) => c.value === options.clickSounds[l.value]);
               return (

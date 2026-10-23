@@ -934,6 +934,8 @@ export function App() {
           disabled={!score || !pages.length}
           metronome={options.metronome}
           onMetronome={(metronome) => setOptions({ metronome })}
+          clickGrid={options.clickGrid}
+          onClickGrid={(clickGrid) => setOptions({ clickGrid })}
           muted={muted}
           onMuted={setMuted}
           instruments={instruments}

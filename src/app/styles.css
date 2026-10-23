@@ -301,11 +301,14 @@ button:disabled { opacity: .5; cursor: default; }
 .drawer .badge { display: inline-block; padding: 0 6px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 14%, #fff); color: var(--accent); font-size: 0.85em; font-weight: 600; white-space: nowrap; }
 .drawer .muted { color: var(--muted); }
 .drawer button.link { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
-/* les parties jouées : le bouton de la musique, sa flèche et la liste à cocher qu'elle ouvre */
-.bar .parts-menu { position: relative; display: flex; }
-.bar .toggles .parts-menu button { border-radius: 0; margin-left: -1px; }
-.bar .toggles .parts-menu button.more { width: 1.4em; border-radius: 0 4px 4px 0; color: var(--muted); }
-.bar .toggles .parts-menu button.more.open, .bar .toggles .parts-menu button.more:hover:not(:disabled) { color: var(--accent); }
+/* le métronome et la musique : leur bouton, et sa flèche, qui ouvre leurs réglages */
+.bar .toggle-menu { position: relative; display: flex; }
+.bar .toggles .toggle-menu button { border-radius: 0; margin-left: -1px; }
+.bar .toggles .toggle-menu button:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
+.bar .toggles .toggle-menu button.more { width: 1.4em; border-radius: 0 4px 4px 0; color: var(--muted); }
+/* un écart entre deux boutons : chaque flèche est à son bouton */
+.bar .toggles .toggle-menu + .toggle-menu { margin-left: 5px; }
+.bar .toggles .toggle-menu button.more.open, .bar .toggles .toggle-menu button.more:hover:not(:disabled) { color: var(--accent); }
 .bar .toggles button.partial { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, #fff) 0 4px, #fff 4px 8px); }
 /* petit panneau ouvert sous un bouton : la liste des parties, les réglages de la gravure */
 .popover { position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; min-width: 240px; padding: 10px 12px; background: #fff; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12); display: grid; gap: 6px; }
@@ -315,6 +318,11 @@ button:disabled { opacity: .5; cursor: default; }
 .bar .popover-actions button { width: auto; padding: 3px 10px; margin: 0; border-radius: 4px; color: var(--ink); background: #fff; }
 /* parties jouées : chaque partie et son instrument, puis ses portées */
 .parts-list { min-width: 300px; }
+/* ce que bat le métronome : chaque choix et ce qu'il fait entendre */
+.metronome-list { width: 280px; }
+.metronome-list label { align-items: start; white-space: normal; }
+.metronome-list input { margin-top: 3px; accent-color: var(--accent); }
+.metronome-list .popover-hint { display: block; }
 .parts-list .part-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .parts-list .part-instrument { display: inline-flex; align-items: center; gap: 4px; }
 .bar .parts-list .part-instrument button.reset { width: auto; padding: 1px 6px; margin: 0; border-radius: 4px; color: var(--accent); background: #fff; }
