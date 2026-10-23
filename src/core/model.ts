@@ -73,7 +73,31 @@ export type Note = {
   finger?: number;
   /** Instrument à cordes : la corde qui joue la note (1 : la plus aiguë). */
   string?: number;
+  /** Instrument à cordes, note étouffée (« x ») : la main ne fait que toucher la corde, un son sec sans hauteur. */
+  dead?: boolean;
+  /** Instrument à cordes, harmonique naturelle (« <12> ») : effleurée sur la case, elle sonne plus haut (voir HARMONICS). */
+  harmonic?: boolean;
+  /** Instrument à cordes, glissé (« 7/ ») : le doigt glisse jusqu'à la note suivante de la même corde. */
+  slide?: boolean;
+  /** Instrument à cordes, bend (« 7b9 ») : la corde tirée jusqu'à cette hauteur ; release (« 7b9r ») : puis relâchée. */
+  bend?: number;
+  release?: boolean;
 };
+
+/** Techniques des cordes, dans une case : note étouffée, harmonique, glissé, bend et son relâché. */
+export const DEAD_MARK = "x";
+export const SLIDE_MARK = "/";
+export const BEND_MARK = "b";
+export const RELEASE_MARK = "r";
+
+/**
+ * Harmoniques naturelles : la case effleurée, et ce dont la note monte au-dessus de la corde à
+ * vide (en demi-tons) : l'octave au milieu de la corde, la quinte au-dessus au tiers…
+ */
+export const HARMONICS: Record<number, number> = { 12: 12, 7: 19, 19: 19, 5: 24, 24: 24, 4: 28, 9: 28, 16: 28, 3: 31 };
+
+/** L'écart le plus grand d'un bend : deux tons (quatre cases). */
+export const MAX_BEND = 4;
 
 /** Doigté dans une case : la note, « _ », puis le doigt (« 5_3 ») ; gravé en indice. */
 export const FINGER_MARK = "_";
@@ -105,10 +129,15 @@ export const isArpeggioSign = (t: string) => t === ARPEGGIO_UP || t === ARPEGGIO
  * marcato : accent plus fort et plus sec.
  */
 export type Articulation = { staff: Staff; t: number; kind: ArticulationKind };
-export type ArticulationKind = "staccato" | "accent" | "marcato";
+export type ArticulationKind = "staccato" | "accent" | "marcato" | "down" | "up";
 
-/** Articulations sur une ligne @ de portée : « . » staccato, « ! » accent, « !! » marcato. */
-export const ARTICULATION_SIGNS: Record<ArticulationKind, string> = { staccato: ".", accent: "!", marcato: "!!" };
+/**
+ * Articulations sur une ligne @ de portée : « . » staccato, « ! » accent, « !! » marcato ; pour
+ * un instrument à cordes, le sens du médiator : « d » vers le bas, « u » vers le haut.
+ */
+export const ARTICULATION_SIGNS: Record<ArticulationKind, string> = { staccato: ".", accent: "!", marcato: "!!", down: "d", up: "u" };
+/** Le sens du médiator (ou de l'archet), propre aux instruments à cordes. */
+export const isPick = (k: ArticulationKind) => k === "down" || k === "up";
 export const articulationOf = (t: string) => (Object.keys(ARTICULATION_SIGNS) as ArticulationKind[]).find((k) => ARTICULATION_SIGNS[k] === t);
 export const isArticulationSign = (t: string) => articulationOf(t) !== undefined;
 
@@ -180,6 +209,17 @@ export type Hairpin = { staff: Staff; kind: "<" | ">"; start: number; end: numbe
 export const isHairpin = (t: string) => /^[<>][-|]*$/.test(t);
 
 /**
+ * Jeu d'un instrument à cordes qui dure, sur une voix, de start à end (fin exclue) : l'étouffé
+ * de la paume (« P.M.--- ») ou le vibrato (« ~~~~ »).
+ */
+export type Effect = { staff: Staff; kind: EffectKind; start: number; end: number };
+export type EffectKind = "palmMute" | "vibrato";
+/** Le signe d'un jeu qui dure, sur une ligne @ de voix, et sa suite (des traits, ou des vagues). */
+export const EFFECT_SIGNS: Record<EffectKind, string> = { palmMute: "P.M.", vibrato: "~" };
+export const effectOf = (t: string): EffectKind | undefined => (/^P\.M\.[-|]*$/.test(t) ? "palmMute" : /^~+\|?$/.test(t) ? "vibrato" : undefined);
+export const isEffect = (t: string) => effectOf(t) !== undefined;
+
+/**
  * Liaison d'expression d'une voix : les notes de start à end se jouent liées. end est
  * l'attaque de la dernière note liée (comprise).
  */
@@ -228,7 +268,7 @@ export const MARKER_SIGN = /^\[([A-Z])\]$/;
 export const isStructureSign = (t: string) => MARKER_SIGN.test(t);
 
 /** Signe toujours lu à part sur une ligne @ : soufflet, signe de pédale, début de section. */
-export const isSign = (t: string) => isHairpin(t) || isSlur(t) || isPedalSign(t) || isStructureSign(t) || t === FERMATA || isArpeggioSign(t) || isArticulationSign(t);
+export const isSign = (t: string) => isHairpin(t) || isEffect(t) || isSlur(t) || isPedalSign(t) || isStructureSign(t) || t === FERMATA || isArpeggioSign(t) || isArticulationSign(t);
 
 /**
  * Deux mots d'une ligne @ séparés par une seule espace forment un seul texte (« a tempo »,
@@ -236,7 +276,7 @@ export const isSign = (t: string) => isHairpin(t) || isSlur(t) || isPedalSign(t)
  * soufflet ou un début de section.
  */
 export const joinsText = (prev: string, next: string) =>
-  !isSign(next) && !isHairpin(prev) && !isSlur(prev) && !isStructureSign(prev) && prev !== FERMATA && !isArpeggioSign(prev) && !isArticulationSign(prev);
+  !isSign(next) && !isHairpin(prev) && !isEffect(prev) && !isSlur(prev) && !isStructureSign(prev) && prev !== FERMATA && !isArpeggioSign(prev) && !isArticulationSign(prev);
 
 /**
  * Syllabe de paroles, chantée sur la note de sa portée qui commence à t. verse : couplet (1, 2…).
@@ -265,6 +305,8 @@ export type Score = {
   texts: TextMark[];
   expressions: Expression[];
   hairpins: Hairpin[];
+  /** Jeux des cordes qui durent : étouffé de la paume, vibrato. */
+  effects: Effect[];
   slurs: Slur[];
   pedals: Pedal[];
   /** Consignes de pédale (« Ped. simile »…), sur la ligne de pédale. */
@@ -297,7 +339,7 @@ export function sortNotes(notes: Note[]): Note[] {
 }
 
 /** Trie les petites notes : par instant, portée du haut d'abord, par rang, de l'aigu au grave. */
-const ARTICULATION_ORDER: ArticulationKind[] = ["staccato", "accent", "marcato"];
+const ARTICULATION_ORDER: ArticulationKind[] = ["staccato", "accent", "marcato", "down", "up"];
 /** Trie les articulations : par instant, portée, puis staccato, accent, marcato. */
 export function sortArticulations(xs: Articulation[]): Articulation[] {
   return [...xs].sort((a, b) => a.t - b.t || a.staff - b.staff || ARTICULATION_ORDER.indexOf(a.kind) - ARTICULATION_ORDER.indexOf(b.kind));

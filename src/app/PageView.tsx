@@ -1,6 +1,6 @@
 import { FINGER_MARK, TRILL_MARK, barreOf, numberOf, octaveOffset, pitchClass, stringsOfStaff } from "../core/index.ts";
 import type { Meta, PedalLine, Shape, SystemRow, Voice } from "../core/index.ts";
-import { FINGER, G, PAGE, chordGrid, splitChord, graceExtra, graceSlotW, headerHeight, leadExtra, lyricTextW, splitNote } from "./engrave.ts";
+import { FINGER, G, PAGE, bendLabel, bendStart, chordGrid, isPickSign, slurH, splitChord, techniqueOf, graceExtra, graceSlotW, headerHeight, leadExtra, lyricTextW, splitNote } from "./engrave.ts";
 import type { Page, PlacedSystem } from "./engrave.ts";
 import type { OctavePosition, OctaveStyle, RenderOptions } from "./options.ts";
 import { writtenNames } from "./options.ts";
@@ -215,6 +215,12 @@ function articulationSigns(signs: string[], cx: number, cy: number) {
         <circle cx={0} cy={0} r={0.3} fill={INK} />
       ) : sign === "!" ? (
         <path d="M -0.42 -0.32 L 0.42 0 L -0.42 0.32" fill="none" stroke={INK} strokeWidth={0.22} />
+      ) : sign === "d" ? (
+        // médiator vers le bas : le pont (⊓), sa barre plus épaisse
+        <path d="M -0.42 0.34 L -0.42 -0.3 L 0.42 -0.3 L 0.42 0.34" fill="none" stroke={INK} strokeWidth={0.24} />
+      ) : sign === "u" ? (
+        // vers le haut : le V
+        <path d="M -0.36 -0.36 L 0 0.34 L 0.36 -0.36" fill="none" stroke={INK} strokeWidth={0.22} />
       ) : (
         <path d="M -0.38 0.32 L 0 -0.38 L 0.38 0.32" fill="none" stroke={INK} strokeWidth={0.26} />
       );
@@ -226,7 +232,7 @@ function articulationSigns(signs: string[], cx: number, cy: number) {
   });
 }
 
-function Row({ ps, row, y, centered, articulations, reminders }: { ps: PlacedSystem; row: SystemRow; y: number; centered: boolean; articulations?: Map<number, string[]>; reminders: boolean }) {
+function Row({ ps, row, y, centered, articulations, reminders, techTop }: { ps: PlacedSystem; row: SystemRow; y: number; centered: boolean; articulations?: Map<number, string[]>; reminders: boolean; techTop: number }) {
   const { sys, xs, ws } = ps;
   const x0 = PAGE.marginX;
   const right = xs[xs.length - 1] + ws[ws.length - 1];
@@ -263,6 +269,69 @@ function Row({ ps, row, y, centered, articulations, reminders }: { ps: PlacedSys
         // note annotée : son articulation au-dessus d'elle, la voisine de trille en petit (en haut à
         // droite), le doigt en négatif (en bas à droite)
         const arts = !c.startsWith("-") ? articulations?.get(a) : undefined;
+        // sur une corde, une technique : la case (ou « x », « <12> »), puis le glissé ou le bend dessinés
+        const tech = row.string !== undefined ? techniqueOf(c) : undefined;
+        if (tech) {
+          const top = y + dy;
+          let end = x + 0.5 + tech.label.length * G.noteDigit * (tech.harmonic ? 0.8 : 1);
+          const art = articulationSigns(arts ?? [], x + 0.5 + (end - x - 0.5) / 2 - 0.15, top - 0.05);
+          const marks: React.ReactNode[] = [];
+          if (tech.slide) {
+            // le glissé : un trait penché vers la note suivante de la corde (vers le haut si elle est plus haute)
+            const next = row.cells.slice(a + 1).find((x) => x && !x.startsWith("-"));
+            const nextFret = next ? Number(next.match(/\d+/)?.[0] ?? tech.fret) : tech.fret + 1;
+            const up = nextFret >= tech.fret;
+            const [ya, yb] = up ? [base + dy - 0.2, top + 1.1] : [top + 1.1, base + dy - 0.2];
+            marks.push(<line key="sl" x1={end + 0.3} x2={end + 2.4} y1={ya} y2={yb} stroke={INK} strokeWidth={0.4} strokeLinecap="round" />);
+            end += 2.6;
+          }
+          if (tech.bend !== undefined) {
+            // le bend, comme en tablature : une flèche qui part de la case et monte au-dessus des cordes,
+            // l'écart au-dessus de sa pointe ; relâché, une flèche qui redescend jusqu'à la corde
+            // elle part après la case la plus large de la colonne : elle ne coupe aucun chiffre
+            const x1 = x + bendStart(sys.staves[row.staff].rows, a), x2 = x1 + 2.2, tip = techTop + 3.2, x3 = x2 + 2.6;
+            const up = `M ${Math.min(end + 0.2, x1)} ${mid} L ${x1} ${mid} Q ${x2} ${mid} ${x2} ${tip + 0.9}`;
+            const down = `M ${x2 + 0.3} ${tip + 0.4} Q ${x3} ${tip + 0.4} ${x3} ${mid - 1.1}`;
+            const head = (px: number, py: number, dir: 1 | -1) => `M ${px - 0.6} ${py + dir * 1} L ${px} ${py} L ${px + 0.6} ${py + dir * 1} Z`;
+            marks.push(
+              <g key="b">
+                {/* un liseré blanc : la flèche reste lisible là où elle croise une corde */}
+                <path d={up + (tech.release ? " " + down : "")} fill="none" stroke="#fff" strokeWidth={1} />
+                <path d={up} fill="none" stroke={INK} strokeWidth={0.32} />
+                <path d={head(x2, tip, 1)} fill={INK} />
+                {/* l'écart, à partir de la pointe : il laisse la place au médiator, au-dessus de la case */}
+                <text x={x2 - 0.7} y={techTop + 2.4} fontSize={2.6} fontWeight={700} fill={INK}>
+                  {bendLabel(tech.bend - tech.fret)}
+                </text>
+                {tech.release && (
+                  <g>
+                    <path d={down} fill="none" stroke={INK} strokeWidth={0.32} />
+                    <path d={head(x3, mid - 0.4, -1)} fill={INK} />
+                  </g>
+                )}
+              </g>,
+            );
+            end = (tech.release ? x3 : x2) + 0.8;
+          }
+          const fx = end + FINGER.gap + FINGER.r;
+          return (
+            <g key={a}>
+              <text x={x + 0.5} y={base + dy} fontSize={tech.harmonic ? 2.8 : 3.3} fontWeight={600} fill={INK}>
+                {tech.label}
+              </text>
+              {art}
+              {marks}
+              {tech.finger && (
+                <g>
+                  <rect x={fx - FINGER.r} y={base + dy - 1.95} width={2 * FINGER.r} height={2.9} rx={0.6} fill={TAB_TEXT} />
+                  <text x={fx} y={base + dy + 0.3} fontSize={2.2} fontWeight={700} textAnchor="middle" fill="#fff">
+                    {tech.finger}
+                  </text>
+                </g>
+              )}
+            </g>
+          );
+        }
         if (!c.startsWith("-") && (c.includes(TRILL_MARK) || c.includes(FINGER_MARK) || arts)) {
           const { main, aux, finger } = splitNote(c);
           let end = x + 0.5 + main.length * G.noteDigit;
@@ -364,13 +433,34 @@ const WAVE = { fill: "none", stroke: INK, strokeWidth: 0.3, strokeLinejoin: "rou
  * Liaisons d'une portée : un arc fin, creux vers le haut comme une liaison sous les notes, de
  * la première note à la dernière. Une liaison coupée reste ouverte au bord du système.
  */
-function SlurBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: number }) {
+function SlurBand({ ps, voice, rows, top }: { ps: PlacedSystem; voice: Voice; rows: SystemRow[]; top: number }) {
   const { sys, xs, ws } = ps;
   const left = PAGE.marginX + G.prefix;
   const right = xs[xs.length - 1] + ws[ws.length - 1];
   const noteX = (a: number) => xs[sys.anchors[a]] + leadExtra(sys, a) + 1.4;
+  // sur une corde, deux notes liées l'une après l'autre : un hammer-on (H) si la seconde est plus
+  // haute sur la corde, un pull-off (P) si elle est plus basse ; la lettre sous la liaison, entre elles
+  const letters: { x: number; text: string }[] = [];
+  const fret = (c: string) => (c && !c.startsWith("-") ? Number(c.match(/\d+/)?.[0] ?? NaN) : NaN);
+  for (const s of voice.slurs) {
+    for (const r of rows.filter((x) => x.string !== undefined)) {
+      let prev: { a: number; f: number } | undefined;
+      for (let a = s.opens ? s.fromAnchor : 0; a <= (s.closes ? s.toAnchor : sys.anchors.length - 1); a++) {
+        const f = fret(r.cells[a] ?? "");
+        if (Number.isNaN(f)) continue;
+        if (prev && f !== prev.f) letters.push({ x: (noteX(prev.a) + noteX(a)) / 2, text: f > prev.f ? "H" : "P" });
+        prev = { a, f };
+      }
+    }
+  }
+  const letterY = top + slurH(voice) + 1.5;
   return (
     <g>
+      {letters.map((l, i) => (
+        <text key={"hp" + i} x={l.x} y={letterY} fontSize={2.7} fontWeight={700} textAnchor="middle" fill={INK}>
+          {l.text}
+        </text>
+      ))}
       {voice.slurs.map((s, i) => {
         const x1 = s.opens ? noteX(s.fromAnchor) : left;
         const x2 = s.closes ? noteX(s.toAnchor) : right;
@@ -612,6 +702,23 @@ function VoiceBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: nu
   const halo = { stroke: "#fff", strokeWidth: 0.6, paintOrder: "stroke" as const, strokeLinejoin: "round" as const };
   return (
     <g>
+      {/* l'étouffé de la paume : « P.M. » puis un trait pointillé jusqu'à sa fin, fermé d'un crochet ; le vibrato : une ondulation */}
+      {voice.effects.map((e, i) => {
+        const x1 = ax(e.fromAnchor) + 0.5;
+        const x2 = aEnd(e.toAnchor) - 0.6;
+        if (e.kind === "vibrato") return <path key={"e" + i} d={wave(x1, x2, cy)} {...WAVE} />;
+        const label = e.opens ? "P.M." : "(P.M.)";
+        const lx = x1 + label.length * 1.45 + 0.5;
+        return (
+          <g key={"e" + i}>
+            <text x={x1} y={base} fontSize={2.9} fontWeight={700} fill={INK}>
+              {label}
+            </text>
+            {lx < x2 && <line x1={lx} x2={x2} y1={cy} y2={cy} stroke={INK} strokeWidth={0.24} strokeDasharray="0.7 0.5" />}
+            {e.closes && <line x1={x2} x2={x2} y1={cy - 0.9} y2={cy} stroke={INK} strokeWidth={0.24} />}
+          </g>
+        );
+      })}
       {voice.hairpins.map((h, i) => {
         const x1 = ax(h.fromAnchor) + (h.from === 0 ? 0.5 : 0);
         const x2 = aEnd(h.toAnchor) - (h.to === 1 ? 0.6 : 0);
@@ -719,6 +826,7 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
     staves: placed.staves.map((p) => ({
       ...p,
       separator: p.separator === undefined ? undefined : Y + p.separator,
+      techTop: Y + p.techTop,
       rowsTop: Y + p.rowsTop,
       slurTop: Y + p.slurTop,
       lyricTop: Y + p.lyricTop,
@@ -775,7 +883,7 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
     const p = sys.staves[k];
     const out = new Map<number, string[]>();
     for (const m of p.voice.marks) {
-      if (m.kind !== "articulation") continue;
+      if (m.kind !== "articulation" || isPickSign(m.text)) continue;
       const top = p.rows.findIndex((r) => !!r.cells[m.anchor] && !r.cells[m.anchor].startsWith("-"));
       if (top === i) out.set(m.anchor, [...(out.get(m.anchor) ?? []), m.text]);
     }
@@ -879,7 +987,26 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
           return fill && spans(left, right).map(([a, b], j) => <rect key={`bd${k}-${i}-${j}`} x={a} y={rowY(k, i)} width={b - a} height={ps.rowH} fill={fill} />);
         });
       })}
-      {sys.staves.map((p, k) => p.rows.map((r, i) => <Row key={`r${k}-${i}`} ps={ps} row={r} y={rowY(k, i)} centered={centered} articulations={articulationsOf(k, i)} reminders={options.holdReminders} />))}
+      {sys.staves.map((p, k) => p.rows.map((r, i) => <Row key={`r${k}-${i}`} ps={ps} row={r} y={rowY(k, i)} centered={centered} articulations={articulationsOf(k, i)} reminders={options.holdReminders} techTop={ps.staves[k].techTop} />))}
+      {/* au-dessus des cordes, le sens du médiator, en grand : ⊓ vers le bas, V vers le haut */}
+      {sys.staves.map((p, k) =>
+        p.voice.marks
+          .filter((m) => m.kind === "articulation" && isPickSign(m.text))
+          .map((m, i) => {
+            const cx = xs[sys.anchors[m.anchor]] + leadExtra(sys, m.anchor) + 0.5 + G.noteDigit / 2;
+            const cy = ps.staves[k].techTop + G.techH * 0.55;
+            return (
+              <path
+                key={`pk${k}-${i}`}
+                d={m.text === "d" ? `M ${cx - 0.9} ${cy + 1} L ${cx - 0.9} ${cy - 0.9} L ${cx + 0.9} ${cy - 0.9} L ${cx + 0.9} ${cy + 1}` : `M ${cx - 0.85} ${cy - 1} L ${cx} ${cy + 1} L ${cx + 0.85} ${cy - 1}`}
+                fill="none"
+                stroke={INK}
+                strokeWidth={m.text === "d" ? 0.42 : 0.36}
+                strokeLinejoin="miter"
+              />
+            );
+          }),
+      )}
       {/* trait épais entre deux parties d'un même instrument */}
       {ps.staves.map(
         (pp, k) =>
@@ -922,7 +1049,7 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
         const pp = ps.staves[k];
         return (
           <g key={"bands" + k}>
-            {pp.slurBand > 0 && <SlurBand ps={ps} voice={p.voice} top={pp.slurTop} />}
+            {pp.slurBand > 0 && <SlurBand ps={ps} voice={p.voice} rows={p.rows} top={pp.slurTop} />}
             {pp.lyricBand > 0 && <LyricBand ps={ps} voice={p.voice} top={pp.lyricTop} />}
             {pp.voiceBand > 0 && <VoiceBand ps={ps} voice={p.voice} top={pp.voiceTop} />}
             {pp.pedalBand > 0 && <PedalBand ps={ps} pedal={p.pedal} top={pp.pedalTop} />}

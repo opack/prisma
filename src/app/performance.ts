@@ -5,8 +5,8 @@
  * Deux échelles de temps, en ticks : l'instant du morceau (sa place sur la partition) et l'instant
  * joué (depuis le début de l'écoute). Une mesure reprise a un instant du morceau et deux instants joués.
  */
-import { TICKS_PER_BEAT, beatGrids } from "../core/index.ts";
-import type { ArticulationKind, Score } from "../core/index.ts";
+import { HARMONICS, TICKS_PER_BEAT, beatGrids, stringsOfStaff } from "../core/index.ts";
+import type { ArticulationKind, Note, Score } from "../core/index.ts";
 import { velocities, velocityAt } from "./dynamics.ts";
 import { soundingEnds } from "./pedal.ts";
 
@@ -21,7 +21,7 @@ export type Passage = { from: number; to: number; at: number; entry: number };
  * grace : petite note, jouée `grace` crans avant l'instant `start` de sa note principale (start et
  * end sont alors cet instant) ; la durée d'un cran se décide au tempo de l'écoute.
  */
-export type PlayedNote = { staff: number; start: number; end: number; midi: number; velocity: number; grace?: number; trill?: Trill; roll?: Roll };
+export type PlayedNote = { staff: number; start: number; end: number; midi: number; velocity: number; grace?: number; trill?: Trill; roll?: Roll; filter?: number };
 
 /** Note d'un arpège : son rang dans l'accord égrené (0 : sur le temps) et le nombre de notes de l'accord. */
 export type Roll = { rank: number; count: number };
@@ -143,7 +143,9 @@ export const playedLength = (ps: Passage[]) => (ps.length ? ps[ps.length - 1].at
  * s'arrête avec lui (après un retour en arrière, elle ne sonne plus), sauf si le passage suivant
  * continue la partition : une note liée de l'un à l'autre reste alors tenue.
  */
-export function playedNotes(score: Score, ps: Passage[]): PlayedNote[] {
+export function playedNotes(original: Score, ps: Passage[]): PlayedNote[] {
+  // les techniques des cordes, changées en notes jouables
+  const { score, soft, filter } = stringTechniques(original);
   const runs: Passage[] = [];
   for (const p of ps) {
     const prev = runs[runs.length - 1];
@@ -153,7 +155,7 @@ export function playedNotes(score: Score, ps: Passage[]): PlayedNote[] {
   // articulations : la touche relâchée plus tôt (la pédale peut encore tenir le son), l'attaque plus forte
   const marks = score.notes.map((n) => score.articulations.filter((a) => a.staff === n.staff && a.t === n.start).map((a) => a.kind));
   const released = score.notes.map((n, i) => ({ ...n, end: n.start + (n.end - n.start) * Math.min(1, ...marks[i].map((k) => SHORTER[k])) }));
-  const velocity = velocities(score).map((v, i) => Math.min(127, v + Math.max(0, ...marks[i].map((k) => LOUDER[k]))));
+  const velocity = velocities(score).map((v, i) => Math.round(Math.min(127, v + Math.max(0, ...marks[i].map((k) => LOUDER[k]))) * (soft.has(score.notes[i]) ? LEGATO : 1)));
   const ends = soundingEnds({ ...score, notes: released }), rolls = rollRanks(score);
   const out: PlayedNote[] = [];
   for (const p of runs)
@@ -166,6 +168,7 @@ export function playedNotes(score: Score, ps: Passage[]): PlayedNote[] {
           velocity: velocity[i],
           ...(n.trill !== undefined ? { trill: { midi: n.trill, until: p.at + Math.min(n.end, p.to) - p.from } } : {}),
           ...(rolls[i] ? { roll: rolls[i] } : {}),
+          ...(filter.has(score.notes[i]) ? { filter: filter.get(score.notes[i]) } : {}),
         });
     });
   // petites notes : rangées avant leur note, la première le plus tôt ; même rang, jouées ensemble
@@ -181,10 +184,85 @@ export function playedNotes(score: Score, ps: Passage[]): PlayedNote[] {
   return out.sort((a, b) => a.start - b.start || (b.grace ?? 0) - (a.grace ?? 0) || a.midi - b.midi);
 }
 
+/** L'intensité d'une note liée sans être attaquée (hammer-on, pull-off, suite d'un bend ou d'un glissé). */
+const LEGATO = 0.55;
+/** Le son étouffé : la note courte et sourde (fréquence de coupure, en hertz). */
+const DEAD = { length: TICKS_PER_BEAT / 8, filter: 700 };
+const PALM_MUTE = { length: TICKS_PER_BEAT * 0.4, filter: 1100 };
+
+/**
+ * Les techniques des cordes, à l'écoute, changées en notes que les sons échantillonnés savent jouer :
+ * une note étouffée, brève et sourde ; l'étouffé de la paume, des notes courtes et sourdes ; une
+ * harmonique, à la hauteur qu'elle sonne ; un bend, la note puis la note tirée (et relâchée) sans
+ * nouvelle attaque ; un glissé, les cases traversées en fin de note, jusqu'à la suivante ; deux
+ * notes liées sur une corde (hammer-on, pull-off), la seconde sans attaque. Le vibrato ne s'entend
+ * pas : les sons ne savent pas onduler. Rend le morceau, les notes jouées sans attaque, et le
+ * filtre des notes sourdes.
+ */
+function stringTechniques(score: Score) {
+  const soft = new Set<Note>();
+  const filter = new Map<Note, number>();
+  if (!score.parts.some((p) => p.strings)) return { score, soft, filter };
+  const notes: Note[] = [];
+  const sameString = (a: Note, b: Note) => a.staff === b.staff && a.string !== undefined && a.string === b.string;
+  // la note suivante sur la même corde
+  const next = (n: Note) => score.notes.filter((m) => sameString(m, n) && m.start > n.start).sort((a, b) => a.start - b.start)[0];
+  // les notes liées après la première, sur une corde : jouées sans attaque
+  const legato = new Set<Note>();
+  for (const s of score.slurs)
+    for (const n of score.notes) if (n.string !== undefined && n.staff === s.staff && n.start > s.start && n.start <= s.end && score.notes.some((m) => sameString(m, n) && m.start >= s.start && m.start < n.start)) legato.add(n);
+  const glided = new Set<Note>();
+  for (const n of score.notes) {
+    const strs = n.string !== undefined ? stringsOfStaff(score.parts, n.staff) : undefined;
+    if (!strs) {
+      notes.push(n);
+      continue;
+    }
+    const muted = score.effects.some((e) => e.kind === "palmMute" && e.staff === n.staff && n.start >= e.start && n.start < e.end);
+    const add = (m: Note, quiet = false) => {
+      notes.push(m);
+      if (quiet || legato.has(n) || glided.has(n)) soft.add(m);
+      if (muted) filter.set(m, PALM_MUTE.filter);
+      return m;
+    };
+    if (n.dead) {
+      filter.set(add({ ...n, end: n.start + Math.min(n.end - n.start, DEAD.length) }), DEAD.filter);
+      continue;
+    }
+    const base = muted ? { ...n, end: n.start + Math.min(n.end - n.start, PALM_MUTE.length) } : n;
+    // la durée jouée (plus courte sous l'étouffé de la paume)
+    const d = base.end - base.start;
+    if (n.harmonic) {
+      const open = strs.open[n.string! - 1] + strs.capo;
+      add({ ...base, midi: open + (HARMONICS[n.midi - open] ?? n.midi - open) });
+      continue;
+    }
+    if (n.bend !== undefined) {
+      const up = n.start + d * 0.25, down = n.start + d * 0.75;
+      add({ ...base, end: up });
+      add({ ...base, start: up, midi: n.bend, end: n.release ? down : base.end }, true);
+      if (n.release) add({ ...base, start: down, midi: n.midi }, true);
+      continue;
+    }
+    const to = n.slide ? next(n) : undefined;
+    if (to && to.midi !== n.midi) {
+      // les cases traversées, dans le dernier tiers de la note ; la note d'arrivée, sans attaque
+      const from = n.start + d * 0.67, dir = Math.sign(to.midi - n.midi);
+      const steps = Math.min(12, Math.abs(to.midi - n.midi) - 1);
+      add({ ...base, end: steps ? from : base.end });
+      for (let k = 1; k <= steps; k++) add({ ...base, midi: n.midi + k * dir, start: from + ((k - 1) * (base.end - from)) / steps, end: from + (k * (base.end - from)) / steps }, true);
+      glided.add(to);
+      continue;
+    }
+    add(base);
+  }
+  return { score: { ...score, notes }, soft, filter };
+}
+
 /** Part de sa durée que garde une note articulée : un staccato sonne moitié moins, un marcato un peu moins. */
-const SHORTER: Record<ArticulationKind, number> = { staccato: 0.5, accent: 1, marcato: 0.75 };
+const SHORTER: Record<ArticulationKind, number> = { staccato: 0.5, accent: 1, marcato: 0.75, down: 1, up: 1 };
 /** Ce qu'ajoute une articulation à l'intensité de la note (vélocité). */
-const LOUDER: Record<ArticulationKind, number> = { staccato: 0, accent: 20, marcato: 28 };
+const LOUDER: Record<ArticulationKind, number> = { staccato: 0, accent: 20, marcato: 28, down: 0, up: 0 };
 
 /**
  * Arpèges : pour chaque note, sa place dans l'accord égrené (rien hors arpège). Du grave à l'aigu, ou de l'aigu au grave ; sans portée, tout le système d'un geste.

@@ -2,7 +2,7 @@
 import { writeFrontmatter } from "./frontmatter.ts";
 import { layout, noteText } from "./layout.ts";
 import type { Column, Mark, System, SystemRow, Voice } from "./layout.ts";
-import { ARTICULATION_SIGNS, GRACE_MARK, HYPHEN, LYRIC_LINE, firstStaves, graceDigits, joinsText, staffCount } from "./model.ts";
+import { ARTICULATION_SIGNS, EFFECT_SIGNS, GRACE_MARK, HYPHEN, LYRIC_LINE, firstStaves, graceDigits, joinsText, staffCount } from "./model.ts";
 import type { Score } from "./model.ts";
 import { octaveLabel } from "./pitch.ts";
 
@@ -129,6 +129,14 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
         const last = Math.max(col, anchorCol[h.toAnchor] + widths[h.toAnchor] - 2);
         return { col, text: h.kind + "-".repeat(last - col) };
       }),
+      // l'étouffé et le vibrato, comme un soufflet : « P.M.--- », « ~~~~ »
+      ...v.effects.map((e) => {
+        const before = Math.max(0, ...v.marks.filter((m) => m.anchor === e.fromAnchor).map((m) => m.text.length + 1));
+        const col = anchorCol[e.fromAnchor] + before;
+        const last = Math.max(col, anchorCol[e.toAnchor] + widths[e.toAnchor] - 2);
+        const sign = EFFECT_SIGNS[e.kind];
+        return { col, text: e.kind === "palmMute" ? sign + "-".repeat(Math.max(0, last - col + 1 - sign.length)) : sign.repeat(last - col + 1) };
+      }),
     ], collide);
   // liaison : « ( » sur la case de la première note, « ) » dans celle de la dernière ;
   // coupée, elle va jusqu'au bout du système. Les suites de liaisons commencées plus tôt
@@ -225,12 +233,14 @@ function cellWidths(score: Score, cell: number, widen: Set<number> = new Set()):
     want(t, here.reduce((w, x) => w + ARTICULATION_SIGNS[x.kind].length + 1, 0));
   }
   for (const c of score.chords) want(c.t, c.text.length + 1);
+  // l'étouffé de la paume commence par « P.M. », qui tient dans sa case
+  for (const e of score.effects) if (e.kind === "palmMute") want(e.start, EFFECT_SIGNS.palmMute.length + 1);
   // une syllabe tient dans sa case, trait d'union compris, suivie d'une espace
   for (const l of score.lyrics) want(l.t, l.text.length + (l.hyphen ? HYPHEN.length : 0) + 1);
   // une trille ou un doigté (« 12~10 », « 12_3 ») élargit sa case, suivie d'une espace
   const trillNeed = new Map<number, number>();
   for (const n of score.notes) {
-    if (n.trill === undefined && !n.finger) continue;
+    if (n.trill === undefined && !n.finger && !n.harmonic && !n.slide && n.bend === undefined) continue;
     const len = noteText(n, score.parts).length + 1;
     trillNeed.set(n.start, Math.max(trillNeed.get(n.start) ?? cell, len));
     want(n.start, len);

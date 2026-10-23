@@ -19,6 +19,7 @@
 import { recognize } from "./chords.ts";
 import { chordNotes } from "./chords.ts";
 import { gridStrings, parseShape, splitShape } from "./shapes.ts";
+import { isPick } from "./model.ts";
 import { guessInstrument } from "./instruments.ts";
 import type { InstrumentName } from "./instruments.ts";
 import { guessKey, parseKey } from "./key.ts";
@@ -557,11 +558,12 @@ function eventXml(ctx: Ctx, staff: Staff, s: number, voice: number, e: Event, ba
       if (starts && x.first) notations.push(...attackNotations(ctx, staff, t, n, sp, j === 0));
       if (x.first && j === 0) notations.push(...slurs);
       notations.push(onString(n));
+      if (strs && n.string !== undefined && starts && x.first) notations.push(...techniqueXml(ctx, staff, n, layer));
       const ties = (tieStop ? '<tie type="stop"/>' : "") + (tieStart ? '<tie type="start"/>' : "");
       const lyric = starts && x.first && j === 0 && layer !== "tab" ? lyricsXml(score, staff, t) : "";
       const n8 = notations.join("");
       out.push(
-        `      <note>${j > 0 ? "<chord/>" : ""}${pitchXml(sp)}<duration>${x.div}</duration>${ties}<voice>${voice}</voice><type>${x.type}</type>${"<dot/>".repeat(x.dots)}${timeMod(x.tuplet)}${staffTag}${n8 ? `<notations>${n8}</notations>` : ""}${lyric}</note>`,
+        `      <note>${j > 0 ? "<chord/>" : ""}${pitchXml(sp)}<duration>${x.div}</duration>${ties}<voice>${voice}</voice><type>${x.type}</type>${"<dot/>".repeat(x.dots)}${timeMod(x.tuplet)}${n.dead ? "<notehead>x</notehead>" : ""}${staffTag}${n8 ? `<notations>${n8}</notations>` : ""}${lyric}</note>`,
       );
     });
   }
@@ -581,8 +583,12 @@ function attackNotations(ctx: Ctx, staff: Staff, t: number, n: Note, sp: { step:
   const arp = score.arpeggios.find((a) => a.t === t && (a.staff === undefined || a.staff === staff));
   if (arp) out.push(arp.down ? '<arpeggiate direction="down"/>' : "<arpeggiate/>");
   if (first) {
-    const arts = score.articulations.filter((a) => a.staff === staff && a.t === t);
+    const all = score.articulations.filter((a) => a.staff === staff && a.t === t);
+    const arts = all.filter((a) => !isPick(a.kind));
     if (arts.length) out.push(`<articulations>${arts.map((a) => (a.kind === "staccato" ? "<staccato/>" : a.kind === "accent" ? "<accent/>" : "<strong-accent/>")).join("")}</articulations>`);
+    // le sens du médiator : celui de l'archet, en MusicXML
+    const picks = all.filter((a) => isPick(a.kind));
+    if (picks.length) out.push(`<technical>${picks.map((a) => (a.kind === "down" ? "<down-bow/>" : "<up-bow/>")).join("")}</technical>`);
   }
   if (n.finger) out.push(`<technical><fingering>${n.finger}</fingering></technical>`);
   if (n.trill !== undefined) {
@@ -593,6 +599,42 @@ function attackNotations(ctx: Ctx, staff: Staff, t: number, n: Note, sp: { step:
     const alter = n.trill - (12 * (oct + 1) + STEP[letter]);
     const mark = Math.abs(alter) <= 1 && alter !== keyAlter(ctx.fifths, letter) ? `<accidental-mark placement="above">${accidentalName(alter)}</accidental-mark>` : "";
     out.push(`<ornaments><trill-mark/>${mark}</ornaments>`);
+  }
+  return out;
+}
+
+/**
+ * Les techniques d'une note sur une corde : sur la tablature, le bend, l'harmonique, et le
+ * hammer-on ou le pull-off (deux notes liées de la même corde) ; sur les deux portées, le glissé
+ * jusqu'à la note suivante de la corde et le vibrato (une ondulation, de la première note à la
+ * dernière qu'il couvre).
+ */
+function techniqueXml(ctx: Ctx, staff: Staff, n: Note, layer?: "notation" | "tab"): string[] {
+  const { score } = ctx;
+  const out: string[] = [];
+  const same = (m: Note) => m !== n && m.staff === staff && m.string === n.string;
+  const next = score.notes.filter((m) => same(m) && m.start > n.start).sort((a, b) => a.start - b.start)[0];
+  const prev = score.notes.filter((m) => same(m) && m.start < n.start).sort((a, b) => b.start - a.start)[0];
+  const tied = (a: Note, b: Note) => score.slurs.some((s) => s.staff === staff && s.start <= a.start && b.start <= s.end) && a.midi !== b.midi;
+  if (layer !== "notation") {
+    const tech: string[] = [];
+    if (n.bend !== undefined) {
+      tech.push(`<bend><bend-alter>${n.bend - n.midi}</bend-alter></bend>`);
+      if (n.release) tech.push(`<bend><bend-alter>${n.midi - n.bend}</bend-alter><release/></bend>`);
+    }
+    if (n.harmonic) tech.push("<harmonic><natural/></harmonic>");
+    const legato = (a: Note, b: Note) => (b.midi > a.midi ? "hammer-on" : "pull-off");
+    if (prev && tied(prev, n)) tech.push(`<${legato(prev, n)} type="stop" number="1"/>`);
+    if (next && tied(n, next)) tech.push(`<${legato(n, next)} type="start" number="1">${next.midi > n.midi ? "H" : "P"}</${legato(n, next)}>`);
+    if (tech.length) out.push(`<technical>${tech.join("")}</technical>`);
+  }
+  if (prev?.slide) out.push('<slide type="stop" number="1"/>');
+  if (n.slide && next) out.push('<slide type="start" number="1" line-type="solid"/>');
+  // le vibrato : commencé sur la première note qu'il couvre, fini sur la dernière
+  for (const e of score.effects.filter((x) => x.staff === staff && x.kind === "vibrato")) {
+    const covered = score.notes.filter((m) => m.staff === staff && m.start >= e.start && m.start < e.end).sort((a, b) => a.start - b.start);
+    if (covered[0] === n) out.push('<ornaments><wavy-line type="start" number="1"/></ornaments>');
+    if (covered.length && covered[covered.length - 1] === n) out.push('<ornaments><wavy-line type="stop" number="1"/></ornaments>');
   }
   return out;
 }
@@ -689,6 +731,11 @@ function directionsOf(ctx: Ctx, p: number, staff: Staff, bar: Bar): Direction[] 
       const plain = /^\(.*\)$/.test(x.text) ? `<other-dynamics>${esc(x.text)}</other-dynamics>` : `<${x.text}/>`;
       out.push(dir(x.t, "below", `<dynamics>${plain}</dynamics>`));
     } else out.push(dir(x.t, "below", `<words>${esc(x.text)}</words>`));
+  }
+  // l'étouffé de la paume : « P.M. », puis des tirets jusqu'à sa fin (le vibrato s'écrit sur les notes)
+  for (const e of score.effects.filter((x) => x.staff === staff && x.kind === "palmMute")) {
+    if (inBar(e.start)) out.push(dir(e.start, "above", '<words>P.M.</words></direction-type><direction-type><dashes type="start" number="1"/>'));
+    if (atEnd(e.end) && e.end > e.start) out.push(dir(e.end, "above", '<dashes type="stop" number="1"/>'));
   }
   for (const h of score.hairpins.filter((x) => x.staff === staff)) {
     if (inBar(h.start)) out.push(dir(h.start, "below", `<wedge type="${h.kind === "<" ? "crescendo" : "diminuendo"}"/>`));

@@ -6,7 +6,7 @@
  */
 import { chordName, chordNotes, chordPrismaName, chordPrismaText, chordWriting } from "./chords.ts";
 import { splitShape } from "./shapes.ts";
-import { ARPEGGIO_DOWN, FERMATA, FINGER_MARK, GRACE_MARK, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TRILL_MARK, isDynamic, isExtender, isHairpin, isPedalText, isSlur, trillAux } from "./model.ts";
+import { ARPEGGIO_DOWN, FERMATA, HARMONICS, effectOf, FINGER_MARK, GRACE_MARK, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TRILL_MARK, isDynamic, isExtender, isHairpin, isPedalText, isSlur, trillAux } from "./model.ts";
 import { midiOf, numberOf, octaveOf, parseOctaveLabel } from "./pitch.ts";
 import { MAX_FRET, soundingOf } from "./strings.ts";
 import type { Strings } from "./strings.ts";
@@ -392,9 +392,27 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
         if (m[2]) s += `, en trille avec ${named(strs ? pitchOf(Number(m[2])) : trillAux(midi, Number(m[2])))}`;
         if (m[3]) s += `, doigt ${m[3]}${FINGERS[Number(m[3])] ? ` (${FINGERS[Number(m[3])]})` : ""}`;
         staves.push(s);
-      } else if (rest) staves.push("signe inconnu");
+      } else if (strs && rest) staves.push(techniqueMeaning(rest) ?? "signe inconnu");
+      else if (rest) staves.push("signe inconnu");
     }
     return staves.join(" ");
+  }
+
+  /** Une technique des cordes dans une case (« x », « <12> », « 7/ », « 7b9r ») : ce qu'elle fait jouer. */
+  function techniqueMeaning(rest: string): string | undefined {
+    const m = rest.match(/^(?:(x)|<(\d{1,2})>|(\d{1,2})(?:(\/)|b(\d{1,2})(r)?))(?:_(\d))?$/);
+    if (!m) return undefined;
+    const [, dead, harmonic, fret, slide, bend, release, finger] = m;
+    const at = (k: string) => `case ${k}${names === "none" ? "" : ` (${noteName(pitchOf(Number(k)), names)})`}`;
+    let s = dead
+      ? "note étouffée : la main touche la corde sans appuyer, un son sec"
+      : harmonic
+        ? `harmonique naturelle : effleurer la corde au-dessus de la case ${harmonic}${names === "none" ? "" : `, elle sonne ${noteName(pitchOf(0) + HARMONICS[Number(harmonic)], names)}`}`
+        : slide
+          ? `${at(fret)}, puis glisser jusqu'à la note suivante de la corde`
+          : `${at(fret)} tirée jusqu'à sonner comme la ${at(bend)}${release ? ", puis relâchée" : ""}`;
+    if (finger) s += `, doigt ${finger}`;
+    return s;
   }
 
   /** Les numéros d'une case, pour un clavier : sa note (celle que prolonge une tenue), sa voisine de trille, ses petites notes. */
@@ -493,6 +511,10 @@ function staffMeaning(t: string): string {
   if (t === ".") return "staccato : détaché, plus court";
   if (t === "!") return "accent : attaque plus forte";
   if (t === "!!") return "marcato : accent plus fort et plus sec";
+  if (t === "d") return "médiator vers le bas (⊓)";
+  if (t === "u") return "médiator vers le haut (V)";
+  if (effectOf(t) === "palmMute") return "étouffé de la paume (P.M.) : la tranche de la main sur les cordes, près du chevalet, jusqu'au bout du trait";
+  if (effectOf(t) === "vibrato") return "vibrato : la note ondule, jusqu'au bout des vagues";
   if (t === PEDAL_DOWN) return "enfoncer la pédale";
   if (t === PEDAL_UP) return "relâcher la pédale";
   if (t === PEDAL_CHANGE) return "changer de pédale : relâcher et enfoncer au même instant";

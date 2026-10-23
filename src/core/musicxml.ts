@@ -19,10 +19,10 @@ import { chordNameNotes, chordNotes, prismaNameOf } from "./chords.ts";
 import { SHAPE_SEPARATOR, gridStrings, parseShape, shapePitches, shapeText, splitShape } from "./shapes.ts";
 import type { Shape } from "./shapes.ts";
 import { guessKey, keysOfSignature, prismaKey } from "./key.ts";
-import { TICKS_PER_BEAT, dynamicInWords, sortArticulations, isDynamic, isPedalText, staffCount, sortGraces, sortLyrics, sortNotes, stringsOfStaff } from "./model.ts";
+import { TICKS_PER_BEAT, dynamicInWords, isPick, sortArticulations, isDynamic, isPedalText, staffCount, sortGraces, sortLyrics, sortNotes, stringsOfStaff } from "./model.ts";
 import { guessInstrument, instrumentOfProgram } from "./instruments.ts";
 import { stringParts, tuningOf } from "./strings.ts";
-import type { Arpeggio, Articulation, ArticulationKind, Beat, Division, Expression, Grace, Hairpin, Part, Slur, Staff, Lyric, Marker, Meta, Note, Pedal, PedalText, Repeat, Score, TextMark } from "./model.ts";
+import type { Arpeggio, Articulation, ArticulationKind, Beat, Division, Effect, Expression, Grace, Hairpin, Part, Slur, Staff, Lyric, Marker, Meta, Note, Pedal, PedalText, Repeat, Score, TextMark } from "./model.ts";
 
 /**
  * Paroles : les couplets numérotés à la suite (1, 2…) dans l'ordre de leurs numéros, une
@@ -95,7 +95,7 @@ export function pulse(beats: number, beatType: number): { count: number; quarter
 }
 
 /** Indication d'une direction MusicXML, positionnée en noires depuis le début de la mesure. */
-type RawDirection = { staff: Staff; at: number; kind: "dynamic" | "words" | "wedge" | "pedal" | "fermata" | "slur" | "chord"; text: string; number?: string };
+type RawDirection = { staff: Staff; at: number; kind: "dynamic" | "words" | "wedge" | "pedal" | "fermata" | "slur" | "legato" | "palmMute" | "vibrato" | "chord"; text: string; number?: string };
 
 /** Qualités MusicXML (<kind>) en suffixes d'accord ; une qualité absente n'est pas importée. */
 const HARMONY_KIND: Record<string, string> = {
@@ -155,7 +155,7 @@ function structureOf(d: XNode[], words: string[], at: number): RawStructure[] {
   return out;
 }
 
-type RawNote = { staff: Staff; midi: number; on: number; off: number; tieStart: boolean; tieStop: boolean; trill?: number; finger?: number; string?: number };
+type RawNote = { staff: Staff; midi: number; on: number; off: number; tieStart: boolean; tieStop: boolean; trill?: number; finger?: number; string?: number; tech?: Pick<Note, "dead" | "harmonic" | "slide" | "bend" | "release"> };
 /** Arpège : number regroupe les notes d'un même arpège, d'une portée à l'autre. */
 type RawArpeggio = { staff: Staff; on: number; number?: string; down: boolean };
 /** Petite note, jouée juste avant l'instant on (en noires depuis le début de la mesure). */
@@ -329,6 +329,9 @@ function readMeasures(partNode: XNode, base: Staff, staves: number, tab?: number
               }
             } else if (ct === "wedge") {
               directions.push({ staff, at, kind: "wedge", text: attr(c, "type") ?? "", number: String(attr(c, "number") ?? "1") });
+            } else if (ct === "dashes" && attr(c, "type") === "stop") {
+              // la fin des tirets d'un « P.M. »
+              directions.push({ staff, at, kind: "palmMute", text: "stop", number: String(attr(c, "number") ?? "1") });
             } else if (ct === "pedal") {
               directions.push({ staff, at, kind: "pedal", text: attr(c, "type") ?? "" });
             } else if (ct === "rehearsal") {
@@ -336,7 +339,9 @@ function readMeasures(partNode: XNode, base: Staff, staves: number, tab?: number
             } else if (ct === "words") {
               // certains logiciels laissent des balises de mise en forme dans le texte (« <font …> »)
               const w = plainDynamics(text(c)).replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
-              if (w && !OCTAVE_WORDS.test(w)) words.push(w);
+              // l'étouffé de la paume, avec ou sans tirets
+              if (/^P\.?\s*M\.?$/i.test(w)) directions.push({ staff, at, kind: "palmMute", text: "start", number: String(attr(findAll(d, "direction-type").flatMap((x) => kids(x)).find((x) => tag(x) === "dashes") ?? c, "number") ?? "1") });
+              else if (w && !OCTAVE_WORDS.test(w)) words.push(w);
             }
           }
         }
@@ -467,6 +472,33 @@ function readMeasures(partNode: XNode, base: Staff, staves: number, tab?: number
           for (const sl of notations.filter((x) => tag(x) === "slur")) {
             const type = String(attr(sl, "type") ?? "");
             if (type === "start" || type === "stop") directions.push({ staff, at: on, kind: "slur", text: type, number: String(attr(sl, "number") ?? "1") });
+          }
+          // les techniques des cordes : note étouffée, harmonique, bend (et son relâché), glissé ;
+          // hammer-on et pull-off, deux notes liées ; vibrato, une ondulation sur les notes ; médiator
+          const tech = notations.filter((x) => tag(x) === "technical").flatMap((x) => kids(x));
+          const t2: NonNullable<RawNote["tech"]> = {};
+          if (text(find(n, "notehead")) === "x") t2.dead = true;
+          if (tech.some((x) => tag(x) === "harmonic")) t2.harmonic = true;
+          for (const b of tech.filter((x) => tag(x) === "bend")) {
+            const alter = Math.round(num(find(kids(b), "bend-alter")));
+            if (find(kids(b), "release")) t2.release = t2.bend !== undefined || undefined;
+            else if (alter > 0) t2.bend = midi + alter;
+          }
+          if (!t2.release) delete t2.release;
+          if (notations.some((x) => tag(x) === "slide" && attr(x, "type") === "start")) t2.slide = true;
+          if (Object.keys(t2).length) raw.tech = t2;
+          for (const x of tech.filter((y) => tag(y) === "hammer-on" || tag(y) === "pull-off")) {
+            const type = String(attr(x, "type") ?? "");
+            if (type === "start" || type === "stop") directions.push({ staff, at: on, kind: "legato", text: type, number: String(attr(x, "number") ?? "1") });
+          }
+          for (const x of ornaments.filter((y) => tag(y) === "wavy-line")) {
+            const type = String(attr(x, "type") ?? "");
+            if (type === "start") directions.push({ staff, at: on, kind: "vibrato", text: type, number: String(attr(x, "number") ?? "1") });
+            else if (type === "stop") directions.push({ staff, at: on + dur, kind: "vibrato", text: type, number: String(attr(x, "number") ?? "1") });
+          }
+          for (const x of tech) {
+            const kind = tag(x) === "down-bow" ? "down" : tag(x) === "up-bow" ? "up" : undefined;
+            if (kind && !articulations.some((y) => y.staff === staff && y.on === on && y.kind === kind)) articulations.push({ staff, on, kind });
           }
           // doigté : le premier doigt (une substitution « 4-3 » sur une note tenue garde le 4)
           const fingering = notations.filter((x) => tag(x) === "technical").flatMap((x) => kids(x)).find((x) => tag(x) === "fingering");
@@ -920,6 +952,7 @@ export function importMusicXml(xml: string, fileName?: string): Score {
         ...(n.trill !== undefined ? { trill: n.trill } : {}),
         ...(n.finger ? { finger: n.finger } : {}),
         ...(n.string !== undefined ? { string: n.string } : {}),
+        ...(n.tech ?? {}),
       });
     }
   });
@@ -962,6 +995,10 @@ export function importMusicXml(xml: string, fileName?: string): Score {
       ...(n.trill !== undefined ? { trill: n.trill } : {}),
       ...(n.finger ? { finger: n.finger } : {}),
       ...(n.string !== undefined ? { string: n.string } : {}),
+      ...(n.dead ? { dead: true } : {}),
+      ...(n.harmonic ? { harmonic: true } : {}),
+      ...(n.slide ? { slide: true } : {}),
+      ...(n.bend !== undefined ? { bend: n.bend, ...(n.release ? { release: true } : {}) } : {}),
     });
   }
   const sorted = sortNotes(notes);
@@ -997,6 +1034,10 @@ export function importMusicXml(xml: string, fileName?: string): Score {
   // une petite note sans corde dans une partie à cordes n'a pas de ligne où s'écrire
   const kept = graces.filter((g) => g.string !== undefined || !stringsOfStaff(parts, g.staff));
   const score: Score = { meta, parts, beats, notes: played, graces: sortGraces(kept), arpeggios, articulations: sortArticulations(articulations), lyrics: lyricsOf(rawLyrics, rawVoiceNotes, q, end), ...directionsOf(rawDirections, played, beats.length, lastStaff), ...sectionsOf(seq, measures.length) };
+  // l'étouffé et le vibrato sont des cordes : ailleurs, une ondulation est la fin d'une trille
+  score.effects = score.effects.filter((e) => stringsOfStaff(parts, e.staff));
+  // le sens de l'archet d'un violon, d'un violoncelle : Prisma ne le note que pour le médiator
+  score.articulations = score.articulations.filter((a) => !isPick(a.kind) || stringsOfStaff(parts, a.staff));
   // une grille qui ne va pas avec la guitare du morceau (une autre, ou un autre capo) : l'accord la perd
   const strs = gridStrings(parts.map((p) => p.strings));
   score.chords = score.chords.map((c) => {
@@ -1039,11 +1080,39 @@ function directionsOf(dirs: (RawDirection & { t: number })[], notes: Note[], bea
   const fermatas: number[] = [];
   const chords: TextMark[] = [];
   const pedalTexts: PedalText[] = [];
+  const legato: Slur[] = [];
+  const openLegato: (Slur & { number: string })[] = [];
+  const effects: Effect[] = [];
+  const openEffects: (Effect & { number: string })[] = [];
   const seen = new Set<string>();
   // à un même instant, une liaison se referme avant qu'une autre ne commence sur la même note
   const rank = (d: RawDirection) => (d.kind === "slur" && d.text === "start" ? 1 : 0);
   for (const d of [...dirs].sort((a, b) => a.t - b.t || rank(a) - rank(b))) {
     const t = Math.min(snap(d.t), end);
+    if (d.kind === "legato") {
+      if (d.text === "start") {
+        if (t < end) openLegato.push({ staff: d.staff, start: t, end: -1, number: d.number! });
+      } else {
+        const i = openLegato.findIndex((s) => s.number === d.number && s.staff === d.staff);
+        if (i >= 0) {
+          const [s] = openLegato.splice(i, 1);
+          if (t > s.start) legato.push({ staff: s.staff, start: s.start, end: t });
+        }
+      }
+      continue;
+    }
+    if (d.kind === "palmMute" || d.kind === "vibrato") {
+      if (d.text === "start") {
+        if (t < end) openEffects.push({ staff: d.staff, kind: d.kind, start: t, end, number: d.number! });
+      } else {
+        const i = openEffects.findIndex((e) => e.kind === d.kind && e.number === d.number && e.staff === d.staff);
+        if (i >= 0) {
+          const [e] = openEffects.splice(i, 1);
+          if (t > e.start) effects.push({ staff: e.staff, kind: e.kind, start: e.start, end: t });
+        }
+      }
+      continue;
+    }
     if (d.kind === "slur") {
       if (d.text === "start") {
         if (t < end) openSlurs.push({ staff: d.staff, start: t, end: -1, number: d.number! });
@@ -1115,6 +1184,11 @@ function directionsOf(dirs: (RawDirection & { t: number })[], notes: Note[], bea
   hairpins.sort((a, b) => a.start - b.start);
   for (const staff of [...down.keys()]) pedalUp(staff, end);
   pedals.sort((a, b) => a.start - b.start || a.staff - b.staff);
+  // un hammer-on ou un pull-off est une liaison entre deux notes d'une corde, sauf si une liaison les couvre déjà
+  for (const l of legato) if (!slurs.some((s) => s.staff === l.staff && s.start <= l.start && l.end <= s.end)) slurs.push(l);
   slurs.sort((a, b) => a.start - b.start || a.staff - b.staff || a.end - b.end);
-  return { texts, expressions, hairpins, slurs, pedals, pedalTexts, fermatas, chords: chords.sort((a, b) => a.t - b.t) };
+  // un étouffé ou un vibrato jamais refermé : jusqu'à la fin du morceau
+  for (const e of openEffects) effects.push({ staff: e.staff, kind: e.kind, start: e.start, end: e.end });
+  effects.sort((a, b) => a.start - b.start || a.staff - b.staff);
+  return { texts, expressions, hairpins, effects, slurs, pedals, pedalTexts, fermatas, chords: chords.sort((a, b) => a.t - b.t) };
 }

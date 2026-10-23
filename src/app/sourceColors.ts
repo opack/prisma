@@ -11,7 +11,7 @@ import type { Extension } from "@codemirror/state";
 import { RangeSetBuilder } from "@codemirror/state";
 import { Decoration, EditorView, ViewPlugin } from "@codemirror/view";
 import type { DecorationSet, ViewUpdate } from "@codemirror/view";
-import { isArpeggioSign, isArticulationSign, isDynamic, isHairpin, isPedalSign, isPedalText, isSlur, isStructureSign, FERMATA, octaveOffset } from "../core/index.ts";
+import { isArpeggioSign, isArticulationSign, isEffect, isDynamic, isHairpin, isPedalSign, isPedalText, isSlur, isStructureSign, FERMATA, octaveOffset } from "../core/index.ts";
 import { parseOctaveLabel } from "../core/pitch.ts";
 import { STRING_LANE } from "../core/locate.ts";
 import { CHORD_LINE, isRuler, markTokens, parseRule } from "../core/prisma-parse.ts";
@@ -65,7 +65,7 @@ function markClass(t: string) {
   if (isHairpin(t)) return "cm-p-hairpin";
   if (isPedalSign(t) || isPedalText(t)) return "cm-p-pedal";
   if (isStructureSign(t)) return "cm-p-section";
-  if (isSlur(t) || isArpeggioSign(t) || isArticulationSign(t) || t === FERMATA) return "cm-p-sign";
+  if (isSlur(t) || isEffect(t) || isArpeggioSign(t) || isArticulationSign(t) || t === FERMATA) return "cm-p-sign";
   return "cm-p-text";
 }
 

@@ -5,8 +5,8 @@
  * Le moteur ne connaît que des « unités » de largeur : des caractères pour le texte,
  * des millimètres pour le rendu graphique. Seules les mesures changent.
  */
-import { ARPEGGIO_DOWN, ARPEGGIO_UP, ARTICULATION_SIGNS, FINGER_MARK, staffCount, stringsOfStaff, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, TRILL_MARK, beatStart, graceDigits, repeatOf } from "./model.ts";
-import type { Beat, Division, Hairpin, Part, Note, Staff, Score } from "./model.ts";
+import { ARPEGGIO_DOWN, ARPEGGIO_UP, ARTICULATION_SIGNS, BEND_MARK, DEAD_MARK, FINGER_MARK, RELEASE_MARK, SLIDE_MARK, staffCount, stringsOfStaff, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, TRILL_MARK, beatStart, graceDigits, repeatOf } from "./model.ts";
+import type { Beat, Division, EffectKind, Hairpin, Part, Note, Staff, Score } from "./model.ts";
 import { CENTRAL_OCTAVE, numberOf, octaveOf } from "./pitch.ts";
 import { fretOf } from "./strings.ts";
 import type { Strings } from "./strings.ts";
@@ -133,8 +133,11 @@ export type LyricLine = {
   extenders: { fromAnchor: number; toAnchor: number; opens: boolean; closes: boolean }[];
 };
 
+/** Portion d'un jeu des cordes qui dure (étouffé, vibrato) visible dans un système ; opens / closes : il commence / finit dans ce système. */
+export type EffectSpan = { kind: EffectKind; fromAnchor: number; toAnchor: number; opens: boolean; closes: boolean };
+
 /** Ligne @ d'une portée : sous ses lignes de notes. lyrics : un couplet par ligne, dans l'ordre. */
-export type Voice = { marks: VoiceMark[]; hairpins: HairpinSpan[]; slurs: SlurSpan[]; lyrics: LyricLine[] };
+export type Voice = { marks: VoiceMark[]; hairpins: HairpinSpan[]; effects: EffectSpan[]; slurs: SlurSpan[]; lyrics: LyricLine[] };
 
 /**
  * Pédale dans un système : ses signes (pour le texte .prisma) et ses traits (pour la gravure).
@@ -250,7 +253,7 @@ export function beatGrids(score: Score): BeatGrid[] {
     add(s.end, false);
   }
   for (const e of score.expressions) add(e.t, false);
-  for (const h of score.hairpins) {
+  for (const h of [...score.hairpins, ...score.effects]) {
     add(h.start, false);
     add(h.end, false);
   }
@@ -475,7 +478,13 @@ const numberOn = (midi: number, strs?: Strings, string?: number) => (strs && str
 export const noteText = (n: Note, parts?: Part[]) => {
   const strs = parts && n.string !== undefined ? stringsOfStaff(parts, n.staff) : undefined;
   const k = (midi: number) => numberOn(midi, strs, n.string);
-  return String(k(n.midi)) + (n.trill !== undefined ? TRILL_MARK + k(n.trill) : "") + (n.finger ? FINGER_MARK + n.finger : "");
+  const finger = n.finger ? FINGER_MARK + n.finger : "";
+  // les techniques des cordes : étouffée, harmonique, glissé, bend
+  if (n.dead) return DEAD_MARK + finger;
+  if (n.harmonic) return `<${k(n.midi)}>` + finger;
+  if (n.slide) return k(n.midi) + SLIDE_MARK + finger;
+  if (n.bend !== undefined) return k(n.midi) + BEND_MARK + k(n.bend) + (n.release ? RELEASE_MARK : "") + finger;
+  return String(k(n.midi)) + (n.trill !== undefined ? TRILL_MARK + k(n.trill) : "") + finger;
 };
 
 function cell(lane: Lane, t: number, t0: number, parts: Part[]): string {
@@ -727,6 +736,10 @@ export function layout(score: Score, m: Metrics): System[] {
           };
         })
         .filter((h) => h.fromAnchor >= 0 && h.toAnchor >= h.fromAnchor),
+      effects: score.effects
+        .filter((e) => e.staff === staff && e.start < t1 && e.end > t0 && e.end > e.start)
+        .map((e) => ({ kind: e.kind, fromAnchor: anchorAt(Math.max(e.start, t0)), toAnchor: lastAnchorBefore(Math.min(e.end, t1)), opens: e.start >= t0, closes: e.end <= t1 }))
+        .filter((e) => e.fromAnchor >= 0 && e.toAnchor >= e.fromAnchor),
       slurs: slurSpans(staff),
       lyrics: lyricLines(staff),
     });

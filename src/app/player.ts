@@ -32,7 +32,7 @@ const PREVIOUS_AGAIN = 800;
 const TAIL = 1.5;
 
 /** Une note à jouer, en secondes depuis le départ de l'écoute. */
-export type PlayNote = { time: number; midi: number; duration: number; velocity: number; staff: number };
+export type PlayNote = { time: number; midi: number; duration: number; velocity: number; staff: number; filter?: number };
 
 /** Durée d'un tick, en secondes, au tempo donné. */
 export const secondsPerTick = (bpm: number) => 60 / bpm / TICKS_PER_BEAT;
@@ -73,7 +73,7 @@ export function playNotes(notes: PlayedNote[], bpm: number, from = 0, hs: Hold[]
     const time = at(begin) + rolled, end = at(n.end);
     const trill = n.trill && n.trill.until > begin ? n.trill : undefined;
     if (!trill) {
-      out.push({ time, midi: n.midi, duration: end - time, velocity: n.velocity, staff: n.staff });
+      out.push({ time, midi: n.midi, duration: end - time, velocity: n.velocity, staff: n.staff, ...(n.filter ? { filter: n.filter } : {}) });
       continue;
     }
     // un nombre impair de notes égales : la note, la voisine, la note… et la dernière est la note
@@ -105,7 +105,7 @@ export type PlayerSnapshot = {
 type Sound = { metronome: boolean; muted: number[]; gains: number[]; clickSounds: ClickSounds; clickGrid: ClickGrid; countIn: boolean; clickVolume: number };
 
 /** Un instrument chargé : il joue une note et rend de quoi l'arrêter. */
-type Voice = { start(n: { note: number; velocity: number; time: number; duration: number }): () => void };
+type Voice = { start(n: { note: number; velocity: number; time: number; duration: number; lpfCutoffHz?: number }): () => void };
 
 /** Lecteur unique de l'application : un état, et des abonnés (les boutons, le curseur). */
 class Player {
@@ -394,7 +394,7 @@ class Player {
         const n = notes[next];
         const voice = voiceOf(n.staff);
         if (!voice) continue;
-        const stop = voice.start({ note: n.midi, velocity: velocityOf(n), time: start + n.time, duration: n.duration });
+        const stop = voice.start({ note: n.midi, velocity: velocityOf(n), time: start + n.time, duration: n.duration, ...(n.filter ? { lpfCutoffHz: n.filter } : {}) });
         this.voices.push({ end: start + n.time + n.duration + RELEASE, stop });
       }
       for (; nextBeat < beats.length && beats[nextBeat].time < now - start + LOOKAHEAD; nextBeat++) {

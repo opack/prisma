@@ -2,7 +2,7 @@
  * Gravure : place les systèmes calculés par le moteur de mise en page sur des pages A4.
  * Toutes les dimensions sont en millimètres.
  */
-import { FINGER_MARK, firstStaves, staffCount, TRILL_MARK, chordName, chordNotes, chordOf, chordPrismaName, chordShape, chordWriting, graceDigits, gridStrings, layout, noteText, parseShape, splitShape } from "../core/index.ts";
+import { ARTICULATION_SIGNS, FINGER_MARK, firstStaves, staffCount, TRILL_MARK, chordName, chordNotes, chordOf, chordPrismaName, chordShape, chordWriting, graceDigits, gridStrings, layout, noteText, parseShape, splitShape } from "../core/index.ts";
 import type { Align, Part, Score, Shape, System, Voice } from "../core/index.ts";
 
 export const PAGE = { w: 210, h: 297, marginX: 15, marginTop: 14, marginBottom: 16 };
@@ -38,6 +38,8 @@ export const G = {
   holdW: 2.4, // trait de tenue devant le rappel d'une note commencée au système précédent
   noteDigit: 2.05, // largeur d'un chiffre de note (Atkinson Hyperlegible en gras, 3,3 mm)
   slurLevel: 1.3, // hauteur d'un étage de liaisons
+  legatoH: 2.8, // sous les liaisons d'une corde, la lettre du legato (H : hammer-on, P : pull-off)
+  techH: 4.6, // au-dessus des cordes, la bande du médiator (⊓, V) et de l'écart des bends (½, full)
   chordNameH: 4.6, // bande du nom d'un accord (« Am »)
   chordNoteH: 2.4, // hauteur d'une note dans un accord écrit en notes Prisma empilées
   chordChar: 1.9, // largeur d'un caractère du nom d'un accord
@@ -111,7 +113,7 @@ const chordW = (text: string, style: ChordStyle, names: ChordNames) => {
 const lyricH = (v: Voice) => (v.lyrics.length ? 0.4 + v.lyrics.length * G.lyricH : 0);
 
 /** Bande des liaisons d'une portée, juste sous ses lignes : un étage par niveau d'imbrication. */
-const slurH = (v: Voice) => (v.slurs.length ? 1 + (Math.max(...v.slurs.map((s) => s.level)) + 1) * G.slurLevel : 0);
+export const slurH = (v: Voice) => (v.slurs.length ? 1 + (Math.max(...v.slurs.map((s) => s.level)) + 1) * G.slurLevel : 0);
 
 /**
  * Doigté gravé : un chiffre blanc sur une pastille sombre, en bas à droite de la note. Le
@@ -119,6 +121,37 @@ const slurH = (v: Voice) => (v.slurs.length ? 1 + (Math.max(...v.slurs.map((s) =
  * r : demi-largeur de la pastille.
  */
 export const FINGER = { r: 1.2, gap: 0.55 };
+
+/**
+ * Une technique des cordes dans une case (« x », « <12> », « 7/ », « 7b9r », suivis ou non d'un
+ * doigt) : ce qu'elle grave. Undefined pour une autre case.
+ */
+export function techniqueOf(c: string) {
+  const m = c.match(/^(?:(x)|<(\d{1,2})>|(\d{1,2})(?:(\/)|b(\d{1,2})(r)?))(?:_(\d))?$/);
+  if (!m) return undefined;
+  const [, dead, harmonic, fret, slide, bend, release, finger] = m;
+  return { label: dead ? "x" : harmonic ? `<${harmonic}>` : fret, fret: Number(harmonic ?? fret ?? 0), dead: !!dead, harmonic: !!harmonic, slide: !!slide, bend: bend === undefined ? undefined : Number(bend), release: !!release, finger };
+}
+
+/** Un signe du médiator sur la ligne @ (« d », « u ») : il se grave au-dessus des cordes, pas sur la note. */
+export const isPickSign = (text: string) => text === ARTICULATION_SIGNS.down || text === ARTICULATION_SIGNS.up;
+
+/** L'écart d'un bend, gravé au bout de sa flèche : ½ ton, un ton (full), 1½… */
+export const bendLabel = (frets: number) => (frets === 2 ? "full" : frets % 2 ? `${frets > 1 ? (frets - 1) / 2 : ""}½` : String(frets / 2));
+
+/** La largeur d'une case de corde écrite, avant son bend : ses chiffres, et le trait d'un glissé. */
+function fretW(c: string | undefined) {
+  if (!c || c.startsWith("-")) return 0;
+  const t = techniqueOf(c);
+  return t ? t.label.length * G.noteDigit * (t.harmonic ? 0.8 : 1) + (t.slide ? 2.6 : 0) : splitNote(c).main.length * G.noteDigit;
+}
+
+/**
+ * Où part un bend, depuis la gauche de sa case : après la case la plus large de sa colonne, sur
+ * les cordes de la portée, pour que la flèche ne coupe pas un chiffre d'une autre corde.
+ */
+export const bendStart = (rows: { string?: number; cells: string[] }[], a: number) =>
+  0.5 + Math.max(0, ...rows.map((r) => (r.string === undefined ? 0 : fretW(r.cells[a])))) + 0.2;
 
 /** Morceaux d'une attaque : la note, la voisine d'une trille, le doigt. */
 export function splitNote(c: string) {
@@ -131,8 +164,11 @@ export function splitNote(c: string) {
  * Largeur ajoutée à une case par une note annotée trop longue pour elle : la note, sa
  * voisine de trille en petit, son doigt, puis un peu de trait ondulé pour une trille.
  */
-function noteW(c: string, cellW: number, reminders = true) {
+function noteW(c: string, cellW: number, reminders = true, bendAt = 0) {
   if (!c || c === "-") return 0;
+  // un bend : sa flèche, relâchée ou non, puis le doigt
+  const tech = bendAt ? techniqueOf(c) : undefined;
+  if (tech?.bend !== undefined) return Math.max(0, bendAt + 2.2 + (tech.release ? 2.6 : 0) + 0.8 + (tech.finger ? FINGER.gap + 2 * FINGER.r : 0) + 0.3 - cellW);
   // rappel d'une note tenue en début de système : le trait de tenue, puis ses chiffres en petit
   if (c.startsWith("-")) return reminders ? Math.max(0, 0.5 + G.holdW + 0.6 + (c.length - 1) * G.noteDigit * 0.82 + 0.45 - cellW) : 0;
   const { main, aux, finger } = splitNote(c);
@@ -144,7 +180,7 @@ function noteW(c: string, cellW: number, reminders = true) {
 }
 /** Place ajoutée par les notes d'une case trop larges pour elle, sur la ligne qui en demande le plus. */
 export const noteExtra = (sys: System, a: number, cellW: number, reminders = true) =>
-  Math.max(0, ...sys.staves.flatMap((p) => p.rows.map((r) => noteW(r.cells[a], cellW, reminders))));
+  Math.max(0, ...sys.staves.flatMap((p) => p.rows.map((r) => noteW(r.cells[a], cellW, reminders, r.string !== undefined ? bendStart(p.rows, a) : 0))));
 
 /** Hauteur de l'en-tête de la première page : titre, sous-titre éventuel, compositeur. */
 export const headerHeight = (meta: Score["meta"]) => G.headerH + (meta.subtitle ? G.subtitleH : 0);
@@ -191,6 +227,8 @@ export type PlacedSystem = {
  */
 export type StaffPlace = {
   separator?: number;
+  /** Sur une corde, au-dessus des cordes : la bande du médiator et de l'écart des bends (sa hauteur : rowsTop - techTop). */
+  techTop: number;
   rowsTop: number;
   slurTop: number;
   lyricTop: number;
@@ -210,7 +248,7 @@ export type Page = { index: number; systems: PlacedSystem[]; header: boolean; or
 
 // l'arpège se dessine devant l'accord, pas dans la bande des nuances
 // l'arpège et les articulations se dessinent sur la note, pas dans la bande des nuances
-const voiceH = (v: Voice) => (v.marks.some((m) => m.kind !== "arpeggio" && m.kind !== "articulation") || v.hairpins.length ? G.voiceH : 0);
+const voiceH = (v: Voice) => (v.marks.some((m) => m.kind !== "arpeggio" && m.kind !== "articulation") || v.hairpins.length || v.effects.length ? G.voiceH : 0);
 
 /**
  * Disposition verticale d'un système dont le haut est à y : au-dessus de la règle, les bandes
@@ -232,15 +270,20 @@ export function geometry(s: System, chords: ChordStyle, y: number, rowH: number 
       separator = cur + G.staffGap;
       cur = separator + G.staffGap;
     }
-    const slurBand = slurH(p.voice), lyricBand = lyricH(p.voice), voiceBand = voiceH(p.voice);
+    // sur une corde, sous les liaisons, la lettre du legato (H, P)
+    const legato = p.voice.slurs.length && p.rows.some((r) => r.string !== undefined) ? G.legatoH : 0;
+    const slurBand = slurH(p.voice) + legato, lyricBand = lyricH(p.voice), voiceBand = voiceH(p.voice);
     const pedalBand = p.pedal.spans.length || p.pedal.texts.length ? G.pedalH : 0;
-    const rowsTop = cur;
+    // au-dessus des cordes, le sens du médiator et l'écart des bends, en grand, comme en tablature
+    const tech = p.rows.some((r) => r.string !== undefined) && (p.voice.marks.some((m) => m.kind === "articulation" && isPickSign(m.text)) || p.rows.some((r) => r.cells.some((c) => techniqueOf(c)?.bend !== undefined)));
+    const techTop = cur;
+    const rowsTop = cur + (tech ? G.techH : 0);
     const slurTop = rowsTop + p.rows.length * rowH;
     const lyricTop = slurTop + slurBand;
     const voiceTop = lyricTop + lyricBand;
     const pedalTop = voiceTop + voiceBand;
     cur = pedalTop + pedalBand;
-    return { separator, rowsTop, slurTop, lyricTop, voiceTop, pedalTop, bottom: pedalTop, slurBand, lyricBand, voiceBand, pedalBand };
+    return { separator, techTop, rowsTop, slurTop, lyricTop, voiceTop, pedalTop, bottom: pedalTop, slurBand, lyricBand, voiceBand, pedalBand };
   });
   const parts = s.parts.map((x, i) => {
     const first = firsts[i], last = first + x.staves - 1;

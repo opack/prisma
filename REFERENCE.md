@@ -121,6 +121,34 @@ Le choix de la corde est celui de qui écrit le morceau : une même note se joue
 
 L'instrument se reconnaît au nom de la partie (« Guitare », « Basse électrique »), ou s'écrit entre parenthèses (`guitar`, `electric-bass`). Après lui viennent, s'il le faut, l'accordage et le capo : `parts: Guitare (drop-d, capo 2)`. Les accordages de la guitare : `standard` (par défaut), `drop-d` (la 6ᵉ corde baissée en *ré*), `dadgad`, `open-g`, `open-d` ; de la basse : `standard`, `drop-d`. Avec un capo, les cases se comptent depuis lui, comme en tablature : `0` est la corde jouée au capo.
 
+### Les techniques des cordes
+
+Ce qui touche une note s'écrit dans sa case, avec les signes des tablatures :
+
+- `x` : **note étouffée**. La main touche la corde sans appuyer : un son sec, sans hauteur.
+- `<12>` : **harmonique naturelle**. On effleure la corde au-dessus de la case, sans appuyer : à la case 12, elle sonne une octave au-dessus de la corde à vide ; à la 7 (ou la 19), une quinte de plus ; à la 5 (ou la 24), deux octaves ; à la 4, la 9 ou la 16, deux octaves et une tierce ; à la 3, deux octaves et une quinte.
+- `7/` : **glissé**. Le doigt glisse sur la corde jusqu'à la note suivante de la même corde, sans la rejouer ; la partition trace le trait vers le haut ou vers le bas.
+- `7b9` : **bend**. On tire la corde, appuyée en case 7, jusqu'à ce qu'elle sonne comme la case 9 ; `7b9r` la relâche ensuite. La partition dessine, comme en tablature, la flèche qui part de la case et monte au-dessus des cordes, et l'écart au-dessus d'elle : `½` pour un demi-ton, `full` pour un ton, `1½`, `2` ; relâché, une seconde flèche redescend.
+
+Le **hammer-on** et le **pull-off** sont une liaison : `(--)` entre deux notes de la même corde dit que la seconde ne se rejoue pas au médiator, le doigt la frappe (hammer-on, quand elle monte) ou la tire (pull-off, quand elle descend). La partition écrit `H` ou `P` sous la liaison. Sans liaison, les deux notes sont deux attaques.
+
+Sur la ligne `@` de la portée, comme les articulations : le **sens du médiator**, `d` vers le bas et `u` vers le haut, case par case, gravés ⊓ et V en grand au-dessus des cordes, comme partout en tablature ; l'**étouffé de la paume**, `P.M.---`, la tranche de la main posée sur les cordes près du chevalet jusqu'au bout du trait ; le **vibrato**, `~~~~`, la note qui ondule jusqu'au bout des vagues.
+
+```prisma
+---
+parts: Guitare
+---
+
+m1 |1    |2  |3    |4  ||1  |2  |3  |4     ||
+───┼─ Guitare ─────┼───┼┼───┼───┼───┼──────┼┼
+1  |<12> |x  |7b9r |5/ ||8  |5  |7  |10b12 ||
+3  |5    |7  |     |   ||   |   |   |      ||
+@                        (--------)
+@   d     u   P.M.----           ~~~~~~~~~
+```
+
+À l'écoute, une note étouffée et l'étouffé de la paume sonnent courts et sourds, une harmonique à sa hauteur, un bend et un glissé passent d'une hauteur à l'autre sans nouvelle attaque, comme un hammer-on ou un pull-off ; le vibrato ne s'entend pas.
+
 ## 3. Le temps
 
 ### Ce que veut dire 4/4, 3/4, 6/8…
@@ -364,5 +392,8 @@ Les indications de caractère et de tempo (`dolce`, `rit.`, `a tempo`…) garden
 | staccato, accent, marcato | `.`, `!`, `!!` sous la portée concernée ; le tenuto n'a pas de signe |
 | pédale | `Ped.`, `*`, `*Ped.`, tracés en trait continu |
 | accords d'accompagnement (Am, G/B) | ligne `@c` : le nom Prisma (`10:m`, `8/12`), le nom anglais, ou les notes de la basse vers l'aigu (`10,1,5`) |
+| techniques de la guitare (étouffée, harmonique, glissé, bend) | dans la case : `x`, `<12>`, `7/`, `7b9` (`7b9r` relâché) |
+| hammer-on, pull-off | une liaison `(--)` entre deux notes de la même corde : `H` ou `P` sur la partition |
+| médiator, étouffé de la paume, vibrato | sur la ligne `@` de la portée : `d` et `u` ; `P.M.---` ; `~~~~` |
 | grille d'accord, pour la guitare | après le nom et `=`, la case de chaque corde, de la plus grave à la plus aiguë (`10:m=x02210`) |
 | paroles, traits d'union, mélismes | une ligne `@l` par couplet, sous la portée qui chante : `lu- ne`, `men ---` |

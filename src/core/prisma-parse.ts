@@ -7,8 +7,8 @@
 import { chordNotes } from "./chords.ts";
 import { gridStrings, parseShape, shapePitches, splitShape } from "./shapes.ts";
 import { PrismaError, parseFrontmatter } from "./frontmatter.ts";
-import { ARPEGGIO_DOWN, FERMATA, articulationOf, isArticulationSign, HYPHEN, LYRIC_LINE, isExtender, sortLyrics, FINGER_MARK, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isSlur, isPedalText, joinsText, sortArticulations, sortGraces, sortNotes, stringsOfStaff } from "./model.ts";
-import type { Arpeggio, Articulation, Beat, Division, Expression, Grace, Hairpin, Part, Lyric, Marker, Note, Staff, Pedal, PedalText, Repeat, Score, Slur, TextMark } from "./model.ts";
+import { ARPEGGIO_DOWN, BEND_MARK, DEAD_MARK, FERMATA, HARMONICS, MAX_BEND, RELEASE_MARK, SLIDE_MARK, articulationOf, effectOf, isEffect, isPick, isArticulationSign, HYPHEN, LYRIC_LINE, isExtender, sortLyrics, FINGER_MARK, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isSlur, isPedalText, joinsText, sortArticulations, sortGraces, sortNotes, stringsOfStaff } from "./model.ts";
+import type { Arpeggio, Articulation, Beat, Division, Effect, Expression, Grace, Hairpin, Part, Lyric, Marker, Note, Staff, Pedal, PedalText, Repeat, Score, Slur, TextMark } from "./model.ts";
 import { CENTRAL_OCTAVE, midiOf, parseOctaveLabel } from "./pitch.ts";
 import { INSTRUMENTS, guessInstrument, isInstrument, splitPartEntry, splitParts } from "./instruments.ts";
 import { MAX_CAPO, MAX_FRET, isStringInstrument, soundingOf, stringsOf, tuningsOf } from "./strings.ts";
@@ -226,6 +226,7 @@ export function parsePrisma(text: string): Score {
   };
   const expressions: Expression[] = [];
   const hairpins: Hairpin[] = [];
+  const effects: Effect[] = [];
   const pedals: Pedal[] = [];
   const slurs: Slur[] = [];
   type OpenSlur = { slur: Slur; line: number; col: number };
@@ -423,7 +424,7 @@ export function parsePrisma(text: string): Score {
       for (const tok of markTokens(row)) {
         // un soufflet, une liaison ou une articulation peut commencer dans la case, juste
         // après une autre indication (« p <--- », « . ! ») ; le reste commence exactement sur une case
-        const ai = isHairpin(tok.text) || isSlur(tok.text) || isArticulationSign(tok.text)
+        const ai = isHairpin(tok.text) || isEffect(tok.text) || isSlur(tok.text) || isArticulationSign(tok.text)
           ? anchors.findIndex((x) => tok.col >= x.from && tok.col < x.to)
           : anchors.findIndex((x) => x.from === tok.col);
         if (ai < 0) throw new PrismaError(`« ${tok.text} » doit commencer exactement sur une case de la règle de comptage`, R, tok.col + 1);
@@ -432,6 +433,7 @@ export function parsePrisma(text: string): Score {
           addArpeggio({ t: a.t, staff, ...(tok.text === ARPEGGIO_DOWN ? { down: true } : {}) }, R, tok.col + 1);
         } else if (isArticulationSign(tok.text)) {
           const kind = articulationOf(tok.text)!;
+          if (isPick(kind) && !stringsOfStaff(parts!, staff)) throw new PrismaError(`« ${tok.text} » : le sens du médiator se note pour une partie de guitare ou de basse`, R, tok.col + 1);
           if (articulations.some((x) => x.staff === staff && x.t === a.t && x.kind === kind)) throw new PrismaError(`« ${tok.text} » posé deux fois sur la même case`, R, tok.col + 1);
           articulations.push({ staff, t: a.t, kind });
         } else if (isPedalSign(tok.text) || isPedalText(tok.text)) {
@@ -458,6 +460,16 @@ export function parsePrisma(text: string): Score {
             const end = anchors.filter((x) => x.from <= last).pop()!;
             slur.end = end.t;
           } else openSlurs.push({ slur, line: R, col: tok.col + 1 });
+        } else if (isEffect(tok.text)) {
+          // l'étouffé ou le vibrato finit avec la case qui contient son dernier caractère, comme un soufflet
+          const kind = effectOf(tok.text)!;
+          if (!stringsOfStaff(parts!, staff)) throw new PrismaError(`« ${tok.text} » : ${kind === "palmMute" ? "l'étouffé de la paume" : "le vibrato"} se note pour une partie de guitare ou de basse`, R, tok.col + 1);
+          const last = tok.col + tok.text.length - 1;
+          const next = anchors.find((x) => x.from > last);
+          const end = next ? next.t : t1;
+          const prev = ai === 0 ? effects.find((e) => e.staff === staff && e.kind === kind && e.end === t0) : undefined;
+          if (prev) prev.end = end;
+          else effects.push({ staff, kind, start: a.t, end });
         } else if (isHairpin(tok.text)) {
           // le soufflet finit avec la case qui contient son dernier caractère
           const last = tok.col + tok.text.length - 1;
@@ -620,12 +632,37 @@ export function parsePrisma(text: string): Score {
         }
         const c = raw.trim();
         const col = a.from + 1 + (raw.length - raw.trimStart().length);
+        // sur une corde, les techniques : « x » étouffée, « <12> » harmonique, « 7/ » glissé, « 7b9 » bend (« 7b9r » relâché)
+        const tech = strs ? c.match(/^(?:(x)|<(\d{1,2})>|(\d{1,2})(?:(\/)|b(\d{1,2})(r)?))(?:_(\d))?$/) : null;
+        if (tech) {
+          const [, dead, harmonic, fret, slide, bend, release, finger] = tech;
+          const k = Number(harmonic ?? fret ?? 0);
+          if (k > hi) throw new PrismaError(`case invalide « ${c} » : ${what}`, R, col);
+          if (harmonic && HARMONICS[k] === undefined) throw new PrismaError(`harmonique « ${c} » : une harmonique naturelle s'effleure sur la case ${Object.keys(HARMONICS).join(", ")}`, R, col);
+          if (bend && (Number(bend) <= k || Number(bend) - k > MAX_BEND || Number(bend) > hi)) throw new PrismaError(`bend « ${c} » : la case tirée, puis celle dont elle prend le son, plus haut de ${MAX_BEND} cases au plus (7${BEND_MARK}9)`, R, col);
+          if (finger && (Number(finger) < 1 || Number(finger) > 5)) throw new PrismaError(`doigté « ${c} » : un doigt de 1 à 5`, R, col);
+          close(a.t);
+          open = {
+            staff,
+            midi: pitch(k),
+            start: a.t,
+            end: t1,
+            ...(dead ? { dead: true } : {}),
+            ...(harmonic ? { harmonic: true } : {}),
+            ...(slide ? { slide: true } : {}),
+            ...(bend ? { bend: pitch(Number(bend)), ...(release ? { release: true } : {}) } : {}),
+            ...(finger ? { finger: Number(finger) } : {}),
+            ...onString,
+          };
+          notes.push(open);
+          return;
+        }
         const m = c.match(/^(-?)(\d{0,2})(?:~(\d{1,2}))?(?:_(\d))?$/);
         const bad = (k?: string) => !!k && (Number(k) < lo || Number(k) > hi);
         const badFinger = m && m[4] && (Number(m[4]) < 1 || Number(m[4]) > 5 || m[1] || !m[2]);
         if (!m || bad(m[2]) || bad(m[3]) || (!m[1] && !m[2] && c) || (m[3] && (m[1] || !m[2])) || badFinger) {
           throw new PrismaError(
-            `case invalide « ${c} » : attendu ${what}, « - », « -N », une trille « N${TRILL_MARK}N », un doigté « N${FINGER_MARK}D » (doigt de 1 à 5), des petites notes « N' » ou une case vide`,
+            `case invalide « ${c} » : attendu ${what}, « - », « -N », une trille « N${TRILL_MARK}N », un doigté « N${FINGER_MARK}D » (doigt de 1 à 5), des petites notes « N' »${strs ? `, une note étouffée « ${DEAD_MARK} », une harmonique « <12> », un glissé « 7${SLIDE_MARK} », un bend « 7${BEND_MARK}9 » (« 7${BEND_MARK}9${RELEASE_MARK} » relâché)` : ""} ou une case vide`,
             R, col,
           );
         }
@@ -643,6 +680,7 @@ export function parsePrisma(text: string): Score {
         }
         // tenue
         if (!digits) {
+          if (open?.dead) throw new PrismaError(`« - » après « ${DEAD_MARK} » : une note étouffée ne se tient pas`, R, col);
           if (open) return;
           throw new PrismaError(
             ai === 0 ? "tenue en début de système : écrivez le numéro de la note, par exemple « -7 »" : "« - » sans note à prolonger",
@@ -760,6 +798,7 @@ export function parsePrisma(text: string): Score {
     texts,
     expressions: expressions.sort((a, b) => a.t - b.t || a.staff - b.staff),
     hairpins: hairpins.sort((a, b) => a.start - b.start || a.staff - b.staff),
+    effects: effects.sort((a, b) => a.start - b.start || a.staff - b.staff),
     slurs: slurs.sort((a, b) => a.start - b.start || a.staff - b.staff || a.end - b.end),
     pedals: pedals.filter((p) => p.end > p.start).sort((a, b) => a.start - b.start || a.staff - b.staff),
     pedalTexts: pedalTexts.sort((a, b) => a.t - b.t || a.staff - b.staff),

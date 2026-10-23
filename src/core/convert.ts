@@ -114,6 +114,7 @@ function convertAt(score: Score, part: number, instrument: InstrumentName, strs:
     graces: unique(graces, (g) => `${g.t}|${g.slot}|${g.midi}`),
     expressions: unique(score.expressions, (e) => `${e.t}|${e.text}`),
     hairpins: unique(score.hairpins, (h) => `${h.start}|${h.kind}`),
+    effects: unique(score.effects, (e) => `${e.start}|${e.kind}`),
     slurs: unique(score.slurs, (s) => `${s.start}|${s.end}`),
     lyrics: unique(score.lyrics, (l) => `${l.t}|${l.verse}`),
     articulations: unique(score.articulations, (a) => `${a.t}|${a.kind}`),
