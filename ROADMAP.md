@@ -105,6 +105,7 @@
    - **Fichier › Nouveau** propose un modèle pour démarrer, dans une petite fenêtre : vide (rien, comme aujourd'hui) ; minimal (l'en-tête habituel et une première mesure vide, pour le piano) ; guitare (le même, pour la guitare, ses cordes en couloirs).
 3. **Logo** : l'application et le site écrivent « Prisma » en attendant.
 4. **Accompagnement en clavier** : une valeur « Clavier » de plus pour l'accompagnement (onglet Partition), qui dessine chaque accord sur un petit clavier au-dessus de la règle, avec le composant de la barre de statut. À régler : la place dans la bande des accords (des accords rapprochés), et l'impression en noir et blanc (les touches marquées d'un point noir, blanc sur les noires) ; à essayer sur Moonlight.
+5. **Chantier technique : Tailwind CSS** : remplacer le plus possible du CSS écrit à la main (`src/app/styles.css`, `src/site/site.css`) par les classes de Tailwind, sur des couleurs et des espacements communs à l'application et au site. Restent en CSS ce que les classes disent mal : la gravure (le SVG des pages), l'impression, le thème de l'éditeur.
 
 ## Hors v1 pour l'instant
 
