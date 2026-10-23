@@ -106,6 +106,8 @@
 3. **Logo** : l'application et le site écrivent « Prisma » en attendant.
 4. **Accompagnement en clavier** : une valeur « Clavier » de plus pour l'accompagnement (onglet Partition), qui dessine chaque accord sur un petit clavier au-dessus de la règle, avec le composant de la barre de statut. À régler : la place dans la bande des accords (des accords rapprochés), et l'impression en noir et blanc (les touches marquées d'un point noir, blanc sur les noires) ; à essayer sur Moonlight.
 5. **Chantier technique : Tailwind CSS** : remplacer le plus possible du CSS écrit à la main (`src/app/styles.css`, `src/site/site.css`) par les classes de Tailwind, sur des couleurs et des espacements communs à l'application et au site. Restent en CSS ce que les classes disent mal : la gravure (le SVG des pages), l'impression, le thème de l'éditeur.
+   - **Vérifier que rien ne bouge** : avant toute modification, une série de captures de référence, prises par Playwright sur l'existant (un `git worktree` du commit de départ) : chaque page du site, les écrans et panneaux de l'application (barre, options, bibliothèque, retouche, dialogues), et la gravure d'un corpus de morceaux (piano, chant, guitare, accords, techniques) à plusieurs zooms et en impression. Après chaque étape, les mêmes captures, comparées pixel à pixel avec un seuil : un écart se voit, se juge (acceptable ou non), et une référence ne se met à jour que volontairement.
+   - **Le piège** : le préambule de Tailwind (*preflight*) remet à zéro marges, boutons, titres et `svg` ; l'adopter ou s'en passer se décide au début, captures à l'appui.
 
 ## Hors v1 pour l'instant
 
