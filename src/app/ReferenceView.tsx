@@ -20,8 +20,12 @@ import type { RenderOptions } from "./options.ts";
 type Heading = { depth: number; text: string; id: string };
 
 
-/** HTML de la référence, avec une place réservée pour chaque exemple gravé, et ses titres. */
-function render(markdown: string) {
+/**
+ * HTML de la référence, avec une place réservée pour chaque exemple gravé, et ses titres. Une page
+ * du site (« guitare.html ») se lit depuis site, le dossier du site : dans l'application, elle
+ * s'ouvre à côté, sans quitter le morceau.
+ */
+function render(markdown: string, site: string) {
   const examples: string[] = [];
   const headings: Heading[] = [];
   const marked = new Marked({
@@ -41,8 +45,10 @@ function render(markdown: string) {
       },
       // les autres documents du dépôt ne sont pas servis par l'application : leur nom suffit
       link({ href, tokens }) {
-        if (!href.endsWith(".md")) return false;
-        return `<strong>${this.parser.parseInline(tokens)}</strong>`;
+        const text = this.parser.parseInline(tokens);
+        if (href.endsWith(".md")) return `<strong>${text}</strong>`;
+        if (!/^[a-z]+:/.test(href) && href.endsWith(".html")) return `<a href="${site}${href}"${site ? ' target="_blank" rel="noopener"' : ""}>${text}</a>`;
+        return false;
       },
     },
   });
@@ -70,8 +76,8 @@ function Example({ text, options }: { text: string; options: RenderOptions }) {
  * La référence, avec à sa gauche la table des matières : ses parties et sous-parties, un clic pour y
  * aller ; celle qu'on lit est mise en évidence pendant qu'on fait défiler.
  */
-export function ReferenceView({ options, example }: { options: RenderOptions; example?: (text: string) => ReactNode }) {
-  const { html, examples, headings } = useMemo(() => render(reference), []);
+export function ReferenceView({ options, example, site = "../" }: { options: RenderOptions; example?: (text: string) => ReactNode; site?: string }) {
+  const { html, examples, headings } = useMemo(() => render(reference, site), [site]);
   const root = useRef<HTMLDivElement>(null);
   const [slots, setSlots] = useState<Element[]>([]);
   const [current, setCurrent] = useState(headings[0]?.id);

@@ -104,11 +104,11 @@ Le chemin inverse, pour ouvrir un morceau dans MuseScore ou un autre logiciel (F
 - **Les fichiers** (`files.ts`, `library.ts`) : avec Chrome et Edge, l'API File System Access réécrit le fichier ouvert et donne accès à un dossier de morceaux, la bibliothèque. Ailleurs, on ouvre par le sélecteur de fichiers et on enregistre par un téléchargement. Rien n'est copié dans le navigateur : le disque reste la seule référence.
 - **Les réglages** : les options générales sont gardées dans le navigateur (`options.ts`) ; celles d'un morceau (tempo, portées muettes, instrument et volume de chaque partie, rendu) dans un fichier `.json` à côté de lui (`piece.ts`), pour que la partition reste propre à diffuser.
 - **Les aperçus** de la bibliothèque sont gravés dans un worker (`thumbs.worker.ts`) et gardés en cache (`thumbs.ts`).
-- **La référence** (`ReferenceView.tsx`) affiche `REFERENCE.md` : chaque exemple ` ```prisma ` y est gravé par le vrai moteur. Elle ne peut donc pas montrer une gravure périmée.
+- **La référence** (`ReferenceView.tsx`) affiche `REFERENCE.md` : chaque exemple ` ```prisma ` y est gravé par le vrai moteur. Elle ne peut donc pas montrer une gravure périmée. Ses liens vers une page du site s'ouvrent dans un nouvel onglet, sans quitter le morceau.
 
 ## Le site (`src/site/`)
 
-Quatre pages à la racine (`index.html`, `apprendre.html`, `reference.html`, `comparaison.html`), l'application dans `app/`. Le site est construit avec l'application, dans le même `vite build`, et réutilise ses composants : chaque exemple est gravé par le moteur, et la page Référence est le composant de l'application. `Example.tsx` montre au choix la partition ou le texte d'un exemple, copiable d'un clic. Les liens du site vers une partie de la référence (`referenceLinks.ts`) sont vérifiés par un test.
+Cinq pages à la racine (`index.html`, `apprendre.html`, `reference.html`, `guitare.html`, `comparaison.html`), l'application dans `app/`. Le site est construit avec l'application, dans le même `vite build`, et réutilise ses composants : chaque exemple est gravé par le moteur, et la page Référence est le composant de l'application. `Example.tsx` montre au choix la partition ou le texte d'un exemple, copiable d'un clic. Les liens du site vers une partie de la référence (`referenceLinks.ts`) sont vérifiés par un test.
 
 ## Choix techniques
 

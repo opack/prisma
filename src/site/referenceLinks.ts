@@ -6,6 +6,8 @@ export const REFERENCE_PARTS = {
   expression: "6. Nuances, soufflets, liaisons, pédale",
   chords: "Les accords d'accompagnement",
   lyrics: "Les paroles",
+  strings: "Les instruments à cordes",
+  techniques: "Les techniques des cordes",
 } as const;
 
 /** Le lien vers une partie de la référence. */

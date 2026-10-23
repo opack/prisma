@@ -169,6 +169,9 @@ export function Home() {
             <p>
               Vous connaissez déjà la partition classique ? <a href="comparaison.html">Voyez ce que Prisma garde, ce qu'il retire, et ce qu'il perd.</a>
             </p>
+            <p>
+              Vous jouez de la guitare ou de la basse ? Prisma les écrit comme une tablature, posée sur la règle du temps : <a href="guitare.html">voyez ce qu'elle y gagne</a>.
+            </p>
           </div>
         </section>
 

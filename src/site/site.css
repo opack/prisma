@@ -140,3 +140,9 @@ figure.example .excerpt { display: block; max-width: 100%; height: auto; }
 .numbers th, .numbers td { padding: 3px 5px; border: 1px solid var(--line); text-align: center; vertical-align: top; white-space: nowrap; }
 .numbers th { text-align: left; font-weight: 700; background: var(--panel); }
 .numbers tr:first-child td { font-weight: 700; }
+
+/* la guitare : la tablature de texte, puis le même passage en Prisma, l'un sous l'autre */
+.versus { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; justify-items: start; }
+.versus > div { display: grid; min-width: 0; max-width: 100%; }
+.versus .caption { margin: 0 0 6px; }
+.source-text.tab { font-size: 15px; line-height: 1.35; }

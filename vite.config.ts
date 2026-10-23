@@ -7,6 +7,6 @@ export default defineConfig({
   define: { __BUILD__: JSON.stringify(new Date().toISOString()) },
   build: {
     // le site qui présente Prisma, à la racine, et l'application dans app/
-    rollupOptions: { input: { index: "index.html", comparaison: "comparaison.html", apprendre: "apprendre.html", reference: "reference.html", app: "app/index.html" } },
+    rollupOptions: { input: { index: "index.html", comparaison: "comparaison.html", apprendre: "apprendre.html", reference: "reference.html", guitare: "guitare.html", app: "app/index.html" } },
   },
 });

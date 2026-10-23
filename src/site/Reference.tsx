@@ -9,7 +9,7 @@ export function Reference() {
     <>
       <Header />
       <main className="reference-page">
-        <ReferenceView options={DEFAULT_OPTIONS} example={(text) => <Example text={text} scale={1.4} label="Un exemple de la référence" />} />
+        <ReferenceView site="" options={DEFAULT_OPTIONS} example={(text) => <Example text={text} scale={1.4} label="Un exemple de la référence" />} />
       </main>
       <Footer />
     </>
