@@ -235,5 +235,21 @@ export function stringParts(parts: Part[], notes: Note[], graces: Grace[]): Note
       else delete g.string;
     }
   }
-  return notes.filter((n) => !dropped.has(n));
+  return settleSlides(notes.filter((n) => !dropped.has(n)));
+}
+
+/**
+ * Les glissés d'un morceau importé ou converti, rendus justes. Un glissé vers la note suivante
+ * prend le sens de la note qui suit sur la corde, si elle vient sans silence ; sinon, il devient un
+ * glissé de sortie. Hors des cordes, une note ne glisse pas.
+ */
+export function settleSlides(notes: Note[]): Note[] {
+  return notes.map((n) => {
+    const { slide, slideIn, slideOut, ...rest } = n;
+    if (n.string === undefined) return slide || slideIn || slideOut ? rest : n;
+    if (!slide) return n;
+    const next = notes.filter((m) => m.staff === n.staff && m.string === n.string && m.start > n.start).sort((a, b) => a.start - b.start)[0];
+    if (next && next.start === n.end && next.midi !== n.midi) return { ...rest, ...(slideIn ? { slideIn } : {}), slide: next.midi > n.midi ? "up" : "down" };
+    return { ...rest, ...(slideIn ? { slideIn } : {}), slideOut: slide };
+  });
 }

@@ -152,7 +152,7 @@ export function Guitar() {
               <code>x</code> la note étouffée, <code>&lt;12&gt;</code> l'harmonique naturelle ;
             </li>
             <li>
-              <code>7/</code> le glissé vers la note suivante de la corde ;
+              <code>7/</code> le glissé vers la note suivante de la corde (<code>9\</code> vers le grave), <code>7\\</code> vers rien, <code>//7</code> depuis rien ;
             </li>
             <li>
               <code>7b9</code> le bend, tiré jusqu'à la case 9, et <code>7b9r</code> relâché.

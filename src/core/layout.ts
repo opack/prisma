@@ -5,7 +5,7 @@
  * Le moteur ne connaît que des « unités » de largeur : des caractères pour le texte,
  * des millimètres pour le rendu graphique. Seules les mesures changent.
  */
-import { ARPEGGIO_DOWN, ARPEGGIO_UP, ARTICULATION_SIGNS, BEND_MARK, DEAD_MARK, FINGER_MARK, RELEASE_MARK, SLIDE_MARK, staffCount, stringsOfStaff, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, TRILL_MARK, beatStart, graceDigits, repeatOf } from "./model.ts";
+import { ARPEGGIO_DOWN, ARPEGGIO_UP, ARTICULATION_SIGNS, BEND_MARK, DEAD_MARK, FINGER_MARK, RELEASE_MARK, slideText, staffCount, stringsOfStaff, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, TRILL_MARK, beatStart, graceDigits, repeatOf } from "./model.ts";
 import type { Beat, Division, EffectKind, Hairpin, Part, Note, Staff, Score } from "./model.ts";
 import { CENTRAL_OCTAVE, numberOf, octaveOf } from "./pitch.ts";
 import { fretOf } from "./strings.ts";
@@ -482,8 +482,11 @@ export const noteText = (n: Note, parts?: Part[]) => {
   // les techniques des cordes : étouffée, harmonique, glissé, bend
   if (n.dead) return DEAD_MARK + finger;
   if (n.harmonic) return `<${k(n.midi)}>` + finger;
-  if (n.slide) return k(n.midi) + SLIDE_MARK + finger;
-  if (n.bend !== undefined) return k(n.midi) + BEND_MARK + k(n.bend) + (n.release ? RELEASE_MARK : "") + finger;
+  // le glissé d'entrée avant la case ; après elle, le glissé vers la note suivante, ou vers rien
+  const into = n.slideIn ? slideText(n.slideIn, true) : "";
+  if (n.slide || n.slideOut) return into + k(n.midi) + (n.slide ? slideText(n.slide, false) : slideText(n.slideOut!, true)) + finger;
+  if (n.bend !== undefined) return into + k(n.midi) + BEND_MARK + k(n.bend) + (n.release ? RELEASE_MARK : "") + finger;
+  if (into) return into + k(n.midi) + finger;
   return String(k(n.midi)) + (n.trill !== undefined ? TRILL_MARK + k(n.trill) : "") + finger;
 };
 

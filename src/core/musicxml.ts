@@ -155,7 +155,7 @@ function structureOf(d: XNode[], words: string[], at: number): RawStructure[] {
   return out;
 }
 
-type RawNote = { staff: Staff; midi: number; on: number; off: number; tieStart: boolean; tieStop: boolean; trill?: number; finger?: number; string?: number; tech?: Pick<Note, "dead" | "harmonic" | "slide" | "bend" | "release"> };
+type RawNote = { staff: Staff; midi: number; on: number; off: number; tieStart: boolean; tieStop: boolean; trill?: number; finger?: number; string?: number; tech?: Pick<Note, "dead" | "harmonic" | "slide" | "slideOut" | "slideIn" | "bend" | "release"> };
 /** Arpège : number regroupe les notes d'un même arpège, d'une portée à l'autre. */
 type RawArpeggio = { staff: Staff; on: number; number?: string; down: boolean };
 /** Petite note, jouée juste avant l'instant on (en noires depuis le début de la mesure). */
@@ -485,7 +485,14 @@ function readMeasures(partNode: XNode, base: Staff, staves: number, tab?: number
             else if (alter > 0) t2.bend = midi + alter;
           }
           if (!t2.release) delete t2.release;
-          if (notations.some((x) => tag(x) === "slide" && attr(x, "type") === "start")) t2.slide = true;
+          // le glissé vers la note suivante : son sens se lit sur elle (settleSlides) ; vers rien ou
+          // depuis rien, les articulations de MusicXML : falloff et doit, scoop et plop
+          if (notations.some((x) => (tag(x) === "slide" || tag(x) === "glissando") && attr(x, "type") === "start")) t2.slide = "up";
+          const arts = notations.filter((x) => tag(x) === "articulations").flatMap((x) => kids(x)).map(tag);
+          if (arts.includes("falloff")) t2.slideOut = "down";
+          else if (arts.includes("doit")) t2.slideOut = "up";
+          if (arts.includes("scoop")) t2.slideIn = "up";
+          else if (arts.includes("plop")) t2.slideIn = "down";
           if (Object.keys(t2).length) raw.tech = t2;
           for (const x of tech.filter((y) => tag(y) === "hammer-on" || tag(y) === "pull-off")) {
             const type = String(attr(x, "type") ?? "");
@@ -997,7 +1004,9 @@ export function importMusicXml(xml: string, fileName?: string): Score {
       ...(n.string !== undefined ? { string: n.string } : {}),
       ...(n.dead ? { dead: true } : {}),
       ...(n.harmonic ? { harmonic: true } : {}),
-      ...(n.slide ? { slide: true } : {}),
+      ...(n.slide ? { slide: n.slide } : {}),
+      ...(n.slideOut ? { slideOut: n.slideOut } : {}),
+      ...(n.slideIn ? { slideIn: n.slideIn } : {}),
       ...(n.bend !== undefined ? { bend: n.bend, ...(n.release ? { release: true } : {}) } : {}),
     });
   }

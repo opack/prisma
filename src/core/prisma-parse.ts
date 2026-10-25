@@ -7,7 +7,7 @@
 import { chordNotes } from "./chords.ts";
 import { gridStrings, parseShape, shapePitches, splitShape } from "./shapes.ts";
 import { PrismaError, parseFrontmatter } from "./frontmatter.ts";
-import { ARPEGGIO_DOWN, BEND_MARK, DEAD_MARK, FERMATA, HARMONICS, MAX_BEND, RELEASE_MARK, SLIDE_MARK, articulationOf, effectOf, isEffect, isPick, isArticulationSign, HYPHEN, LYRIC_LINE, isExtender, sortLyrics, FINGER_MARK, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isSlur, isPedalText, joinsText, sortArticulations, sortGraces, sortNotes, stringsOfStaff } from "./model.ts";
+import { ARPEGGIO_DOWN, BEND_MARK, DEAD_MARK, FERMATA, HARMONICS, MAX_BEND, RELEASE_MARK, SLIDE_MARKS, slideText, stringCell, articulationOf, effectOf, isEffect, isPick, isArticulationSign, HYPHEN, LYRIC_LINE, isExtender, sortLyrics, FINGER_MARK, GRACE_MARK, TRILL_MARK, isArpeggioSign, trillAux, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, isDynamic, isHairpin, isPedalSign, isSlur, isPedalText, joinsText, sortArticulations, sortGraces, sortNotes, stringsOfStaff } from "./model.ts";
 import type { Arpeggio, Articulation, Beat, Division, Effect, Expression, Grace, Hairpin, Part, Lyric, Marker, Note, Staff, Pedal, PedalText, Repeat, Score, Slur, TextMark } from "./model.ts";
 import { CENTRAL_OCTAVE, midiOf, parseOctaveLabel } from "./pitch.ts";
 import { INSTRUMENTS, guessInstrument, isInstrument, splitPartEntry, splitParts } from "./instruments.ts";
@@ -204,6 +204,8 @@ export function parsePrisma(text: string): Score {
 
   const beats: Beat[] = [];
   const notes: Note[] = [];
+  // les glissés vers la note suivante, vérifiés une fois toutes les notes lues
+  const slides: { note: Note; text: string; fret: number; line: number; col: number }[] = [];
   const graces: Grace[] = [];
   const repeats = new Map<number, Repeat>();
   const repeatAt = (barIndex: number) => {
@@ -632,15 +634,16 @@ export function parsePrisma(text: string): Score {
         }
         const c = raw.trim();
         const col = a.from + 1 + (raw.length - raw.trimStart().length);
-        // sur une corde, les techniques : « x » étouffée, « <12> » harmonique, « 7/ » glissé, « 7b9 » bend (« 7b9r » relâché)
-        const tech = strs ? c.match(/^(?:(x)|<(\d{1,2})>|(\d{1,2})(?:(\/)|b(\d{1,2})(r)?))(?:_(\d))?$/) : null;
+        // sur une corde, les techniques : « x » étouffée, « <12> » harmonique, « 7/ » glissé (« 7// » vers rien,
+        // « //7 » depuis rien), « 7b9 » bend (« 7b9r » relâché)
+        const tech = strs ? stringCell(c) : undefined;
         if (tech) {
-          const [, dead, harmonic, fret, slide, bend, release, finger] = tech;
-          const k = Number(harmonic ?? fret ?? 0);
+          const { dead, harmonic, fret: k, slide, slideOut, slideIn, bend, release, finger } = tech;
           if (k > hi) throw new PrismaError(`case invalide « ${c} » : ${what}`, R, col);
           if (harmonic && HARMONICS[k] === undefined) throw new PrismaError(`harmonique « ${c} » : une harmonique naturelle s'effleure sur la case ${Object.keys(HARMONICS).join(", ")}`, R, col);
-          if (bend && (Number(bend) <= k || Number(bend) - k > MAX_BEND || Number(bend) > hi)) throw new PrismaError(`bend « ${c} » : la case tirée, puis celle dont elle prend le son, plus haut de ${MAX_BEND} cases au plus (7${BEND_MARK}9)`, R, col);
-          if (finger && (Number(finger) < 1 || Number(finger) > 5)) throw new PrismaError(`doigté « ${c} » : un doigt de 1 à 5`, R, col);
+          if (bend !== undefined && (bend <= k || bend - k > MAX_BEND || bend > hi)) throw new PrismaError(`bend « ${c} » : la case tirée, puis celle dont elle prend le son, plus haut de ${MAX_BEND} cases au plus (7${BEND_MARK}9)`, R, col);
+          if (finger && (finger < 1 || finger > 5)) throw new PrismaError(`doigté « ${c} » : un doigt de 1 à 5`, R, col);
+          if (slideIn === "down" && k + 1 > hi) throw new PrismaError(`glissé « ${c} » : il vient d'une case plus haute que la ${hi}ᵉ`, R, col);
           close(a.t);
           open = {
             staff,
@@ -649,12 +652,15 @@ export function parsePrisma(text: string): Score {
             end: t1,
             ...(dead ? { dead: true } : {}),
             ...(harmonic ? { harmonic: true } : {}),
-            ...(slide ? { slide: true } : {}),
-            ...(bend ? { bend: pitch(Number(bend)), ...(release ? { release: true } : {}) } : {}),
-            ...(finger ? { finger: Number(finger) } : {}),
+            ...(slide ? { slide } : {}),
+            ...(slideOut ? { slideOut } : {}),
+            ...(slideIn ? { slideIn } : {}),
+            ...(bend !== undefined ? { bend: pitch(bend), ...(release ? { release: true } : {}) } : {}),
+            ...(finger ? { finger } : {}),
             ...onString,
           };
           notes.push(open);
+          if (slide) slides.push({ note: open, text: c, fret: k, line: R, col });
           return;
         }
         const m = c.match(/^(-?)(\d{0,2})(?:~(\d{1,2}))?(?:_(\d))?$/);
@@ -662,7 +668,7 @@ export function parsePrisma(text: string): Score {
         const badFinger = m && m[4] && (Number(m[4]) < 1 || Number(m[4]) > 5 || m[1] || !m[2]);
         if (!m || bad(m[2]) || bad(m[3]) || (!m[1] && !m[2] && c) || (m[3] && (m[1] || !m[2])) || badFinger) {
           throw new PrismaError(
-            `case invalide « ${c} » : attendu ${what}, « - », « -N », une trille « N${TRILL_MARK}N », un doigté « N${FINGER_MARK}D » (doigt de 1 à 5), des petites notes « N' »${strs ? `, une note étouffée « ${DEAD_MARK} », une harmonique « <12> », un glissé « 7${SLIDE_MARK} », un bend « 7${BEND_MARK}9 » (« 7${BEND_MARK}9${RELEASE_MARK} » relâché)` : ""} ou une case vide`,
+            `case invalide « ${c} » : attendu ${what}, « - », « -N », une trille « N${TRILL_MARK}N », un doigté « N${FINGER_MARK}D » (doigt de 1 à 5), des petites notes « N' »${strs ? `, une note étouffée « ${DEAD_MARK} », une harmonique « <12> », un glissé « 7${SLIDE_MARKS.up} » ou « 9${SLIDE_MARKS.down} », vers rien « 7${SLIDE_MARKS.up.repeat(2)} » ou depuis rien « ${SLIDE_MARKS.up.repeat(2)}7 », un bend « 7${BEND_MARK}9 » (« 7${BEND_MARK}9${RELEASE_MARK} » relâché)` : ""} ou une case vide`,
             R, col,
           );
         }
@@ -741,6 +747,19 @@ export function parsePrisma(text: string): Score {
   for (const s of slurs) {
     if (s.end <= s.start) {
       throw new PrismaError("une liaison relie au moins deux notes : « ( » et « ) » dans deux cases différentes", slurAt.get(s)!.line, slurAt.get(s)!.col, { global: true });
+    }
+  }
+  // un glissé arrive, sans silence, sur la note suivante de sa corde, et dans son sens
+  for (const s of slides) {
+    const n = s.note;
+    const next = notes.filter((m) => m.staff === n.staff && m.string === n.string && m.start > n.start).sort((a, b) => a.start - b.start)[0];
+    if (!next || next.start !== n.end) {
+      throw new PrismaError(`glissé « ${s.text} » : il arrive, sans silence, sur la note suivante de la corde ; pour glisser vers rien, « ${s.fret}${slideText(n.slide!, true)} »`, s.line, s.col, { global: true });
+    }
+    if (next.midi === n.midi) throw new PrismaError(`glissé « ${s.text} » : la note suivante de la corde est la même ; il glisse vers une autre case`, s.line, s.col, { global: true });
+    const dir = next.midi > n.midi ? "up" : "down";
+    if (dir !== n.slide) {
+      throw new PrismaError(`glissé « ${s.text} » : la note suivante de la corde est plus ${dir === "up" ? "aiguë" : "grave"} ; « ${s.fret}${slideText(dir, false)} » glisse vers elle`, s.line, s.col, { global: true });
     }
   }
   for (const [l, c] of lyricCell) {

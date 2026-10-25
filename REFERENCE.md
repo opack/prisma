@@ -129,7 +129,9 @@ Ce qui touche une note s'écrit dans sa case, avec les signes des tablatures :
 
 - `x` : **note étouffée**. La main touche la corde sans appuyer : un son sec, sans hauteur.
 - `<12>` : **harmonique naturelle**. On effleure la corde au-dessus de la case, sans appuyer : à la case 12, elle sonne une octave au-dessus de la corde à vide ; à la 7 (ou la 19), une quinte de plus ; à la 5 (ou la 24), deux octaves ; à la 4, la 9 ou la 16, deux octaves et une tierce ; à la 3, deux octaves et une quinte.
-- `7/` : **glissé**. Le doigt glisse sur la corde jusqu'à la note suivante de la même corde, sans la rejouer ; la partition trace le trait vers le haut ou vers le bas.
+- `7/` : **glissé**. Le doigt glisse sur la corde jusqu'à la note suivante de la même corde, sans la rejouer : `/` vers l'aigu, `\` vers le grave (`9\`, puis `7`). La note suivante vient sans silence, dans la case suivante ou après une tenue : on tient, puis on glisse. La partition trace le trait vers le haut ou vers le bas.
+- `7//` : **glissé de sortie**, le signe doublé : vers rien. La note s'éteint en glissant, vers l'aigu (`7//`) ou, le plus souvent, vers le grave (`7\\`) ; ce qui suit sur la corde est une nouvelle attaque.
+- `//7` : **glissé d'entrée**, le miroir du précédent : depuis rien. La note arrive en glissant, d'en dessous (`//7`) ou d'au-dessus (`\\7`). Sur la partition, le trait des glissés de sortie et d'entrée est en tirets : il ne mène à aucune note.
 - `7b9` : **bend**. On tire la corde, appuyée en case 7, jusqu'à ce qu'elle sonne comme la case 9 ; `7b9r` la relâche ensuite. La partition dessine, comme en tablature, la flèche qui part de la case et monte au-dessus des cordes, et l'écart au-dessus d'elle : `½` pour un demi-ton, `full` pour un ton, `1½`, `2` ; relâché, une seconde flèche redescend.
 
 Le **hammer-on** et le **pull-off** sont une liaison : `(--)` entre deux notes de la même corde dit que la seconde ne se rejoue pas au médiator, le doigt la frappe (hammer-on, quand elle monte) ou la tire (pull-off, quand elle descend). La partition écrit `H` ou `P` sous la liaison. Sans liaison, les deux notes sont deux attaques.
@@ -149,7 +151,7 @@ m1 |1    |2  |3    |4  ||1  |2  |3  |4     ||
 @   d     u   P.M.----           ~~~~~~~~~
 ```
 
-À l'écoute, une note étouffée et l'étouffé de la paume sonnent courts et sourds, une harmonique à sa hauteur, un bend et un glissé passent d'une hauteur à l'autre sans nouvelle attaque, comme un hammer-on ou un pull-off ; le vibrato ne s'entend pas.
+À l'écoute, une note étouffée et l'étouffé de la paume sonnent courts et sourds, une harmonique à sa hauteur, un bend et un glissé passent d'une hauteur à l'autre sans nouvelle attaque, comme un hammer-on ou un pull-off, le glissé d'entrée part de trois cases plus loin, celui de sortie s'éteint en glissant ; le vibrato ne s'entend pas.
 
 ## 3. Le temps
 
@@ -394,7 +396,7 @@ Les indications de caractère et de tempo (`dolce`, `rit.`, `a tempo`…) garden
 | staccato, accent, marcato | `.`, `!`, `!!` sous la portée concernée ; le tenuto n'a pas de signe |
 | pédale | `Ped.`, `*`, `*Ped.`, tracés en trait continu |
 | accords d'accompagnement (Am, G/B) | ligne `@c` : le nom Prisma (`10:m`, `8/12`), le nom anglais, ou les notes de la basse vers l'aigu (`10,1,5`) |
-| techniques de la guitare (étouffée, harmonique, glissé, bend) | dans la case : `x`, `<12>`, `7/`, `7b9` (`7b9r` relâché) |
+| techniques de la guitare (étouffée, harmonique, glissé, bend) | dans la case : `x`, `<12>`, `7/` (`9\` vers le grave, `7\\` vers rien, `//7` depuis rien), `7b9` (`7b9r` relâché) |
 | hammer-on, pull-off | une liaison `(--)` entre deux notes de la même corde : `H` ou `P` sur la partition |
 | médiator, étouffé de la paume, vibrato | sur la ligne `@` de la portée : `d` et `u` ; `P.M.---` ; `~~~~` |
 | grille d'accord, pour la guitare | après le nom et `=`, la case de chaque corde, de la plus grave à la plus aiguë (`10:m=x02210`) |

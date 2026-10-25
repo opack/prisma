@@ -606,7 +606,7 @@ function attackNotations(ctx: Ctx, staff: Staff, t: number, n: Note, sp: { step:
 /**
  * Les techniques d'une note sur une corde : sur la tablature, le bend, l'harmonique, et le
  * hammer-on ou le pull-off (deux notes liées de la même corde) ; sur les deux portées, le glissé
- * jusqu'à la note suivante de la corde et le vibrato (une ondulation, de la première note à la
+ * jusqu'à la note suivante de la corde, ceux qui viennent de rien ou y vont, et le vibrato (une ondulation, de la première note à la
  * dernière qu'il couvre).
  */
 function techniqueXml(ctx: Ctx, staff: Staff, n: Note, layer?: "notation" | "tab"): string[] {
@@ -630,6 +630,10 @@ function techniqueXml(ctx: Ctx, staff: Staff, n: Note, layer?: "notation" | "tab
   }
   if (prev?.slide) out.push('<slide type="stop" number="1"/>');
   if (n.slide && next) out.push('<slide type="start" number="1" line-type="solid"/>');
+  // glissés vers rien et depuis rien : les articulations de MusicXML (la chute, la montée finale ; l'arrivée d'en dessous, d'au-dessus)
+  const straight = (t: string) => `<${t} line-shape="straight"/>`;
+  const slides = [n.slideIn && straight(n.slideIn === "up" ? "scoop" : "plop"), n.slideOut && straight(n.slideOut === "down" ? "falloff" : "doit")].filter(Boolean);
+  if (slides.length) out.push(`<articulations>${slides.join("")}</articulations>`);
   // le vibrato : commencé sur la première note qu'il couvre, fini sur la dernière
   for (const e of score.effects.filter((x) => x.staff === staff && x.kind === "vibrato")) {
     const covered = score.notes.filter((m) => m.staff === staff && m.start >= e.start && m.start < e.end).sort((a, b) => a.start - b.start);

@@ -14,6 +14,9 @@ import { isRuler, parseRule } from "../core/prisma-parse.ts";
 import { cases, noteLine, systemOf, writeCase } from "./complete.ts";
 import type { Case, System } from "./complete.ts";
 
+/** Une case de corde sans son glissé d'entrée (« //7 » : 7), pour en lire la case. */
+const unslid = (cell: string) => cell.replace(/^(?:\/\/|\\\\)/, "");
+
 /** Un couloir de corde (et non d'octave). */
 const isString = (lane?: number) => lane !== undefined && lane >= STRING_LANE;
 /** Le numéro qui ouvre la ligne d'un couloir : « +1 », « -2 » pour une octave, « 3 » pour une corde. */
@@ -85,14 +88,14 @@ export function retouch(text: string, at: ScorePlace, content: string): { text: 
   lines = lines.map((l, i) => w.lines.get(i) ?? l);
   // la note d'avant s'arrête ici : ses tenues suivantes s'effacent
   const ends = content === "" ? !!old : old.startsWith("-") && content !== "-";
-  if (ends) lines = clearHolds(lines, L, k + 1, old.startsWith("-") ? held : old.match(/^(\d+')*(\d+)/)?.[2]);
+  if (ends) lines = clearHolds(lines, L, k + 1, old.startsWith("-") ? held : unslid(old).match(/^(\d+')*(\d+)/)?.[2]);
   return { text: lines.join("\n"), line: w.caret.line + 1, column: all[k].start + 1 };
 }
 
 /** La note que prolonge la case k d'une ligne : la dernière attaque avant elle (« -7 » la nomme). */
 function heldBefore(line: string, all: Case[], k: number) {
   for (let i = k; i >= 0; i--) {
-    const cell = line.slice(all[i].start, all[i].end).trim().replace(/\d+'/g, "");
+    const cell = unslid(line.slice(all[i].start, all[i].end).trim().replace(/\d+'/g, ""));
     const n = cell.match(/^-?(\d+)/)?.[1];
     if (n && (i < k || cell.startsWith("-"))) return n;
     if (i < k && !cell.startsWith("-")) return undefined;
@@ -172,7 +175,7 @@ function insertionLine(lines: string[], R: number, last: number, staff: number, 
 type Pos = { L: number; k: number };
 
 /** La note qu'attaque une case (« 5 », « 3'5_2 »), sans ses ajouts. */
-const attackOf = (cell: string) => (cell.startsWith("-") ? undefined : cell.match(/^(\d+')*(\d+)/)?.[2]);
+const attackOf = (cell: string) => (cell.startsWith("-") ? undefined : unslid(cell).match(/^(\d+')*(\d+)/)?.[2]);
 
 function casesAt(lines: string[], L: number) {
   const sys = systemOf(lines, L);

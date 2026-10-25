@@ -17,7 +17,7 @@ export type { Key } from "./key.ts";
 export { CHORD_NOTE_SEPARATOR, CHORD_QUALITY_SEPARATOR, chordName, chordNotes, chordOf, chordPrismaName, chordPrismaText, chordWriting } from "./chords.ts";
 export { SHAPE_SEPARATOR, barreOf, chordShape, gridStrings, parseShape, shapeNotes, shapeText, splitShape } from "./shapes.ts";
 export type { Shape } from "./shapes.ts";
-export { MAX_CAPO, MAX_FRET, fretOf, isStringInstrument, soundingOf, stringsOf, tuningsOf } from "./strings.ts";
+export { MAX_CAPO, MAX_FRET, fretOf, isStringInstrument, settleSlides, soundingOf, stringsOf, tuningsOf } from "./strings.ts";
 export { convertToStrings } from "./convert.ts";
 export type { ConversionOptions, ConversionReport } from "./convert.ts";
 export type { Strings } from "./strings.ts";

@@ -14,7 +14,7 @@ import { guessInstrument } from "./instruments.ts";
 import type { InstrumentName } from "./instruments.ts";
 import { firstStaves, sortNotes } from "./model.ts";
 import type { Note, Score, Staff } from "./model.ts";
-import { MAX_FRET, fingerStrings, fretOf, stringsOf } from "./strings.ts";
+import { MAX_FRET, fingerStrings, fretOf, settleSlides, stringsOf } from "./strings.ts";
 import type { Strings } from "./strings.ts";
 
 /** Ce que la conversion a changé, pour savoir où repasser. */
@@ -110,7 +110,7 @@ function convertAt(score: Score, part: number, instrument: InstrumentName, strs:
   const converted: Score = {
     ...score,
     parts,
-    notes: sortNotes(kept),
+    notes: settleSlides(sortNotes(kept)),
     graces: unique(graces, (g) => `${g.t}|${g.slot}|${g.midi}`),
     expressions: unique(score.expressions, (e) => `${e.t}|${e.text}`),
     hairpins: unique(score.hairpins, (h) => `${h.start}|${h.kind}`),

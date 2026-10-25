@@ -240,7 +240,7 @@ function cellWidths(score: Score, cell: number, widen: Set<number> = new Set()):
   // une trille ou un doigté (« 12~10 », « 12_3 ») élargit sa case, suivie d'une espace
   const trillNeed = new Map<number, number>();
   for (const n of score.notes) {
-    if (n.trill === undefined && !n.finger && !n.harmonic && !n.slide && n.bend === undefined) continue;
+    if (n.trill === undefined && !n.finger && !n.harmonic && !n.slide && !n.slideOut && !n.slideIn && n.bend === undefined) continue;
     const len = noteText(n, score.parts).length + 1;
     trillNeed.set(n.start, Math.max(trillNeed.get(n.start) ?? cell, len));
     want(n.start, len);

@@ -2,7 +2,7 @@
  * Gravure : place les systèmes calculés par le moteur de mise en page sur des pages A4.
  * Toutes les dimensions sont en millimètres.
  */
-import { ARTICULATION_SIGNS, FINGER_MARK, firstStaves, staffCount, TRILL_MARK, chordName, chordNotes, chordOf, chordPrismaName, chordShape, chordWriting, graceDigits, gridStrings, layout, noteText, parseShape, splitShape } from "../core/index.ts";
+import { ARTICULATION_SIGNS, FINGER_MARK, firstStaves, staffCount, TRILL_MARK, chordName, chordNotes, chordOf, chordPrismaName, chordShape, chordWriting, graceDigits, gridStrings, layout, noteText, parseShape, splitShape, stringCell } from "../core/index.ts";
 import type { Align, Part, Score, Shape, System, Voice } from "../core/index.ts";
 
 export const PAGE = { w: 210, h: 297, marginX: 15, marginTop: 14, marginBottom: 16 };
@@ -123,15 +123,13 @@ export const slurH = (v: Voice) => (v.slurs.length ? 1 + (Math.max(...v.slurs.ma
 export const FINGER = { r: 1.2, gap: 0.55 };
 
 /**
- * Une technique des cordes dans une case (« x », « <12> », « 7/ », « 7b9r », suivis ou non d'un
- * doigt) : ce qu'elle grave. Undefined pour une autre case.
+ * Une technique des cordes dans une case (« x », « <12> », « 7/ », « 7// », « //7 », « 7b9r »,
+ * suivis ou non d'un doigt) : ce qu'elle grave. Undefined pour une autre case.
  */
-export function techniqueOf(c: string) {
-  const m = c.match(/^(?:(x)|<(\d{1,2})>|(\d{1,2})(?:(\/)|b(\d{1,2})(r)?))(?:_(\d))?$/);
-  if (!m) return undefined;
-  const [, dead, harmonic, fret, slide, bend, release, finger] = m;
-  return { label: dead ? "x" : harmonic ? `<${harmonic}>` : fret, fret: Number(harmonic ?? fret ?? 0), dead: !!dead, harmonic: !!harmonic, slide: !!slide, bend: bend === undefined ? undefined : Number(bend), release: !!release, finger };
-}
+export const techniqueOf = (c: string) => stringCell(c);
+
+/** La place d'un trait de glissé, à côté de sa case. */
+export const SLIDE_W = 2.6;
 
 /** Un signe du médiator sur la ligne @ (« d », « u ») : il se grave au-dessus des cordes, pas sur la note. */
 export const isPickSign = (text: string) => text === ARTICULATION_SIGNS.down || text === ARTICULATION_SIGNS.up;
@@ -143,7 +141,7 @@ export const bendLabel = (frets: number) => (frets === 2 ? "full" : frets % 2 ? 
 function fretW(c: string | undefined) {
   if (!c || c.startsWith("-")) return 0;
   const t = techniqueOf(c);
-  return t ? t.label.length * G.noteDigit * (t.harmonic ? 0.8 : 1) + (t.slide ? 2.6 : 0) : splitNote(c).main.length * G.noteDigit;
+  return t ? t.label.length * G.noteDigit * (t.harmonic ? 0.8 : 1) + (t.slideIn ? SLIDE_W : 0) + (t.slide || t.slideOut ? SLIDE_W : 0) : splitNote(c).main.length * G.noteDigit;
 }
 
 /**
@@ -169,6 +167,8 @@ function noteW(c: string, cellW: number, reminders = true, bendAt = 0) {
   // un bend : sa flèche, relâchée ou non, puis le doigt
   const tech = bendAt ? techniqueOf(c) : undefined;
   if (tech?.bend !== undefined) return Math.max(0, bendAt + 2.2 + (tech.release ? 2.6 : 0) + 0.8 + (tech.finger ? FINGER.gap + 2 * FINGER.r : 0) + 0.3 - cellW);
+  // une autre technique : la case et ses glissés, puis le doigt
+  if (tech) return Math.max(0, 0.5 + fretW(c) + (tech.finger ? FINGER.gap + 2 * FINGER.r : 0) + 0.45 - cellW);
   // rappel d'une note tenue en début de système : le trait de tenue, puis ses chiffres en petit
   if (c.startsWith("-")) return reminders ? Math.max(0, 0.5 + G.holdW + 0.6 + (c.length - 1) * G.noteDigit * 0.82 + 0.45 - cellW) : 0;
   const { main, aux, finger } = splitNote(c);

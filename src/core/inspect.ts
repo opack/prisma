@@ -6,7 +6,8 @@
  */
 import { chordName, chordNotes, chordPrismaName, chordPrismaText, chordWriting } from "./chords.ts";
 import { splitShape } from "./shapes.ts";
-import { ARPEGGIO_DOWN, FERMATA, HARMONICS, effectOf, FINGER_MARK, GRACE_MARK, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TRILL_MARK, isDynamic, isExtender, isHairpin, isPedalText, isSlur, trillAux } from "./model.ts";
+import { ARPEGGIO_DOWN, FERMATA, HARMONICS, effectOf, stringCell, FINGER_MARK, GRACE_MARK, MARKER_SIGN, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TRILL_MARK, isDynamic, isExtender, isHairpin, isPedalText, isSlur, trillAux } from "./model.ts";
+import type { Direction } from "./model.ts";
 import { midiOf, numberOf, octaveOf, parseOctaveLabel } from "./pitch.ts";
 import { MAX_FRET, soundingOf } from "./strings.ts";
 import type { Strings } from "./strings.ts";
@@ -398,20 +399,22 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
     return staves.join(" ");
   }
 
-  /** Une technique des cordes dans une case (« x », « <12> », « 7/ », « 7b9r ») : ce qu'elle fait jouer. */
+  /** Une technique des cordes dans une case (« x », « <12> », « 7/ », « 7// », « //7 », « 7b9r ») : ce qu'elle fait jouer. */
   function techniqueMeaning(rest: string): string | undefined {
-    const m = rest.match(/^(?:(x)|<(\d{1,2})>|(\d{1,2})(?:(\/)|b(\d{1,2})(r)?))(?:_(\d))?$/);
+    const m = stringCell(rest);
     if (!m) return undefined;
-    const [, dead, harmonic, fret, slide, bend, release, finger] = m;
-    const at = (k: string) => `case ${k}${names === "none" ? "" : ` (${noteName(pitchOf(Number(k)), names)})`}`;
-    let s = dead
+    const at = (k: number) => `case ${k}${names === "none" ? "" : ` (${noteName(pitchOf(k), names)})`}`;
+    const way = (d: Direction) => (d === "up" ? "vers l'aigu" : "vers le grave");
+    const from = (d: Direction) => (d === "up" ? "d'en dessous" : "d'au-dessus");
+    let s = m.dead
       ? "note étouffée : la main touche la corde sans appuyer, un son sec"
-      : harmonic
-        ? `harmonique naturelle : effleurer la corde au-dessus de la case ${harmonic}${names === "none" ? "" : `, elle sonne ${noteName(pitchOf(0) + HARMONICS[Number(harmonic)], names)}`}`
-        : slide
-          ? `${at(fret)}, puis glisser jusqu'à la note suivante de la corde`
-          : `${at(fret)} tirée jusqu'à sonner comme la ${at(bend)}${release ? ", puis relâchée" : ""}`;
-    if (finger) s += `, doigt ${finger}`;
+      : m.harmonic
+        ? `harmonique naturelle : effleurer la corde au-dessus de la case ${m.fret}${names === "none" ? "" : `, elle sonne ${noteName(pitchOf(0) + HARMONICS[m.fret], names)}`}`
+        : (m.slideIn ? `arriver en glissant ${from(m.slideIn)} sur la ${at(m.fret)}` : at(m.fret)) +
+          (m.slide ? `, puis glisser ${way(m.slide)} jusqu'à la note suivante de la corde, sans la rejouer` : "") +
+          (m.slideOut ? `, puis glisser ${way(m.slideOut)} en laissant la note s'éteindre` : "") +
+          (m.bend !== undefined ? ` tirée jusqu'à sonner comme la ${at(m.bend)}${m.release ? ", puis relâchée" : ""}` : "");
+    if (m.finger) s += `, doigt ${m.finger}`;
     return s;
   }
 
@@ -421,7 +424,8 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
     const key = (n: number) => (strs ? numberOf(pitchOf(n)) : n);
     const valid = (n: number) => (strs ? n >= 0 && n <= MAX_FRET : n >= 1 && n <= 12);
     const graces = (content.match(/^(\d+')+/)?.[0] ?? "").split("'").filter(Boolean).map(Number).filter(valid).map(key);
-    const rest = content.replace(/^(\d+')+/, "");
+    // le glissé d'entrée (« //7 ») ne change pas la case
+    const rest = content.replace(/^(\d+')+/, "").replace(/^(?:\/\/|\\\\)/, "");
     const m = rest.match(/^-?(\d+)(?:~(\d+))?/);
     const h = rest === "-" ? held(row, p)?.match(/^(\d+)/)?.[1] : undefined;
     const main = m ? Number(m[1]) : h ? Number(h) : undefined;

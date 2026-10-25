@@ -77,18 +77,75 @@ export type Note = {
   dead?: boolean;
   /** Instrument à cordes, harmonique naturelle (« <12> ») : effleurée sur la case, elle sonne plus haut (voir HARMONICS). */
   harmonic?: boolean;
-  /** Instrument à cordes, glissé (« 7/ ») : le doigt glisse jusqu'à la note suivante de la même corde. */
-  slide?: boolean;
+  /**
+   * Instrument à cordes, glissé vers la note suivante de la corde, sans la rejouer : vers l'aigu
+   * (« 7/ » puis 9) ou le grave (« 9\ » puis 7).
+   */
+  slide?: Direction;
+  /** Instrument à cordes, glissé de sortie (« 7// », « 7\\ ») : la note s'éteint en glissant, vers rien. */
+  slideOut?: Direction;
+  /** Instrument à cordes, glissé d'entrée (« //7 », « \\7 ») : la note arrive en glissant, depuis rien, d'en dessous ou d'au-dessus. */
+  slideIn?: Direction;
   /** Instrument à cordes, bend (« 7b9 ») : la corde tirée jusqu'à cette hauteur ; release (« 7b9r ») : puis relâchée. */
   bend?: number;
   release?: boolean;
 };
 
+/** Le sens d'un glissé : vers l'aigu, vers le grave. */
+export type Direction = "up" | "down";
+
 /** Techniques des cordes, dans une case : note étouffée, harmonique, glissé, bend et son relâché. */
 export const DEAD_MARK = "x";
-export const SLIDE_MARK = "/";
 export const BEND_MARK = "b";
 export const RELEASE_MARK = "r";
+/** Le glissé, vers l'aigu ou le grave ; doublé, il vient de rien ou y va (« //7 », « 7// »). */
+export const SLIDE_MARKS: Record<Direction, string> = { up: "/", down: "\\" };
+
+/** Une case de corde qui porte une technique, lue : ce qu'elle écrit, et ce qu'elle joue. */
+export type StringCell = {
+  /** Ce que la partition grave du chiffre : la case, « x », « <12> ». */
+  label: string;
+  fret: number;
+  dead: boolean;
+  harmonic: boolean;
+  slide?: Direction;
+  slideOut?: Direction;
+  slideIn?: Direction;
+  /** La case dont le bend prend le son. */
+  bend?: number;
+  release: boolean;
+  finger?: number;
+};
+
+const STRING_CELL = /^(?:(x)|<(\d{1,2})>|(\/\/|\\\\)?(\d{1,2})(\/\/|\\\\|\/|\\|b(\d{1,2})(r)?)?)(?:_(\d))?$/;
+const direction = (s: string): Direction => (s[0] === "/" ? "up" : "down");
+
+/**
+ * Lit une case de corde qui porte une technique (« x », « <12> », « 7/ », « 7\\ », « //7 »,
+ * « 7b9r », suivie ou non d'un doigt). Undefined pour une autre case, une case simple comprise.
+ */
+export function stringCell(c: string): StringCell | undefined {
+  const m = c.match(STRING_CELL);
+  if (!m) return undefined;
+  const [, dead, harmonic, into, fret, after, bend, release, finger] = m;
+  if (fret !== undefined && !into && !after) return undefined;
+  const out = after?.length === 2 && after[0] === after[1];
+  return {
+    label: dead ? DEAD_MARK : harmonic ? `<${harmonic}>` : fret,
+    fret: Number(harmonic ?? fret ?? 0),
+    dead: !!dead,
+    harmonic: !!harmonic,
+    ...(into ? { slideIn: direction(into) } : {}),
+    ...(after && !bend && !out ? { slide: direction(after) } : {}),
+    ...(after && out ? { slideOut: direction(after) } : {}),
+    ...(bend !== undefined ? { bend: Number(bend) } : {}),
+    release: !!release,
+    ...(finger ? { finger: Number(finger) } : {}),
+  };
+}
+
+/** Le texte d'un glissé dans une case : avant la case, il vient de rien ; après, il va vers la note suivante, ou, doublé, vers rien. */
+export const slideText = (d: Direction, double: boolean) => SLIDE_MARKS[d].repeat(double ? 2 : 1);
 
 /**
  * Harmoniques naturelles : la case effleurée, et ce dont la note monte au-dessus de la corde à

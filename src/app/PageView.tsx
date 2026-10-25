@@ -1,6 +1,6 @@
 import { FINGER_MARK, TRILL_MARK, barreOf, numberOf, octaveOffset, pitchClass, stringsOfStaff } from "../core/index.ts";
-import type { Meta, PedalLine, Shape, SystemRow, Voice } from "../core/index.ts";
-import { FINGER, G, PAGE, bendLabel, bendStart, chordGrid, isPickSign, slurH, splitChord, techniqueOf, graceExtra, graceSlotW, headerHeight, leadExtra, lyricTextW, splitNote } from "./engrave.ts";
+import type { Direction, Meta, PedalLine, Shape, SystemRow, Voice } from "../core/index.ts";
+import { FINGER, G, PAGE, SLIDE_W, bendLabel, bendStart, chordGrid, isPickSign, slurH, splitChord, techniqueOf, graceExtra, graceSlotW, headerHeight, leadExtra, lyricTextW, splitNote } from "./engrave.ts";
 import type { Page, PlacedSystem } from "./engrave.ts";
 import type { OctavePosition, OctaveStyle, RenderOptions } from "./options.ts";
 import { writtenNames } from "./options.ts";
@@ -273,17 +273,21 @@ function Row({ ps, row, y, centered, articulations, reminders, techTop }: { ps: 
         const tech = row.string !== undefined ? techniqueOf(c) : undefined;
         if (tech) {
           const top = y + dy;
-          let end = x + 0.5 + tech.label.length * G.noteDigit * (tech.harmonic ? 0.8 : 1);
-          const art = articulationSigns(arts ?? [], x + 0.5 + (end - x - 0.5) / 2 - 0.15, top - 0.05);
           const marks: React.ReactNode[] = [];
-          if (tech.slide) {
-            // le glissé : un trait penché vers la note suivante de la corde (vers le haut si elle est plus haute)
-            const next = row.cells.slice(a + 1).find((x) => x && !x.startsWith("-"));
-            const nextFret = next ? Number(next.match(/\d+/)?.[0] ?? tech.fret) : tech.fret + 1;
-            const up = nextFret >= tech.fret;
-            const [ya, yb] = up ? [base + dy - 0.2, top + 1.1] : [top + 1.1, base + dy - 0.2];
-            marks.push(<line key="sl" x1={end + 0.3} x2={end + 2.4} y1={ya} y2={yb} stroke={INK} strokeWidth={0.4} strokeLinecap="round" />);
-            end += 2.6;
+          // un glissé : un trait penché, montant vers l'aigu, descendant vers le grave ; en tirets
+          // quand il vient de rien ou y va, plein quand il va vers la note suivante de la corde
+          const slideLine = (key: string, from: number, d: Direction, toNothing: boolean) => {
+            const [ya, yb] = d === "up" ? [base + dy - 0.2, top + 1.1] : [top + 1.1, base + dy - 0.2];
+            marks.push(<line key={key} x1={from + 0.3} x2={from + 2.4} y1={ya} y2={yb} stroke={INK} strokeWidth={0.4} strokeLinecap="round" {...(toNothing ? { strokeDasharray: "0.6 0.45" } : {})} />);
+          };
+          if (tech.slideIn) slideLine("in", x + 0.1, tech.slideIn, true);
+          const lx = x + 0.5 + (tech.slideIn ? SLIDE_W : 0);
+          let end = lx + tech.label.length * G.noteDigit * (tech.harmonic ? 0.8 : 1);
+          const art = articulationSigns(arts ?? [], lx + (end - lx) / 2 - 0.15, top - 0.05);
+          const after = tech.slide ?? tech.slideOut;
+          if (after) {
+            slideLine("out", end, after, !tech.slide);
+            end += SLIDE_W;
           }
           if (tech.bend !== undefined) {
             // le bend, comme en tablature : une flèche qui part de la case et monte au-dessus des cordes,
@@ -316,7 +320,7 @@ function Row({ ps, row, y, centered, articulations, reminders, techTop }: { ps: 
           const fx = end + FINGER.gap + FINGER.r;
           return (
             <g key={a}>
-              <text x={x + 0.5} y={base + dy} fontSize={tech.harmonic ? 2.8 : 3.3} fontWeight={600} fill={INK}>
+              <text x={lx} y={base + dy} fontSize={tech.harmonic ? 2.8 : 3.3} fontWeight={600} fill={INK}>
                 {tech.label}
               </text>
               {art}

@@ -187,6 +187,9 @@ export function playedNotes(original: Score, ps: Passage[]): PlayedNote[] {
 /** L'intensité d'une note liée sans être attaquée (hammer-on, pull-off, suite d'un bend ou d'un glissé). */
 const LEGATO = 0.55;
 /** Le son étouffé : la note courte et sourde (fréquence de coupure, en hertz). */
+/** Le glissé d'entrée : depuis trois cases, en un quart de temps au plus ; le glissé de sortie : sur cinq cases. */
+const SLIDE_IN = { frets: 3, length: TICKS_PER_BEAT / 4 };
+const SLIDE_OUT = { frets: 5 };
 const DEAD = { length: TICKS_PER_BEAT / 8, filter: 700 };
 const PALM_MUTE = { length: TICKS_PER_BEAT * 0.4, filter: 1100 };
 
@@ -229,7 +232,19 @@ function stringTechniques(score: Score) {
       filter.set(add({ ...n, end: n.start + Math.min(n.end - n.start, DEAD.length) }), DEAD.filter);
       continue;
     }
-    const base = muted ? { ...n, end: n.start + Math.min(n.end - n.start, PALM_MUTE.length) } : n;
+    let base = muted ? { ...n, end: n.start + Math.min(n.end - n.start, PALM_MUTE.length) } : n;
+    // le glissé d'entrée : quelques cases avant la note, attaquées puis glissées, vite ; la note arrive sans attaque
+    let arrived = false;
+    if (n.slideIn) {
+      const len = Math.min((base.end - base.start) * 0.3, SLIDE_IN.length);
+      const dir = n.slideIn === "up" ? 1 : -1;
+      for (let k = SLIDE_IN.frets; k >= 1; k--) {
+        const at = base.start + ((SLIDE_IN.frets - k) * len) / SLIDE_IN.frets;
+        add({ ...base, midi: n.midi - k * dir, start: at, end: at + len / SLIDE_IN.frets }, k < SLIDE_IN.frets);
+      }
+      base = { ...base, start: base.start + len };
+      arrived = true;
+    }
     // la durée jouée (plus courte sous l'étouffé de la paume)
     const d = base.end - base.start;
     if (n.harmonic) {
@@ -238,23 +253,23 @@ function stringTechniques(score: Score) {
       continue;
     }
     if (n.bend !== undefined) {
-      const up = n.start + d * 0.25, down = n.start + d * 0.75;
-      add({ ...base, end: up });
+      const up = base.start + d * 0.25, down = base.start + d * 0.75;
+      add({ ...base, end: up }, arrived);
       add({ ...base, start: up, midi: n.bend, end: n.release ? down : base.end }, true);
       if (n.release) add({ ...base, start: down, midi: n.midi }, true);
       continue;
     }
+    // glisser, dans le dernier tiers de la note, vers la note suivante (sans la rejouer) ou vers rien
     const to = n.slide ? next(n) : undefined;
-    if (to && to.midi !== n.midi) {
-      // les cases traversées, dans le dernier tiers de la note ; la note d'arrivée, sans attaque
-      const from = n.start + d * 0.67, dir = Math.sign(to.midi - n.midi);
-      const steps = Math.min(12, Math.abs(to.midi - n.midi) - 1);
-      add({ ...base, end: steps ? from : base.end });
+    const steps = to ? Math.min(12, Math.abs(to.midi - n.midi) - 1) : n.slideOut ? SLIDE_OUT.frets : 0;
+    if (steps > 0 || to) {
+      const from = base.start + d * 0.67, dir = to ? Math.sign(to.midi - n.midi) : n.slideOut === "up" ? 1 : -1;
+      add({ ...base, end: steps ? from : base.end }, arrived);
       for (let k = 1; k <= steps; k++) add({ ...base, midi: n.midi + k * dir, start: from + ((k - 1) * (base.end - from)) / steps, end: from + (k * (base.end - from)) / steps }, true);
-      glided.add(to);
+      if (to) glided.add(to);
       continue;
     }
-    add(base);
+    add(base, arrived);
   }
   return { score: { ...score, notes }, soft, filter };
 }
