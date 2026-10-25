@@ -121,6 +121,8 @@ Le choix de la corde est celui de qui écrit le morceau : une même note se joue
 
 L'instrument se reconnaît au nom de la partie (« Guitare », « Basse électrique »), ou s'écrit entre parenthèses (`guitar`, `electric-bass`). Après lui viennent, s'il le faut, l'accordage et le capo : `parts: Guitare (drop-d, capo 2)`. Les accordages de la guitare : `standard` (par défaut), `drop-d` (la 6ᵉ corde baissée en *ré*), `dadgad`, `open-g`, `open-d` ; de la basse : `standard`, `drop-d`. Avec un capo, les cases se comptent depuis lui, comme en tablature : `0` est la corde jouée au capo.
 
+Dans l'éditeur, Ctrl+Espace propose sur une corde ses cases avec leur note, la note étouffée et les harmoniques, et sur une case écrite, ses glissés, ses bends et le doigt de la main gauche ; sous la règle, les cordes qui manquent ; dans `parts:`, les accordages et le capo.
+
 La page [Guitare et basse](guitare.html) du site les présente pas à pas, à côté d'une tablature.
 
 ### Les techniques des cordes
