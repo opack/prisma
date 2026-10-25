@@ -641,19 +641,20 @@ export function App() {
   // un double-clic ouvre le choix de la note de la case
   const sourceNow = useRef(source);
   sourceNow.current = source;
-  type Retouch = { at: ScorePlace; where: ScreenPoint; content: string; canHold: boolean; duration?: ReturnType<typeof durationOf>; holds: string[] };
+  // at : la note que le choix retouche (sa case d'attaque) ; clicked : la case cliquée, qui reste encadrée (une tenue de la note, par exemple)
+  type Retouch = { at: ScorePlace; clicked: ScorePlace; where: ScreenPoint; content: string; canHold: boolean; duration?: ReturnType<typeof durationOf>; holds: string[] };
   const [retouchAt, setRetouchAt] = useState<Retouch | null>(null);
   // la corde choisie dans le choix d'une case de corde, pour y placer la note
   const [retouchLane, setRetouchLane] = useState<number | undefined>(undefined);
-  const retouchNow = useRef<{ at: ScorePlace; lane?: number } | null>(null);
-  retouchNow.current = retouchAt && { at: retouchAt.at, lane: retouchLane };
+  const retouchNow = useRef<{ at: ScorePlace; clicked: ScorePlace; lane?: number } | null>(null);
+  retouchNow.current = retouchAt && { at: retouchAt.at, clicked: retouchAt.clicked, lane: retouchLane };
   useEffect(() => setRetouchLane(undefined), [retouchAt]);
   // ce que le choix montre d'une case : son contenu, la durée de sa note, les notes qu'elle peut tenir
-  const describe = (text: string, at: ScorePlace, where: ScreenPoint): Retouch | null => {
+  const describe = (text: string, at: ScorePlace, where: ScreenPoint, clicked: ScorePlace = at): Retouch | null => {
     const cell = at.octave !== undefined ? cellOf(text, at) : undefined;
     if (!cell) return null;
     const duration = cell.content ? durationOf(text, at) : undefined;
-    return { at: duration?.attack ?? at, where, content: cell.content, canHold: cell.canHold, duration, holds: cell.content || !cell.exact ? [] : holdChoices(text, at) };
+    return { at: duration?.attack ?? at, clicked, where, content: cell.content, canHold: cell.canHold, duration, holds: cell.content || !cell.exact ? [] : holdChoices(text, at) };
   };
   useEffect(
     () =>
@@ -715,31 +716,36 @@ export function App() {
       setNotice(`Conversion impossible : ${(e as Error).message}`);
     }
   };
+  // une note, la tenue, le vide : dans la case cliquée (sur une tenue, une note nouvelle commence là ; vide, la note s'arrête avant)
   const applyRetouch = (content: string) => {
-    if (retouchAt) write(retouch(sourceNow.current, retouchAt.at, content));
+    if (retouchAt) write(retouch(sourceNow.current, retouchAt.clicked, content));
     setRetouchAt(null);
   };
   // la durée : le choix reste ouvert, pour allonger ou raccourcir encore
   const applyResize = (by: 1 | -1) => {
     if (!retouchAt) return;
     const r = resize(sourceNow.current, retouchAt.at, by);
-    if (write(r)) setRetouchAt(describe(r!.text, retouchAt.at, retouchAt.where));
+    if (write(r)) setRetouchAt(describe(r!.text, retouchAt.at, retouchAt.where, retouchAt.clicked));
   };
   // un ajout à la note (doigté, trille, petite note) : le choix reste ouvert, pour en faire d'autres
   const applyAmend = (content: string) => {
     if (!retouchAt) return;
     const r = retouch(sourceNow.current, retouchAt.at, content);
-    if (write(r)) setRetouchAt(describe(r!.text, { ...retouchAt.at, content }, retouchAt.where));
+    if (write(r)) setRetouchAt(describe(r!.text, { ...retouchAt.at, content }, retouchAt.where, retouchAt.clicked));
   };
   // l'octave de la note : le choix reste ouvert, sur la note à sa nouvelle place
   const applyOctave = (dir: 1 | -1) => {
     if (!retouchAt) return;
     const r = moveOctave(sourceNow.current, retouchAt.at, dir);
-    if (write(r)) setRetouchAt(describe(r!.text, { ...retouchAt.at, octave: r!.octave }, retouchAt.where));
+    if (write(r)) setRetouchAt(describe(r!.text, { ...retouchAt.at, octave: r!.octave }, retouchAt.where, { ...retouchAt.clicked, octave: r!.octave }));
   };
-  // sur une corde : la note passe à la case choisie, sur cette corde ou une autre
+  // sur une corde : la note passe à la case choisie, sur cette corde ou une autre ; sur une tenue et sa
+  // corde, une note nouvelle commence dans la case cliquée
   const applyString = (string: number, fret: number) => {
-    if (retouchAt) write(placeOnString(sourceNow.current, retouchAt.at, string, fret));
+    if (retouchAt) {
+      const home = string === retouchAt.at.octave! - STRING_LANE;
+      write(home && retouchAt.content.startsWith("-") ? retouch(sourceNow.current, retouchAt.clicked, String(fret)) : placeOnString(sourceNow.current, retouchAt.at, string, fret));
+    }
     setRetouchAt(null);
   };
   const applyHold = (note: string) => {
@@ -760,10 +766,10 @@ export function App() {
   const linkedNow = useRef(linked);
   linkedNow.current = linked;
   const markCaret = useCallback((reveal: boolean) => {
-    // le choix d'une case ouvert : c'est elle qui est encadrée (ou, sur une autre corde choisie, la case où la note ira)
+    // le choix d'une case ouvert : c'est la case cliquée qui est encadrée (ou, sur une autre corde choisie, la case où la note ira)
     const r = retouchNow.current;
     if (r) {
-      textMark.set({ place: r.lane === undefined ? r.at : { ...r.at, octave: r.lane, content: undefined }, reveal: false });
+      textMark.set({ place: r.lane === undefined ? r.clicked : { ...r.at, octave: r.lane, content: undefined }, reveal: false });
       return;
     }
     const c = caretAt.current;
