@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_WIDTH, PrismaError, convertToStrings, exportMusicXml, importMusicXml, parsePrisma, stringsOfStaff, writePrisma } from "../core/index.ts";
 import type { ConversionOptions, ExportOptions, Part, Score } from "../core/index.ts";
 import { ConvertDialog } from "./ConvertDialog.tsx";
+import { NewDialog } from "./NewDialog.tsx";
+import { firstCell } from "./templates.ts";
+import type { Template } from "./templates.ts";
 import { ExportDialog } from "./ExportDialog.tsx";
 import { Menu } from "./Menu.tsx";
 import { ListenControls } from "./ListenControls.tsx";
@@ -604,9 +607,15 @@ export function App() {
   };
 
   /** Nouvelle partition : tout est effacé. */
-  const newFile = () => {
+  // Fichier › Nouveau : le choix d'un modèle d'abord, puis le morceau en cours remplacé
+  const [choosingNew, setChoosingNew] = useState(false);
+  const newFile = (template: Template) => {
+    setChoosingNew(false);
     if (!confirmDiscard("Effacer la partition en cours ? Les modifications non enregistrées seront perdues.")) return;
-    setSource("");
+    const text = template.text;
+    // un modèle se met en page tout de suite : on voit sa mesure vide
+    if (text) engraveAfter.current = true;
+    setSource(text);
     setEngraved({});
     setEngravedSource("");
     setHandle(null);
@@ -614,9 +623,11 @@ export function App() {
     setSaveDir(null);
     resetPiece({}, null);
     setFileName("morceau.prisma");
-    persist("");
+    persist(text);
     setEditing(true);
-    setTimeout(() => editor.current?.focus());
+    // le curseur dans la première case du modèle
+    const at = firstCell(text);
+    setTimeout(() => (at ? editor.current?.goTo(at.line, at.column) : editor.current?.focus()));
   };
 
   /** Relit depuis le disque le fichier ouvert (modifié ailleurs, ou pour annuler ses changements). */
@@ -872,7 +883,7 @@ export function App() {
         <Menu
           label="Fichier"
           items={[
-            { label: "Nouveau", onSelect: newFile },
+            { label: "Nouveau…", onSelect: () => setChoosingNew(true) },
             { label: "Ouvrir…", onSelect: openFile, shortcut: "Ctrl+O" },
             { label: "Bibliothèque", onSelect: () => setShowLibrary((v) => !v), checked: showLibrary, shortcut: "Ctrl+B" },
             "separator",
@@ -981,6 +992,7 @@ export function App() {
       )}
       {showLibrary && <LibraryView options={general} onOpen={openEntry} onClose={() => setShowLibrary(false)} />}
       {exporting && <ExportDialog onExport={exportFile} onClose={() => setExporting(false)} />}
+      {choosingNew && <NewDialog onCreate={newFile} onClose={() => setChoosingNew(false)} />}
       {converting && <ConvertDialog parts={converting} noteNames={options.noteNames === "english" ? "english" : "latin"} onConvert={convert} onClose={() => setConverting(null)} />}
       <main
         ref={split}

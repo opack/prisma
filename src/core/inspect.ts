@@ -68,7 +68,7 @@ export const FRONTMATTER: Record<string, string> = {
   source: "source du morceau",
   bpm: "tempo de départ, en temps par minute",
   key: "tonalité du morceau, pour information : sa tonique de 1 à 12, suivie de « :m » si elle est mineure (« 8 », « 5:m »), ou son nom anglais (« G », « Em »)",
-  parts: "noms des parties, de haut en bas, et entre parenthèses l'instrument qui joue chacune à l'écoute (sinon son nom le fait deviner)",
+  parts: "noms des parties, de haut en bas, et entre parenthèses l'instrument qui joue chacune à l'écoute (sinon son nom le fait deviner) ; pour une guitare ou une basse, aussi son accordage et son capo",
   order: "ordre de jeu des sections",
   cell: "largeur de base d'une case, en caractères, à l'écriture",
   division: "découpage par défaut d'un temps : 2 (binaire) ou 3 (ternaire)",
@@ -491,6 +491,9 @@ function barMeaning(sep: string, lead: boolean): string {
     }[sep] ?? "barre inconnue"
   );
 }
+
+/** Le sens d'une indication d'une ligne @ : celle du système (au-dessus de la règle), ou celle d'une portée. */
+export const markMeaning = (t: string, system: boolean) => (system ? topMeaning(t) : staffMeaning(t));
 
 function topMeaning(t: string): string {
   const m = t.match(MARKER_SIGN);

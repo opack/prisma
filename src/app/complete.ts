@@ -291,3 +291,50 @@ export function soundingAt(lines: string[], sys: { ruler: number; last: number }
   }
   return midis.sort((a, b) => a - b);
 }
+
+/**
+ * Écrit une indication sur la ligne @ L, à la colonne start (le début de sa case, ou après une
+ * indication venue de la case d'avant), à la place du mot de old caractères qui s'y trouvait.
+ * Une indication se place par sa première lettre : un mot (une nuance, « a tempo ») déborde sur les
+ * cases suivantes de sa ligne si elles sont libres ; sinon les cases s'élargissent sur tout le
+ * système, juste avant l'indication qui suit. Un signe qui dure (un soufflet, une liaison,
+ * l'étouffé de la paume, le vibrato) s'écrit jusqu'à la case suivante, sans rien recouvrir : on
+ * l'allonge ensuite. Sa fin, si elle est donnée (« ) »), se place au début de cette case.
+ */
+export function writeMark(lines: string[], sys: System, L: number, start: number, old: number, mark: { head: string; fill?: string; tail?: string }): Rewrite {
+  const all = cases(lines[sys.ruler]);
+  const k = all.findIndex((x) => start >= x.start && start < x.end);
+  const next = all[k + 1];
+  const line = lines[L].padEnd(start + old);
+  const erased = line.slice(0, start) + " ".repeat(old) + line.slice(start + old);
+  if (mark.fill === undefined) {
+    const word = mark.head;
+    const busy = erased.slice(start).search(/\S/);
+    const out = new Map<number, string>();
+    let target = erased;
+    if (busy >= 0 && word.length + 1 > busy) {
+      // l'indication suivante est trop près : les cases s'élargissent juste avant elle, sur tout le système
+      const at = start + busy;
+      // à la barre qui ferme la case d'avant (comme pour une note), pour que les temps restent alignés
+      const j = all.findIndex((x) => at >= x.start && at < x.end);
+      const b = j > k ? all[j - 1].end : all[k].end;
+      const extra = word.length + 1 - (at - start);
+      for (let i = sys.first; i <= sys.last; i++) {
+        if (i === L) continue;
+        const w = widen(lines[i], b, extra);
+        if (w !== lines[i]) out.set(i, w);
+      }
+      target = erased.slice(0, b) + " ".repeat(extra) + erased.slice(b);
+    }
+    out.set(L, (target.padEnd(start).slice(0, start) + word + target.slice(start + word.length)).trimEnd());
+    return { lines: out, caret: { line: L, col: start + word.length } };
+  }
+  // jusqu'à la case suivante (sa première colonne pour une fin, sa dernière sinon), sans toucher au mot suivant
+  let end = next ? (mark.tail ? next.start + 1 : next.end - 1) : all[k].end - 1;
+  const busy = erased.slice(start).search(/\S/);
+  if (busy >= 0) end = Math.min(end, start + busy - 1);
+  const room = Math.max(end - start, mark.head.length + (mark.tail?.length ?? 0) + 1);
+  const body = mark.head + mark.fill.repeat(Math.max(1, room - mark.head.length - (mark.tail?.length ?? 0))) + (mark.tail ?? "");
+  const out = new Map<number, string>([[L, (erased.padEnd(start).slice(0, start) + body + erased.slice(start + body.length)).trimEnd()]]);
+  return { lines: out, caret: { line: L, col: start + body.length } };
+}

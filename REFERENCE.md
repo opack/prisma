@@ -321,6 +321,8 @@ m1 |1    |2  |3  |4  ||1     |2  |3  |4  ||
 - **Articulations**, sur la case de l'attaque, pour la note ou tout l'accord : `.` staccato (détaché, plus court), `!` accent (plus fort), `!!` marcato (plus fort et plus sec). La partition dessine le point, le `>` ou le `^` classique en haut à droite de la note. Le tenuto n'a pas de signe : la durée écrite est déjà la durée jouée.
 - **Pédale** (piano), sous la portée du bas : `Ped.` enfonce, `*` relâche, `*Ped.` change. La partition trace un trait sous le système, avec une pointe à chaque changement : on voit exactement ce qui est tenu. Une consigne comme `Ped. simile` (« continuer de même ») s'écrit sur la même ligne.
 
+Dans l'éditeur, Ctrl+Espace sur une ligne `@` propose ce qui s'écrit dans la case du curseur, chaque signe avec son sens : sous une portée, ses nuances, soufflets, liaisons, articulations et sa pédale ; au-dessus de la règle, la section suivante, le point d'orgue et les indications de tempo. Un soufflet ou une liaison s'écrit jusqu'à la case suivante : on l'allonge ensuite.
+
 ### Les accords d'accompagnement
 
 Les accords à jouer par un accompagnateur (guitare, ou un pianiste qui improvise) s'écrivent sur une ligne `@c` (*chords*), au-dessus de la règle, chacun sur la case où il commence :

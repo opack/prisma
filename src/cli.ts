@@ -48,7 +48,7 @@ try {
   else if (cmd === "check") {
     const s = parsePrisma(src);
     const bars = new Set(s.beats.map((b) => b.barIndex)).size;
-    console.log(`OK : ${bars} mesures, ${s.notes.length} notes.`);
+    console.log(`OK : ${bars} mesure${bars > 1 ? "s" : ""}, ${s.notes.length} note${s.notes.length > 1 ? "s" : ""}.`);
   } else usage();
 } catch (e) {
   console.error((e as Error).message);

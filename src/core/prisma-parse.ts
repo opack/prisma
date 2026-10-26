@@ -165,7 +165,7 @@ export function parsePrisma(text: string): Score {
   const declared = entries?.map((e) => e.name);
   delete meta.parts;
   if (declared) {
-    if (declared.some((x) => !x)) throw new PrismaError("« parts » : les noms des parties, séparés par des virgules (parts: Chant, Piano)", partsLine);
+    if (declared.some((x) => !x)) throw new PrismaError("« parts » : les noms des parties, séparés par des virgules (parts: Chant, Piano ou parts: Chant, Guitare)", partsLine);
     const twice = declared.find((x, i) => declared.indexOf(x) !== i);
     if (twice) throw new PrismaError(`« parts » : la partie « ${twice} » est nommée deux fois`, partsLine);
   }

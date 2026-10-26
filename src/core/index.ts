@@ -3,7 +3,7 @@ export * from "./pitch.ts";
 export * from "./instruments.ts";
 export { FORMAT_VERSION, PrismaError } from "./frontmatter.ts";
 export { importMusicXml } from "./musicxml.ts";
-export { FRONTMATTER, inspect, noteName, pitchClass } from "./inspect.ts";
+export { FRONTMATTER, inspect, markMeaning, noteName, pitchClass } from "./inspect.ts";
 export type { Inspection, NoteNames } from "./inspect.ts";
 export { beatGrids, layout, noteText } from "./layout.ts";
 export type { Align, Column, HairpinSpan, Metrics, PedalLine, System, SystemStaff, SystemRow, Voice, VoiceMark } from "./layout.ts";
