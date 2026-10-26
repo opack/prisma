@@ -12,7 +12,8 @@
 import { PIANO, boostOf, instrumentLabel, soundOf } from "./instruments.ts";
 import { TICKS_PER_BEAT } from "../../core/index.ts";
 import type { Score } from "../../core/index.ts";
-import { clicks, countIn, entryAt, entryStart, holds, inFirstBar, nextTick, passages, playedLength, playedNotes, playedTick, scoreTick, stretched, unstretched } from "./performance.ts";
+import { clicks, countIn, entryAt, entryStart, holds, inFirstBar, nextTick, passages, playedBars, playedLength, playedNotes, playedSections, playedTick, scoreTick, stretched, unstretched } from "./performance.ts";
+import type { PlayedBar, PlayedSection } from "./performance.ts";
 import type { Click, ClickGrid, Hold, PlayedNote, Passage } from "./performance.ts";
 import { DEFAULT_CLICK_SOUNDS, click, clickVolume, loadClick } from "./metronome.ts";
 import type { ClickSounds } from "./metronome.ts";
@@ -97,6 +98,13 @@ export type PlayerSnapshot = {
   entry: number | null;
   /** Nombre de sections dans l'ordre de jeu du morceau chargé (1 sans sections, 0 sans morceau). */
   entries: number;
+  /** Instant joué, sur le déroulé du morceau (null à l'arrêt) : où en est la lecture. */
+  played: number | null;
+  /** Les mesures du morceau chargé, dans l'ordre où elles se jouent, et ses sections dans l'ordre de jeu. */
+  bars: PlayedBar[];
+  sections: PlayedSection[];
+  /** Ses points d'orgue, qui allongent la durée de l'écoute. */
+  holds: Hold[];
   error?: string;
 };
 
@@ -109,7 +117,7 @@ type Voice = { start(n: { note: number; velocity: number; time: number; duration
 
 /** Lecteur unique de l'application : un état, et des abonnés (les boutons, le curseur). */
 class Player {
-  private snapshot: PlayerSnapshot = { state: "idle", tick: null, entry: null, entries: 0 };
+  private snapshot: PlayerSnapshot = { state: "idle", tick: null, entry: null, entries: 0, played: null, bars: [], sections: [], holds: [] };
   private listeners = new Set<() => void>();
   private context?: AudioContext;
   /** Les instruments chargés, par nom. */
@@ -155,7 +163,8 @@ class Player {
     this.notes = score ? playedNotes(score, this.passages) : [];
     this.holds = score ? holds(score, this.passages) : [];
     this.clicks = score ? clicks(score, this.passages, this.sound.clickGrid) : [];
-    this.set({ entries: this.passages.length ? this.passages[this.passages.length - 1].entry + 1 : 0 });
+    const bars = score ? playedBars(score, this.passages) : [];
+    this.set({ entries: this.passages.length ? this.passages[this.passages.length - 1].entry + 1 : 0, bars, sections: score ? playedSections(score, bars) : [], holds: this.holds });
   }
 
   /** Joue le morceau, depuis l'endroit de la pause s'il y en a une, sinon depuis le début. */
@@ -169,12 +178,12 @@ class Player {
       this.context ??= new AudioContext();
       await this.context.resume();
       const missing = this.missing();
-      if (missing.length) this.set({ state: "loading", tick: null, entry: null, error: undefined });
+      if (missing.length) this.set({ state: "loading", tick: null, entry: null, played: null, error: undefined });
       await this.loadInstruments(missing);
       this.tick = await loadClick(this.context);
       clickVolume(this.context, this.sound.clickVolume);
     } catch (e) {
-      if (run === this.run) this.set({ state: "idle", tick: null, entry: null, error: (e as Error).message });
+      if (run === this.run) this.set({ state: "idle", tick: null, entry: null, played: null, error: (e as Error).message });
       return;
     }
     if (run !== this.run) return; // arrêté pendant le chargement
@@ -293,6 +302,11 @@ class Player {
     if (this.snapshot.state !== "loading" && to < this.snapshot.entries) this.seekEntry(to);
   }
 
+  /** Place la lecture à un instant joué (la piste de lecture). */
+  seekPlayed(played: number) {
+    if (this.snapshot.state !== "loading") this.go(played);
+  }
+
   /** Place la lecture au début de la section de rang `entry` dans l'ordre de jeu (un clic sur sa lettre). */
   seekEntry(entry: number) {
     if (this.snapshot.state !== "loading") this.go(entryStart(this.passages, entry));
@@ -319,7 +333,7 @@ class Player {
 
   stop() {
     this.halt();
-    if (this.snapshot.state !== "idle" || this.snapshot.tick !== null) this.set({ state: "idle", tick: null, entry: null });
+    if (this.snapshot.state !== "idle" || this.snapshot.tick !== null) this.set({ state: "idle", tick: null, entry: null, played: null });
   }
 
   /** L'instant du morceau en ce moment même, selon l'horloge audio (le curseur, lui, avance par cases). */
@@ -336,7 +350,7 @@ class Player {
 
   /** Ce que publie un instant joué : la case du morceau et la section de l'ordre de jeu. */
   private at(played: number) {
-    return { tick: scoreTick(this.passages, played), entry: entryAt(this.passages, played) };
+    return { tick: scoreTick(this.passages, played), entry: entryAt(this.passages, played), played };
   }
 
   /** Coupe le son et la programmation, sans toucher à l'état publié. */
@@ -409,7 +423,7 @@ class Player {
       if (run !== this.run) return;
       const elapsed = context.currentTime - start;
       if (elapsed > length + TAIL) return this.stop();
-      this.set(elapsed < length ? this.at(played(elapsed)) : { tick: null, entry: null });
+      this.set(elapsed < length ? this.at(played(elapsed)) : { tick: null, entry: null, played: null });
       this.frame = requestAnimationFrame(follow);
     };
     this.frame = requestAnimationFrame(follow);

@@ -84,7 +84,7 @@ Le cœur du projet. Le moteur découpe le morceau en **systèmes** qui tiennent 
 
 `performance.ts` déroule le morceau tel qu'il se joue : reprises et ordre des sections, puis chaque note placée sur ce déroulé. Il y a donc deux échelles de temps : l'instant du morceau (sa place sur la partition) et l'instant joué (depuis le début de l'écoute) ; une mesure reprise a un instant du morceau et deux instants joués. Les nuances deviennent des intensités (`dynamics.ts`), la pédale allonge les notes qu'elle tient (`pedal.ts`) ; petites notes, trilles, arpèges, points d'orgue et articulations sont réalisés au même endroit.
 
-`player.ts` joue ce déroulé avec [smplr](https://github.com/danigb/smplr) : un piano échantillonné, et des sons General MIDI pour les autres instruments, chargés à la première écoute qui les demande. Il publie l'instant joué ; la partition s'en sert pour son curseur, et la suit (`follow.ts`, `glide.ts`). Le métronome est un son enregistré (CC0) fourni avec l'application.
+`playedBars` en tire les mesures dans l'ordre où elles se jouent, pour la piste de lecture (`Progress.tsx`, sous la barre) : où en est la lecture, en mesures et en temps, et s'y placer. `player.ts` joue ce déroulé avec [smplr](https://github.com/danigb/smplr) : un piano échantillonné, et des sons General MIDI pour les autres instruments, chargés à la première écoute qui les demande. Il publie l'instant joué ; la partition s'en sert pour son curseur, et la suit (`follow.ts`, `glide.ts`). Le métronome est un son enregistré (CC0) fourni avec l'application.
 
 ### L'import MusicXML (`core/musicxml.ts`)
 

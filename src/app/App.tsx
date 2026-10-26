@@ -21,7 +21,8 @@ import { textMark } from "./score/textMark.ts";
 import type { EditorHandle } from "./editor/SourceEditor.tsx";
 import { OptionsDrawer } from "./options/OptionsDrawer.tsx";
 
-import { player } from "./playback/player.ts";
+import { DEFAULT_BPM, player } from "./playback/player.ts";
+import { Progress } from "./playback/Progress.tsx";
 import { follow } from "./score/follow.ts";
 import { FocusView } from "./score/FocusView.tsx";
 import { ReferenceView } from "./reference/ReferenceView.tsx";
@@ -73,7 +74,8 @@ const FITS: Fit[] = ["height", "width", "focus"];
 /** La largeur de l'éditeur, en part de la largeur de l'écran : par défaut, et ses bornes. */
 const EDITOR_WIDTH = 0.42;
 const clampWidth = (w: number) => Math.round(Math.min(0.8, Math.max(0.2, w)) * 1000) / 1000;
-type View = { zoom: number; fit: Fit; editorWidth: number };
+/** La vue : le zoom, l'ajustement des pages, la largeur de l'éditeur, la piste de lecture montrée ou non. */
+type View = { zoom: number; fit: Fit; editorWidth: number; progress: boolean };
 const VIEW_KEY = "prisma:view";
 const loadView = (): View => {
   try {
@@ -82,9 +84,10 @@ const loadView = (): View => {
       zoom: ZOOMS.includes(raw.zoom) ? raw.zoom : 1,
       fit: FITS.includes(raw.fit) ? raw.fit : "height",
       editorWidth: typeof raw.editorWidth === "number" ? clampWidth(raw.editorWidth) : EDITOR_WIDTH,
+      progress: raw.progress !== false,
     };
   } catch {
-    return { zoom: 1, fit: "height", editorWidth: EDITOR_WIDTH };
+    return { zoom: 1, fit: "height", editorWidth: EDITOR_WIDTH, progress: true };
   }
 };
 const persist = (s: string) => {
@@ -925,6 +928,7 @@ export function App() {
           label="Affichage"
           items={[
             { label: "Éditeur", onSelect: () => setEditing(!editing), checked: editing, shortcut: "Ctrl+E" },
+            { label: "Piste de lecture", onSelect: () => setView({ progress: !view.progress }), checked: view.progress },
             { label: "Plein écran", onSelect: toggleFullScreen, checked: fullScreen, shortcut: "F11" },
             "separator",
             { label: "Zoom avant", onSelect: () => zoomBy(1), shortcut: "Ctrl++", disabled: view.zoom >= ZOOMS[ZOOMS.length - 1] || focused },
@@ -948,9 +952,17 @@ export function App() {
             e.target.value = "";
           }}
         />
-        <span className="text-muted ml-2 truncate min-w-0" title={handle ? "Enregistrer réécrit ce fichier" : undefined}>
+        {/* le nom du fichier ; un point, à la couleur de l'accent, tant qu'il y a des modifications non enregistrées */}
+        <span className="text-muted ml-2 truncate min-w-[6em]" title={[unsaved || savedText === null ? "Modifications non enregistrées" : "", handle ? "Enregistrer réécrit ce fichier" : ""].filter(Boolean).join(" ; ") || undefined}>
           {fileName}
-          {unsaved || savedText === null ? <span className="text-accent"> · non enregistré</span> : null}
+          {unsaved || savedText === null ? (
+            <>
+              <span className="text-accent" aria-hidden>
+                {" "}●
+              </span>
+              <span className="sr-only">, non enregistré</span>
+            </>
+          ) : null}
         </span>
         {notice && (
           <span className="text-accent ml-3 whitespace-nowrap" role="status">
@@ -990,6 +1002,12 @@ export function App() {
           </svg>
         </button>
       </header>
+      {/* où en est la lecture, sur toute la largeur, sous la barre */}
+      {view.progress && score && pages.length > 0 && (
+        <div className="flex px-4 py-px bg-panel border-b border-line print:hidden!">
+          <Progress bpm={piece.tempo ?? score.meta.bpm ?? DEFAULT_BPM} />
+        </div>
+      )}
 
 
       <div className="flex-1 relative flex flex-col min-h-0">

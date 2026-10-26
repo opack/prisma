@@ -1452,6 +1452,27 @@ describe("écoute", () => {
     expect(order(s, passages(s))).toBe("1 2 3 4 3 4 1 2");
   });
 
+  it("compte les mesures dans l'ordre où elles se jouent, et les range par section (où en est la lecture)", async () => {
+    const { playedBars, playedSections, barAt } = await import("../src/app/playback/performance.ts");
+    const s = bars(4, {
+      markers: [{ label: "A", barIndex: 0 }, { label: "B", barIndex: 2 }],
+      order: ["A", "B", "A"],
+      repeats: [{ barIndex: 3, end: true }],
+    });
+    const played = playedBars(s, passages(s));
+    // 1 2 | 3 4 3 4 | 1 2 : huit mesures jouées, une mesure d'un temps chacune
+    expect(played.map((b) => [b.at / T, b.end / T, b.entry])).toEqual([[0, 1, 0], [1, 2, 0], [2, 3, 1], [3, 4, 1], [4, 5, 1], [5, 6, 1], [6, 7, 2], [7, 8, 2]]);
+    expect(playedSections(s, played)).toEqual([
+      { entry: 0, label: "A", first: 0, count: 2 },
+      { entry: 1, label: "B", first: 2, count: 4 },
+      { entry: 2, label: "A", first: 6, count: 2 },
+    ]);
+    expect([0, 0.5, 5.9, 7, 99].map((t) => barAt(played, t * T))).toEqual([0, 0, 5, 7, 7]);
+    // sans sections : une seule, sans lettre
+    const plain = bars(3);
+    expect(playedSections(plain, playedBars(plain, passages(plain)))).toEqual([{ entry: 0, label: "", first: 0, count: 3 }]);
+  });
+
   it("garde liée une note qui passe d'un passage à la suite du morceau", () => {
     const s = bars(3, { repeats: [{ barIndex: 0, end: true }] });
     s.notes = [{ staff: 0, midi: 60, start: 0, end: 3 * T }];

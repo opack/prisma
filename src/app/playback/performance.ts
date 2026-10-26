@@ -362,6 +362,41 @@ export function inFirstBar(score: Score, ps: Passage[], played: number): boolean
   return played - first.at < end - first.from;
 }
 
+/** Une mesure dans l'ordre où elle se joue : l'instant joué où elle commence, où elle finit, et le rang de sa section dans l'ordre de jeu. */
+export type PlayedBar = { at: number; end: number; entry: number };
+
+/** Les mesures du morceau, dans l'ordre où elles se jouent : une mesure reprise y est deux fois. */
+export function playedBars(score: Score, ps: Passage[]): PlayedBar[] {
+  // les instants du morceau où commence une mesure
+  const starts = new Set(score.beats.flatMap((b, i) => (i === 0 || score.beats[i - 1].barIndex !== b.barIndex ? [i * TICKS_PER_BEAT] : [])));
+  const at: { at: number; entry: number }[] = [];
+  for (const p of ps) for (let t = p.from; t < p.to; t += TICKS_PER_BEAT) if (starts.has(t)) at.push({ at: p.at + t - p.from, entry: p.entry });
+  const length = playedLength(ps);
+  return at.map((b, i) => ({ ...b, end: at[i + 1]?.at ?? length }));
+}
+
+/** Une section dans l'ordre de jeu, en mesures jouées : sa lettre (vide sans sections), sa première mesure, leur nombre. */
+export type PlayedSection = { entry: number; label: string; first: number; count: number };
+
+/** Les sections dans l'ordre où elles se jouent, chacune avec ses mesures. */
+export function playedSections(score: Score, bars: PlayedBar[]): PlayedSection[] {
+  const labels = score.order.length ? score.order : [...score.markers].sort((a, b) => a.barIndex - b.barIndex).map((m) => m.label);
+  const out: PlayedSection[] = [];
+  bars.forEach((b, i) => {
+    const last = out[out.length - 1];
+    if (last?.entry === b.entry) last.count++;
+    else out.push({ entry: b.entry, label: labels[b.entry] ?? "", first: i, count: 1 });
+  });
+  return out;
+}
+
+/** Le rang de la mesure jouée à un instant joué (la dernière, au-delà). */
+export function barAt(bars: PlayedBar[], played: number): number {
+  let k = 0;
+  while (k + 1 < bars.length && bars[k + 1].at <= played) k++;
+  return k;
+}
+
 /** L'instant joué où commence la section de rang `entry` dans l'ordre de jeu. */
 export const entryStart = (ps: Passage[], entry: number) => ps.find((x) => x.entry === entry)?.at ?? null;
 

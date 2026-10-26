@@ -299,6 +299,40 @@ for (const [fit, zoom, name] of [["height", 2, "gauche"], ["width", 1, "haut"]] 
     await expect(page.getByRole("button", { name: "Retour au début de la partition" })).toHaveCount(0);
   });
 
+// où en est la lecture, sous la barre : un clic sur la piste place la lecture sur une mesure (ici la 10e des 16, dans la section B)
+test("app piste de lecture", async ({ page }) => {
+  await openApp(page, { source: CLAIR_SECTIONS, editing: false });
+  const track = page.getByRole("slider", { name: "Position dans le morceau" });
+  const box = (await track.boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.6, box.y + box.height / 2);
+  await settle(page);
+  await expect(track).toHaveAttribute("aria-valuetext", "mesure 10 sur 16, section B");
+  // la bulle, au survol : la mesure où l'on tombera ; puis la piste seule, le pointeur ailleurs
+  // (le compteur s'est élargi : la piste a bougé)
+  const moved = (await track.boundingBox())!;
+  await page.mouse.move(moved.x + moved.width * 0.3, moved.y + moved.height / 2);
+  await expect(page.getByText(/^mesure 5/)).toBeVisible();
+  await page.mouse.move(0, 400);
+  // 16 mesures de 4 temps à 100 : 38 secondes ; la 10e commence à 21
+  await expect(page.getByText("0:21 / 0:38")).toBeVisible();
+  await expect(page).toHaveScreenshot("app-piste.png", { clip: { x: 0, y: 0, width: 1300, height: 72 } });
+});
+
+// Affichage › Piste de lecture la masque, et le choix tient au rechargement
+test("app sans piste de lecture", async ({ page }) => {
+  await openApp(page, { source: CLAIR_SECTIONS, editing: false });
+  const track = page.getByRole("slider", { name: "Position dans le morceau" });
+  await expect(track).toBeVisible();
+  await menu(page, "Affichage", "Piste de lecture");
+  await expect(track).toHaveCount(0);
+  await page.reload();
+  await settle(page);
+  await expect(track).toHaveCount(0);
+  await expect(page).toHaveScreenshot("app-sans-piste.png");
+  await menu(page, "Affichage", "Piste de lecture");
+  await expect(track).toBeVisible();
+});
+
 test("app erreur", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS.replace("|1  |1  |1  |3  ||", "|1  |1  |13 |3  ||") });
   await expect(page).toHaveScreenshot("app-erreur.png");
