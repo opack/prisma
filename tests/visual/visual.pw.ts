@@ -68,6 +68,35 @@ for (const n of ["2", "5"])
     await expect(keyboard).toHaveScreenshot(`site-clavier-${n}.png`);
   });
 
+// plus bas sur la page, le bouton qui ramène à « Sur cette page »
+test("site retour aux parties", async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  await page.goto("/guitare.html");
+  await settle(page);
+  await page.mouse.wheel(0, 2400);
+  await settle(page);
+  await expect(page.getByRole("button", { name: "Retour aux parties de la page" })).toHaveScreenshot("site-retour.png");
+  await page.getByRole("button", { name: "Retour aux parties de la page" }).click();
+  await settle(page);
+  await expect(page.getByRole("navigation", { name: "Sur cette page" })).toBeInViewport();
+  await expect(page.getByRole("button", { name: "Retour aux parties de la page" })).toHaveCount(0);
+});
+
+// la référence, plus bas : le bouton qui ramène en haut
+test("site retour en haut de la référence", async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  await page.goto("/reference.html");
+  await settle(page);
+  await page.mouse.wheel(0, 3000);
+  await settle(page);
+  const back = page.getByRole("button", { name: "Retour en haut de la référence" });
+  await expect(back).toHaveScreenshot("site-retour-reference.png");
+  await back.click();
+  await settle(page);
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+  await expect(back).toHaveCount(0);
+});
+
 // l'application : ses écrans et ses panneaux
 test("app éditeur et partition", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS });
@@ -254,6 +283,21 @@ test("app lecture focalisée", async ({ page }) => {
   await openApp(page, { source: GYMNOPEDIE, editing: false, view: { fit: "focus", zoom: 1 } });
   await expect(page).toHaveScreenshot("app-focalisee.png");
 });
+
+// la première page sortie de l'écran, le bouton qui ramène au début : vers la gauche quand les
+// pages défilent de côté (ajustées à la hauteur), vers le haut quand elles défilent de haut en bas
+// (zoomées, pour que les trois pages de la Gymnopédie dépassent de côté)
+for (const [fit, zoom, name] of [["height", 2, "gauche"], ["width", 1, "haut"]] as const)
+  test(`app retour au début ${name}`, async ({ page }) => {
+    await openApp(page, { source: GYMNOPEDIE, editing: false, view: { fit, zoom } });
+    await page.locator(".preview").evaluate((p) => p.scrollTo({ left: p.scrollWidth, top: p.scrollHeight }));
+    await settle(page);
+    await expect(page).toHaveScreenshot(`app-retour-${name}.png`);
+    await page.getByRole("button", { name: "Retour au début de la partition" }).click();
+    await settle(page);
+    await expect(page.locator(".preview")).toHaveJSProperty(fit === "height" ? "scrollLeft" : "scrollTop", 0);
+    await expect(page.getByRole("button", { name: "Retour au début de la partition" })).toHaveCount(0);
+  });
 
 test("app erreur", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS.replace("|1  |1  |1  |3  ||", "|1  |1  |13 |3  ||") });

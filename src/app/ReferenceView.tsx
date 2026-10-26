@@ -13,6 +13,7 @@ import { engrave } from "./engrave.ts";
 import { Excerpt } from "./PageView.tsx";
 import { alignOf } from "./options.ts";
 import { slug } from "./slug.ts";
+import { ScrollBackButton } from "./ScrollBackButton.tsx";
 import "./reference.css";
 import type { RenderOptions } from "./options.ts";
 
@@ -87,6 +88,9 @@ export function ReferenceView({ options, example, site = "../" }: { options: Ren
   const root = useRef<HTMLDivElement>(null);
   const [slots, setSlots] = useState<Element[]>([]);
   const [current, setCurrent] = useState(headings[0]?.id);
+  // plus d'un écran passé : le bouton qui ramène en haut de la référence
+  const [away, setAway] = useState(false);
+  const scrollPane = useRef<Element | null>(null);
   useLayoutEffect(() => {
     setSlots([...(root.current?.querySelectorAll(".example") ?? [])]);
   }, [html]);
@@ -103,6 +107,7 @@ export function ReferenceView({ options, example, site = "../" }: { options: Ren
   useEffect(() => {
     const pane = root.current?.closest(".guide-pane") ?? document.scrollingElement;
     if (!pane) return;
+    scrollPane.current = pane;
     const scroller = pane === document.scrollingElement ? window : pane;
     let frame = 0;
     const spy = () => {
@@ -117,6 +122,7 @@ export function ReferenceView({ options, example, site = "../" }: { options: Ren
         // tout en bas, la dernière partie, même courte
         if (pane.scrollTop + pane.clientHeight >= pane.scrollHeight - 2) id = headings[headings.length - 1]?.id;
         setCurrent(id);
+        setAway(pane.scrollTop > pane.clientHeight);
       });
     };
     spy();
@@ -153,6 +159,13 @@ export function ReferenceView({ options, example, site = "../" }: { options: Ren
           return createPortal(example ? example(text) : <Example text={text} options={options} />, el, String(i));
         })}
       </article>
+      {away && (
+        <ScrollBackButton
+          className="fixed right-6 bottom-6 z-10"
+          label="Retour en haut de la référence"
+          onClick={() => scrollPane.current?.scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })}
+        />
+      )}
     </div>
   );
 }

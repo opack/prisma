@@ -13,6 +13,8 @@ import { ButtonLink } from "./ButtonLink.tsx";
 import { Idea } from "./Idea.tsx";
 import { IdeaText } from "./IdeaText.tsx";
 import { Lead } from "./Lead.tsx";
+import { OnThisPage } from "./OnThisPage.tsx";
+import { slug } from "../app/slug.ts";
 
 /** Une case du tableau des notes. */
 const CELL = "px-[5px] py-[3px] border border-line text-center align-top whitespace-nowrap";
@@ -203,7 +205,7 @@ m2 |1  |2  |3  |4  ||
 export function Learn() {
   return (
     <>
-      <Header />
+      <Header current="apprendre" />
       <main>
         <section>
           <h1>Apprendre pas à pas</h1>
@@ -216,10 +218,11 @@ export function Learn() {
               Ouvrir l'application
             </ButtonLink>
           </Actions>
+          <OnThisPage parts={[...STEPS.map((s, i) => ({ id: slug(s.title), label: `${i + 1}. ${s.title}` })), { id: "et-ensuite", label: "Et ensuite" }]} />
         </section>
 
         {STEPS.map((s, i) => (
-          <Idea key={s.title} kind="step">
+          <Idea key={s.title} kind="step" id={slug(s.title)}>
             <IdeaText>
               <h2>
                 {i + 1}. {s.title}
@@ -233,7 +236,7 @@ export function Learn() {
           </Idea>
         ))}
 
-        <section>
+        <section id="et-ensuite">
           <h2>Et ensuite</h2>
           <p>
             Vous savez lire et écrire un morceau. Le reste s'ajoute à mesure que vous en avez besoin : <a href={referenceLink("ornaments")}>les doigtés</a>,{" "}
@@ -246,7 +249,7 @@ export function Learn() {
           </p>
         </section>
       </main>
-      <Footer />
+      <Footer current="apprendre" />
     </>
   );
 }

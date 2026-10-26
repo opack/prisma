@@ -30,7 +30,7 @@ export function Home() {
   const [inline, setInline] = useState(false);
   return (
     <>
-      <Header />
+      <Header current="index" />
       <main>
         <section className="grid grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-12 items-center pt-10 narrow:grid-cols-[minmax(0,1fr)] narrow:gap-6">
           <div>
@@ -194,7 +194,7 @@ export function Home() {
           </Caption>
         </section>
       </main>
-      <Footer />
+      <Footer current="index" />
     </>
   );
 }

@@ -10,6 +10,7 @@ import { APP, Footer, Header } from "./Frame.tsx";
 import { BASS, DROP_D, GREENSLEEVES, GREENSLEEVES_CHORDS, PENTATONIC, RING, TECHNIQUES } from "./pieces.ts";
 import { referenceLink } from "./referenceLinks.ts";
 import { Actions } from "./Actions.tsx";
+import { OnThisPage } from "./OnThisPage.tsx";
 import { ButtonLink } from "./ButtonLink.tsx";
 import { Caption } from "./Caption.tsx";
 import { Idea } from "./Idea.tsx";
@@ -46,9 +47,9 @@ function asciiTab(text: string): string {
 }
 
 /** Une idée de la page : son texte, et son exemple à côté. */
-function Topic({ title, children, text, label, options }: { title: string; children: React.ReactNode; text: string; label: string; options?: Parameters<typeof Example>[0]["options"] }) {
+function Topic({ id, title, children, text, label, options }: { id: string; title: string; children: React.ReactNode; text: string; label: string; options?: Parameters<typeof Example>[0]["options"] }) {
   return (
-    <Idea>
+    <Idea id={id}>
       <IdeaText>
         <h2>{title}</h2>
         {children}
@@ -58,11 +59,24 @@ function Topic({ title, children, text, label, options }: { title: string; child
   );
 }
 
+/** Les parties de la page, pour « Sur cette page ». */
+const PARTS = {
+  tab: { id: "tablature", label: "La tablature et Prisma" },
+  strings: { id: "cordes", label: "Cordes et cases" },
+  ring: { id: "tenue", label: "La tenue" },
+  tuning: { id: "accordage", label: "Accordage et capo" },
+  chords: { id: "accords", label: "Accords et grilles" },
+  techniques: { id: "techniques", label: "Les techniques" },
+  convert: { id: "partition", label: "D'une partition à la guitare" },
+  bass: { id: "basse", label: "La basse" },
+  limits: { id: "ce-qui-change", label: "Ce qui change" },
+};
+
 export function Guitar() {
   const tab = useMemo(() => asciiTab(GREENSLEEVES), []);
   return (
     <>
-      <Header />
+      <Header current="guitare" />
       <main>
         <section>
           <h1>La guitare et la basse</h1>
@@ -78,11 +92,12 @@ export function Guitar() {
               Tout sur les cordes dans la référence
             </ButtonLink>
           </Actions>
+          <OnThisPage parts={Object.values(PARTS)} />
         </section>
 
-        <Idea kind="wide">
+        <Idea kind="wide" id={PARTS.tab.id}>
           <IdeaText>
-            <h2>Le même passage, deux fois</h2>
+            <h2>Ce que la tablature ne dit pas</h2>
             <p>
               Les quatre premières mesures de <i>Greensleeves</i>. La tablature donne les bonnes cases, dans le bon ordre, et rien d'autre. Combien de temps dure le premier{" "}
               <i>do</i> ? Le <i>mi</i> et le <i>fa</i> de la deuxième mesure sont-ils égaux ? La basse tient-elle sous la mélodie, ou s'arrête-t-elle ? Il faut avoir entendu le
@@ -107,7 +122,7 @@ export function Guitar() {
           </div>
         </Idea>
 
-        <Topic title="Une ligne par corde, un nombre par case" text={PENTATONIC} label="La gamme pentatonique de mi mineur, en première position">
+        <Topic id={PARTS.strings.id} title="Une ligne par corde, un nombre par case" text={PENTATONIC} label="La gamme pentatonique de mi mineur, en première position">
           <p>
             Chaque ligne est une corde, numérotée de <code>1</code>, la plus aiguë, en haut, à <code>6</code>, la plus grave : l'ordre de toute tablature. La marge rappelle sa
             note à vide. Le nombre est la case où appuyer, de <code>0</code> (la corde à vide) à <code>24</code>.
@@ -119,7 +134,7 @@ export function Guitar() {
           <p>Ici, la gamme pentatonique de <i>mi</i> mineur, en première position : deux cases par corde, du grave à l'aigu.</p>
         </Topic>
 
-        <Topic title="La tenue : ce qui sonne encore" text={RING} label="Un arpège de la mineur laissé sonner, puis un arpège de mi où seule la basse tient">
+        <Topic id={PARTS.ring.id} title="La tenue : ce qui sonne encore" text={RING} label="Un arpège de la mineur laissé sonner, puis un arpège de mi où seule la basse tient">
           <p>
             Le trait <code>-</code> prolonge une note : la corde sonne jusqu'au bout du trait, puis la main l'étouffe. La tablature, elle, laisse ce choix à l'oreille de qui
             connaît déjà le morceau.
@@ -130,7 +145,7 @@ export function Guitar() {
           </p>
         </Topic>
 
-        <Topic title="L'accordage et le capo" text={DROP_D} label="Des accords de puissance en accordage drop-d">
+        <Topic id={PARTS.tuning.id} title="L'accordage et le capo" text={DROP_D} label="Des accords de puissance en accordage drop-d">
           <p>
             L'accordage et le capo s'écrivent après le nom de la partie, en tête du morceau : <code>parts: Guitare (drop-d, capo 2)</code>. Les accordages courants y sont, de{" "}
             <code>standard</code> à <code>dadgad</code> ou <code>open-g</code>. La marge de chaque corde donne alors sa note, et l'écoute suit.
@@ -141,7 +156,7 @@ export function Guitar() {
           <p>Ici, en drop-d, la 6ᵉ corde baissée en <i>ré</i> : un doigt couché sur les trois cordes graves joue l'accord de puissance.</p>
         </Topic>
 
-        <Topic title="Les accords et leurs grilles" text={GREENSLEEVES_CHORDS} label="Greensleeves avec ses accords et leurs grilles" options={{ chords: "grid" }}>
+        <Topic id={PARTS.chords.id} title="Les accords et leurs grilles" text={GREENSLEEVES_CHORDS} label="Greensleeves avec ses accords et leurs grilles" options={{ chords: "grid" }}>
           <p>
             Les accords à gratter s'écrivent sur la ligne <code>@c</code>, au-dessus de la règle, par leur nom Prisma (<code>10:m</code> pour <i>la</i> mineur) ou anglais (
             <i>Am</i>). La partition dessine leur grille : l'application prend la forme la plus simple sur la guitare du morceau, son accordage et son capo compris.
@@ -152,7 +167,7 @@ export function Guitar() {
           </p>
         </Topic>
 
-        <Topic title="Les techniques" text={TECHNIQUES} label="Les techniques des cordes : harmonique, note étouffée, bend, glissé, liaisons, médiator, étouffé, vibrato">
+        <Topic id={PARTS.techniques.id} title="Les techniques" text={TECHNIQUES} label="Les techniques des cordes : harmonique, note étouffée, bend, glissé, liaisons, médiator, étouffé, vibrato">
           <p>Dans la case, les signes de toutes les tablatures :</p>
           <ul>
             <li>
@@ -172,7 +187,7 @@ export function Guitar() {
           </p>
         </Topic>
 
-        <Idea kind="wide">
+        <Idea kind="wide" id={PARTS.convert.id}>
           <IdeaText>
             <h2>D'une partition à la guitare</h2>
             <ul>
@@ -195,13 +210,13 @@ export function Guitar() {
           </IdeaText>
         </Idea>
 
-        <Topic title="La basse" text={BASS} label="À la basse, la fondamentale et la quinte">
+        <Topic id={PARTS.bass.id} title="La basse" text={BASS} label="À la basse, la fondamentale et la quinte">
           <p>
             Tout ce qui précède vaut pour la basse, sur quatre cordes : <code>parts: Basse électrique</code>. Ici, la fondamentale et la quinte, de <i>la</i> puis de <i>do</i>.
           </p>
         </Topic>
 
-        <Idea kind="wide">
+        <Idea kind="wide" id={PARTS.limits.id}>
           <IdeaText>
             <h2>Ce qui change</h2>
             <p>
@@ -225,7 +240,7 @@ export function Guitar() {
           </Caption>
         </section>
       </main>
-      <Footer />
+      <Footer current="guitare" />
     </>
   );
 }

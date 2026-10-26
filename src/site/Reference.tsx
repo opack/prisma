@@ -7,11 +7,11 @@ import { Footer, Header } from "./Frame.tsx";
 export function Reference() {
   return (
     <>
-      <Header />
+      <Header current="reference" />
       <main className="reference-page">
         <ReferenceView site="" options={DEFAULT_OPTIONS} example={(text) => <Example text={text} scale={1.4} label="Un exemple de la référence" guide />} />
       </main>
-      <Footer />
+      <Footer current="reference" />
     </>
   );
 }

@@ -13,6 +13,7 @@ import { Caption } from "./Caption.tsx";
 import { Idea } from "./Idea.tsx";
 import { IdeaText } from "./IdeaText.tsx";
 import { Lead } from "./Lead.tsx";
+import { OnThisPage } from "./OnThisPage.tsx";
 
 /** Un fa dièse qui revient, puis un fa naturel : la partition classique les écrit avec une armure et un bécarre ; Prisma, 7 et 6. */
 const SHARP = `---
@@ -112,10 +113,29 @@ const LOSSES: { what: string; why: ReactNode }[] = [
   },
 ];
 
+/** Les parties de la page, pour « Sur cette page ». */
+const PARTS = {
+  kept: { id: "garde", label: "Ce que Prisma garde" },
+  removed: { id: "retire", label: "Ce qu'il retire" },
+  sharp: {
+    id: "fa-diese",
+    label: (
+      <>
+        Le <i>fa dièse</i>
+      </>
+    ),
+  },
+  repeats: { id: "renvois", label: "Les renvois" },
+  chords: { id: "accords", label: "Les accords" },
+  alike: { id: "accords-semblables", label: "Deux accords semblables" },
+  lost: { id: "perd", label: "Ce qu'il perd" },
+  who: { id: "pour-qui", label: "Pour qui ?" },
+};
+
 export function Comparison() {
   return (
     <>
-      <Header />
+      <Header current="comparaison" />
       <main>
         <section className="pt-10">
           <h1>Prisma et la partition classique</h1>
@@ -123,9 +143,10 @@ export function Comparison() {
             La partition classique est un outil remarquable, affiné pendant des siècles. Mais une bonne part de ce qu'elle demande d'apprendre ne sert qu'à elle-même : les clés,
             l'armure, les altérations, les figures de durée. Voici ce que Prisma garde, ce qu'il retire, et ce qu'il perd.
           </Lead>
+          <OnThisPage parts={Object.values(PARTS)} />
         </section>
 
-        <section>
+        <section id={PARTS.kept.id}>
           <h2>Ce que Prisma garde</h2>
           <p>Tout ce qui sert à jouer, et que la partition classique a bien trouvé :</p>
           <ul className="m-0 pl-[1.2em] max-w-[44em] [&_li]:mb-1.5">
@@ -138,7 +159,7 @@ export function Comparison() {
           </ul>
         </section>
 
-        <section>
+        <section id={PARTS.removed.id}>
           <h2>Ce que Prisma retire</h2>
           <table className="compare">
             <thead>
@@ -162,7 +183,7 @@ export function Comparison() {
           </table>
         </section>
 
-        <Idea>
+        <Idea id={PARTS.sharp.id}>
           <IdeaText>
             <h2>
               Un exemple : le <i>fa dièse</i>
@@ -178,7 +199,7 @@ export function Comparison() {
           <Example text={SHARP} label="Sol, fa dièse, sol, puis fa naturel, mi" />
         </Idea>
 
-        <Idea kind="wide">
+        <Idea kind="wide" id={PARTS.repeats.id}>
           <IdeaText>
             <h2>Un exemple : les renvois</h2>
             <p>
@@ -195,7 +216,7 @@ export function Comparison() {
           <Example text={CLAIR_SECTIONS} scale={1.25} label="Au clair de la lune : la partie A, la partie B, et l'ordre de jeu A A B A" />
         </Idea>
 
-        <Idea>
+        <Idea id={PARTS.chords.id}>
           <IdeaText>
             <h2>Ce que Prisma rend plus simple : les accords</h2>
             <p>
@@ -229,7 +250,7 @@ export function Comparison() {
           <Example text={CHORDS} options={{ notePosition: "aligned", chords: "name" }} label="Do majeur, do mineur, do septième, do diminué : les nombres changent d'un ou deux" />
         </Idea>
 
-        <Idea>
+        <Idea id={PARTS.alike.id}>
           <IdeaText>
             <h2>Sur la partition classique, deux accords qui se ressemblent</h2>
             <p>
@@ -253,7 +274,7 @@ export function Comparison() {
           </div>
         </Idea>
 
-        <section>
+        <section id={PARTS.lost.id}>
           <h2>Ce que Prisma perd</h2>
           <p>Ce choix a un prix. Le voici, sans détour.</p>
           <dl className="m-0 grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-x-10 gap-y-6">
@@ -266,7 +287,7 @@ export function Comparison() {
           </dl>
         </section>
 
-        <section>
+        <section id={PARTS.who.id}>
           <h2>Pour qui ?</h2>
           <p>
             Pour qui veut jouer les morceaux qui lui plaisent sans passer d'abord par des mois, voire des années, de solfège : un adulte qui commence ou recommence, un enfant qui
@@ -285,7 +306,7 @@ export function Comparison() {
           </ButtonLink>
         </section>
       </main>
-      <Footer />
+      <Footer current="comparaison" />
     </>
   );
 }

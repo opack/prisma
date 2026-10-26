@@ -37,6 +37,7 @@ import { scoreInstrument, staffInstruments, instrumentsOf } from "./instruments.
 import { PIECE_KEYS, isEmpty, isPieceKey, parseSettings, readSettings, saveSettings, settingsName, writeSettings } from "./piece.ts";
 import type { PieceKey, PieceSettings } from "./piece.ts";
 import { BackButton } from "./BackButton.tsx";
+import { ScrollBackButton } from "./ScrollBackButton.tsx";
 import { OPENABLE, canWriteInPlace, download, droppedFile, pickExportTarget, pickFile, pickSaveTarget, targetIn, writeFile } from "./files.ts";
 
 /** Délai sans frappe avant la gravure automatique. */
@@ -211,6 +212,7 @@ export function App() {
   };
   const reading = !editing;
   const preview = useRef<HTMLElement>(null);
+  const [scrolled, setScrolled] = useState<"up" | "left" | null>(null);
   /**
    * Zoom de la partition, retenu d'une visite à l'autre : un facteur, et l'ajustement des pages à
    * la place laissée à la partition (la moitié de l'écran éditeur ouvert, tout l'écran sinon) : à
@@ -297,7 +299,13 @@ export function App() {
     // la prolonge, jusqu'à une seconde sans geste
     const hold = () => follow.hold();
     const onBar = (e: PointerEvent) => e.target === pane && (e.offsetX > pane.clientWidth || e.offsetY > pane.clientHeight) && hold();
-    const onScroll = () => !follow.active() && follow.enabled() && hold();
+    const onScroll = () => {
+      if (!follow.active() && follow.enabled()) hold();
+      // la première page sortie de l'écran : le bouton qui ramène au début, sa flèche dans le sens du défilement
+      const first = pane.querySelector(".page")?.getBoundingClientRect();
+      const across = first ? pane.scrollLeft > first.width : false, down = first ? pane.scrollTop > first.height : false;
+      setScrolled(across ? "left" : down ? "up" : null);
+    };
     pane.addEventListener("wheel", onWheel, { passive: false });
     pane.addEventListener("touchmove", hold, { passive: true });
     pane.addEventListener("pointerdown", onBar);
@@ -1130,6 +1138,17 @@ export function App() {
             pages.map((p) => <PageView key={p.index} page={p} total={pages.length} meta={score!.meta} options={options} />)
           )}
         </section>
+        {scrolled && !focused && (
+          <ScrollBackButton
+            className="absolute right-6 bottom-6 z-4"
+            direction={scrolled}
+            label="Retour au début de la partition"
+            onClick={() => {
+              follow.hold();
+              preview.current!.scrollTo({ top: 0, left: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+            }}
+          />
+        )}
       </main>
       {showOptions && (
         <OptionsDrawer
