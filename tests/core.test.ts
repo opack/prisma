@@ -4,7 +4,7 @@ import { FORMAT_VERSION, TICKS_PER_BEAT as T, guessKey, importMusicXml, keyName,
 import type { Align, Score } from "../src/core/index.ts";
 import { playOrder, sectionsOf } from "../src/core/musicxml.ts";
 import { chordName, chordNameNotes, chordNotes, chordPrismaName } from "../src/core/chords.ts";
-import { splitChord } from "../src/app/engrave.ts";
+import { splitChord } from "../src/app/score/engrave.ts";
 import { musicXml, q } from "./helpers.ts";
 
 const C4 = 60;
@@ -1408,12 +1408,12 @@ describe("écoute", () => {
     ...more,
   });
   const order = (s: Score, ps: ReturnType<typeof passages>) => playedNotes(s, ps).map((n) => n.midi - 59).join(" ");
-  let passages: typeof import("../src/app/performance.ts").passages;
-  let playedNotes: typeof import("../src/app/performance.ts").playedNotes;
-  let playNotes: typeof import("../src/app/player.ts").playNotes;
+  let passages: typeof import("../src/app/playback/performance.ts").passages;
+  let playedNotes: typeof import("../src/app/playback/performance.ts").playedNotes;
+  let playNotes: typeof import("../src/app/playback/player.ts").playNotes;
   beforeAll(async () => {
-    ({ passages, playedNotes } = await import("../src/app/performance.ts"));
-    ({ playNotes } = await import("../src/app/player.ts"));
+    ({ passages, playedNotes } = await import("../src/app/playback/performance.ts"));
+    ({ playNotes } = await import("../src/app/playback/player.ts"));
   });
 
   it("donne les notes en secondes, au tempo choisi", () => {
@@ -1463,7 +1463,7 @@ describe("écoute", () => {
   });
 
   it("place le curseur et le clic sur le bon passage d'une reprise", async () => {
-    const { scoreTick, playedTick } = await import("../src/app/performance.ts");
+    const { scoreTick, playedTick } = await import("../src/app/playback/performance.ts");
     const s = bars(3, { repeats: [{ barIndex: 1, end: true }] }); // joué 1 2 1 2 3
     const ps = passages(s);
     expect(scoreTick(ps, 2.5 * T)).toBe(0.5 * T);
@@ -1473,7 +1473,7 @@ describe("écoute", () => {
   });
 
   it("sait ce qu'on jouera après un système : la suite, ou le retour d'une reprise", async () => {
-    const { nextTick } = await import("../src/app/performance.ts");
+    const { nextTick } = await import("../src/app/playback/performance.ts");
     const s = bars(3, { repeats: [{ barIndex: 1, end: true }] }); // joué 1 2 1 2 3
     const ps = passages(s);
     expect(nextTick(ps, 0.5 * T, T)).toBe(T); // dans la mesure 1 : la mesure 2
@@ -1483,7 +1483,7 @@ describe("écoute", () => {
   });
 
   it("revient au passage le plus récent quand on clique en arrière, et va à une section par sa lettre", async () => {
-    const { playedTick, entryAt, entryStart } = await import("../src/app/performance.ts");
+    const { playedTick, entryAt, entryStart } = await import("../src/app/playback/performance.ts");
     // A B B B C, une mesure chacune : joué 1 2 2 2 3
     const s = bars(3, { markers: [{ label: "A", barIndex: 0 }, { label: "B", barIndex: 1 }, { label: "C", barIndex: 2 }], order: ["A", "B", "B", "B", "C"] });
     const ps = passages(s);
@@ -1497,9 +1497,9 @@ describe("écoute", () => {
 });
 
 describe("écoute : nuances", () => {
-  let velocities: typeof import("../src/app/dynamics.ts").velocities;
+  let velocities: typeof import("../src/app/playback/dynamics.ts").velocities;
   beforeAll(async () => {
-    ({ velocities } = await import("../src/app/dynamics.ts"));
+    ({ velocities } = await import("../src/app/playback/dynamics.ts"));
   });
   /** Un morceau d'une note par temps, sur une portée (ou deux, la seconde sans indication). */
   const piece = (n: number, more: Partial<Score> = {}, staves = 1): Score => ({
@@ -1539,9 +1539,9 @@ describe("écoute : nuances", () => {
 });
 
 describe("écoute : pédale", () => {
-  let soundingEnds: typeof import("../src/app/pedal.ts").soundingEnds;
+  let soundingEnds: typeof import("../src/app/playback/pedal.ts").soundingEnds;
   beforeAll(async () => {
-    ({ soundingEnds } = await import("../src/app/pedal.ts"));
+    ({ soundingEnds } = await import("../src/app/playback/pedal.ts"));
   });
   const base = parsePrisma("m1 |1  ||\n0  |1  ||\n");
   const score = (notes: Score["notes"], pedals: Score["pedals"], staves = 1): Score => ({ ...base, parts: [{ staves }], notes, pedals });
@@ -1567,9 +1567,9 @@ describe("écoute : pédale", () => {
 });
 
 describe("écoute : Ped. simile", () => {
-  let playedPedals: typeof import("../src/app/pedal.ts").playedPedals;
+  let playedPedals: typeof import("../src/app/playback/pedal.ts").playedPedals;
   beforeAll(async () => {
-    ({ playedPedals } = await import("../src/app/pedal.ts"));
+    ({ playedPedals } = await import("../src/app/playback/pedal.ts"));
   });
   /** Un morceau de n mesures de 2 temps, sur une portée. */
   const piece = (n: number, more: Partial<Score>): Score => ({
@@ -1595,7 +1595,7 @@ describe("écoute : Ped. simile", () => {
   });
 
   it("grave les pédales du simile comme les autres, atténuées, ou laisse la mention seule", async () => {
-    const { withSimile } = await import("../src/app/pedal.ts");
+    const { withSimile } = await import("../src/app/playback/pedal.ts");
     const s = piece(2, { pedals: [{ staff: 0, start: 0, end: 2 * T }], pedalTexts: [sim(0)] });
     const plain = withSimile(s, "pedals");
     expect(plain.pedals).toEqual([{ staff: 0, start: 0, end: 2 * T }, { staff: 0, start: 2 * T, end: 4 * T }]);
@@ -1607,8 +1607,8 @@ describe("écoute : Ped. simile", () => {
 
 describe("écoute : petites notes", () => {
   it("joue les petites notes juste avant leur note, de gauche à droite", async () => {
-    const { passages, playedNotes } = await import("../src/app/performance.ts");
-    const { playNotes } = await import("../src/app/player.ts");
+    const { passages, playedNotes } = await import("../src/app/playback/performance.ts");
+    const { playNotes } = await import("../src/app/playback/player.ts");
     // l'exemple de FORMAT.md, sur le 2e temps : 3 (octave du dessus), 7, 9, puis le 5 sur le temps
     const s = parsePrisma(["m1 |1  |2        ||", "+1 |   |3'       ||", "0  |1  |  7'9'5  ||", ""].join("\n"));
     const notes = playNotes(playedNotes(s, passages(s)), 60);
@@ -1624,7 +1624,7 @@ describe("écoute : petites notes", () => {
 
 describe("écoute : première mesure d'une section", () => {
   it("sait si l'on est encore dans la première mesure de la section jouée", async () => {
-    const { passages, inFirstBar } = await import("../src/app/performance.ts");
+    const { passages, inFirstBar } = await import("../src/app/playback/performance.ts");
     // A B A, des mesures de 2 temps : A = mesures 1 et 2, B = mesure 3
     const s: Score = {
       ...parsePrisma("m1 |1  ||\n0  |1  ||\n"),
@@ -1640,8 +1640,8 @@ describe("écoute : première mesure d'une section", () => {
 
 describe("écoute : trilles", () => {
   it("alterne la note et sa voisine, en commençant et en finissant par la note", async () => {
-    const { passages, playedNotes } = await import("../src/app/performance.ts");
-    const { playNotes } = await import("../src/app/player.ts");
+    const { passages, playedNotes } = await import("../src/app/playback/performance.ts");
+    const { playNotes } = await import("../src/app/playback/player.ts");
     const s = parsePrisma("m1 |1  |2  ||\n0  |5~7|1  ||\n");
     const notes = playNotes(playedNotes(s, passages(s)), 60).filter((n) => n.time < 1 - 1e-9);
     expect(notes.length % 2).toBe(1);
@@ -1654,8 +1654,8 @@ describe("écoute : trilles", () => {
 
 describe("écoute : arpèges", () => {
   it("égrène l'accord à partir du temps, du grave à l'aigu ou de l'aigu au grave", async () => {
-    const { passages, playedNotes } = await import("../src/app/performance.ts");
-    const { playNotes } = await import("../src/app/player.ts");
+    const { passages, playedNotes } = await import("../src/app/playback/performance.ts");
+    const { playNotes } = await import("../src/app/playback/player.ts");
     const s = parsePrisma(["m1 |1    |2    ||", "0  |8    |8    ||", "   |5    |5    ||", "   |1    |1    ||", "@   /     \\", ""].join("\n"));
     const notes = playNotes(playedNotes(s, passages(s)), 60);
     const at = (t: number) => notes.filter((n) => n.time >= t && n.time < t + 0.5).map((n) => [n.midi, +n.time.toFixed(2)]);
@@ -1668,8 +1668,8 @@ describe("écoute : arpèges", () => {
 
 describe("écoute : point d'orgue", () => {
   it("tient deux fois plus longtemps ce qui commence sous le point d'orgue, et décale la suite", async () => {
-    const { passages, playedNotes, holds, stretched, unstretched } = await import("../src/app/performance.ts");
-    const { playNotes } = await import("../src/app/player.ts");
+    const { passages, playedNotes, holds, stretched, unstretched } = await import("../src/app/playback/performance.ts");
+    const { playNotes } = await import("../src/app/playback/player.ts");
     const s = parsePrisma(["@       ^", "m1 |1  |2  |3  ||", "0  |1  |5  |8  ||", ""].join("\n"));
     const ps = passages(s);
     const hs = holds(s, ps);
@@ -1687,7 +1687,7 @@ describe("écoute : point d'orgue", () => {
 
 describe("écoute : articulations", () => {
   it("raccourcit le staccato, renforce l'accent, et les deux pour le marcato", async () => {
-    const { passages, playedNotes } = await import("../src/app/performance.ts");
+    const { passages, playedNotes } = await import("../src/app/playback/performance.ts");
     const s = parsePrisma(["m1 |1  |2  |3  |4  ||", "0  |8  |10 |12 |8  ||", "@   .   !   !!", ""].join("\n"));
     expect(playedNotes(s, passages(s)).map((n) => [n.midi, (n.end - n.start) / T, n.velocity])).toEqual([
       [67, 0.5, 70],
@@ -1711,7 +1711,7 @@ describe("écriture : textes qui débordent", () => {
 
 describe("écoute : métronome", () => {
   it("bat chaque temps du déroulé, le premier de la mesure marqué, levée comprise", async () => {
-    const { passages, clicks } = await import("../src/app/performance.ts");
+    const { passages, clicks } = await import("../src/app/playback/performance.ts");
     // une levée sur le temps 2, puis une mesure de 2 temps, reprise
     const s: Score = {
       ...parsePrisma("m1 |1  ||\n0  |1  ||\n"),
@@ -1727,7 +1727,7 @@ describe("écoute : métronome", () => {
   });
 
   it("divise chaque temps sur sa grille régulière, en 2 ou en 3, puis en deux", async () => {
-    const { passages, clicks } = await import("../src/app/performance.ts");
+    const { passages, clicks } = await import("../src/app/playback/performance.ts");
     const s: Score = {
       ...parsePrisma("m1 |1  ||\n0  |1  ||\n"),
       beats: [
@@ -1742,7 +1742,7 @@ describe("écoute : métronome", () => {
   });
 
   it("bat les cases écrites, chacune à son niveau, pour faire entendre quand jouer", async () => {
-    const { passages, clicks } = await import("../src/app/performance.ts");
+    const { passages, clicks } = await import("../src/app/playback/performance.ts");
     // une noire, deux croches, quatre doubles croches
     const s = parsePrisma("m1 |1  |2  *  |3  .  *  .  ||\n0  |1  |3  5  |8  10 12 1  ||\n");
     const short = { downbeat: "1", beat: "T", division: "d", subdivision: "s" };
@@ -1750,7 +1750,7 @@ describe("écoute : métronome", () => {
   });
 
   it("bat les seules attaques, temps compris : ni les tenues, ni les cases d'un soufflet", async () => {
-    const { passages, clicks } = await import("../src/app/performance.ts");
+    const { passages, clicks } = await import("../src/app/playback/performance.ts");
     // la case « * » du premier temps n'existe que pour le soufflet ; le 3e temps n'est qu'une tenue
     const s = parsePrisma("m1 |1  *  |2  |3  ||\n0  |1  -  |3  |-  ||\n@      <----\n");
     const short = { downbeat: "1", beat: "T", division: "d", subdivision: "s" };
@@ -1762,7 +1762,7 @@ describe("écoute : métronome", () => {
 
 describe("écoute : décompte", () => {
   it("compte une mesure, puis les temps qui mènent à une levée", async () => {
-    const { passages, countIn } = await import("../src/app/performance.ts");
+    const { passages, countIn } = await import("../src/app/playback/performance.ts");
     // une levée sur le temps 4, puis une mesure de 4 temps
     const s: Score = {
       ...parsePrisma("m1 |1  ||\n0  |1  ||\n"),
@@ -1778,14 +1778,14 @@ describe("écoute : décompte", () => {
 
 describe("écoute : portées", () => {
   it("nomme les portées : les mains d'un clavier, le rang ailleurs", async () => {
-    const { staffNames } = await import("../src/app/staves.ts");
+    const { staffNames } = await import("../src/app/playback/staves.ts");
     expect(staffNames([{ staves: 2 }])).toEqual(["Main droite", "Main gauche"]);
     expect(staffNames([{ name: "Chant", staves: 1 }, { name: "Piano", staves: 2 }])).toEqual(["Chant", "Piano — main droite", "Piano — main gauche"]);
     expect(staffNames([{ name: "Chœur", staves: 2 }])).toEqual(["Chœur — portée 1", "Chœur — portée 2"]);
   });
 
   it("garde la portée de chaque note jouée, pour pouvoir la rendre muette", async () => {
-    const { passages, playedNotes } = await import("../src/app/performance.ts");
+    const { passages, playedNotes } = await import("../src/app/playback/performance.ts");
     const s = parsePrisma("m1 |1  ||\n0  |1  ||\n---\n-1 |1  ||\n");
     expect(playedNotes(s, passages(s)).map((n) => [n.midi, n.staff])).toEqual([[48, 1], [60, 0]]);
   });
@@ -1793,7 +1793,7 @@ describe("écoute : portées", () => {
 
 describe("bibliothèque", () => {
   it("lit le titre et le compositeur : l'en-tête d'un .prisma, les crédits d'un MusicXML", async () => {
-    const { describe: describeFile } = await import("../src/app/library.ts");
+    const { describe: describeFile } = await import("../src/app/library/library.ts");
     expect(describeFile('---\nformat: 1\ntitle: "Gymnopédie n°1"\ncomposer: Erik Satie\n---\nm1 |1  ||\n', "prisma")).toEqual({ title: "Gymnopédie n°1", composer: "Erik Satie" });
     expect(describeFile("m1 |1  ||\n", "prisma")).toEqual({ title: undefined, composer: undefined });
     const xml = `<score-partwise><work><work-title>Clair &amp; net</work-title></work><identification><creator type="composer">Anonyme</creator></identification>`;
@@ -1905,7 +1905,7 @@ describe("instruments", () => {
   });
 
   it("donnent celui choisi pour le morceau, sinon celui de la partition, à chaque portée de la partie", async () => {
-    const { staffInstruments, instrumentsOf } = await import("../src/app/instruments.ts");
+    const { staffInstruments, instrumentsOf } = await import("../src/app/playback/instruments.ts");
     const parts = [{ name: "Flûte", staves: 1 }, { name: "Piano", staves: 2 }, { name: "Chœur de droite", staves: 1, instrument: "flute" as const }];
     expect(instrumentsOf(parts)).toEqual(["flute", "piano", "flute"]);
     expect(instrumentsOf(parts, [null, "harpsichord", "voice"])).toEqual(["flute", "harpsichord", "voice"]);

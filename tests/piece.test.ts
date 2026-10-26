@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isEmpty, parseSettings, settingsName, writeSettings } from "../src/app/piece.ts";
+import { isEmpty, parseSettings, settingsName, writeSettings } from "../src/app/options/piece.ts";
 
 describe("réglages d'un morceau", () => {
   it("se rangent à côté du morceau, du même nom suivi de .json", () => {

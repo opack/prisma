@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { exportMusicXml, importMusicXml, parsePrisma, settleSlides, writePrisma } from "../src/core/index.ts";
-import { passages, playedNotes } from "../src/app/performance.ts";
+import { passages, playedNotes } from "../src/app/playback/performance.ts";
 
 const T = 2880;
 /** Une guitare : sur la corde 1, une note par temps ; dessous, des lignes @. */

@@ -41,19 +41,19 @@ Sous Windows, préférez `-o` à une redirection `>` : PowerShell n'écrit pas t
                                               ▼
  texte .prisma ──► core/prisma-parse.ts ──► Score (core/model.ts)
        ▲                                      │
-       │             ┌────────────────────────┼────────────────────────┐
-       │             ▼                        ▼                        ▼
-       │      core/layout.ts         app/performance.ts         core/layout.ts
-       │      (mesures en mm)         (le déroulé joué)         (en caractères)
-       │             │                        │                        │
-       │             ▼                        ▼                        ▼
-       │      app/engrave.ts            app/player.ts        core/prisma-write.ts
-       │        (pages A4)                 (smplr)                     │
-       │             │                                                 │
-       │             ▼                                                 │
-       │     app/PageView.tsx                                          │
-       │      (pages en SVG)                                           │
-       └───────────────────────────────────────────────────────────────┘
+       │             ┌────────────────────────┼───────────────────────────┐
+       │             ▼                        ▼                           ▼
+       │      core/layout.ts     app/playback/performance.ts       core/layout.ts
+       │      (mesures en mm)         (le déroulé joué)            (en caractères)
+       │             │                        │                           │
+       │             ▼                        ▼                           ▼
+       │   app/score/engrave.ts    app/playback/player.ts       core/prisma-write.ts
+       │        (pages A4)                 (smplr)                        │
+       │             │                                                    │
+       │             ▼                                                    │
+       │  app/score/PageView.tsx                                          │
+       │      (pages en SVG)                                              │
+       └──────────────────────────────────────────────────────────────────┘
 ```
 
 ### Le modèle (`core/model.ts`)
@@ -76,11 +76,11 @@ Le lecteur s'arrête à la première erreur. Pour l'éditeur, `core/errors.ts` l
 
 Le cœur du projet. Le moteur découpe le morceau en **systèmes** qui tiennent dans une largeur donnée, puis calcule pour chacun ses colonnes, ses lignes et le contenu de chaque case. Il ne connaît que des unités de largeur, et c'est volontaire : on lui donne des mesures en **caractères** pour écrire le texte (`core/prisma-write.ts`), en **millimètres** pour graver la partition (`app/engrave.ts`). Le texte et la partition sortent donc du même calcul : ils ont les mêmes systèmes, les mêmes alignements, et ne peuvent pas diverger.
 
-### La gravure (`app/engrave.ts`, `app/PageView.tsx`)
+### La gravure (`app/score/engrave.ts`, `app/score/PageView.tsx`)
 
 `engrave` place les systèmes sur des pages A4 (toutes les dimensions en millimètres), et `PageView` les dessine en SVG avec React. Le même dessin sert à l'écran, à l'impression (une page gravée tient exactement sur une feuille), aux aperçus de la bibliothèque et aux exemples de la référence et du site. La couleur ne porte jamais seule l'information : la partition reste lisible imprimée en noir et blanc.
 
-### L'écoute (`app/performance.ts`, `app/player.ts`)
+### L'écoute (`app/playback/performance.ts`, `app/playback/player.ts`)
 
 `performance.ts` déroule le morceau tel qu'il se joue : reprises et ordre des sections, puis chaque note placée sur ce déroulé. Il y a donc deux échelles de temps : l'instant du morceau (sa place sur la partition) et l'instant joué (depuis le début de l'écoute) ; une mesure reprise a un instant du morceau et deux instants joués. Les nuances deviennent des intensités (`dynamics.ts`), la pédale allonge les notes qu'elle tient (`pedal.ts`) ; petites notes, trilles, arpèges, points d'orgue et articulations sont réalisés au même endroit.
 
@@ -96,27 +96,27 @@ Le chemin inverse, pour ouvrir un morceau dans MuseScore ou un autre logiciel (F
 
 ## L'application (`src/app/`)
 
-`App.tsx` assemble l'ensemble : la barre et ses menus, l'éditeur à gauche, les pages à droite, la bibliothèque, la référence, les options.
+`App.tsx` assemble l'ensemble : la barre et ses menus, l'éditeur à gauche, les pages à droite, la bibliothèque, la référence, les options. Le reste est rangé par domaine : `editor/` (l'éditeur, la complétion, la conversion pour la guitare), `score/` (la gravure, les pages, la lecture focalisée), `playback/` (l'écoute, le métronome), `retouch/`, `files/` (Nouveau, Ouvrir et Enregistrer, l'export), `library/`, `options/`, `reference/`, et `ui/`, les éléments d'interface partagés.
 
-- **L'éditeur** (`SourceEditor.tsx`) est CodeMirror 6. Sa coloration (`sourceColors.ts`) est un `ViewPlugin` plutôt qu'une grammaire : le format est fait de colonnes alignées, plus simple à lire ligne à ligne qu'à décrire par une grammaire. Les erreurs viennent de `parseErrors`, soulignées par le `linter` de CodeMirror. La barre de statut dit ce que pointe le curseur (`core/inspect.ts`).
-- **La complétion** (`completion.ts`) propose ce qui peut s'écrire à la place du curseur ; `complete.ts` l'écrit sans casser l'alignement, en élargissant au besoin une case sur toutes les lignes du système.
-- **De la partition au texte** : un clic sur la partition place le curseur sur le signe cliqué (`core/locate.ts`), et le signe sous le curseur est encadré sur la partition (`textMark.ts`). La partition refait ses propres systèmes, le texte a les siens : un signe s'y retrouve par son instant, sa portée, son octave et ce qui est écrit dans sa case, le texte étant relu avec indulgence.
-- **La retouche sur place** (`retouch.ts`, `RetouchMenu.tsx`) : un double-clic sur une case change sa note, sa durée, son octave, ses ajouts ; sur une corde, sa case (de 0 à 24, chacune nommée), sa durée si la corde est libre, et sa corde : une autre corde choisie montre ses cases (celle du même son marquée), et la case choisie y place la note, avec ses tenues ; comme sur l'instrument, elle coupe ce qui sonnait encore sur cette corde et s'arrête à la note suivante. La retouche est une réécriture du texte, comme une frappe : Ctrl+Z la défait.
-- **Les fichiers** (`files.ts`, `library.ts`) : avec Chrome et Edge, l'API File System Access réécrit le fichier ouvert et donne accès à un dossier de morceaux, la bibliothèque. Ailleurs, on ouvre par le sélecteur de fichiers et on enregistre par un téléchargement. Rien n'est copié dans le navigateur : le disque reste la seule référence.
-- **Les réglages** : les options générales sont gardées dans le navigateur (`options.ts`) ; celles d'un morceau (tempo, portées muettes, instrument et volume de chaque partie, rendu) dans un fichier `.json` à côté de lui (`piece.ts`), pour que la partition reste propre à diffuser.
-- **Les aperçus** de la bibliothèque sont gravés dans un worker (`thumbs.worker.ts`) et gardés en cache (`thumbs.ts`).
-- **La référence** (`ReferenceView.tsx`) affiche `REFERENCE.md` : chaque exemple ` ```prisma ` y est gravé par le vrai moteur. Elle ne peut donc pas montrer une gravure périmée. Ses liens vers une page du site s'ouvrent dans un nouvel onglet, sans quitter le morceau.
+- **L'éditeur** (`editor/SourceEditor.tsx`) est CodeMirror 6. Sa coloration (`sourceColors.ts`) est un `ViewPlugin` plutôt qu'une grammaire : le format est fait de colonnes alignées, plus simple à lire ligne à ligne qu'à décrire par une grammaire. Les erreurs viennent de `parseErrors`, soulignées par le `linter` de CodeMirror. La barre de statut dit ce que pointe le curseur (`core/inspect.ts`).
+- **La complétion** (`editor/completion.ts`) propose ce qui peut s'écrire à la place du curseur ; `complete.ts` l'écrit sans casser l'alignement, en élargissant au besoin une case sur toutes les lignes du système.
+- **De la partition au texte** : un clic sur la partition place le curseur sur le signe cliqué (`core/locate.ts`), et le signe sous le curseur est encadré sur la partition (`score/textMark.ts`). La partition refait ses propres systèmes, le texte a les siens : un signe s'y retrouve par son instant, sa portée, son octave et ce qui est écrit dans sa case, le texte étant relu avec indulgence.
+- **La retouche sur place** (`retouch/`) : un double-clic sur une case change sa note, sa durée, son octave, ses ajouts ; sur une corde, sa case (de 0 à 24, chacune nommée), sa durée si la corde est libre, et sa corde : une autre corde choisie montre ses cases (celle du même son marquée), et la case choisie y place la note, avec ses tenues ; comme sur l'instrument, elle coupe ce qui sonnait encore sur cette corde et s'arrête à la note suivante. La retouche est une réécriture du texte, comme une frappe : Ctrl+Z la défait.
+- **Les fichiers** (`files/files.ts`, `library/library.ts`) : avec Chrome et Edge, l'API File System Access réécrit le fichier ouvert et donne accès à un dossier de morceaux, la bibliothèque. Ailleurs, on ouvre par le sélecteur de fichiers et on enregistre par un téléchargement. Rien n'est copié dans le navigateur : le disque reste la seule référence.
+- **Les réglages** : les options générales sont gardées dans le navigateur (`options/options.ts`) ; celles d'un morceau (tempo, portées muettes, instrument et volume de chaque partie, rendu) dans un fichier `.json` à côté de lui (`options/piece.ts`), pour que la partition reste propre à diffuser.
+- **Les aperçus** de la bibliothèque sont gravés dans un worker (`library/thumbs.worker.ts`) et gardés en cache (`library/thumbs.ts`).
+- **La référence** (`reference/ReferenceView.tsx`) affiche `REFERENCE.md` : chaque exemple ` ```prisma ` y est gravé par le vrai moteur. Elle ne peut donc pas montrer une gravure périmée. Ses liens vers une page du site s'ouvrent dans un nouvel onglet, sans quitter le morceau.
 
 ## Le site (`src/site/`)
 
-Cinq pages à la racine (`index.html`, `apprendre.html`, `reference.html`, `guitare.html`, `comparaison.html`), l'application dans `app/`. Le site est construit avec l'application, dans le même `vite build`, et réutilise ses composants : chaque exemple est gravé par le moteur, et la page Référence est le composant de l'application. `Example.tsx` montre au choix la partition ou le texte d'un exemple, copiable d'un clic. Les liens du site vers une partie de la référence (`referenceLinks.ts`) sont vérifiés par un test.
+Cinq pages à la racine (`index.html`, `apprendre.html`, `reference.html`, `guitare.html`, `comparaison.html`), l'application dans `app/`. Le site est construit avec l'application, dans le même `vite build`, et réutilise ses composants : chaque exemple est gravé par le moteur, et la page Référence est le composant de l'application. Les pages sont dans `pages/`, ce qui les met en forme (le haut et le bas, les idées, « Sur cette page », les boutons) dans `layout/`, les exemples et leurs morceaux dans `examples/`. `examples/Example.tsx` montre au choix la partition ou le texte d'un exemple, copiable d'un clic. Les liens du site vers une partie de la référence (`pages/referenceLinks.ts`) sont vérifiés par un test.
 
 ## Choix techniques
 
 - **TypeScript partout, sans étape de compilation pour le code Node** : les types sont « effaçables » (`erasableSyntaxOnly`), si bien que Node exécute directement l'outil en ligne de commande.
 - **`core/` ne dépend de rien d'autre** : ni de React, ni du navigateur. Il sert à l'application, au site, à l'outil en ligne de commande et aux tests.
 - **Peu de dépendances** : React, CodeMirror, smplr (le son), fast-xml-parser (MusicXML), marked (la référence), Tailwind (les styles). L'en-tête, la mise en page et la gravure sont faits à la main.
-- **Les styles en classes Tailwind**, posées sur les composants, avec des couleurs et des polices communes à l'application et au site (`src/tailwind.css` : `text-ink`, `bg-panel`, `border-line`, `text-accent`, `font-mono`…, d'après les variables de chaque feuille de style) ; ce que plusieurs écrans partagent est un composant, qui porte son style, un par fichier (sa cuisine interne, non exportée, avec lui), une famille par répertoire : `app/dialog/` (`Dialog`, `Choices`, `SelectField`…), `app/popover/` (`Popover`, `usePopover`…), `app/keyboard/`, et `IconButton`, `BackButton`, `site/ButtonLink`, `site/Idea`… Restent en CSS ce que les classes disent mal : la mise en page de la vue principale (l'éditeur et les pages, leurs ajustements, le zoom, le glissé de la barre), la gravure, le thème de l'éditeur (CodeMirror), l'impression, la référence (du Markdown rendu) et le tableau de la comparaison, qui se replie sur un téléphone. Le CSS est rangé en couches (`@layer theme, base, components, utilities`) : les classes de Tailwind passent par-dessus, sans `!important`. Le *preflight* de Tailwind remet les éléments à zéro ; ce qu'il change à l'œil est rétabli comme le navigateur le donnait : le gras des titres, l'interligne de l'application, les marges des cases à cocher et des curseurs, et, dans la référence et sur le site, les paragraphes, les listes et les liens soulignés. Une classe de CSS ne doit pas porter le nom d'une classe de Tailwind (`fixed`, `hidden`…) : Tailwind la prendrait pour la sienne.
+- **Les styles en classes Tailwind**, posées sur les composants, avec des couleurs et des polices communes à l'application et au site (`src/tailwind.css` : `text-ink`, `bg-panel`, `border-line`, `text-accent`, `font-mono`…, d'après les variables de chaque feuille de style) ; ce que plusieurs écrans partagent est un composant, qui porte son style, un par fichier (sa cuisine interne, non exportée, avec lui), une famille par répertoire : dans `app/ui/`, `dialog/` (`Dialog`, `Choices`, `SelectField`…), `popover/` (`Popover`, `usePopover`…), `keyboard/`, et les boutons partagés ; dans `site/layout/`, `ButtonLink`, `Idea`, `Caption`… Restent en CSS ce que les classes disent mal : la mise en page de la vue principale (l'éditeur et les pages, leurs ajustements, le zoom, le glissé de la barre), la gravure, le thème de l'éditeur (CodeMirror), l'impression, la référence (du Markdown rendu) et le tableau de la comparaison, qui se replie sur un téléphone. Le CSS est rangé en couches (`@layer theme, base, components, utilities`) : les classes de Tailwind passent par-dessus, sans `!important`. Le *preflight* de Tailwind remet les éléments à zéro ; ce qu'il change à l'œil est rétabli comme le navigateur le donnait : le gras des titres, l'interligne de l'application, les marges des cases à cocher et des curseurs, et, dans la référence et sur le site, les paragraphes, les listes et les liens soulignés. Une classe de CSS ne doit pas porter le nom d'une classe de Tailwind (`fixed`, `hidden`…) : Tailwind la prendrait pour la sienne.
 - **Le texte est la source** : la partition, l'écoute, la barre de statut et la retouche en découlent. La retouche écrit dans le texte, elle ne modifie jamais la partition directement.
 - **Pas de compatibilité ascendante** : quand le format change, l'ancienne écriture n'est plus lue. La version du format est écrite dans l'en-tête (`format: 1`).
 - **Un signe, un sens** : dans le format, un signe ne veut dire qu'une chose. C'est ce qui guide le choix de chaque nouveau signe.

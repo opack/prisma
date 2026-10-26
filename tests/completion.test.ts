@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { EditorState } from "@codemirror/state";
 import { CompletionContext } from "@codemirror/autocomplete";
-import { completionSource } from "../src/app/completion.ts";
-import { cases, systemOf, writeMark } from "../src/app/complete.ts";
+import { completionSource } from "../src/app/editor/completion.ts";
+import { cases, systemOf, writeMark } from "../src/app/editor/complete.ts";
 
 const source = completionSource(() => "latin");
 /** Les étiquettes proposées à la ligne L (à partir de 0), colonne C, sur Ctrl+Espace. */

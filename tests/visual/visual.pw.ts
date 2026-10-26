@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { importMusicXml, writePrisma } from "../../src/core/index.ts";
-import { CLAIR_SECTIONS, GREENSLEEVES_CHORDS, TECHNIQUES } from "../../src/site/pieces.ts";
+import { CLAIR_SECTIONS, GREENSLEEVES_CHORDS, TECHNIQUES } from "../../src/site/examples/pieces.ts";
 
 const GYMNOPEDIE = writePrisma(importMusicXml(readFileSync(new URL("../fixtures/gymnopedie1.musicxml", import.meta.url), "utf8")));
 const DESKTOP = { width: 1300, height: 850 };

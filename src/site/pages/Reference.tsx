@@ -1,0 +1,17 @@
+/** La référence, telle que dans l'application : la référence complète du format, ses exemples gravés. */
+import { ReferenceView } from "../../app/reference/ReferenceView.tsx";
+import { DEFAULT_OPTIONS } from "../../app/options/options.ts";
+import { Example } from "../examples/Example.tsx";
+import { Footer, Header } from "../layout/Frame.tsx";
+
+export function Reference() {
+  return (
+    <>
+      <Header current="reference" />
+      <main className="reference-page">
+        <ReferenceView site="" options={DEFAULT_OPTIONS} example={(text) => <Example text={text} scale={1.4} label="Un exemple de la référence" guide />} />
+      </main>
+      <Footer current="reference" />
+    </>
+  );
+}

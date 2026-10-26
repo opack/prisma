@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parsePrisma, writePrisma } from "../src/core/index.ts";
-import { REFERENCE_PARTS } from "../src/site/referenceLinks.ts";
+import { REFERENCE_PARTS } from "../src/site/pages/referenceLinks.ts";
 
 /** Exemples ```prisma de la référence (éventuellement dans une liste, donc indentés). */
 function examples(markdown: string): string[] {

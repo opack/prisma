@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TICKS_PER_BEAT as T, parsePrisma } from "../src/core/index.ts";
-import { cellOf, durationOf, holdChoices, holdIn, joinCell, freeStrings, moveOctave, placeOnString, resize, retouch, splitCell } from "../src/app/retouch.ts";
+import { cellOf, durationOf, holdChoices, holdIn, joinCell, freeStrings, moveOctave, placeOnString, resize, retouch, splitCell } from "../src/app/retouch/retouch.ts";
 
 const text = ["m1 |1  |2  ||", "───┼───┼───┼┼", "+1 |3  |   ||", "-1 |1  |-  ||", "───┼───┼───┼┼", "-2 |8  |   ||", "@   p"].join("\n");
 

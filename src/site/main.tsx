@@ -1,10 +1,10 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { Home } from "./Home.tsx";
-import { Comparison } from "./Comparison.tsx";
-import { Guitar } from "./Guitar.tsx";
-import { Learn } from "./Learn.tsx";
-import { Reference } from "./Reference.tsx";
+import { Home } from "./pages/Home.tsx";
+import { Comparison } from "./pages/Comparison.tsx";
+import { Guitar } from "./pages/Guitar.tsx";
+import { Learn } from "./pages/Learn.tsx";
+import { Reference } from "./pages/Reference.tsx";
 import "../tailwind.css";
 import "./site.css";
 

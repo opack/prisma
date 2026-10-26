@@ -1,0 +1,381 @@
+/**
+ * Déroulé d'un morceau à l'écoute : les passages joués l'un après l'autre, reprises et ordre des
+ * sections compris, et les notes placées sur ce déroulé.
+ *
+ * Deux échelles de temps, en ticks : l'instant du morceau (sa place sur la partition) et l'instant
+ * joué (depuis le début de l'écoute). Une mesure reprise a un instant du morceau et deux instants joués.
+ */
+import { HARMONICS, TICKS_PER_BEAT, beatGrids, stringsOfStaff } from "../../core/index.ts";
+import type { ArticulationKind, Note, Score } from "../../core/index.ts";
+import { velocities, velocityAt } from "./dynamics.ts";
+import { soundingEnds } from "./pedal.ts";
+
+/**
+ * Un passage joué d'une traite : les instants du morceau [from, to[, joués à partir de l'instant
+ * `at`. entry : rang de sa section dans l'ordre de jeu (0 sans sections).
+ */
+export type Passage = { from: number; to: number; at: number; entry: number };
+
+/**
+ * Une note sur le déroulé : son attaque et sa fin en instants joués, son intensité (vélocité MIDI).
+ * grace : petite note, jouée `grace` crans avant l'instant `start` de sa note principale (start et
+ * end sont alors cet instant) ; la durée d'un cran se décide au tempo de l'écoute.
+ */
+export type PlayedNote = { staff: number; start: number; end: number; midi: number; velocity: number; grace?: number; trill?: Trill; roll?: Roll; filter?: number };
+
+/** Note d'un arpège : son rang dans l'accord égrené (0 : sur le temps) et le nombre de notes de l'accord. */
+export type Roll = { rank: number; count: number };
+
+/** Trille d'une note : sa voisine, alternée jusqu'à la fin écrite de la note (en instant joué) ; la pédale ne la prolonge pas. */
+export type Trill = { midi: number; until: number };
+
+/** Les mesures [first, last] d'une section, ou du morceau entier. */
+type Bars = { first: number; last: number };
+
+/**
+ * Les passages joués, dans l'ordre : chaque section de l'ordre de jeu, ses reprises déroulées.
+ * Un passage par tour : une section sans reprise en fait un, une reprise jouée deux fois en fait deux.
+ */
+export function passages(score: Score): Passage[] {
+  // instants du morceau où commence et finit chaque mesure
+  const barFrom: number[] = [], barTo: number[] = [];
+  score.beats.forEach((b, i) => {
+    barFrom[b.barIndex] ??= i * TICKS_PER_BEAT;
+    barTo[b.barIndex] = (i + 1) * TICKS_PER_BEAT;
+  });
+  const lastBar = barTo.length - 1;
+  if (lastBar < 0) return [];
+
+  const markers = [...score.markers].sort((a, b) => a.barIndex - b.barIndex);
+  const sections = new Map<string, Bars>(markers.map((m, i) => [m.label, { first: m.barIndex, last: (markers[i + 1]?.barIndex ?? lastBar + 1) - 1 }]));
+  const played: Bars[] = !markers.length
+    ? [{ first: 0, last: lastBar }]
+    : (score.order.length ? score.order : markers.map((m) => m.label)).map((label) => sections.get(label)!);
+
+  const out: Passage[] = [];
+  let at = 0;
+  played.forEach(({ first, last }, entry) => {
+    const play = (a: number, b: number) => {
+      out.push({ from: barFrom[a], to: barTo[b], at, entry });
+      at += barTo[b] - barFrom[a];
+    };
+    // une reprise reste dans sa section : elle revient au dernier « ||: », ou au début de la section
+    let pending = first, again = first;
+    for (let bar = first; bar <= last; bar++) {
+      const r = score.repeats.find((x) => x.barIndex === bar);
+      if (r?.start) {
+        if (bar > pending) play(pending, bar - 1);
+        pending = again = bar;
+      }
+      if (r?.end) {
+        for (let k = 0; k < (r.times ?? 2); k++) play(again, bar);
+        pending = again = bar + 1;
+      }
+    }
+    if (pending <= last) play(pending, last);
+  });
+  return out;
+}
+
+/** Niveau d'un coup de métronome : premier temps de la mesure, temps, division du temps, subdivision. */
+export type ClickLevel = "downbeat" | "beat" | "division" | "subdivision";
+
+/** Un coup du métronome, en instant joué. */
+export type Click = { at: number; level: ClickLevel };
+
+/** Ce que bat le métronome : la grille régulière du temps, les cases écrites, ou les attaques. */
+export type ClickGrid = "beats" | "cells" | "attacks";
+
+/**
+ * Les coups du métronome sur le déroulé, reprises comprises. Sur la grille régulière de chaque
+ * temps : le temps, sa division en 2 ou en 3 selon son découpage, puis chaque division coupée en
+ * deux. Ou sur les cases écrites : un coup par case, à son niveau (« * » division, « . » et « , »
+ * subdivision), ce qui fait entendre quand jouer. Ou sur les seules attaques : chaque case, temps
+ * compris, où une note commence dans n'importe quelle portée (pas une case de tenue, de silence ou
+ * de soufflet). Une levée commence sur un temps, pas sur un premier temps.
+ */
+export function clicks(score: Score, ps: Passage[], grid: ClickGrid = "beats"): Click[] {
+  const cells = grid === "beats" ? [] : beatGrids(score);
+  const attacks = grid === "attacks" ? new Set(score.notes.map((n) => n.start)) : undefined;
+  const out: Click[] = [];
+  for (const p of ps)
+    for (let t = p.from; t < p.to; t += TICKS_PER_BEAT) {
+      const i = t / TICKS_PER_BEAT, beat = score.beats[i];
+      const at = p.at + t - p.from;
+      if (!attacks || attacks.has(t)) out.push({ at, level: beat?.label === 1 ? "downbeat" : "beat" });
+      if (grid !== "beats") {
+        const { n, labels } = cells[i] ?? { n: 1, labels: [] };
+        for (let k = 1; k < n; k++) {
+          const offset = (k * TICKS_PER_BEAT) / n;
+          if (!attacks || attacks.has(t + offset)) out.push({ at: at + offset, level: labels[k] === "*" ? "division" : "subdivision" });
+        }
+        continue;
+      }
+      const n = beat?.division ?? 2;
+      for (let k = 1; k < 2 * n; k++) out.push({ at: at + (k * TICKS_PER_BEAT) / (2 * n), level: k % 2 ? "subdivision" : "division" });
+    }
+  return out;
+}
+
+/**
+ * Le décompte avant de jouer depuis l'instant joué `played` : une mesure entière, temps par temps
+ * (le premier marqué), puis, si l'on part en cours de mesure (une levée), les temps qui l'y mènent.
+ * Partir sur le temps 4 d'une mesure à 4 temps : 1 2 3 4, 1 2 3, et l'on joue.
+ */
+export function countIn(score: Score, ps: Passage[], played: number): ClickLevel[] {
+  const tick = scoreTick(ps, played);
+  if (tick === null) return [];
+  const beat = score.beats[Math.floor(tick / TICKS_PER_BEAT)];
+  if (!beat) return [];
+  const barLength = (bar: number) => Math.max(0, ...score.beats.filter((b) => b.barIndex === bar).map((b) => b.label));
+  const first = score.beats.find((b) => b.barIndex === beat.barIndex)!;
+  // une levée n'a pas toute sa mesure : on compte celle qui la suit
+  const length = first.label > 1 ? barLength(beat.barIndex + 1) || barLength(beat.barIndex) : barLength(beat.barIndex);
+  const labels = [...Array.from({ length }, (_, k) => k + 1), ...Array.from({ length: Math.max(0, beat.label - 1) }, (_, k) => k + 1)];
+  return labels.map((l) => (l === 1 ? "downbeat" : "beat"));
+}
+
+/** Durée totale du déroulé, en ticks. */
+export const playedLength = (ps: Passage[]) => (ps.length ? ps[ps.length - 1].at + ps[ps.length - 1].to - ps[ps.length - 1].from : 0);
+
+/**
+ * Les notes du déroulé, dans l'ordre où elles commencent. Une note qui déborde de son passage
+ * s'arrête avec lui (après un retour en arrière, elle ne sonne plus), sauf si le passage suivant
+ * continue la partition : une note liée de l'un à l'autre reste alors tenue.
+ */
+export function playedNotes(original: Score, ps: Passage[]): PlayedNote[] {
+  // les techniques des cordes, changées en notes jouables
+  const { score, soft, filter } = stringTechniques(original);
+  const runs: Passage[] = [];
+  for (const p of ps) {
+    const prev = runs[runs.length - 1];
+    if (prev && prev.to === p.from) runs[runs.length - 1] = { ...prev, to: p.to };
+    else runs.push(p);
+  }
+  // articulations : la touche relâchée plus tôt (la pédale peut encore tenir le son), l'attaque plus forte
+  const marks = score.notes.map((n) => score.articulations.filter((a) => a.staff === n.staff && a.t === n.start).map((a) => a.kind));
+  const released = score.notes.map((n, i) => ({ ...n, end: n.start + (n.end - n.start) * Math.min(1, ...marks[i].map((k) => SHORTER[k])) }));
+  const velocity = velocities(score).map((v, i) => Math.round(Math.min(127, v + Math.max(0, ...marks[i].map((k) => LOUDER[k]))) * (soft.has(score.notes[i]) ? LEGATO : 1)));
+  const ends = soundingEnds({ ...score, notes: released }), rolls = rollRanks(score);
+  const out: PlayedNote[] = [];
+  for (const p of runs)
+    score.notes.forEach((n, i) => {
+      if (n.start >= p.from && n.start < p.to) out.push({
+          staff: n.staff,
+          start: p.at + n.start - p.from,
+          end: p.at + Math.min(ends[i], p.to) - p.from,
+          midi: n.midi,
+          velocity: velocity[i],
+          ...(n.trill !== undefined ? { trill: { midi: n.trill, until: p.at + Math.min(n.end, p.to) - p.from } } : {}),
+          ...(rolls[i] ? { roll: rolls[i] } : {}),
+          ...(filter.has(score.notes[i]) ? { filter: filter.get(score.notes[i]) } : {}),
+        });
+    });
+  // petites notes : rangées avant leur note, la première le plus tôt ; même rang, jouées ensemble
+  const level = velocityAt(score);
+  const ranks = new Map<string, number>();
+  for (const g of score.graces) ranks.set(`${g.staff}:${g.t}`, Math.max(ranks.get(`${g.staff}:${g.t}`) ?? 0, g.slot + 1));
+  for (const p of runs)
+    for (const g of score.graces)
+      if (g.t >= p.from && g.t < p.to) {
+        const t = p.at + g.t - p.from;
+        out.push({ staff: g.staff, start: t, end: t, midi: g.midi, velocity: level(g.staff, g.t, false), grace: ranks.get(`${g.staff}:${g.t}`)! - g.slot });
+      }
+  return out.sort((a, b) => a.start - b.start || (b.grace ?? 0) - (a.grace ?? 0) || a.midi - b.midi);
+}
+
+/** L'intensité d'une note liée sans être attaquée (hammer-on, pull-off, suite d'un bend ou d'un glissé). */
+const LEGATO = 0.55;
+/** Le son étouffé : la note courte et sourde (fréquence de coupure, en hertz). */
+/** Le glissé d'entrée : depuis trois cases, en un quart de temps au plus ; le glissé de sortie : sur cinq cases. */
+const SLIDE_IN = { frets: 3, length: TICKS_PER_BEAT / 4 };
+const SLIDE_OUT = { frets: 5 };
+const DEAD = { length: TICKS_PER_BEAT / 8, filter: 700 };
+const PALM_MUTE = { length: TICKS_PER_BEAT * 0.4, filter: 1100 };
+
+/**
+ * Les techniques des cordes, à l'écoute, changées en notes que les sons échantillonnés savent jouer :
+ * une note étouffée, brève et sourde ; l'étouffé de la paume, des notes courtes et sourdes ; une
+ * harmonique, à la hauteur qu'elle sonne ; un bend, la note puis la note tirée (et relâchée) sans
+ * nouvelle attaque ; un glissé, les cases traversées en fin de note, jusqu'à la suivante ; deux
+ * notes liées sur une corde (hammer-on, pull-off), la seconde sans attaque. Le vibrato ne s'entend
+ * pas : les sons ne savent pas onduler. Rend le morceau, les notes jouées sans attaque, et le
+ * filtre des notes sourdes.
+ */
+function stringTechniques(score: Score) {
+  const soft = new Set<Note>();
+  const filter = new Map<Note, number>();
+  if (!score.parts.some((p) => p.strings)) return { score, soft, filter };
+  const notes: Note[] = [];
+  const sameString = (a: Note, b: Note) => a.staff === b.staff && a.string !== undefined && a.string === b.string;
+  // la note suivante sur la même corde
+  const next = (n: Note) => score.notes.filter((m) => sameString(m, n) && m.start > n.start).sort((a, b) => a.start - b.start)[0];
+  // les notes liées après la première, sur une corde : jouées sans attaque
+  const legato = new Set<Note>();
+  for (const s of score.slurs)
+    for (const n of score.notes) if (n.string !== undefined && n.staff === s.staff && n.start > s.start && n.start <= s.end && score.notes.some((m) => sameString(m, n) && m.start >= s.start && m.start < n.start)) legato.add(n);
+  const glided = new Set<Note>();
+  for (const n of score.notes) {
+    const strs = n.string !== undefined ? stringsOfStaff(score.parts, n.staff) : undefined;
+    if (!strs) {
+      notes.push(n);
+      continue;
+    }
+    const muted = score.effects.some((e) => e.kind === "palmMute" && e.staff === n.staff && n.start >= e.start && n.start < e.end);
+    const add = (m: Note, quiet = false) => {
+      notes.push(m);
+      if (quiet || legato.has(n) || glided.has(n)) soft.add(m);
+      if (muted) filter.set(m, PALM_MUTE.filter);
+      return m;
+    };
+    if (n.dead) {
+      filter.set(add({ ...n, end: n.start + Math.min(n.end - n.start, DEAD.length) }), DEAD.filter);
+      continue;
+    }
+    let base = muted ? { ...n, end: n.start + Math.min(n.end - n.start, PALM_MUTE.length) } : n;
+    // le glissé d'entrée : quelques cases avant la note, attaquées puis glissées, vite ; la note arrive sans attaque
+    let arrived = false;
+    if (n.slideIn) {
+      const len = Math.min((base.end - base.start) * 0.3, SLIDE_IN.length);
+      const dir = n.slideIn === "up" ? 1 : -1;
+      for (let k = SLIDE_IN.frets; k >= 1; k--) {
+        const at = base.start + ((SLIDE_IN.frets - k) * len) / SLIDE_IN.frets;
+        add({ ...base, midi: n.midi - k * dir, start: at, end: at + len / SLIDE_IN.frets }, k < SLIDE_IN.frets);
+      }
+      base = { ...base, start: base.start + len };
+      arrived = true;
+    }
+    // la durée jouée (plus courte sous l'étouffé de la paume)
+    const d = base.end - base.start;
+    if (n.harmonic) {
+      const open = strs.open[n.string! - 1] + strs.capo;
+      add({ ...base, midi: open + (HARMONICS[n.midi - open] ?? n.midi - open) });
+      continue;
+    }
+    if (n.bend !== undefined) {
+      const up = base.start + d * 0.25, down = base.start + d * 0.75;
+      add({ ...base, end: up }, arrived);
+      add({ ...base, start: up, midi: n.bend, end: n.release ? down : base.end }, true);
+      if (n.release) add({ ...base, start: down, midi: n.midi }, true);
+      continue;
+    }
+    // glisser, dans le dernier tiers de la note, vers la note suivante (sans la rejouer) ou vers rien
+    const to = n.slide ? next(n) : undefined;
+    const steps = to ? Math.min(12, Math.abs(to.midi - n.midi) - 1) : n.slideOut ? SLIDE_OUT.frets : 0;
+    if (steps > 0 || to) {
+      const from = base.start + d * 0.67, dir = to ? Math.sign(to.midi - n.midi) : n.slideOut === "up" ? 1 : -1;
+      add({ ...base, end: steps ? from : base.end }, arrived);
+      for (let k = 1; k <= steps; k++) add({ ...base, midi: n.midi + k * dir, start: from + ((k - 1) * (base.end - from)) / steps, end: from + (k * (base.end - from)) / steps }, true);
+      if (to) glided.add(to);
+      continue;
+    }
+    add(base, arrived);
+  }
+  return { score: { ...score, notes }, soft, filter };
+}
+
+/** Part de sa durée que garde une note articulée : un staccato sonne moitié moins, un marcato un peu moins. */
+const SHORTER: Record<ArticulationKind, number> = { staccato: 0.5, accent: 1, marcato: 0.75, down: 1, up: 1 };
+/** Ce qu'ajoute une articulation à l'intensité de la note (vélocité). */
+const LOUDER: Record<ArticulationKind, number> = { staccato: 0, accent: 20, marcato: 28, down: 0, up: 0 };
+
+/**
+ * Arpèges : pour chaque note, sa place dans l'accord égrené (rien hors arpège). Du grave à l'aigu, ou de l'aigu au grave ; sans portée, tout le système d'un geste.
+ */
+function rollRanks(score: Score): (Roll | undefined)[] {
+  const ranks: (Roll | undefined)[] = score.notes.map(() => undefined);
+  for (const a of score.arpeggios) {
+    const chord = score.notes.map((n, i) => ({ n, i })).filter(({ n }) => n.start === a.t && (a.staff === undefined || n.staff === a.staff));
+    chord.sort((x, y) => (a.down ? y.n.midi - x.n.midi : x.n.midi - y.n.midi));
+    chord.forEach(({ i }, k) => (ranks[i] = { rank: k, count: chord.length }));
+  }
+  return ranks;
+}
+
+/**
+ * Point d'orgue : à l'instant joué `at`, ce qui commence là (note, accord ou silence, jusqu'à la
+ * prochaine attaque) se tient deux fois plus longtemps, d'au plus deux temps de plus. `length` :
+ * la durée ainsi doublée, en ticks joués.
+ */
+export type Hold = { at: number; length: number };
+
+export function holds(score: Score, ps: Passage[]): Hold[] {
+  const attacks = [...new Set(score.notes.map((n) => n.start))].sort((a, b) => a - b);
+  const out: Hold[] = [];
+  for (const p of ps)
+    for (const t of score.fermatas) {
+      if (t < p.from || t >= p.to) continue;
+      const next = attacks.find((x) => x > t) ?? t + TICKS_PER_BEAT;
+      out.push({ at: p.at + t - p.from, length: Math.min(Math.min(next, p.to) - t, 2 * TICKS_PER_BEAT) });
+    }
+  return out.sort((a, b) => a.at - b.at);
+}
+
+/** L'instant d'horloge (en ticks, points d'orgue compris) d'un instant joué. */
+export function stretched(hs: Hold[], played: number): number {
+  let out = played;
+  for (const h of hs) if (played > h.at) out += Math.min(played - h.at, h.length);
+  return out;
+}
+
+/** L'instant joué d'un instant d'horloge : pendant un point d'orgue, le temps joué avance deux fois moins vite. */
+export function unstretched(hs: Hold[], clock: number): number {
+  let shift = 0;
+  for (const h of hs) {
+    const start = h.at + shift; // le point d'orgue sur l'horloge
+    if (clock <= start) break;
+    if (clock < start + 2 * h.length) return h.at + (clock - start) / 2;
+    shift += h.length;
+  }
+  return clock - shift;
+}
+
+/** Le passage joué à un instant joué. */
+const passageAt = (ps: Passage[], played: number) => ps.find((x) => played >= x.at && played < x.at + x.to - x.from);
+
+/** L'instant du morceau qui correspond à un instant joué : celui qu'on surligne. */
+export function scoreTick(ps: Passage[], played: number): number | null {
+  const p = passageAt(ps, played);
+  return p ? p.from + played - p.at : null;
+}
+
+/**
+ * L'instant du morceau joué juste après until (la fin d'un système), depuis un instant joué : la
+ * suite, ou le retour d'une reprise, ou la section suivante de l'ordre de jeu. null en fin de morceau.
+ */
+export function nextTick(ps: Passage[], played: number, until: number): number | null {
+  const p = passageAt(ps, played);
+  return p ? scoreTick(ps, p.at + Math.min(until, p.to) - p.from) : null;
+}
+
+/** Le rang, dans l'ordre de jeu, de la section jouée à cet instant. */
+export const entryAt = (ps: Passage[], played: number) => passageAt(ps, played)?.entry ?? null;
+
+/** Vrai si l'instant joué tombe dans la première mesure de sa section. */
+export function inFirstBar(score: Score, ps: Passage[], played: number): boolean {
+  const p = passageAt(ps, played);
+  const first = p && ps.find((x) => x.entry === p.entry);
+  if (!first) return false;
+  const bar = score.beats[Math.floor(first.from / TICKS_PER_BEAT)]?.barIndex;
+  let end = first.from;
+  while (score.beats[end / TICKS_PER_BEAT]?.barIndex === bar) end += TICKS_PER_BEAT;
+  return played - first.at < end - first.from;
+}
+
+/** L'instant joué où commence la section de rang `entry` dans l'ordre de jeu. */
+export const entryStart = (ps: Passage[], entry: number) => ps.find((x) => x.entry === entry)?.at ?? null;
+
+/**
+ * L'instant joué d'un instant du morceau, quand on clique dessus depuis l'instant joué `current`.
+ * Une mesure reprise se joue plusieurs fois : on reste dans le passage en cours s'il la contient ;
+ * sinon on prend son passage le plus récent déjà joué (revenir en arrière pour réentendre ce qui
+ * précède), sinon le premier à venir.
+ */
+export function playedTick(ps: Passage[], tick: number, current = 0): number | null {
+  const all = ps.filter((x) => tick >= x.from && tick < x.to).map((x) => x.at + tick - x.from);
+  if (!all.length) return null;
+  const here = passageAt(ps, current);
+  if (here && tick >= here.from && tick < here.to) return here.at + tick - here.from;
+  const before = all.filter((p) => p < current);
+  return before.length ? before[before.length - 1] : all[0];
+}

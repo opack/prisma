@@ -1,44 +1,44 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_WIDTH, PrismaError, convertToStrings, exportMusicXml, importMusicXml, parsePrisma, stringsOfStaff, writePrisma } from "../core/index.ts";
 import type { ConversionOptions, ExportOptions, Part, Score } from "../core/index.ts";
-import { ConvertDialog } from "./ConvertDialog.tsx";
-import { NewDialog } from "./NewDialog.tsx";
-import { firstCell } from "./templates.ts";
-import type { Template } from "./templates.ts";
-import { ExportDialog } from "./ExportDialog.tsx";
-import { Menu } from "./Menu.tsx";
-import { ListenControls } from "./ListenControls.tsx";
-import { EngraveButton } from "./EngraveButton.tsx";
-import { SourceEditor } from "./SourceEditor.tsx";
-import { Message } from "./message.tsx";
-import { pick as scorePick } from "./pick.ts";
+import { ConvertDialog } from "./editor/ConvertDialog.tsx";
+import { NewDialog } from "./files/NewDialog.tsx";
+import { firstCell } from "./editor/templates.ts";
+import type { Template } from "./editor/templates.ts";
+import { ExportDialog } from "./files/ExportDialog.tsx";
+import { Menu } from "./ui/Menu.tsx";
+import { ListenControls } from "./playback/ListenControls.tsx";
+import { EngraveButton } from "./score/EngraveButton.tsx";
+import { SourceEditor } from "./editor/SourceEditor.tsx";
+import { Message } from "./editor/message.tsx";
+import { pick as scorePick } from "./score/pick.ts";
 import { STRING_LANE, locate, textPlace } from "../core/locate.ts";
 import type { ScorePlace } from "../core/locate.ts";
-import type { ScreenPoint } from "./pick.ts";
-import { cellOf, durationOf, holdChoices, holdIn, freeStrings, moveOctave, octaveRoomOf, placeOnString, resize, retouch } from "./retouch.ts";
-import { RetouchMenu } from "./RetouchMenu.tsx";
-import { textMark } from "./textMark.ts";
-import type { EditorHandle } from "./SourceEditor.tsx";
-import { OptionsDrawer } from "./OptionsDrawer.tsx";
+import type { ScreenPoint } from "./score/pick.ts";
+import { cellOf, durationOf, holdChoices, holdIn, freeStrings, moveOctave, octaveRoomOf, placeOnString, resize, retouch } from "./retouch/retouch.ts";
+import { RetouchMenu } from "./retouch/RetouchMenu.tsx";
+import { textMark } from "./score/textMark.ts";
+import type { EditorHandle } from "./editor/SourceEditor.tsx";
+import { OptionsDrawer } from "./options/OptionsDrawer.tsx";
 
-import { player } from "./player.ts";
-import { follow } from "./follow.ts";
-import { FocusView } from "./FocusView.tsx";
-import { ReferenceView } from "./ReferenceView.tsx";
-import { LibraryView } from "./LibraryView.tsx";
-import { engraveOptions, engravePages } from "./render.ts";
-import { markOpened } from "./library.ts";
-import type { LibraryEntry } from "./library.ts";
-import { PageView } from "./PageView.tsx";
-import { SAMPLE } from "./sample.ts";
-import { loadOptions, saveOptions } from "./options.ts";
-import type { RenderOptions } from "./options.ts";
-import { scoreInstrument, staffInstruments, instrumentsOf } from "./instruments.ts";
-import { PIECE_KEYS, isEmpty, isPieceKey, parseSettings, readSettings, saveSettings, settingsName, writeSettings } from "./piece.ts";
-import type { PieceKey, PieceSettings } from "./piece.ts";
-import { BackButton } from "./BackButton.tsx";
-import { ScrollBackButton } from "./ScrollBackButton.tsx";
-import { OPENABLE, canWriteInPlace, download, droppedFile, pickExportTarget, pickFile, pickSaveTarget, targetIn, writeFile } from "./files.ts";
+import { player } from "./playback/player.ts";
+import { follow } from "./score/follow.ts";
+import { FocusView } from "./score/FocusView.tsx";
+import { ReferenceView } from "./reference/ReferenceView.tsx";
+import { LibraryView } from "./library/LibraryView.tsx";
+import { engraveOptions, engravePages } from "./score/render.ts";
+import { markOpened } from "./library/library.ts";
+import type { LibraryEntry } from "./library/library.ts";
+import { PageView } from "./score/PageView.tsx";
+import { SAMPLE } from "./files/sample.ts";
+import { loadOptions, saveOptions } from "./options/options.ts";
+import type { RenderOptions } from "./options/options.ts";
+import { scoreInstrument, staffInstruments, instrumentsOf } from "./playback/instruments.ts";
+import { PIECE_KEYS, isEmpty, isPieceKey, parseSettings, readSettings, saveSettings, settingsName, writeSettings } from "./options/piece.ts";
+import type { PieceKey, PieceSettings } from "./options/piece.ts";
+import { BackButton } from "./ui/BackButton.tsx";
+import { ScrollBackButton } from "./ui/ScrollBackButton.tsx";
+import { OPENABLE, canWriteInPlace, download, droppedFile, pickExportTarget, pickFile, pickSaveTarget, targetIn, writeFile } from "./files/files.ts";
 
 /** Délai sans frappe avant la gravure automatique. */
 const AUTO_ENGRAVE_DELAY = 600;
@@ -906,7 +906,7 @@ export function App() {
             "separator",
             // le site qui présente Prisma, autour de l'application (app/) ; le navigateur prévient
             // avant de quitter un morceau aux modifications non enregistrées
-            { label: "Retour au site", onSelect: () => location.assign("../") },
+            { label: "Retour au site", onSelect: () => location.assign("..") },
           ]}
         />
         <Menu
