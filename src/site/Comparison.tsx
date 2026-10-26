@@ -8,6 +8,11 @@ import { CHORDS, CLAIR_SECTIONS, TWO_CHORDS } from "./pieces.ts";
 import { StaffChords } from "./StaffChords.tsx";
 import { Engraving } from "./Example.tsx";
 import { APP, Footer, Header } from "./Frame.tsx";
+import { ButtonLink } from "./ButtonLink.tsx";
+import { Caption } from "./Caption.tsx";
+import { Idea } from "./Idea.tsx";
+import { IdeaText } from "./IdeaText.tsx";
+import { Lead } from "./Lead.tsx";
 
 /** Un fa dièse qui revient, puis un fa naturel : la partition classique les écrit avec une armure et un bécarre ; Prisma, 7 et 6. */
 const SHARP = `---
@@ -111,19 +116,19 @@ export function Comparison() {
   return (
     <>
       <Header />
-      <main className="comparison">
-        <section className="intro">
+      <main>
+        <section className="pt-10">
           <h1>Prisma et la partition classique</h1>
-          <p className="lead">
+          <Lead>
             La partition classique est un outil remarquable, affiné pendant des siècles. Mais une bonne part de ce qu'elle demande d'apprendre ne sert qu'à elle-même : les clés,
             l'armure, les altérations, les figures de durée. Voici ce que Prisma garde, ce qu'il retire, et ce qu'il perd.
-          </p>
+          </Lead>
         </section>
 
         <section>
           <h2>Ce que Prisma garde</h2>
           <p>Tout ce qui sert à jouer, et que la partition classique a bien trouvé :</p>
-          <ul className="kept">
+          <ul className="m-0 pl-[1.2em] max-w-[44em] [&_li]:mb-1.5">
             <li>la lecture de gauche à droite, mesure après mesure, avec les barres de mesure ;</li>
             <li>les temps de la mesure, comptés au-dessus des notes ;</li>
             <li>une portée par main ou par voix, réunies par l'accolade ;</li>
@@ -139,7 +144,7 @@ export function Comparison() {
             <thead>
               <tr>
                 <th scope="col">
-                  <span className="visually-hidden">Ce qui s'apprend</span>
+                  <span className="sr-only">Ce qui s'apprend</span>
                 </th>
                 <th scope="col">Partition classique</th>
                 <th scope="col">Prisma</th>
@@ -157,8 +162,8 @@ export function Comparison() {
           </table>
         </section>
 
-        <section className="idea">
-          <div className="idea-text">
+        <Idea>
+          <IdeaText>
             <h2>
               Un exemple : le <i>fa dièse</i>
             </h2>
@@ -169,12 +174,12 @@ export function Comparison() {
             <p>
               En Prisma, le <i>fa dièse</i> s'écrit <code>7</code>, à chaque fois, et le <i>fa naturel</i> <code>6</code> : rien à retenir d'une note à l'autre.
             </p>
-          </div>
+          </IdeaText>
           <Example text={SHARP} label="Sol, fa dièse, sol, puis fa naturel, mi" />
-        </section>
+        </Idea>
 
-        <section className="idea wide">
-          <div className="idea-text">
+        <Idea kind="wide">
+          <IdeaText>
             <h2>Un exemple : les renvois</h2>
             <p>
               <i>Au clair de la lune</i> se joue <code>A A B A</code>. La partition classique l'écrit avec une reprise autour de A, puis B, puis un <i>D.C. al Fine</i> : revenir au début
@@ -186,12 +191,12 @@ export function Comparison() {
               partition dit comment elles s'enchaînent. On lit l'ordre, on joue les lignes : c'est tout. Pour une partition plus courte, les parties peuvent aussi se suivre sur la
               même ligne.
             </p>
-          </div>
+          </IdeaText>
           <Example text={CLAIR_SECTIONS} scale={1.25} label="Au clair de la lune : la partie A, la partie B, et l'ordre de jeu A A B A" />
-        </section>
+        </Idea>
 
-        <section className="idea">
-          <div className="idea-text">
+        <Idea>
+          <IdeaText>
             <h2>Ce que Prisma rend plus simple : les accords</h2>
             <p>
               En Prisma, un accord se lit et se construit en comptant. L'écart entre deux nombres est toujours le même, quelles que soient les notes : <code>4</code>, c'est une tierce
@@ -220,12 +225,12 @@ export function Comparison() {
               Le nom d'un accord se lit de même : sa fondamentale, puis sa sorte. <code>1</code> est <i>do</i> majeur, <code>1:m</code> <i>do</i> mineur, <code>8:7</code>{" "}
               <i>sol</i> 7. Pas de lettre à traduire en note : le nombre est déjà la note.
             </p>
-          </div>
+          </IdeaText>
           <Example text={CHORDS} options={{ notePosition: "aligned", chords: "name" }} label="Do majeur, do mineur, do septième, do diminué : les nombres changent d'un ou deux" />
-        </section>
+        </Idea>
 
-        <section className="idea">
-          <div className="idea-text">
+        <Idea>
+          <IdeaText>
             <h2>Sur la partition classique, deux accords qui se ressemblent</h2>
             <p>
               La portée classique ne montre pas les demi-tons. <i>Do mi sol</i> et <i>mi sol si</i> s'y écrivent de la même façon : trois notes sur trois lignes voisines. Le premier est pourtant
@@ -235,27 +240,27 @@ export function Comparison() {
               En Prisma, <i>do mi sol</i> s'écrit <code>1 5 8</code>, des écarts de <code>4</code> puis <code>3</code> ; <i>mi sol si</i>, <code>5 8 12</code>, des écarts de{" "}
               <code>3</code> puis <code>4</code>. La différence se lit.
             </p>
-          </div>
-          <div className="side-by-side">
+          </IdeaText>
+          <div className="flex flex-wrap items-start gap-6">
             <div>
-              <p className="caption">Partition classique</p>
+              <Caption className="mb-1.5">Partition classique</Caption>
               <StaffChords />
             </div>
             <div>
-              <p className="caption">Prisma</p>
+              <Caption className="mb-1.5">Prisma</Caption>
               <Engraving text={TWO_CHORDS} options={{ chords: "name" }} label="Do mi sol (1 5 8) puis mi sol si (5 8 12)" />
             </div>
           </div>
-        </section>
+        </Idea>
 
         <section>
           <h2>Ce que Prisma perd</h2>
           <p>Ce choix a un prix. Le voici, sans détour.</p>
-          <dl className="losses">
+          <dl className="m-0 grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-x-10 gap-y-6">
             {LOSSES.map((l) => (
               <div key={l.what}>
-                <dt>{l.what}</dt>
-                <dd>{l.why}</dd>
+                <dt className="font-bold mb-1">{l.what}</dt>
+                <dd className="m-0 text-[#303437]">{l.why}</dd>
               </div>
             ))}
           </dl>
@@ -273,11 +278,11 @@ export function Comparison() {
           </p>
         </section>
 
-        <section className="closing">
+        <section className="text-center">
           <h2>Le plus simple est d'essayer.</h2>
-          <a className="button primary" href={APP}>
+          <ButtonLink primary href={APP}>
             Ouvrir l'application
-          </a>
+          </ButtonLink>
         </section>
       </main>
       <Footer />

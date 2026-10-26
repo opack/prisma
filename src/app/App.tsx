@@ -24,7 +24,6 @@ import { OptionsDrawer } from "./OptionsDrawer.tsx";
 import { player } from "./player.ts";
 import { follow } from "./follow.ts";
 import { FocusView } from "./FocusView.tsx";
-import { BackIcon } from "./icons.tsx";
 import { ReferenceView } from "./ReferenceView.tsx";
 import { LibraryView } from "./LibraryView.tsx";
 import { engraveOptions, engravePages } from "./render.ts";
@@ -37,6 +36,7 @@ import type { RenderOptions } from "./options.ts";
 import { scoreInstrument, staffInstruments, instrumentsOf } from "./instruments.ts";
 import { PIECE_KEYS, isEmpty, isPieceKey, parseSettings, readSettings, saveSettings, settingsName, writeSettings } from "./piece.ts";
 import type { PieceKey, PieceSettings } from "./piece.ts";
+import { BackButton } from "./BackButton.tsx";
 import { OPENABLE, canWriteInPlace, download, droppedFile, pickExportTarget, pickFile, pickSaveTarget, targetIn, writeFile } from "./files.ts";
 
 /** Délai sans frappe avant la gravure automatique. */
@@ -128,6 +128,9 @@ function tryParse(text: string): { score?: Score; problem?: Problem } {
     return { problem: { message: (e as Error).message } };
   }
 }
+
+/** Un message dans l'aperçu : pourquoi la partition ne se met pas en page. */
+const previewProblem = "max-w-[460px] mx-auto my-12 px-5 py-4 bg-white border border-line border-l-4 rounded-md shadow-[0_2px_10px_rgba(0,0,0,0.06)] [&_p]:mb-2";
 
 export function App() {
   const [source, setSource] = useState(load);
@@ -310,7 +313,7 @@ export function App() {
     if (!reading) return;
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      if (e.ctrlKey || e.metaKey || e.altKey || target.closest("input, select, textarea, .cm-editor, .drawer")) return;
+      if (e.ctrlKey || e.metaKey || e.altKey || target.closest("input, select, textarea, .cm-editor, [data-drawer]")) return;
       const turn = { PageDown: 1, ArrowRight: 1, ArrowDown: 1, PageUp: -1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
       const pane = preview.current;
       if (!turn || !pane || view.fit === "focus") return;
@@ -871,15 +874,15 @@ export function App() {
   );
 
   return (
-    <div className="app" onDragEnter={onDragEnter} onDragLeave={onDragLeave} onDragOver={onDragOver} onDrop={onDrop}>
+    <div className="app relative flex flex-col h-full" onDragEnter={onDragEnter} onDragLeave={onDragLeave} onDragOver={onDragOver} onDrop={onDrop}>
       {dragging && (
-        <div className="drop" aria-hidden>
-          <p>Déposer pour ouvrir</p>
-          <span>.prisma ou .musicxml</span>
+        <div className="absolute inset-0 z-20 grid place-content-center text-center gap-1 bg-[rgba(43,93,110,.12)] border-3 border-dashed border-accent pointer-events-none" aria-hidden>
+          <p className="text-[22px] font-bold text-accent">Déposer pour ouvrir</p>
+          <span className="text-muted">.prisma ou .musicxml</span>
         </div>
       )}
-      <header className="bar">
-        <span className="brand">Prisma</span>
+      <header className="flex gap-2 items-center px-4 py-2 bg-panel border-b border-line print:hidden!">
+        <span className="font-bold tracking-[.06em] mr-3">Prisma</span>
         <Menu
           label="Fichier"
           items={[
@@ -937,12 +940,12 @@ export function App() {
             e.target.value = "";
           }}
         />
-        <span className="file" title={handle ? "Enregistrer réécrit ce fichier" : undefined}>
+        <span className="text-muted ml-2 truncate min-w-0" title={handle ? "Enregistrer réécrit ce fichier" : undefined}>
           {fileName}
-          {unsaved || savedText === null ? <span className="unsaved"> · non enregistré</span> : null}
+          {unsaved || savedText === null ? <span className="text-accent"> · non enregistré</span> : null}
         </span>
         {notice && (
-          <span className="notice" role="status">
+          <span className="text-accent ml-3 whitespace-nowrap" role="status">
             {notice}
           </span>
         )}
@@ -963,7 +966,7 @@ export function App() {
           onTempo={(tempo) => updatePiece({ tempo: tempo ?? undefined })}
         />
         <button
-          className={"icon gear" + (showOptions ? " on" : "")}
+          className={"flex items-center px-2 py-1.5 " + (showOptions ? "text-accent" : "text-muted enabled:hover:text-accent")}
           onClick={() => setShowOptions((v) => !v)}
           aria-pressed={showOptions}
           aria-controls="options"
@@ -981,12 +984,10 @@ export function App() {
       </header>
 
 
-      <div className="workspace">
+      <div className="flex-1 relative flex flex-col min-h-0">
       {showGuide && (
-        <main className="guide-pane">
-          <button className="back icon" onClick={() => setShowGuide(false)} title="Retour à la partition" aria-label="Retour à la partition">
-            <BackIcon />
-          </button>
+        <main className="guide-pane flex-1 overflow-auto bg-white">
+          <BackButton onClick={() => setShowGuide(false)} />
           <ReferenceView options={general} />
         </main>
       )}
@@ -1036,19 +1037,19 @@ export function App() {
             <EngraveButton dirty={dirty} auto={options.autoEngrave} onEngrave={engraveNow} onAuto={(autoEngrave) => setOptions({ autoEngrave })} />
           </SourceEditor>
           {problem && (
-            <div className="problem">
-              <button className="problem-message" onClick={() => goTo(problem.line, problem.column)} title="aller à l'erreur">
+            <div className="flex items-center gap-2 min-w-0 border-t border-error bg-error-bg text-error">
+              <button className="flex-1 min-w-0 border-0 rounded-none bg-transparent text-inherit text-left px-4 py-2.5" onClick={() => goTo(problem.line, problem.column)} title="aller à l'erreur">
                 <Message text={problem.message} />
               </button>
               {problems.length > 1 && (
-                <span className="problem-nav">
-                  <button onClick={() => showError(shown - 1)} title="erreur précédente (Maj+F8 dans l'éditeur)" aria-label="Erreur précédente">
+                <span className="shrink-0 flex items-center gap-1 pr-2.5 tabular-nums text-[13px] whitespace-nowrap">
+                  <button className="px-2 py-px text-error border-[color-mix(in_srgb,var(--error)_40%,#fff)]" onClick={() => showError(shown - 1)} title="erreur précédente (Maj+F8 dans l'éditeur)" aria-label="Erreur précédente">
                     ‹
                   </button>
                   <span>
                     {shown + 1}/{problems.length}
                   </span>
-                  <button onClick={() => showError(shown + 1)} title="erreur suivante (F8 dans l'éditeur)" aria-label="Erreur suivante">
+                  <button className="px-2 py-px text-error border-[color-mix(in_srgb,var(--error)_40%,#fff)]" onClick={() => showError(shown + 1)} title="erreur suivante (F8 dans l'éditeur)" aria-label="Erreur suivante">
                     ›
                   </button>
                 </span>
@@ -1066,7 +1067,7 @@ export function App() {
           onWheel={(e) => view.fit === "height" && view.zoom <= 1 && !e.ctrlKey && Math.abs(e.deltaY) > Math.abs(e.deltaX) && e.currentTarget.scrollBy({ left: e.deltaY })}
           style={{ "--zoom": view.zoom } as React.CSSProperties}
         >
-          {score && !pages.length && <p className="empty">Aucune mesure à mettre en page.</p>}
+          {score && !pages.length && <p className="text-muted">Aucune mesure à mettre en page.</p>}
           {retouchAt && (
             <RetouchMenu
               x={retouchAt.where.x}
@@ -1091,15 +1092,15 @@ export function App() {
           )}
           {/* une erreur : la partition n'a pas pu être mise en page ; on dit pourquoi, et où corriger */}
           {fixed && (
-            <div className="preview-problem fixed" role="status">
-              <p className="preview-problem-title">L'erreur est corrigée.</p>
-              <p className="empty">Mettez le texte en page (Ctrl+Entrée) pour voir la partition.</p>
+            <div className={`${previewProblem} border-l-accent`} role="status">
+              <p className="font-semibold">L'erreur est corrigée.</p>
+              <p className="text-muted">Mettez le texte en page (Ctrl+Entrée) pour voir la partition.</p>
               <button onClick={engraveNow}>Mettre en page</button>
             </div>
           )}
           {problem && (
-            <div className="preview-problem" role="alert">
-              <p className="preview-problem-title">
+            <div className={`${previewProblem} border-l-[#d22c2c]`} role="alert">
+              <p className="font-semibold">
                 {problem.line ? `La partition ne peut pas être mise en page : le texte contient ${problems.length > 1 ? `${problems.length} erreurs` : "une erreur"}.` : "La partition ne peut pas être affichée."}
               </p>
               <p>
@@ -1107,7 +1108,7 @@ export function App() {
               </p>
               {problem.line !== undefined && (
                 <>
-                  <p className="empty">
+                  <p className="text-muted">
                     {options.autoEngrave ? `Une fois ${problems.length > 1 ? "les erreurs corrigées" : "l'erreur corrigée"}, la mise en page reprend d'elle-même.` : `Une fois ${problems.length > 1 ? "les erreurs corrigées" : "l'erreur corrigée"}, remettez en page (Ctrl+Entrée).`}
                   </p>
                   <button onClick={() => showError(0)}>{problems.length > 1 ? "Aller à la première" : "Aller à l'erreur"}</button>

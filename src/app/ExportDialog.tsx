@@ -2,7 +2,10 @@
  * Les options de l'export MusicXML, demandées avant d'exporter : la façon d'écrire l'ordre de jeu
  * et, en reprises, les lettres des sections. Le dernier choix est retenu d'un export à l'autre.
  */
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { Check } from "./dialog/Check.tsx";
+import { Choices } from "./dialog/Choices.tsx";
+import { Dialog } from "./dialog/Dialog.tsx";
 import type { ExportOptions } from "../core/index.ts";
 
 const KEY = "prisma:export";
@@ -24,12 +27,7 @@ export const loadExportOptions = (): ExportOptions => {
 };
 
 export function ExportDialog({ onExport, onClose }: { onExport: (options: ExportOptions) => void; onClose: () => void }) {
-  const ref = useRef<HTMLDialogElement>(null);
   const [options, setOptions] = useState(loadExportOptions);
-  useEffect(() => {
-    const d = ref.current;
-    if (d && !d.open) d.showModal();
-  }, []);
   const submit = () => {
     try {
       localStorage.setItem(KEY, JSON.stringify(options));
@@ -39,42 +37,14 @@ export function ExportDialog({ onExport, onClose }: { onExport: (options: Export
     onExport(options);
   };
   return (
-    <dialog ref={ref} className="dialog" aria-labelledby="export-title" onClose={onClose} onCancel={onClose}>
-      <form
-        method="dialog"
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit();
-        }}
-      >
-        <h2 id="export-title">Exporter en MusicXML</h2>
-        <fieldset>
-          <legend>L'ordre de jeu</legend>
-          {REPEATS.map((r) => (
-            <label key={r.value} className={"dialog-choice" + (options.repeats === r.value ? " on" : "")}>
-              <input type="radio" name="repeats" value={r.value} checked={options.repeats === r.value} onChange={() => setOptions({ ...options, repeats: r.value })} />
-              <span>
-                <span className="dialog-choice-label">{r.label}</span>
-                <span className="dialog-choice-hint">{r.hint}</span>
-              </span>
-            </label>
-          ))}
-          {options.repeats === "traditional" && (
-            <label className="dialog-check">
-              <input type="checkbox" checked={options.letters !== false} onChange={(e) => setOptions({ ...options, letters: e.target.checked })} />
-              Écrire aussi la lettre de chaque section (A, B…)
-            </label>
-          )}
-        </fieldset>
-        <div className="dialog-actions">
-          <button type="button" onClick={onClose}>
-            Annuler
-          </button>
-          <button type="submit" className="primary">
-            Exporter
-          </button>
-        </div>
-      </form>
-    </dialog>
+    <Dialog title="Exporter en MusicXML" submit="Exporter" onSubmit={submit} onClose={onClose}>
+      <Choices legend="L'ordre de jeu" name="repeats" options={REPEATS} value={options.repeats!} onChange={(repeats) => setOptions({ ...options, repeats })}>
+        {options.repeats === "traditional" && (
+          <Check checked={options.letters !== false} onChange={(letters) => setOptions({ ...options, letters })}>
+            Écrire aussi la lettre de chaque section (A, B…)
+          </Check>
+        )}
+      </Choices>
+    </Dialog>
   );
 }

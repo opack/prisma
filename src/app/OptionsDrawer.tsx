@@ -6,6 +6,15 @@ import { CLICK_SOUNDS } from "./metronome.ts";
 import type { ClickLevel } from "./performance.ts";
 import { CLICK_GRIDS } from "./options.ts";
 import type { RenderOptions } from "./options.ts";
+
+/** La ligne de portée d'une option, sous son explication : générale, de la partition, et les actions. */
+const SCOPE = "col-start-2 flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 mt-1 mb-0 text-[0.9em] text-muted";
+const BADGE = "inline-block px-1.5 rounded-[8px] bg-accent-14 text-accent text-[0.85em] font-semibold whitespace-nowrap";
+/** Une action en lien : Définir pour la partition, Retirer… */
+const LINK = "p-0 text-accent underline bg-transparent border-0 cursor-pointer";
+const SLIDER = "flex-1 min-w-0 accent-accent";
+/** Générales, Partition : le choix de la portée des options. */
+const porteeButton = (on: boolean) => `flex-1 px-2 py-1.5 border-0 rounded-none ${on ? "bg-accent-12 text-accent font-semibold" : "bg-white text-muted"}`;
 import type { PieceKey } from "./piece.ts";
 
 /**
@@ -110,12 +119,12 @@ const CLICK_LEVELS: { value: ClickLevel; label: string; hint: string }[] = [
 /** Une ligne de réglage : son nom, la commande, puis l'explication, et sa portée. */
 function Row({ label, htmlFor, hint, scope, children }: { label: string; htmlFor?: string; hint?: ReactNode; scope?: Scope; children: ReactNode }) {
   return (
-    <div className={"setting" + (scope?.mark ? ` ${scope.mark}` : "")}>
-      <label className="setting-label" htmlFor={htmlFor}>
+    <div className="group grid grid-cols-[8.5em_1fr] items-center gap-x-3 gap-y-0.5 py-2.5 border-b border-[#ecece8] last:border-b-0">
+      <label className={`font-semibold ${scope?.mark === "own" || scope?.mark === "overridden" ? "text-accent" : ""}`} htmlFor={htmlFor}>
         {label}
       </label>
-      <div className="setting-control">{children}</div>
-      {hint && <p className="setting-hint">{hint}</p>}
+      <div className={`flex items-center gap-2 min-w-0 ${scope?.mark === "follows" ? "opacity-75" : ""}`}>{children}</div>
+      {hint && <p className="col-start-2 m-0 text-muted text-[0.9em] leading-[1.35]">{hint}</p>}
       {scope?.line}
     </div>
   );
@@ -149,7 +158,7 @@ function Choice<T extends string>({ id, label, value, options, onChange, icon, s
   return (
     <Row label={label} htmlFor={id} hint={current.hint} scope={scope}>
       {icon?.(current.value)}
-      <select id={id} value={current.value} onChange={(e) => onChange(e.target.value as T)}>
+      <select className="flex-1 min-w-0 px-1.5 py-1 bg-white border border-line rounded" id={id} value={current.value} onChange={(e) => onChange(e.target.value as T)}>
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
@@ -163,7 +172,7 @@ function Choice<T extends string>({ id, label, value, options, onChange, icon, s
 function Check({ id, label, text, checked, onChange, hint, scope }: { id: string; label: string; text: string; checked: boolean; onChange: (v: boolean) => void; hint?: string; scope?: Scope }) {
   return (
     <Row label={label} hint={hint} scope={scope}>
-      <label className="check">
+      <label className="inline-flex items-center gap-1.5 cursor-pointer">
         <input type="checkbox" id={id} checked={checked} onChange={(e) => onChange(e.target.checked)} />
         {text}
       </label>
@@ -175,7 +184,7 @@ function Check({ id, label, text, checked, onChange, hint, scope }: { id: string
 function Flag({ colors }: { colors: OctaveColors }) {
   const stripes = Array.from({ length: 9 }, (_, k) => 4 - k).map((offset, k) => octaveTint(colors, offset)?.tab ?? (k % 2 ? "#ffffff" : "#e6e8e3"));
   return (
-    <svg className="flag" viewBox="0 0 24 18" preserveAspectRatio="none" aria-hidden>
+    <svg className="flex-none w-[38px] h-7" viewBox="0 0 24 18" preserveAspectRatio="none" aria-hidden>
       {stripes.map((c, k) => (
         <rect key={k} x={0} y={k * 2} width={24} height={2} fill={c} />
       ))}
@@ -250,7 +259,7 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
     const name = DESCRIBE[describe];
     const theirs = (o: Partial<RenderOptions>) => name({ ...general, ...o });
     const link = (text: string, run: () => void, title?: string) => (
-      <button className="link" onClick={run} title={title}>
+      <button className={LINK} onClick={run} title={title}>
         {text}
       </button>
     );
@@ -259,8 +268,8 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
         return {
           mark: "follows",
           line: (
-            <p className="setting-scope">
-              <span className="muted">option générale</span>
+            <p className={SCOPE}>
+              <span className="text-muted">option générale</span>
               {link("Définir pour la partition", () => piece.setPiece(pick(keys, general)), "La partition garde cette valeur, quelles que soient les options générales")}
             </p>
           ),
@@ -268,9 +277,9 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
       return {
         mark: "own",
         line: (
-          <p className="setting-scope">
-            <span className="badge">partition</span>
-            {same(keys) ? <span className="muted">comme l'option générale</span> : <span className="muted">générale : {theirs({})}</span>}
+          <p className={SCOPE}>
+            <span className={BADGE}>partition</span>
+            {same(keys) ? <span className="text-muted">comme l'option générale</span> : <span className="text-muted">générale : {theirs({})}</span>}
             {!same(keys) && link("Appliquer aux générales", () => piece.setGeneral(pick(keys, own)), "Cette valeur devient l'option générale, pour tous les morceaux")}
             {!same(keys) && link("Reprendre la générale", () => piece.setPiece(pick(keys, general)), "La partition prend la valeur de l'option générale, et la garde")}
             {link("Retirer", () => piece.unsetPiece(keys), "Retirer de la partition : elle suit alors l'option générale")}
@@ -283,9 +292,9 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
       return {
         mark: "overridden",
         line: (
-          <p className="setting-scope">
-            <span className="badge">partition : {theirs(own)}</span>
-            <span className="muted">elle prime sur cette option</span>
+          <p className={SCOPE}>
+            <span className={BADGE}>partition : {theirs(own)}</span>
+            <span className="text-muted">elle prime sur cette option</span>
             {link("Appliquer à la partition", () => piece.setPiece(pick(keys, general)), "La partition prend cette valeur")}
             {link("Reprendre la sienne", () => piece.setGeneral(pick(keys, own)), "L'option générale prend la valeur de la partition")}
           </p>
@@ -294,60 +303,60 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
     if (isOwn(keys))
       return {
         line: (
-          <p className="setting-scope">
-            <span className="badge">partition : idem</span>
+          <p className={SCOPE}>
+            <span className={BADGE}>partition : idem</span>
           </p>
         ),
       };
     // rien de propre à la partition : l'action ne paraît qu'au survol, pour ne pas encombrer
     return {
-      line: <p className="setting-scope quiet">{link("Appliquer à la partition", () => piece.setPiece(pick(keys, general)), "La partition garde cette valeur, quelles que soient les options générales")}</p>,
+      line: <p className="invisible col-start-1 row-start-2 self-start m-0 text-muted text-[0.8em] leading-[1.3] group-hover:visible group-focus-within:visible">{link("Appliquer à la partition", () => piece.setPiece(pick(keys, general)), "La partition garde cette valeur, quelles que soient les options générales")}</p>,
     };
   };
   const ownCount = Object.keys(own).length;
 
   return (
-    <aside id="options" className="drawer" aria-label="Options">
-      <header className="drawer-head">
-        <h2>Options</h2>
-        <button className="close" onClick={onClose} aria-label="Fermer les options" title="Fermer (Échap)">
+    <aside id="options" data-drawer className="print:hidden! absolute top-0 right-0 bottom-0 z-15 flex flex-col w-[min(440px,100%)] bg-panel border-l border-line shadow-[-8px_0_24px_rgba(0,0,0,0.08)]" aria-label="Options">
+      <header className="flex items-center justify-between px-4 pt-3 pb-1">
+        <h2 className="m-0 text-[1rem]">Options</h2>
+        <button className="w-7 h-7 p-0 text-[20px] leading-none text-muted bg-transparent border-0 rounded-md hover:bg-line hover:text-inherit" onClick={onClose} aria-label="Fermer les options" title="Fermer (Échap)">
           ×
         </button>
       </header>
-      <div className="portee" role="radiogroup" aria-label="Portée des options">
-        <button role="radio" aria-checked={!onPiece} className={!onPiece ? "on" : undefined} onClick={() => setPortee("general")} title="Les options de tous les morceaux">
+      <div className="flex mx-3 mt-0 mb-2 overflow-hidden border border-line rounded-md" role="radiogroup" aria-label="Portée des options">
+        <button role="radio" aria-checked={!onPiece} className={porteeButton(!onPiece)} onClick={() => setPortee("general")} title="Les options de tous les morceaux">
           Générales
         </button>
-        <button role="radio" aria-checked={onPiece} className={onPiece ? "on" : undefined} onClick={() => setPortee("piece")} title="Les options de la partition ouverte : elles priment sur les générales">
+        <button role="radio" aria-checked={onPiece} className={`${porteeButton(onPiece)} border-l border-line`} onClick={() => setPortee("piece")} title="Les options de la partition ouverte : elles priment sur les générales">
           Partition{ownCount ? ` (${ownCount})` : ""}
         </button>
       </div>
       {onPiece && (
-        <div className="piece-head">
-          <p className="piece-note">
+        <div className="mx-3 mt-0 mb-1.5">
+          <p className="mt-0 mb-0.5 text-[0.9em] text-muted leading-[1.4] wrap-anywhere">
             <strong>{piece.name}</strong> :{" "}
             {piece.where ? `ses options s'enregistrent à côté d'elle, dans ${piece.where}, et la suivent d'un ordinateur à l'autre.` : "ses options valent le temps qu'elle est ouverte ; ouverte depuis la bibliothèque, elle les garderait à côté d'elle."}
           </p>
-          <p className="piece-actions">
-            <button className="link" onClick={() => piece.setPiece(pick([...piece.keys], general))} title="Chaque option du rendu est définie pour la partition, avec la valeur générale actuelle">
+          <p className="flex gap-3 m-0 text-[0.9em]">
+            <button className={LINK} onClick={() => piece.setPiece(pick([...piece.keys], general))} title="Chaque option du rendu est définie pour la partition, avec la valeur générale actuelle">
               Tout définir pour la partition
             </button>
             {ownCount > 0 && (
-              <button className="link" onClick={() => piece.unsetPiece([...piece.keys])} title="La partition suit alors toutes les options générales">
+              <button className={LINK} onClick={() => piece.unsetPiece([...piece.keys])} title="La partition suit alors toutes les options générales">
                 Tout retirer
               </button>
             )}
           </p>
         </div>
       )}
-      <nav className="tabs" role="tablist">
+      <nav className="flex px-2 border-b border-line" role="tablist">
         {tabs.map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? "active" : undefined} onClick={() => setTab(t.id)}>
+          <button key={t.id} role="tab" aria-selected={tab === t.id} className={`flex-[1_1_auto] -mb-px px-1 py-2 whitespace-nowrap bg-transparent border-0 border-b-2 rounded-none ${tab === t.id ? "text-ink border-b-accent font-semibold" : "text-muted border-b-transparent hover:border-b-muted"}`} onClick={() => setTab(t.id)}>
             {t.label}
           </button>
         ))}
       </nav>
-      <div className="drawer-body" role="tabpanel">
+      <div className="overflow-auto px-4 pt-2 pb-4" role="tabpanel">
         {tab === "editing" && (
           <>
             <Check
@@ -451,8 +460,8 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
         {tab === "metronome" && (
           <>
             <Row label="Volume" htmlFor="click-volume" hint="par rapport aux instruments">
-              <input type="range" className="slider" id="click-volume" min={0} max={2} step={0.1} value={options.clickVolume} onChange={(e) => setOptions({ clickVolume: Number(e.target.value) })} aria-valuetext={`${Math.round(options.clickVolume * 100)} %`} />
-              <span className="slider-value">{Math.round(options.clickVolume * 100)} %</span>
+              <input type="range" className={SLIDER} id="click-volume" min={0} max={2} step={0.1} value={options.clickVolume} onChange={(e) => setOptions({ clickVolume: Number(e.target.value) })} aria-valuetext={`${Math.round(options.clickVolume * 100)} %`} />
+              <span className="min-w-[4.5em] text-ink">{Math.round(options.clickVolume * 100)} %</span>
             </Row>
             <Check id="count-in" label="Décompte" text="Une mesure avant de jouer" checked={options.countIn} onChange={(countIn) => setOptions({ countIn })} hint="au départ et à la reprise, même métronome coupé" />
             <Choice id="click-grid" label="Battre" value={options.clickGrid} options={CLICK_GRIDS} onChange={(clickGrid) => setOptions({ clickGrid })} />
@@ -463,7 +472,7 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
                   {/* du silence au plus aigu : un curseur, plus parlant qu'une liste pour cinq crans */}
                   <input
                     type="range"
-                    className="slider"
+                    className={SLIDER}
                     id={"click-" + l.value}
                     min={0}
                     max={CLICK_SOUNDS.length - 1}
@@ -472,7 +481,7 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
                     onChange={(e) => setOptions({ clickSounds: { ...options.clickSounds, [l.value]: CLICK_SOUNDS[Number(e.target.value)].value } })}
                     aria-valuetext={CLICK_SOUNDS[index]?.label}
                   />
-                  <span className="slider-value">{CLICK_SOUNDS[index]?.label}</span>
+                  <span className="min-w-[4.5em] text-ink">{CLICK_SOUNDS[index]?.label}</span>
                 </Row>
               );
             })}

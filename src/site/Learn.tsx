@@ -8,6 +8,14 @@ import { Engraving, Source } from "./Example.tsx";
 import { APP, Footer, Header } from "./Frame.tsx";
 import { CLAIR } from "./pieces.ts";
 import { referenceLink } from "./referenceLinks.ts";
+import { Actions } from "./Actions.tsx";
+import { ButtonLink } from "./ButtonLink.tsx";
+import { Idea } from "./Idea.tsx";
+import { IdeaText } from "./IdeaText.tsx";
+import { Lead } from "./Lead.tsx";
+
+/** Une case du tableau des notes. */
+const CELL = "px-[5px] py-[3px] border border-line text-center align-top whitespace-nowrap";
 
 type Step = { title: string; body: ReactNode; text: string; label: string };
 
@@ -22,18 +30,18 @@ const STEPS: Step[] = [
         <p>
           L'octave compte douze notes, de demi-ton en demi-ton, du <i>do</i> au <i>si</i>. Chacune porte un nombre, de <code>1</code> à <code>12</code>, et c'est tout ce qu'il faut pour la nommer.
         </p>
-        <table className="numbers" aria-label="Le nombre de chaque note">
+        <table className="block max-w-full overflow-x-auto mt-1 mb-4 text-[0.88rem]" aria-label="Le nombre de chaque note">
           <tbody>
             <tr>
               {NAMES.map((_, i) => (
-                <td key={i}>
+                <td key={i} className={`${CELL} font-bold`}>
                   <code>{i + 1}</code>
                 </td>
               ))}
             </tr>
             <tr>
               {NAMES.map((n) => (
-                <td key={n[0]}>
+                <td key={n[0]} className={CELL}>
                   {n.map((x, i) => (
                     <span key={x}>
                       {i > 0 && <br />}
@@ -196,33 +204,33 @@ export function Learn() {
   return (
     <>
       <Header />
-      <main className="learn">
-        <section className="intro">
+      <main>
+        <section>
           <h1>Apprendre pas à pas</h1>
-          <p className="lead">
+          <Lead>
             Huit étapes, une idée chacune. Ouvrez l'application à côté : copiez chaque exemple, collez-le dans l'éditeur, mettez en page (Ctrl+Entrée) et écoutez. Puis changez un
             nombre, et voyez ce qui change.
-          </p>
-          <p className="actions">
-            <a className="button primary" href={APP}>
+          </Lead>
+          <Actions>
+            <ButtonLink primary href={APP}>
               Ouvrir l'application
-            </a>
-          </p>
+            </ButtonLink>
+          </Actions>
         </section>
 
         {STEPS.map((s, i) => (
-          <section key={s.title} className="idea step">
-            <div className="idea-text">
+          <Idea key={s.title} kind="step">
+            <IdeaText>
               <h2>
                 {i + 1}. {s.title}
               </h2>
               {s.body}
-            </div>
-            <div className="step-example">
+            </IdeaText>
+            <div className="grid grid-cols-[minmax(0,1fr)] justify-items-start gap-3 min-w-0">
               <Source text={s.text} />
               <Engraving text={s.text} label={s.label} />
             </div>
-          </section>
+          </Idea>
         ))}
 
         <section>

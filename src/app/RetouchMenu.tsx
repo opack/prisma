@@ -10,9 +10,16 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MAX_FRET, midiOf, noteName } from "../core/index.ts";
 import type { NameDisplay } from "./options.ts";
 import { writtenNames } from "./options.ts";
-import { KeyboardPicker } from "./Keyboard.tsx";
+import { KeyboardPicker } from "./keyboard/KeyboardPicker.tsx";
 import { mainOf } from "../core/locate.ts";
 import { joinCell, splitCell } from "./retouch.ts";
+
+/** Le choix de la case (la note qu'elle a, la corde visée…) : marqué à la couleur de l'accent. */
+const CURRENT = "border-accent shadow-[inset_0_0_0_1px_var(--accent)]";
+/** Un ajout à la note : doigt, trille, petite note. */
+const ADD = "flex-1 px-0 py-0.5 font-mono";
+/** Raccourcir, allonger. */
+const STEP = "w-[30px] px-0 py-0.5 text-[15px] leading-none";
 import type { CellParts } from "./retouch.ts";
 
 type Props = {
@@ -97,30 +104,30 @@ export function RetouchMenu({ x, y, octave, strings, content, canHold, duration,
   const amend = (change: Partial<CellParts>) => parts && onAmend(joinCell({ ...parts, ...change }));
   const label = strings ? `corde ${target}${written === "none" ? "" : ` (${name(0, target)})`}` : octave === undefined ? "" : octave === 4 ? "octave 0" : `octave ${octave > 4 ? "+" : "−"}${Math.abs(octave - 4)}`;
   return (
-    <div ref={box} className="retouch-menu" role="dialog" aria-label="Note de la case" style={place} tabIndex={-1}>
-      <div className="retouch-title">
-        <p>
-          {strings ? "Case" : "Note de la case"} <span>{label}</span>
+    <div ref={box} className="fixed z-30 w-[300px] p-2.5 bg-white border border-line rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.16)] focus:outline-none" role="dialog" aria-label="Note de la case" style={place} tabIndex={-1}>
+      <div className="flex items-center justify-between mt-0 mb-2 text-[12.5px] font-semibold">
+        <p className="m-0">
+          {strings ? "Case" : "Note de la case"} <span className="ml-1 font-normal text-muted">{label}</span>
         </p>
         {octaves && (
-          <span className="retouch-octave">
-            <button onClick={() => onOctave(1)} disabled={!octaves.up} title={octaves.up ? "monter la note d'une octave, avec ses tenues" : "plus haut que le clavier"} aria-label="Une octave au-dessus">
+          <span className="flex gap-1">
+            <button className="px-2 py-px text-[11px]" onClick={() => onOctave(1)} disabled={!octaves.up} title={octaves.up ? "monter la note d'une octave, avec ses tenues" : "plus haut que le clavier"} aria-label="Une octave au-dessus">
               ▲
             </button>
-            <button onClick={() => onOctave(-1)} disabled={!octaves.down} title={octaves.down ? "descendre la note d'une octave, avec ses tenues" : "plus bas que le clavier"} aria-label="Une octave au-dessous">
+            <button className="px-2 py-px text-[11px]" onClick={() => onOctave(-1)} disabled={!octaves.down} title={octaves.down ? "descendre la note d'une octave, avec ses tenues" : "plus bas que le clavier"} aria-label="Une octave au-dessous">
               ▼
             </button>
           </span>
         )}
       </div>
       {strings && (
-        <div className="retouch-strings" role="group" aria-label="Corde">
+        <div className="grid grid-flow-col auto-cols-fr gap-1 mb-1.5 pb-1.5 border-b border-line" role="group" aria-label="Corde">
           {strings.open.map((_, k) => {
             const n = k + 1;
             return (
-              <button key={n} className={(n === target ? "current" : "") + (n === strings.string ? " home" : "")} disabled={!strings.free[k]} onClick={() => (setTarget(n), onTarget?.(n))} title={!strings.free[k] ? `la corde ${n} attaque déjà une note à cet instant` : n === strings.string ? "la corde de la note" : `montrer les cases de la corde ${n}, pour y placer la note`}>
-                <b>{n}</b>
-                {written !== "none" && <small>{name(0, n)}</small>}
+              <button key={n} className={`grid justify-items-center gap-px px-0 py-[3px] ${n === target ? CURRENT : ""}`} disabled={!strings.free[k]} onClick={() => (setTarget(n), onTarget?.(n))} title={!strings.free[k] ? `la corde ${n} attaque déjà une note à cet instant` : n === strings.string ? "la corde de la note" : `montrer les cases de la corde ${n}, pour y placer la note`}>
+                <b className={`font-mono text-[13px] ${n === strings.string ? "underline underline-offset-2" : ""}`}>{n}</b>
+                {written !== "none" && <small className="text-[10px] text-muted">{name(0, n)}</small>}
               </button>
             );
           })}
@@ -129,53 +136,53 @@ export function RetouchMenu({ x, y, octave, strings, content, canHold, duration,
       {names === "keyboard" && !strings ? (
         <KeyboardPicker current={current} onPick={onPick} />
       ) : (
-        <div className={"retouch-notes" + (written === "none" ? " bare" : "")}>
+        <div className="grid grid-cols-6 gap-1">
           {choices.map((n) => {
             const same = elsewhere && strings!.open[target - 1] + n === sounding;
-            const mark = !elsewhere && String(n) === current ? "current" : same ? "same" : undefined;
+            const mark = !elsewhere && String(n) === current ? CURRENT : same ? "border-dashed border-accent bg-accent-10" : "";
             const tip = same ? `${name(n, target)}, le même son` : name(n, target) || undefined;
             return (
-              <button key={n} className={mark} onClick={() => (strings ? onString(target, n) : onPick(String(n)))} title={tip}>
-                <b>{n}</b>
-                {written !== "none" && <small>{name(n, target)}</small>}
+              <button key={n} className={`grid justify-items-center gap-px px-0 ${written === "none" ? "py-[7px]" : "pt-[5px] pb-1"} ${mark}`} onClick={() => (strings ? onString(target, n) : onPick(String(n)))} title={tip}>
+                <b className="font-mono text-[15px]">{n}</b>
+                {written !== "none" && <small className="text-[10.5px] text-muted">{name(n, target)}</small>}
               </button>
             );
           })}
         </div>
       )}
-      {elsewhere && <p className="retouch-hint">Choisissez une case : la note passe sur la corde {target}, avec ses tenues, et coupe ce qui y sonnait encore.</p>}
+      {elsewhere && <p className="mt-2 mb-0 text-muted text-[12px] leading-[1.35]">Choisissez une case : la note passe sur la corde {target}, avec ses tenues, et coupe ce qui y sonnait encore.</p>}
       {parts && !elsewhere && (
-        <div className="retouch-adds">
-          <span>Doigt</span>
-          <div>
+        <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1 mt-2 pt-2 text-[13px] border-t border-line">
+          <span className="text-muted">Doigt</span>
+          <div className="flex gap-1">
             {(strings ? [1, 2, 3, 4] : [1, 2, 3, 4, 5]).map((f) => (
-              <button key={f} className={parts.finger === String(f) ? "current" : undefined} onClick={() => amend({ finger: parts.finger === String(f) ? undefined : String(f) })} title={parts.finger === String(f) ? "retirer le doigté" : `jouer avec le doigt ${f}`}>
+              <button key={f} className={`${ADD} ${parts.finger === String(f) ? CURRENT : ""}`} onClick={() => amend({ finger: parts.finger === String(f) ? undefined : String(f) })} title={parts.finger === String(f) ? "retirer le doigté" : `jouer avec le doigt ${f}`}>
                 {f}
               </button>
             ))}
           </div>
-          <span>Trille</span>
-          <div>
+          <span className="text-muted">Trille</span>
+          <div className="flex gap-1">
             {[1, 2, -1, -2].map((d) => {
               const v = near(Number(parts.note) + d);
               if (v === undefined) return null;
               const m = String(v);
               return (
-                <button key={d} className={parts.trill === m ? "current" : undefined} onClick={() => amend({ trill: parts.trill === m ? undefined : m })} title={parts.trill === m ? "retirer la trille" : `alterner avec ${neighbour(Number(m))}`}>
+                <button key={d} className={`${ADD} ${parts.trill === m ? CURRENT : ""}`} onClick={() => amend({ trill: parts.trill === m ? undefined : m })} title={parts.trill === m ? "retirer la trille" : `alterner avec ${neighbour(Number(m))}`}>
                   ~{m}
                 </button>
               );
             })}
           </div>
-          <span>Petite note</span>
-          <div>
+          <span className="text-muted">Petite note</span>
+          <div className="flex gap-1">
             {[-2, -1, 1, 2]
               .map((d) => Number(parts.note) + d)
               .filter((g) => (strings ? g >= 0 && g <= MAX_FRET : g >= 1 && g <= 12))
               .map((g) => {
                 const on = parts.graces.includes(String(g));
                 return (
-                  <button key={g} className={on ? "current" : undefined} onClick={() => amend({ graces: on ? parts.graces.filter((x) => x !== String(g)) : [...parts.graces, String(g)] })} title={on ? "retirer cette petite note" : `${name(g) || g} joué très vite juste avant`}>
+                  <button key={g} className={`${ADD} ${on ? CURRENT : ""}`} onClick={() => amend({ graces: on ? parts.graces.filter((x) => x !== String(g)) : [...parts.graces, String(g)] })} title={on ? "retirer cette petite note" : `${name(g) || g} joué très vite juste avant`}>
                     {g}&#8217;
                   </button>
                 );
@@ -184,34 +191,34 @@ export function RetouchMenu({ x, y, octave, strings, content, canHold, duration,
         </div>
       )}
       {duration && !elsewhere && (
-        <div className="retouch-duration">
-          <span>Durée</span>
-          <button onClick={() => onResize(-1)} disabled={!duration.shorter} title={duration.shorter ? "raccourcir d'une case : la dernière tenue s'efface" : "la note ne dure qu'une case"} aria-label="Raccourcir d'une case">
+        <div className="flex items-center gap-1.5 mt-2 pt-2 text-[13px] border-t border-line">
+          <span className="flex-1 text-muted">Durée</span>
+          <button className={STEP} onClick={() => onResize(-1)} disabled={!duration.shorter} title={duration.shorter ? "raccourcir d'une case : la dernière tenue s'efface" : "la note ne dure qu'une case"} aria-label="Raccourcir d'une case">
             −
           </button>
-          <b>
+          <b className="min-w-[5.5em] text-center font-semibold">
             {duration.count} case{duration.count > 1 ? "s" : ""}
           </b>
-          <button onClick={() => onResize(1)} disabled={!duration.longer} title={duration.longer ? "allonger d'une case : une tenue de plus (sur une autre ligne de l'octave si la case d'après est prise)" : "la note va jusqu'au bout du morceau"} aria-label="Allonger d'une case">
+          <button className={STEP} onClick={() => onResize(1)} disabled={!duration.longer} title={duration.longer ? "allonger d'une case : une tenue de plus (sur une autre ligne de l'octave si la case d'après est prise)" : "la note va jusqu'au bout du morceau"} aria-label="Allonger d'une case">
             +
           </button>
         </div>
       )}
       {!!holds?.length && !elsewhere && (
-        <div className="retouch-holds">
+        <div className="grid gap-1 mt-2 pt-2 border-t border-line">
           {holds.map((n) => (
-            <button key={n} onClick={() => onHold(n)} title={`le ${n} de la case d'avant continue dans celle-ci`}>
-              Tenir le {n} <small>{name(Number(n))}</small>
+            <button key={n} className="text-left" onClick={() => onHold(n)} title={`le ${n} de la case d'avant continue dans celle-ci`}>
+              Tenir le {n} <small className="ml-1 text-muted">{name(Number(n))}</small>
             </button>
           ))}
         </div>
       )}
       {!elsewhere && (
-        <div className="retouch-more">
-          <button className={current === "-" ? "current" : undefined} disabled={!canHold} onClick={() => onPick("-")} title={canHold ? "la note de la case d'avant continue" : "aucune note à prolonger dans la case d'avant"}>
+        <div className="flex gap-1 mt-1.5">
+          <button className={`flex-1 px-0 py-1 ${current === "-" ? CURRENT : ""}`} disabled={!canHold} onClick={() => onPick("-")} title={canHold ? "la note de la case d'avant continue" : "aucune note à prolonger dans la case d'avant"}>
             – Tenue
           </button>
-          <button disabled={!content} onClick={() => onPick("")} title="rien ne sonne dans cette case sur cette ligne">
+          <button className="flex-1 px-0 py-1" disabled={!content} onClick={() => onPick("")} title="rien ne sonne dans cette case sur cette ligne">
             Vider
           </button>
         </div>

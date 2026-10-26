@@ -20,6 +20,7 @@ npm test           # les tests (Vitest)
 npm run typecheck  # la vérification des types (tsc)
 npm run build      # tsc, puis le site et l'application dans dist/
 npm run preview    # sert dist/ pour l'essayer
+npm run visual     # le banc de captures (Playwright), voir Tests
 ```
 
 L'outil en ligne de commande :
@@ -114,7 +115,8 @@ Cinq pages à la racine (`index.html`, `apprendre.html`, `reference.html`, `guit
 
 - **TypeScript partout, sans étape de compilation pour le code Node** : les types sont « effaçables » (`erasableSyntaxOnly`), si bien que Node exécute directement l'outil en ligne de commande.
 - **`core/` ne dépend de rien d'autre** : ni de React, ni du navigateur. Il sert à l'application, au site, à l'outil en ligne de commande et aux tests.
-- **Peu de dépendances** : React, CodeMirror, smplr (le son), fast-xml-parser (MusicXML), marked (la référence). L'en-tête, la mise en page et la gravure sont faits à la main.
+- **Peu de dépendances** : React, CodeMirror, smplr (le son), fast-xml-parser (MusicXML), marked (la référence), Tailwind (les styles). L'en-tête, la mise en page et la gravure sont faits à la main.
+- **Les styles en classes Tailwind**, posées sur les composants, avec des couleurs et des polices communes à l'application et au site (`src/tailwind.css` : `text-ink`, `bg-panel`, `border-line`, `text-accent`, `font-mono`…, d'après les variables de chaque feuille de style) ; ce que plusieurs écrans partagent est un composant, qui porte son style, un par fichier (sa cuisine interne, non exportée, avec lui), une famille par répertoire : `app/dialog/` (`Dialog`, `Choices`, `SelectField`…), `app/popover/` (`Popover`, `usePopover`…), `app/keyboard/`, et `IconButton`, `BackButton`, `site/ButtonLink`, `site/Idea`… Restent en CSS ce que les classes disent mal : la mise en page de la vue principale (l'éditeur et les pages, leurs ajustements, le zoom, le glissé de la barre), la gravure, le thème de l'éditeur (CodeMirror), l'impression, la référence (du Markdown rendu) et le tableau de la comparaison, qui se replie sur un téléphone. Le CSS est rangé en couches (`@layer theme, base, components, utilities`) : les classes de Tailwind passent par-dessus, sans `!important`. Le *preflight* de Tailwind remet les éléments à zéro ; ce qu'il change à l'œil est rétabli comme le navigateur le donnait : le gras des titres, l'interligne de l'application, les marges des cases à cocher et des curseurs, et, dans la référence et sur le site, les paragraphes, les listes et les liens soulignés. Une classe de CSS ne doit pas porter le nom d'une classe de Tailwind (`fixed`, `hidden`…) : Tailwind la prendrait pour la sienne.
 - **Le texte est la source** : la partition, l'écoute, la barre de statut et la retouche en découlent. La retouche écrit dans le texte, elle ne modifie jamais la partition directement.
 - **Pas de compatibilité ascendante** : quand le format change, l'ancienne écriture n'est plus lue. La version du format est écrite dans l'en-tête (`format: 1`).
 - **Un signe, un sens** : dans le format, un signe ne veut dire qu'une chose. C'est ce qui guide le choix de chaque nouveau signe.
@@ -124,6 +126,17 @@ Cinq pages à la racine (`index.html`, `apprendre.html`, `reference.html`, `guit
 `npm test` lance Vitest sur `tests/`. L'essentiel est dans `core.test.ts`, organisé par sujet : règles du format, reprises et sections, import MusicXML (avec la Gymnopédie n° 1 de Satie en exemple), nuances, pédale, ornements, accords, paroles, et l'écoute (déroulé, intensités, métronome…). `export.test.ts` fait l'aller-retour de l'export : la Gymnopédie et chaque exemple de la référence, exportés puis réimportés, redonnent les mêmes notes, les mêmes indications, les mêmes sections et le même ordre de jeu. `strings.test.ts` couvre les instruments à cordes : cordes et cases, accordage et capo, erreurs, parties mêlées, import, export, conversion. `techniques.test.ts` couvre les techniques des cordes : leur écriture, leurs erreurs, l'écoute, MusicXML. `shapes.test.ts` couvre les grilles d'accords : leur écriture, les formes choisies, le capo et l'accordage, les erreurs, MusicXML. Les autres fichiers couvrent les erreurs en une passe, la complétion, le chemin de la partition au texte, la retouche et les réglages d'un morceau.
 
 `reference.test.ts` vérifie chaque exemple de la référence : il doit se lire sans erreur et être écrit exactement comme l'application l'écrirait. La documentation ne peut donc pas montrer un exemple faux ou mal mis en forme.
+
+Le banc de captures (`npm run visual`, Playwright, `tests/visual/`) photographie chaque page du site (au bureau et sur un téléphone), les écrans et panneaux de l'application, et la gravure d'un petit corpus, en impression comprise, et compare chaque capture pixel à pixel à sa référence. Il sert aux refontes qui ne doivent rien changer à l'œil : les références se prennent sur le code de départ, dans un `git worktree` à côté, puis le code modifié s'y compare.
+
+```sh
+npx playwright install chromium                    # une fois
+git worktree add ../prisma-reference HEAD          # le code de départ (npm install dedans)
+VISUAL_ROOT=../prisma-reference npm run visual:reference
+npm run visual                                     # les écarts : test-results/visual-report
+```
+
+Sous PowerShell : `$env:VISUAL_ROOT = "../prisma-reference"; npm run visual:reference`, puis `Remove-Item Env:VISUAL_ROOT`. Les captures et les écarts restent hors du dépôt.
 
 ## Contribuer
 

@@ -16,7 +16,7 @@ import type { Diagnostic } from "@codemirror/lint";
 import { inspect, octaveOffset, parseErrors } from "../core/index.ts";
 import type { NameDisplay } from "./options.ts";
 import { writtenNames } from "./options.ts";
-import { MiniKeyboard } from "./Keyboard.tsx";
+import { MiniKeyboard } from "./keyboard/MiniKeyboard.tsx";
 import { staffNames } from "./staves.ts";
 import { messageNode } from "./message.tsx";
 import { completion } from "./completion.ts";
@@ -244,18 +244,19 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
 
   return (
     <>
-      <div className="editor">
+      <div className="relative grid grid-cols-[minmax(0,1fr)] min-h-0">
+        {/* editor-host : le crochet des styles de CodeMirror (styles.css) */}
         <div className="editor-host" ref={host} />
         {children}
       </div>
-      <div className="status" role="status" aria-live="polite">
-        <span className="status-where">
+      <div className="flex items-baseline gap-4 min-w-0 px-3 py-[5px] text-[12px] text-muted whitespace-nowrap bg-panel border-t border-line" role="status" aria-live="polite">
+        <span className="flex-none">
           Ligne {info.line}, col. {info.column}
           {where.length > 0 && <span> · {where.join(" · ")}</span>}
         </span>
         {info.symbol && (
-          <span className="status-what" title={`${short(info.symbol.text)} : ${info.symbol.meaning}`}>
-            <code>{short(info.symbol.text)}</code>
+          <span className="min-w-0 overflow-hidden text-ellipsis text-ink" title={`${short(info.symbol.text)} : ${info.symbol.meaning}`}>
+            <code className="px-1 font-mono font-semibold bg-white border border-line rounded-[3px]">{short(info.symbol.text)}</code>
             {noteNames === "keyboard" && (info.symbol.keys || info.symbol.graces) && <MiniKeyboard keys={info.symbol.keys ?? []} trill={info.symbol.trill} graces={info.symbol.graces} />} {info.symbol.meaning}
           </span>
         )}

@@ -65,19 +65,19 @@ export function FocusView({ pages, options }: { pages: Page[]; options: RenderOp
   const top = (ps: PlacedSystem) => ps.y - frame.pad - (frame.h - 2 * frame.pad - ps.height) / 2;
 
   return (
-    <div className={"focus" + (order.length ? " with-order" : "")}>
+    <div className={`print:hidden! grid flex-1 self-stretch gap-3 w-full min-h-0 ${order.length ? "grid-rows-[auto_1fr_1fr]" : "grid-rows-[1fr_1fr]"}`}>
       {/* l'ordre de jeu, comme en tête de page : la section jouée entourée, un clic pour y aller */}
       {order.length > 0 && (
-        <svg className="focus-order" viewBox={`${frame.x0} 0 ${frame.w} 6.6`} fontFamily={FONT}>
+        <svg className="block w-full h-auto max-h-[48px]" viewBox={`${frame.x0} 0 ${frame.w} 6.6`} fontFamily={FONT}>
           <OrderLine order={order} y={1.6} cx={frame.x0 + frame.w / 2} live />
         </svg>
       )}
       {slots.map((k, place) => {
         const ps: PlacedSystem | undefined = systems[k];
         // la place qu'on ne joue pas : le système à venir, à peine atténué, ou celui qu'on vient de jouer, effacé
-        const role = cur < 0 || k === cur ? "" : k === after(cur) ? " next" : " past";
+        const role = cur < 0 || k === cur ? "" : k === after(cur) ? "opacity-80" : "opacity-35";
         return (
-          <div key={`${place}:${k}`} className={"focus-place" + role}>
+          <div key={`${place}:${k}`} className={`min-h-0 bg-white shadow-[0_1px_3px_rgba(0,0,0,.18),0_6px_18px_rgba(0,0,0,.08)] [transition:opacity_.3s] animate-[focus-in_.35s_ease-out] [&_svg]:block [&_svg]:w-full [&_svg]:h-full ${role}`}>
             {ps && (
               // centré dans sa place : la place a la hauteur du plus haut système
               <svg viewBox={`${frame.x0} ${top(ps)} ${frame.w} ${frame.h}`} preserveAspectRatio="xMidYMid meet" fontFamily={FONT} style={{ fontVariantNumeric: "tabular-nums" }}>

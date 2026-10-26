@@ -11,11 +11,21 @@ import { CheckIcon, CopyIcon } from "../app/icons.tsx";
 import { Excerpt } from "../app/PageView.tsx";
 import { DEFAULT_OPTIONS, alignOf } from "../app/options.ts";
 import type { RenderOptions } from "../app/options.ts";
+import { Caption } from "./Caption.tsx";
+import { SourceText } from "./SourceText.tsx";
 
-type Engraved = { text: string; options?: Partial<RenderOptions>; scale?: number; label: string };
+/**
+ * Le cadre d'une gravure ; dans la référence, il garde les marges et la grille de ses exemples.
+ * La gravure y tient sa largeur, sauf sur un écran étroit, où le cadre défile.
+ */
+function frame(guide = false): string {
+  return `justify-self-start w-fit max-w-full p-4 border border-line rounded-[10px] bg-white overflow-x-auto [&_.excerpt]:block [&_.excerpt]:max-w-full [&_.excerpt]:h-auto narrow:[&_.excerpt]:max-w-none ${guide ? "mt-[14px] mb-5 grid gap-2.5 justify-items-start" : "m-0"}`;
+}
+
+type Engraved = { text: string; options?: Partial<RenderOptions>; scale?: number; label: string; guide?: boolean };
 
 /** La gravure seule. */
-function Score({ text, options = {}, scale = 1.5 }: Omit<Engraved, "label">) {
+function Score({ text, options = {}, scale = 1.5 }: Omit<Engraved, "label" | "guide">) {
   const o = { ...DEFAULT_OPTIONS, ...options };
   const result = useMemo(() => {
     try {
@@ -24,13 +34,13 @@ function Score({ text, options = {}, scale = 1.5 }: Omit<Engraved, "label">) {
       return { error: (e as Error).message };
     }
   }, [text, o.density, o.chords, o.chordNames, o.notePosition, o.holdReminders, o.sections]);
-  return result.pages ? <Excerpt pages={result.pages} options={o} scale={scale} /> : <p className="caption">{result.error}</p>;
+  return result.pages ? <Excerpt pages={result.pages} options={o} scale={scale} /> : <Caption>{result.error}</Caption>;
 }
 
 /** La gravure dans son cadre, sans son texte. */
-export function Engraving({ label, ...rest }: Engraved) {
+export function Engraving({ label, guide, ...rest }: Engraved) {
   return (
-    <figure className="example" aria-label={label}>
+    <figure className={frame(guide)} aria-label={label}>
       <Score {...rest} />
     </figure>
   );
@@ -53,7 +63,7 @@ function CopyButton({ text, target }: { text: string; target: React.RefObject<HT
   };
   const name = copied ? "Copié" : "Copier le texte";
   return (
-    <button type="button" className="copy" onClick={copy} aria-label={name} title={name}>
+    <button type="button" className="absolute top-2 right-2 grid place-items-center w-8 h-8 p-0 border border-line rounded-md bg-white text-accent cursor-pointer hover:border-accent" onClick={copy} aria-label={name} title={name}>
       {copied ? <CheckIcon /> : <CopyIcon />}
     </button>
   );
@@ -64,26 +74,26 @@ export function Source({ text, header = true }: { text: string; header?: boolean
   const pre = useRef<HTMLPreElement>(null);
   const shown = header ? text : text.replace(/^---[\s\S]*?---\n+/, "");
   return (
-    <div className="source">
-      <pre ref={pre} className="source-text">
+    <div className="relative justify-self-start w-fit max-w-full min-w-0">
+      <SourceText ref={pre} withButton>
         {shown.trimEnd()}
-      </pre>
+      </SourceText>
       <CopyButton text={text} target={pre} />
     </div>
   );
 }
 
 /** Un exemple : sa partition, ou son texte, au choix. */
-export function Example({ label, text, ...rest }: Engraved) {
+export function Example({ label, text, guide, ...rest }: Engraved) {
   const [view, setView] = useState<"score" | "text">("score");
   const tab = (v: typeof view, name: ReactNode) => (
-    <button type="button" role="tab" aria-selected={view === v} className={view === v ? "on" : undefined} onClick={() => setView(v)}>
+    <button type="button" role="tab" aria-selected={view === v} className={`text-[0.85rem] px-2.5 py-[3px] border-0 rounded-[5px] cursor-pointer ${view === v ? "bg-panel text-ink font-bold" : "bg-transparent text-muted"}`} onClick={() => setView(v)}>
       {name}
     </button>
   );
   return (
-    <figure className="example" aria-label={label}>
-      <div className="views" role="tablist" aria-label="Afficher">
+    <figure className={frame(guide)} aria-label={label}>
+      <div className="flex justify-end justify-self-stretch gap-0.5 -mt-1.5 -mr-1.5 mb-2" role="tablist" aria-label="Afficher">
         {tab("score", "Partition")}
         {tab("text", "Texte")}
       </div>

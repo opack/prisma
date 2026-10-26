@@ -2,7 +2,7 @@
  * La bibliothèque : les morceaux du dossier choisi, rangés par sous-dossier, à chercher et à
  * trier, en liste ou en vignettes (le haut de leur première page) ; un clic ouvre le morceau.
  */
-import { BackIcon, FolderIcon, RefreshIcon } from "./icons.tsx";
+import { FolderIcon, RefreshIcon } from "./icons.tsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageView } from "./PageView.tsx";
 import type { RenderOptions } from "./options.ts";
@@ -10,6 +10,21 @@ import { engraveOptions } from "./render.ts";
 import { thumbOf } from "./thumbs.ts";
 import type { Thumb } from "./thumbs.ts";
 import { access, canUseLibrary, pickFolder, recentOpenings, savedFolder, scan } from "./library.ts";
+import { BackButton } from "./BackButton.tsx";
+import { IconButton } from "./IconButton.tsx";
+
+/** Une explication de la bibliothèque (le dossier à choisir, à autoriser…). */
+const NOTE = "text-muted leading-[1.5]";
+const ACTION = "bg-accent border-accent text-white hover:border-muted";
+/** Afficher, Trier par : leur nom, puis leur liste. */
+const TOOL = "flex items-center gap-2 text-muted whitespace-nowrap";
+const SELECT = "px-1.5 py-[5px] bg-white border border-line rounded";
+/** En liste, en vignettes. */
+const viewButton = (on: boolean) => `flex items-center px-[9px] py-1.5 ${on ? "relative text-accent bg-accent-12 border-accent" : "text-muted"}`;
+/** Un morceau, en ligne ou en vignette : tout le bouton se clique. */
+const ENTRY = "w-full text-left bg-transparent border-0 hover:bg-panel";
+/** Le fichier du morceau, son type, sa date. */
+const META = "col-span-full flex items-center gap-2.5 text-muted";
 import type { LibraryEntry } from "./library.ts";
 
 type Sort = "title" | "composer" | "recent";
@@ -154,52 +169,50 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
   const total = (k: Kinds) => (state.kind === "ready" ? state.entries.filter((e) => k === "all" || e.kind === k).length : 0);
 
   return (
-    <main className="library-pane">
-      <button className="back icon" onClick={onClose} title="Retour à la partition (Ctrl+B)" aria-label="Retour à la partition">
-        <BackIcon />
-      </button>
-      <div className="library">
-        <header className="library-head">
-          <h1>Bibliothèque</h1>
+    <main data-library className="flex-1 overflow-auto bg-white">
+      <BackButton onClick={onClose} shortcut="Ctrl+B" />
+      <div className="max-w-[860px] mx-auto px-8 pt-2 pb-16">
+        <header>
+          <h1 className="mx-0 mt-2 mb-1 text-[26px]">Bibliothèque</h1>
           {(state.kind === "ready" || state.kind === "locked") && (
-            <p className="library-folder">
+            <p className="flex flex-wrap items-center gap-2 mt-0 mb-4 text-muted">
               Dossier « {state.dir.name} »
-              <button className="icon" onClick={choose} title="Changer de dossier" aria-label="Changer de dossier">
+              <IconButton label="Changer de dossier" onClick={choose}>
                 <FolderIcon />
-              </button>
+              </IconButton>
               {state.kind === "ready" && (
-                <button className="icon" onClick={() => load(state.dir)} title="Actualiser : relire le dossier" aria-label="Actualiser">
+                <IconButton label="Actualiser" title="Actualiser : relire le dossier" onClick={() => load(state.dir)}>
                   <RefreshIcon />
-                </button>
+                </IconButton>
               )}
             </p>
           )}
         </header>
 
         {state.kind === "unsupported" && (
-          <p className="library-note">La bibliothèque a besoin de garder l'accès à un dossier de votre disque, ce que seuls Chrome et Edge savent faire. Ici, ouvrez vos morceaux par Fichier › Ouvrir, ou en les glissant dans la fenêtre.</p>
+          <p className={NOTE}>La bibliothèque a besoin de garder l'accès à un dossier de votre disque, ce que seuls Chrome et Edge savent faire. Ici, ouvrez vos morceaux par Fichier › Ouvrir, ou en les glissant dans la fenêtre.</p>
         )}
-        {state.kind === "loading" && <p className="library-note">Lecture du dossier…</p>}
+        {state.kind === "loading" && <p className={NOTE}>Lecture du dossier…</p>}
         {state.kind === "none" && (
-          <div className="library-note">
-            <p>Choisissez le dossier où vous rangez vos partitions (.prisma et MusicXML) : la bibliothèque les montre toutes, sous-dossiers compris. Les fichiers restent où ils sont.</p>
-            <button className="library-action" onClick={choose}>
+          <div className={NOTE}>
+            <p className="mt-0 mb-3">Choisissez le dossier où vous rangez vos partitions (.prisma et MusicXML) : la bibliothèque les montre toutes, sous-dossiers compris. Les fichiers restent où ils sont.</p>
+            <button className={ACTION} onClick={choose}>
               Choisir un dossier
             </button>
           </div>
         )}
         {state.kind === "locked" && (
-          <div className="library-note">
-            <p>Le navigateur demande de confirmer l'accès au dossier « {state.dir.name} ».</p>
-            <button className="library-action" onClick={() => load(state.dir, true)}>
+          <div className={NOTE}>
+            <p className="mt-0 mb-3">Le navigateur demande de confirmer l'accès au dossier « {state.dir.name} ».</p>
+            <button className={ACTION} onClick={() => load(state.dir, true)}>
               Autoriser l'accès
             </button>
           </div>
         )}
         {state.kind === "error" && (
-          <div className="library-note">
-            <p>Lecture du dossier impossible : {state.message}</p>
-            <button className="library-action" onClick={choose}>
+          <div className={NOTE}>
+            <p className="mt-0 mb-3">Lecture du dossier impossible : {state.message}</p>
+            <button className={ACTION} onClick={choose}>
               Choisir un dossier
             </button>
           </div>
@@ -207,19 +220,19 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
 
         {state.kind === "ready" && (
           <>
-            <div className="library-tools">
-              <input type="search" placeholder="Chercher un titre, un compositeur…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Chercher" autoFocus />
-              <label>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2.5 mt-0 mb-5">
+              <input className="flex-[1_1_100%] min-w-0 px-2.5 py-[7px] border border-line rounded" type="search" placeholder="Chercher un titre, un compositeur…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Chercher" autoFocus />
+              <label className={TOOL}>
                 Afficher
-                <select value={kinds} onChange={(e) => setKinds(e.target.value as Kinds)}>
+                <select className={SELECT} value={kinds} onChange={(e) => setKinds(e.target.value as Kinds)}>
                   <option value="all">Tout ({total("all")})</option>
                   <option value="prisma">Partitions Prisma ({total("prisma")})</option>
                   <option value="musicxml">MusicXML à importer ({total("musicxml")})</option>
                 </select>
               </label>
-              <label>
+              <label className={TOOL}>
                 Trier par
-                <select value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
+                <select className={SELECT} value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
                   {SORTS.map((s) => (
                     <option key={s.value} value={s.value}>
                       {s.label}
@@ -228,60 +241,60 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
                 </select>
               </label>
               {view === "thumbs" && (
-                <label className="check" title="Les vignettes montrent chaque partition avec ses propres options, si elle en a ; sinon avec les options générales">
+                <label className="inline-flex items-center gap-1.5 text-muted whitespace-nowrap cursor-pointer" title="Les vignettes montrent chaque partition avec ses propres options, si elle en a ; sinon avec les options générales">
                   <input type="checkbox" checked={thumbsOwn} onChange={(e) => setThumbsOwn(e.target.checked)} />
                   Options de chaque partition
                 </label>
               )}
-              <span className="library-view" role="group" aria-label="Présentation">
-                <button className={view === "list" ? "on" : undefined} aria-pressed={view === "list"} onClick={() => setView("list")} title="En liste" aria-label="En liste">
+              <span className="flex ml-auto" role="group" aria-label="Présentation">
+                <button className={`${viewButton(view === "list")} rounded-[4px_0_0_4px]`} aria-pressed={view === "list"} onClick={() => setView("list")} title="En liste" aria-label="En liste">
                   <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
                     <path fill="currentColor" d="M1.5 3h2v2h-2zM5.5 3.25h9v1.5h-9zM1.5 7h2v2h-2zM5.5 7.25h9v1.5h-9zM1.5 11h2v2h-2zM5.5 11.25h9v1.5h-9z" />
                   </svg>
                 </button>
-                <button className={view === "thumbs" ? "on" : undefined} aria-pressed={view === "thumbs"} onClick={() => setView("thumbs")} title="En vignettes : le haut de la première page" aria-label="En vignettes">
+                <button className={`${viewButton(view === "thumbs")} -ml-px rounded-[0_4px_4px_0]`} aria-pressed={view === "thumbs"} onClick={() => setView("thumbs")} title="En vignettes : le haut de la première page" aria-label="En vignettes">
                   <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
                     <path fill="currentColor" d="M1.5 1.5h5.5v5.5h-5.5zM9 1.5h5.5v5.5H9zM1.5 9h5.5v5.5h-5.5zM9 9h5.5v5.5H9z" />
                   </svg>
                 </button>
               </span>
             </div>
-            {!state.entries.length && <p className="library-note">Aucune partition (.prisma ou MusicXML) dans ce dossier.</p>}
+            {!state.entries.length && <p className={NOTE}>Aucune partition (.prisma ou MusicXML) dans ce dossier.</p>}
             {state.entries.length > 0 && !count && (
-              <p className="library-note">{query.trim() ? `Aucun morceau ne correspond à « ${query.trim()} ».` : kinds === "prisma" ? "Aucune partition Prisma dans ce dossier." : "Aucun MusicXML à importer dans ce dossier."}</p>
+              <p className={NOTE}>{query.trim() ? `Aucun morceau ne correspond à « ${query.trim()} ».` : kinds === "prisma" ? "Aucune partition Prisma dans ce dossier." : "Aucun MusicXML à importer dans ce dossier."}</p>
             )}
             {groups.map((g) => (
-              <section key={g.folder} className="library-group">
-                {g.folder && <h2>{g.folder}</h2>}
+              <section key={g.folder}>
+                {g.folder && <h2 className="mx-0 mt-6 mb-1.5 text-[13px] uppercase tracking-[.06em] text-muted">{g.folder}</h2>}
                 {view === "thumbs" ? (
-                  <ul className="library-cards">
+                  <ul className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-[18px] m-0 px-0 pt-1 pb-0 list-none">
                     {g.entries.map((e) => (
                       <li key={e.path}>
-                        <button onClick={() => onOpen(e)} title={e.path}>
+                        <button className={`flex flex-col gap-0.5 h-full p-2 rounded-md ${ENTRY}`} onClick={() => onOpen(e)} title={e.path}>
                           <ThumbView entry={e} options={thumbsOwn && e.own ? { ...options, ...e.own } : options} />
-                          <span className="library-title">{titleOf(e)}</span>
-                          <span className="library-composer">{e.composer ?? "\u00a0"}</span>
-                          <span className="library-meta">
+                          <span className="font-semibold">{titleOf(e)}</span>
+                          <span className="text-left text-[13px] text-muted">{e.composer ?? "\u00a0"}</span>
+                          <span className={`${META} flex-wrap text-[11px]`}>
                             {sort === "recent" && e.folder ? `${e.folder}/` : ""}
                             {e.name}
-                            {e.kind === "musicxml" && <span className="library-badge">à importer</span>}
+                            {e.kind === "musicxml" && <span className="px-1.5 rounded-[3px] bg-accent-12 text-accent">à importer</span>}
                           </span>
                         </button>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                <ul>
+                <ul className="m-0 p-0 list-none border-t border-line">
                   {g.entries.map((e) => (
-                    <li key={e.path}>
-                      <button onClick={() => onOpen(e)} title={e.path}>
-                        <span className="library-title">{titleOf(e)}</span>
-                        {e.composer && <span className="library-composer">{e.composer}</span>}
-                        <span className="library-meta">
+                    <li key={e.path} className="border-b border-line">
+                      <button className={`grid grid-cols-[1fr_auto] gap-x-4 gap-y-0.5 px-2 py-2.5 rounded-none ${ENTRY}`} onClick={() => onOpen(e)} title={e.path}>
+                        <span className="font-semibold">{titleOf(e)}</span>
+                        {e.composer && <span className="text-right text-muted">{e.composer}</span>}
+                        <span className={`${META} text-[12px]`}>
                           {sort === "recent" && e.folder ? `${e.folder}/` : ""}
                           {e.name}
-                          {e.kind === "musicxml" && <span className="library-badge">à importer</span>}
-                          <span className="library-date">{new Date(e.modified).toLocaleDateString("fr-FR")}</span>
+                          {e.kind === "musicxml" && <span className="px-1.5 rounded-[3px] bg-accent-12 text-accent">à importer</span>}
+                          <span className="ml-auto">{new Date(e.modified).toLocaleDateString("fr-FR")}</span>
                         </span>
                       </button>
                     </li>
@@ -309,7 +322,7 @@ function ThumbView({ entry, options }: { entry: LibraryEntry; options: RenderOpt
   useEffect(() => {
     const el = ref.current;
     if (!el || visible) return;
-    const seen = new IntersectionObserver(([e]) => e.isIntersecting && setVisible(true), { root: el.closest(".library-pane"), rootMargin: "300px" });
+    const seen = new IntersectionObserver(([e]) => e.isIntersecting && setVisible(true), { root: el.closest("[data-library]"), rootMargin: "300px" });
     seen.observe(el);
     return () => seen.disconnect();
   }, [visible]);
@@ -323,10 +336,10 @@ function ThumbView({ entry, options }: { entry: LibraryEntry; options: RenderOpt
     };
   }, [visible, entry, engraving]);
   return (
-    <span className="thumb" ref={ref} aria-hidden>
+    <span className="relative block aspect-[210/150] overflow-hidden mb-1.5 bg-white border border-line rounded-[3px] shadow-[0_1px_3px_rgba(0,0,0,0.08)] [&_.page]:w-full [&_.page]:h-auto [&_.page]:shadow-none [&_.page]:pointer-events-none" ref={ref} aria-hidden>
       {result?.thumb && <PageView page={result.thumb.page} total={result.thumb.total} meta={result.thumb.meta} options={options} still />}
-      {result?.error && <span className="thumb-note">Aperçu impossible : le fichier ne se lit pas</span>}
-      {result && !result.thumb && !result.error && <span className="thumb-note">Aucune mesure</span>}
+      {result?.error && <span className="absolute inset-0 grid place-items-center p-3 text-center text-muted text-[12px]">Aperçu impossible : le fichier ne se lit pas</span>}
+      {result && !result.thumb && !result.error && <span className="absolute inset-0 grid place-items-center p-3 text-center text-muted text-[12px]">Aucune mesure</span>}
     </span>
   );
 }

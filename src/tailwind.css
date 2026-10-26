@@ -1,0 +1,40 @@
+/*
+ * Tailwind, pour l'application et le site : son thème et ses classes utilitaires. Les couleurs et
+ * les polices sont celles des pages (leurs variables : --ink, --accent…), que chaque feuille de
+ * style définit ; les classes s'y réfèrent (text-ink, border-line, bg-panel, font-mono…).
+ * Le preflight de Tailwind remet les éléments à zéro ; les titres y gardent leur gras.
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* les écrans étroits du site : une colonne (narrow), un téléphone (phone) */
+@custom-variant narrow (@media (max-width: 900px));
+@custom-variant phone (@media (max-width: 600px));
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-panel: var(--panel);
+  --color-chrome: var(--chrome);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-error: var(--error);
+  --color-error-bg: var(--error-bg);
+  /* l'accent éclairci de blanc, pour les fonds (un bouton allumé, une case choisie) */
+  --color-accent-7: color-mix(in srgb, var(--accent) 7%, #fff);
+  --color-accent-8: color-mix(in srgb, var(--accent) 8%, #fff);
+  --color-accent-10: color-mix(in srgb, var(--accent) 10%, #fff);
+  --color-accent-12: color-mix(in srgb, var(--accent) 12%, #fff);
+  --color-accent-14: color-mix(in srgb, var(--accent) 14%, #fff);
+  --color-accent-22: color-mix(in srgb, var(--accent) 22%, #fff);
+  --color-accent-40: color-mix(in srgb, var(--accent) 40%, #fff);
+  --font-ui: var(--ui);
+  --font-mono: var(--mono);
+}
+
+@layer base {
+  h1, h2, h3, h4, h5, h6 { font-weight: 700; }
+}

@@ -1,27 +1,21 @@
-/* La référence et, à sa gauche, son sommaire : dans l'application comme sur le site. */
-.guide-layout { display: grid; grid-template-columns: 240px minmax(0, 860px); justify-content: center; gap: 8px; }
-.guide-toc { position: sticky; top: 60px; align-self: start; max-height: calc(100vh - 140px); overflow: auto; padding: 24px 0 24px 16px; font-size: 13.5px; line-height: 1.35; }
-.guide-toc-title { margin: 0 0 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
-.guide-toc ul { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--line); }
-.guide-toc li a { display: block; padding: 4px 10px; margin-left: -1px; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; }
-.guide-toc li.depth-2 a { color: var(--ink); font-weight: 600; margin-top: 6px; }
-.guide-toc li.depth-3 a { padding-left: 22px; }
-.guide-toc li a:hover { color: var(--ink); background: var(--panel); }
-.guide-toc li.current a { color: var(--accent); border-left-color: var(--accent); }
-.guide h2, .guide h3 { scroll-margin-top: 16px; }
-@media (max-width: 980px) {
-  .guide-layout { grid-template-columns: minmax(0, 1fr); }
-  .guide-toc { display: none; }
+/* La référence, dans l'application comme sur le site : du Markdown rendu, sans classes où poser Tailwind (son sommaire : ReferenceView). */
+/* l'ordre des couches, quel que soit l'ordre des imports : thème, base, écrans, classes */
+@layer theme, base, components, utilities;
+@layer components {
+  .guide h2, .guide h3 { scroll-margin-top: 16px; }
+  .guide { max-width: 860px; margin: 0; padding: 24px 32px 64px; line-height: 1.55; font-size: 15px; }
+  .guide h1 { font-size: 26px; margin: 8px 0 16px; }
+  .guide h2 { font-size: 20px; margin: 36px 0 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .guide h3 { font-size: 16px; margin: 24px 0 6px; }
+  .guide code { font-family: var(--mono); font-size: 13px; background: var(--panel); padding: 1px 4px; border-radius: 3px; }
+  /* les listes du texte, avec leurs puces et leurs numéros, et ses liens soulignés (le preflight de Tailwind les retire) */
+  .guide ul, .guide ol { margin: 1em 0; padding-left: 40px; }
+  .guide ul { list-style: disc; }
+  .guide ol { list-style: decimal; }
+  .guide a { text-decoration: underline; }
+  .guide table { border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+  .guide th, .guide td { border: 1px solid var(--line); padding: 4px 10px; text-align: left; vertical-align: top; }
+  .guide th { background: var(--panel); }
+  .guide .example { margin: 14px 0 20px; display: grid; gap: 10px; justify-items: start; }
+  .guide .excerpt { display: block; max-width: 100%; height: auto; }
 }
-.guide { max-width: 860px; margin: 0; padding: 24px 32px 64px; line-height: 1.55; font-size: 15px; }
-.guide h1 { font-size: 26px; margin: 8px 0 16px; }
-.guide h2 { font-size: 20px; margin: 36px 0 8px; padding-top: 12px; border-top: 1px solid var(--line); }
-.guide h3 { font-size: 16px; margin: 24px 0 6px; }
-.guide code { font-family: var(--mono); font-size: 13px; background: var(--panel); padding: 1px 4px; border-radius: 3px; }
-.guide table { border-collapse: collapse; margin: 12px 0; font-size: 14px; }
-.guide th, .guide td { border: 1px solid var(--line); padding: 4px 10px; text-align: left; vertical-align: top; }
-.guide th { background: var(--panel); }
-.guide .example { margin: 14px 0 20px; display: grid; gap: 10px; justify-items: start; }
-.guide .example-text { margin: 0; padding: 10px 14px; background: var(--panel); border-radius: 4px; font-family: var(--mono); font-size: 13px; line-height: 1.45; font-variant-ligatures: none; overflow-x: auto; max-width: 100%; }
-.guide .excerpt { display: block; max-width: 100%; height: auto; }
-.guide .problem { border: 0; padding: 8px 12px; }

@@ -15,11 +15,11 @@ const CHORDS = [
 
 export function StaffChords() {
   return (
-    <svg className="staff-chords" viewBox="0 0 220 132" role="img" aria-label="Sur une portée en clé de sol, do mi sol et mi sol si : trois notes sur trois lignes voisines, la même forme.">
+    <svg className="block w-[300px] max-w-full h-auto p-3 border border-line rounded-[10px] bg-white box-content" viewBox="0 0 220 132" role="img" aria-label="Sur une portée en clé de sol, do mi sol et mi sol si : trois notes sur trois lignes voisines, la même forme.">
       {[0, 1, 2, 3, 4].map((i) => (
         <line key={i} x1={6} x2={214} y1={BOTTOM - i * GAP} y2={BOTTOM - i * GAP} stroke="#1b1d1f" strokeWidth={1} />
       ))}
-      <text x={8} y={BOTTOM + 8} className="clef">
+      <text x={8} y={BOTTOM + 8} className="font-['Noto_Music','Segoe_UI_Symbol','Apple_Symbols','Bravura',serif] text-[58px]">
         𝄞
       </text>
       {CHORDS.map((c) => (
@@ -28,10 +28,10 @@ export function StaffChords() {
           {c.steps.map((s) => (
             <ellipse key={s} cx={c.x} cy={y(s)} rx={6.4} ry={4.6} transform={`rotate(-20 ${c.x} ${y(s)})`} fill="#1b1d1f" />
           ))}
-          <text x={c.x} y={112} textAnchor="middle" className="staff-name" fontStyle="italic">
+          <text x={c.x} y={112} textAnchor="middle" className="font-ui text-[11px] fill-ink" fontStyle="italic">
             {c.name}
           </text>
-          <text x={c.x} y={127} textAnchor="middle" className="staff-kind">
+          <text x={c.x} y={127} textAnchor="middle" className="font-ui text-[10px] fill-muted">
             {c.kind}
           </text>
         </g>

@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "prisma": "node src/cli.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "visual": "playwright test",
+    "visual:reference": "playwright test --update-snapshots"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",
@@ -27,10 +29,13 @@
     "smplr": "^1.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^22.10.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.6.3",
     "vite": "^5.4.11",
     "vitest": "^2.1.8"

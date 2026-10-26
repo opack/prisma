@@ -5,6 +5,7 @@ import { Comparison } from "./Comparison.tsx";
 import { Guitar } from "./Guitar.tsx";
 import { Learn } from "./Learn.tsx";
 import { Reference } from "./Reference.tsx";
+import "../tailwind.css";
 import "./site.css";
 
 const root = document.getElementById("root")!;

@@ -1,3 +1,5 @@
+/* l'ordre des couches, quel que soit l'ordre des imports : thème, base, écrans, classes */
+@layer theme, base, components, utilities;
 :root {
   --chrome: #e9eae6;
   --panel: #f7f7f5;
@@ -12,331 +14,83 @@
   --mono: "Cascadia Mono", Consolas, "DejaVu Sans Mono", Menlo, monospace;
   --ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
 }
-* { box-sizing: border-box; }
-html, body, #root { height: 100%; margin: 0; }
-body { font-family: var(--ui); color: var(--ink); background: var(--chrome); font-size: 14px; }
 
-/* colonne : barre d'outils, panneau d'options (facultatif), puis la zone principale qui prend toute la hauteur restante */
-.app { display: flex; flex-direction: column; height: 100%; }
-.bar { display: flex; gap: 8px; align-items: center; padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
-.brand { font-weight: 700; letter-spacing: .06em; margin-right: 12px; }
-.spacer { flex: 1; }
-.file { color: var(--muted); margin-left: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.unsaved { color: var(--accent); }
-.notice { color: var(--accent); margin-left: 12px; white-space: nowrap; }
-button { font: inherit; padding: 6px 12px; border: 1px solid var(--line); border-radius: 4px; background: #fff; color: var(--ink); cursor: pointer; }
-button:hover { border-color: var(--muted); }
-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-button:disabled { opacity: .5; cursor: default; }
-
-.workspace { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 0; }
-/* la largeur de l'éditeur (--editor, réglée par la barre qui le sépare de la partition), en gardant
-   de la place à chacun */
-.split { --editor-width: clamp(300px, var(--editor, 42%), calc(100% - 260px)); flex: 1; display: grid; grid-template-columns: var(--editor-width) minmax(0, 1fr); min-height: 0; }
-.source { display: grid; grid-template-rows: 1fr auto auto; grid-template-columns: minmax(0, 1fr); min-height: 0; border-right: 1px solid var(--line); background: #fff; }
-.problem { display: flex; align-items: center; gap: 8px; min-width: 0; border-top: 1px solid var(--error); background: var(--error-bg); color: var(--error); }
-.problem-message { flex: 1; min-width: 0; margin: 0; border: 0; border-radius: 0; background: none; color: inherit; text-align: left; padding: 10px 16px; }
-.problem-nav { flex-shrink: 0; display: flex; align-items: center; gap: 4px; padding-right: 10px; font-variant-numeric: tabular-nums; font-size: 13px; white-space: nowrap; }
-.problem-nav button { padding: 1px 8px; color: var(--error); border-color: color-mix(in srgb, var(--error) 40%, #fff); background: #fff; }
-
-.preview { overflow: auto; padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 24px; }
-.page { display: block; width: min(100%, 210mm); height: auto; aspect-ratio: 210 / 297; flex: none; box-shadow: 0 1px 3px rgba(0,0,0,.18), 0 6px 18px rgba(0,0,0,.08); background: #fff; }
-.empty { color: var(--muted); }
-/* la retouche d'une case (double-clic sur la partition) */
-.retouch-menu { position: fixed; z-index: 30; width: 300px; padding: 10px; background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16); }
-.retouch-menu:focus { outline: none; }
-.retouch-title { display: flex; align-items: center; justify-content: space-between; margin: 0 0 8px; font-size: 12.5px; font-weight: 600; }
-.retouch-title p { margin: 0; }
-.retouch-octave { display: flex; gap: 4px; }
-.retouch-octave button { padding: 1px 8px; font-size: 11px; }
-.retouch-title p span { font-weight: 400; color: var(--muted); margin-left: 4px; }
-.retouch-notes { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
-.retouch-notes button { display: grid; justify-items: center; gap: 1px; padding: 5px 0 4px; }
-.retouch-notes b { font-family: var(--mono); font-size: 15px; }
-.retouch-notes small { font-size: 10.5px; color: var(--muted); }
-/* le choix de la note sur un clavier : les touches blanches, les noires par-dessus */
-.piano { position: relative; height: 84px; }
-.piano-key { position: absolute; top: 0; height: 84px; padding: 0 0 6px; display: flex; align-items: flex-end; justify-content: center; border: 1px solid #b9bcb6; border-radius: 0 0 5px 5px; background: #fff; color: var(--ink); font-family: var(--mono); font-size: 13px; font-weight: 600; }
-.piano-key.black { z-index: 1; height: 50px; background: #2a2d30; border-color: #2a2d30; color: #fff; font-size: 11px; padding-bottom: 4px; }
-.piano-key:hover { background: color-mix(in srgb, var(--accent) 10%, #fff); }
-.piano-key.black:hover { background: #454a4f; }
-.piano-key.current { background: color-mix(in srgb, var(--accent) 22%, #fff); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.piano-key.black.current { background: var(--accent); border-color: var(--accent); box-shadow: none; }
-.piano-key.current { background: var(--accent); border-color: var(--accent); color: #fff; }
-.retouch-notes.bare button { padding: 7px 0; }
-.retouch-more { display: flex; gap: 4px; margin-top: 6px; }
-.retouch-adds { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 13px; }
-.retouch-adds > span { color: var(--muted); }
-.retouch-adds > div { display: flex; gap: 4px; }
-.retouch-adds button { flex: 1; padding: 2px 0; font-family: var(--mono); }
-.retouch-duration { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 13px; }
-.retouch-duration span { flex: 1; color: var(--muted); }
-.retouch-duration button { width: 30px; padding: 2px 0; font-size: 15px; line-height: 1; }
-.retouch-duration b { min-width: 5.5em; text-align: center; font-weight: 600; }
-.retouch-holds { display: grid; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
-.retouch-holds button { text-align: left; }
-.retouch-holds small { color: var(--muted); margin-left: 4px; }
-.retouch-more button { flex: 1; padding: 4px 0; }
-.retouch-menu button.current { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-/* sur une corde : le choix de la corde (celle de la note soulignée), et sur une autre, la case du même son */
-.retouch-strings { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
-.retouch-strings button { display: grid; justify-items: center; gap: 1px; padding: 3px 0; }
-.retouch-strings b { font-family: var(--mono); font-size: 13px; }
-.retouch-strings small { font-size: 10px; color: var(--muted); }
-.retouch-strings button.home b { text-decoration: underline; text-underline-offset: 2px; }
-.retouch-menu .retouch-notes button.same { border: 1px dashed var(--accent); background: color-mix(in srgb, var(--accent) 10%, #fff); }
-.retouch-hint { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.35; }
-.preview-problem { max-width: 460px; margin: 48px auto; padding: 16px 20px; background: #fff; border: 1px solid var(--line); border-left: 4px solid #d22c2c; border-radius: 6px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06); }
-.preview-problem p { margin: 0 0 8px; }
-.preview-problem-title { font-weight: 600; }
-/* le petit clavier de la barre de statut : la note ou l'accord marqués */
-.mini-keyboard { vertical-align: -5px; margin: 0 4px 0 6px; }
-.mini-keyboard .key { fill: #fff; stroke: #8a8d87; stroke-width: 0.7; }
-.mini-keyboard .key.black { fill: #3a3d40; stroke: #1f2123; }
-/* la note : le jaune de la case en surbrillance, sur une touche blanche ou noire ; la trille et les petites notes, les couleurs de la coloration du texte ; chaque touche garde son contour, pour que deux touches voisines marquées ne fassent pas bloc */
-.mini-keyboard .key.on { fill: #ffc53d; }
-.mini-keyboard .key.trill { fill: #0f7b6c; }
-.mini-keyboard .key.grace { fill: #7a4fb0; }
-/* ce qu'un message cite du texte .prisma, en chasse fixe */
-.preview-problem code, .problem code, .cm-tooltip-lint code { font-family: var(--mono); font-size: 0.92em; padding: 0 4px; border-radius: 3px; background: rgba(27, 29, 31, 0.07); white-space: pre; }
-.preview-problem.fixed { border-left-color: var(--accent); }
-/* la languette de l'éditeur : sur le bord gauche en lecture, contre l'éditeur en édition */
-.split { position: relative; }
-.edge { position: absolute; z-index: 3; top: 50%; left: 0; transform: translateY(-50%); display: grid; justify-items: center; gap: 6px; width: 22px; padding: 10px 0; border-left: 0; border-radius: 0 6px 6px 0; background: var(--panel); color: var(--muted); box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.08); }
-.edge:hover { color: var(--accent); border-color: var(--accent); }
-.split:not(.reading) .edge { left: calc(var(--editor-width) - 1px); }
-/* la barre de redimensionnement : invisible, elle se montre au survol, sur le bord de l'éditeur */
-.splitter { position: absolute; z-index: 2; top: 0; bottom: 0; left: var(--editor-width); width: 9px; transform: translateX(-5px); cursor: col-resize; touch-action: none; }
-.splitter::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 3px; background: transparent; transition: background .15s; }
-.splitter:hover::after, .splitter:focus-visible::after, .split.resizing .splitter::after { background: var(--accent); }
-.splitter:focus-visible { outline: none; }
-/* pendant le glissé : le curseur partout, et rien ne se sélectionne */
-.split.resizing { cursor: col-resize; user-select: none; }
-.split.resizing .preview, .split.resizing .source { pointer-events: none; }
-/* mode lecture : sans l'éditeur, les pages côte à côte, chacune de toute la hauteur, qu'on fait
-   défiler de côté une page à la fois */
-@media screen {
-  /* zoom de la partition (--zoom) : la page s'agrandit, l'aperçu défile ; une page plus large que
-     l'aperçu se cale à gauche plutôt que de déborder des deux côtés */
-  .preview { align-items: flex-start; }
-  .preview .page { width: calc(min(100%, 210mm) * var(--zoom, 1)); max-width: none; margin-inline: auto; }
-  .split.reading { grid-template-columns: 1fr; }
-  .split.reading .source[hidden] { display: none; }
-  .split.reading .preview { padding: 12px 12px 12px 32px; gap: 12px; overflow: auto; }
-  /* ajustement (éditeur ouvert ou non, dans la place laissée à la partition) ; à la hauteur : les
-     pages côte à côte, qu'on fait défiler de côté une page à la fois */
-  .split.fit-height .preview { flex-direction: row; scroll-snap-type: x mandatory; scroll-padding: 24px; }
-  .split.reading.fit-height .preview { scroll-padding: 12px 12px 12px 32px; }
-  .split.fit-height .page { height: calc(100% * var(--zoom, 1)); width: auto; margin: 0; scroll-snap-align: start; }
-  /* une page de plus que l'écran ne montre pas en entier : la dernière se cale contre le bord */
-  .split.fit-height .page:last-child { scroll-snap-align: end; }
-  /* zoomée, une page dépasse l'écran : on s'y promène librement, sans être ramené au début d'une page */
-  .split.fit-height.zoomed .preview { scroll-snap-type: none; }
-  /* ajustées à la largeur : les pages l'une sous l'autre, aussi larges que la place de la partition */
-  .split.fit-width .preview { flex-direction: column; }
-  .split.fit-width .page { width: calc(100% * var(--zoom, 1)); height: auto; }
-  /* lecture focalisée : deux places de même taille, qui se partagent l'écran ; les systèmes s'y
-     réduisent pour tenir, rien ne défile */
-  .split.fit-focus .preview { overflow: hidden; }
-  .focus { flex: 1; align-self: stretch; display: grid; grid-template-rows: 1fr 1fr; gap: 12px; min-height: 0; width: 100%; }
-  .focus-place { min-height: 0; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.18), 0 6px 18px rgba(0,0,0,.08); transition: opacity .3s; animation: focus-in .35s ease-out; }
-  .focus-place svg { display: block; width: 100%; height: 100%; }
-  .focus.with-order { grid-template-rows: auto 1fr 1fr; }
-  .focus-order { display: block; width: 100%; height: auto; max-height: 48px; }
-  /* l'autre place : le système à venir à peine atténué, celui qu'on vient de jouer effacé */
-  .focus-place.next { opacity: .8; }
-  .focus-place.past { opacity: .35; }
-  .print-pages { display: none; }
+/* les éléments, après le preflight de Tailwind (voir tailwind.css) */
+@layer base {
+  * { box-sizing: border-box; }
+  html, body, #root { height: 100%; margin: 0; }
+  body { font-family: var(--ui); color: var(--ink); background: var(--chrome); font-size: 14px; line-height: normal; }
+  /* l'interligne, les marges des cases et des curseurs, la couleur des listes : comme le navigateur les donne, que le preflight de Tailwind change */
+  input[type="checkbox"] { margin: 3px 3px 3px 4px; }
+  input[type="radio"] { margin: 3px 3px 0 5px; }
+  input[type="range"] { margin: 2px; }
+  select { color: FieldText; }
+  button { font: inherit; padding: 6px 12px; border: 1px solid var(--line); border-radius: 4px; background: #fff; color: var(--ink); cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button:disabled { opacity: .5; cursor: default; }
 }
+
+/* les écrans de l'application ; les classes de Tailwind passent par-dessus */
+@layer components {
+  /* la largeur de l'éditeur (--editor, réglée par la barre qui le sépare de la partition), en gardant
+     de la place à chacun */
+  .split { --editor-width: clamp(300px, var(--editor, 42%), calc(100% - 260px)); flex: 1; display: grid; grid-template-columns: var(--editor-width) minmax(0, 1fr); min-height: 0; position: relative; }
+  .source { display: grid; grid-template-rows: 1fr auto auto; grid-template-columns: minmax(0, 1fr); min-height: 0; border-right: 1px solid var(--line); background: #fff; }
+
+  .preview { overflow: auto; padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 24px; }
+  .page { display: block; width: min(100%, 210mm); height: auto; aspect-ratio: 210 / 297; flex: none; box-shadow: 0 1px 3px rgba(0,0,0,.18), 0 6px 18px rgba(0,0,0,.08); background: #fff; }
+  /* la languette de l'éditeur : sur le bord gauche en lecture, contre l'éditeur en édition */
+  .edge { position: absolute; z-index: 3; top: 50%; left: 0; transform: translateY(-50%); display: grid; justify-items: center; gap: 6px; width: 22px; padding: 10px 0; border-left: 0; border-radius: 0 6px 6px 0; background: var(--panel); color: var(--muted); box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.08); }
+  .edge:hover { color: var(--accent); border-color: var(--accent); }
+  .split:not(.reading) .edge { left: calc(var(--editor-width) - 1px); }
+  /* la barre de redimensionnement : invisible, elle se montre au survol, sur le bord de l'éditeur */
+  .splitter { position: absolute; z-index: 2; top: 0; bottom: 0; left: var(--editor-width); width: 9px; transform: translateX(-5px); cursor: col-resize; touch-action: none; }
+  .splitter::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 3px; background: transparent; transition: background .15s; }
+  .splitter:hover::after, .splitter:focus-visible::after, .split.resizing .splitter::after { background: var(--accent); }
+  .splitter:focus-visible { outline: none; }
+  /* pendant le glissé : le curseur partout, et rien ne se sélectionne */
+  .split.resizing { cursor: col-resize; user-select: none; }
+  .split.resizing .preview, .split.resizing .source { pointer-events: none; }
+  /* mode lecture : sans l'éditeur, les pages côte à côte, chacune de toute la hauteur, qu'on fait
+     défiler de côté une page à la fois */
+  @media screen {
+    /* zoom de la partition (--zoom) : la page s'agrandit, l'aperçu défile ; une page plus large que
+       l'aperçu se cale à gauche plutôt que de déborder des deux côtés */
+    .preview { align-items: flex-start; }
+    .preview .page { width: calc(min(100%, 210mm) * var(--zoom, 1)); max-width: none; margin-inline: auto; }
+    .split.reading { grid-template-columns: 1fr; }
+    .split.reading .source[hidden] { display: none; }
+    .split.reading .preview { padding: 12px 12px 12px 32px; gap: 12px; overflow: auto; }
+    /* ajustement (éditeur ouvert ou non, dans la place laissée à la partition) ; à la hauteur : les
+       pages côte à côte, qu'on fait défiler de côté une page à la fois */
+    .split.fit-height .preview { flex-direction: row; scroll-snap-type: x mandatory; scroll-padding: 24px; }
+    .split.reading.fit-height .preview { scroll-padding: 12px 12px 12px 32px; }
+    .split.fit-height .page { height: calc(100% * var(--zoom, 1)); width: auto; margin: 0; scroll-snap-align: start; }
+    /* une page de plus que l'écran ne montre pas en entier : la dernière se cale contre le bord */
+    .split.fit-height .page:last-child { scroll-snap-align: end; }
+    /* zoomée, une page dépasse l'écran : on s'y promène librement, sans être ramené au début d'une page */
+    .split.fit-height.zoomed .preview { scroll-snap-type: none; }
+    /* ajustées à la largeur : les pages l'une sous l'autre, aussi larges que la place de la partition */
+    .split.fit-width .preview { flex-direction: column; }
+    .split.fit-width .page { width: calc(100% * var(--zoom, 1)); height: auto; }
+    /* lecture focalisée : deux places de même taille, qui se partagent l'écran ; les systèmes s'y
+       réduisent pour tenir, rien ne défile */
+    .split.fit-focus .preview { overflow: hidden; }
+    .print-pages { display: none; }
+  }
+  /* les paragraphes de la référence, espacés (sur le site, ceux de ses pages) */
+  .guide p { margin: 1em 0; }
+  /* la référence ou la bibliothèque, à la place de la partition */
+  .split[hidden] { display: none; }
+
+  /* clic sur une colonne de la gravure : la lecture y démarre */
+  .page .seek rect { cursor: pointer; }
+}
+
 @keyframes focus-in { from { opacity: 0; } }
 
-/* glisser-déposer un fichier : un voile sur toute la fenêtre */
-.app { position: relative; }
-.drop { position: absolute; inset: 0; z-index: 20; display: grid; place-content: center; text-align: center; gap: 4px; background: rgba(43, 93, 110, .12); border: 3px dashed var(--accent); pointer-events: none; }
-.drop p { margin: 0; font-size: 22px; font-weight: 700; color: var(--accent); }
-.drop span { color: var(--muted); }
-
-/* menus de la barre d'outils */
-.menu { position: relative; }
-.menu-button { border-color: transparent; background: transparent; }
-.menu-button:hover, .menu-button[aria-expanded="true"] { background: #fff; border-color: var(--line); }
-.menu-list { position: absolute; top: calc(100% + 4px); left: 0; z-index: 10; min-width: 260px; padding: 4px; background: #fff; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.12); display: grid; }
-.menu-list button { display: grid; grid-template-columns: 1.2em 1fr auto; gap: 8px; align-items: center; text-align: left; border: 0; border-radius: 4px; padding: 6px 10px; background: transparent; white-space: nowrap; }
-.menu-list button:hover:not(:disabled), .menu-list button:focus-visible { background: var(--panel); outline: none; }
-.menu-list .shortcut { color: var(--muted); font-size: 12px; }
-.menu-list .check { color: var(--accent); }
-.menu-list hr { border: 0; border-top: 1px solid var(--line); margin: 4px 6px; }
-.guide-pane .back, .library-pane .back { position: sticky; top: 12px; margin: 12px 0 0 16px; z-index: 1; }
-
-/* bibliothèque : les morceaux du dossier choisi, par sous-dossier */
-.library-pane { flex: 1; overflow: auto; background: #fff; }
-.library { max-width: 860px; margin: 0 auto; padding: 8px 32px 64px; }
-.library-head h1 { font-size: 26px; margin: 8px 0 4px; }
-.library-folder { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 16px; color: var(--muted); }
-.library-folder button { padding: 3px 10px; }
-/* boutons à icône de la bibliothèque et de la référence : le nom en bulle */
-.library-folder button.icon, .back.icon { display: inline-flex; align-items: center; justify-content: center; padding: 5px 7px; color: var(--muted); }
-.library-folder button.icon:hover, .back.icon:hover { color: var(--accent); border-color: var(--accent); }
-.library-tools .check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--muted); }
-.library-note { color: var(--muted); line-height: 1.5; }
-.library-note p { margin: 0 0 12px; }
-.library-action { background: var(--accent); border-color: var(--accent); color: #fff; }
-.library-tools { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin: 0 0 20px; }
-.library-tools input { flex: 1 1 100%; min-width: 0; font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 4px; }
-.library-tools label { display: flex; gap: 8px; align-items: center; color: var(--muted); white-space: nowrap; }
-.library-tools select { font: inherit; padding: 5px 6px; border: 1px solid var(--line); border-radius: 4px; background: #fff; }
-.library-group h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 24px 0 6px; }
-.library-group ul { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
-.library-group li { border-bottom: 1px solid var(--line); }
-.library-group li button { width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 2px 16px; text-align: left; border: 0; border-radius: 0; padding: 10px 8px; background: transparent; }
-.library-group li button:hover { background: var(--panel); }
-.library-title { font-weight: 600; }
-.library-composer { color: var(--muted); text-align: right; }
-.library-meta { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: 12px; }
-.library-badge { padding: 0 6px; border-radius: 3px; background: color-mix(in srgb, var(--accent) 12%, #fff); color: var(--accent); }
-.library-date { margin-left: auto; }
-.library-view { display: flex; margin-left: auto; }
-.library-view button { display: flex; align-items: center; padding: 6px 9px; color: var(--muted); }
-.library-view button:first-child { border-radius: 4px 0 0 4px; }
-.library-view button:last-child { border-radius: 0 4px 4px 0; margin-left: -1px; }
-.library-view button.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, #fff); border-color: var(--accent); position: relative; }
-/* vignettes : une grille de cartes, le haut de la première page, puis titre et compositeur */
-.library-group ul.library-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 18px; border-top: 0; padding-top: 4px; }
-.library-cards li { border-bottom: 0; }
-.library-group .library-cards li button { display: flex; flex-direction: column; gap: 2px; padding: 8px; border-radius: 6px; height: 100%; }
-.library-cards .library-composer { text-align: left; font-size: 13px; }
-.library-cards .library-meta { font-size: 11px; flex-wrap: wrap; }
-.thumb { display: block; position: relative; aspect-ratio: 210 / 150; overflow: hidden; margin-bottom: 6px; background: #fff; border: 1px solid var(--line); border-radius: 3px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); }
-.thumb .page { display: block; width: 100%; height: auto; box-shadow: none; pointer-events: none; }
-.thumb-note { position: absolute; inset: 0; display: grid; place-items: center; padding: 12px; text-align: center; color: var(--muted); font-size: 12px; }
-
-/* la référence, dans son panneau (ses styles : reference.css) */
-.split[hidden] { display: none; }
-.guide-pane { flex: 1; overflow: auto; background: #fff; }
-
-@page { size: A4 portrait; margin: 0; }
-@media print {
-  body { background: #fff; }
-  .bar, .source, .drawer, .edge, .splitter, .focus { display: none !important; }
-  .text-mark { display: none; }
-  .app, .split { display: block; height: auto; }
-  .preview { overflow: visible; padding: 0; gap: 0; display: block; }
-  /* La page gravée s'adapte à la zone imprimable réelle (marges du navigateur comprises)
-     et ne peut jamais être coupée entre deux feuilles. */
-  .page {
-    box-shadow: none;
-    width: auto;
-    max-width: 100%;
-    height: calc(100vh - 1mm);
-    margin: 0 auto;
-    break-inside: avoid;
-    page-break-inside: avoid;
-    break-after: page;
-    page-break-after: always;
-  }
-  .page:last-child { break-after: auto; page-break-after: auto; }
-}
-/* écoute, dans la barre : tempo, lecture et pause, arrêt */
-/* le tempo : un seul champ, avec son bouton de retour au tempo écrit à l'intérieur */
-.bar .tempo { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 4px; background: #fff; padding-right: 6px; }
-.bar .tempo input { width: 3.4em; font: inherit; padding: 4px 2px 4px 6px; border: 0; outline: none; background: transparent; text-align: right; }
-.bar .tempo:focus-within { border-color: var(--muted); }
-.bar .tempo .reset { border: 0; background: none; padding: 0 4px; margin: 0; color: var(--muted); cursor: pointer; font-size: 1em; line-height: 1; }
-.bar .tempo .reset:hover { color: var(--ink); }
-.bar .tempo .unit { color: var(--muted); font-size: 0.9em; margin-left: 2px; }
-/* les boutons de lecture, en icônes, collés en un seul groupe */
-.bar .transport { display: flex; }
-.bar .transport button { display: flex; align-items: center; justify-content: center; width: 2.4em; padding-left: 0; padding-right: 0; border-radius: 0; margin-left: -1px; }
-.bar .transport button:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
-.bar .transport button:last-child { border-radius: 0 4px 4px 0; }
-.bar .transport button:only-child { border-radius: 4px; }
-.bar .transport .listen { width: 3em; }
-.bar .transport .loading { line-height: 14px; }
-/* métronome et instruments : allumés ou éteints */
-.bar .toggles button { color: var(--muted); }
-.bar .toggles button.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, #fff); border-color: var(--accent); position: relative; z-index: 1; }
-/* clic sur une colonne de la gravure : la lecture y démarre */
-.page .seek rect { cursor: pointer; }
-
-/* bouton des options, en icône, tout à droite de la barre */
-.bar .icon { display: flex; align-items: center; padding: 6px 8px; color: var(--muted); }
-.bar .icon.on, .bar .icon:hover:not(:disabled) { color: var(--accent); }
-/* panneau des options : un tiroir à droite, sous le bouton engrenage, par-dessus l'aperçu ; il ne
-   pousse rien */
-.drawer { position: absolute; top: 0; right: 0; bottom: 0; z-index: 15; width: min(440px, 100%); display: flex; flex-direction: column; background: var(--panel); border-left: 1px solid var(--line); box-shadow: -8px 0 24px rgba(0, 0, 0, 0.08); }
-.drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 4px; }
-.drawer-head h2 { margin: 0; font-size: 1rem; }
-.drawer .close { width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 20px; line-height: 1; }
-.drawer .close:hover { background: var(--line); color: inherit; }
-.drawer .tabs { display: flex; padding: 0 8px; border-bottom: 1px solid var(--line); }
-/* six onglets dans la largeur du panneau : ils se partagent la place */
-.drawer .tabs button { flex: 1 1 auto; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 8px 4px; white-space: nowrap; color: var(--muted); margin-bottom: -1px; }
-.drawer .tabs button.active { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
-.drawer-body { overflow: auto; padding: 8px 16px 16px; }
-.setting { display: grid; grid-template-columns: 8.5em 1fr; gap: 2px 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid #ecece8; }
-.setting:last-child { border-bottom: 0; }
-.setting-label { font-weight: 600; }
-.setting-control { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.setting-control select { font: inherit; padding: 4px 6px; border: 1px solid var(--line); border-radius: 4px; background: #fff; min-width: 0; flex: 1; }
-.setting-hint { grid-column: 2; margin: 0; color: var(--muted); font-size: 0.9em; line-height: 1.35; }
-.setting .check { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
-.setting .flag { flex: none; width: 38px; height: 28px; }
-.setting .slider { flex: 1; accent-color: var(--accent); min-width: 0; }
-.setting .slider-value { min-width: 4.5em; color: var(--ink); }
-/* portée des options : générales ou de la partition ouverte */
-.drawer .portee { display: flex; margin: 0 12px 8px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
-.drawer .portee button { flex: 1; border: 0; border-radius: 0; background: #fff; padding: 6px 8px; color: var(--muted); }
-.drawer .portee button + button { border-left: 1px solid var(--line); }
-.drawer .portee button.on { background: color-mix(in srgb, var(--accent) 12%, #fff); color: var(--accent); font-weight: 600; }
-.drawer .piece-head { margin: 0 12px 6px; }
-.piece-note { margin: 0 0 2px; font-size: 0.9em; color: var(--muted); line-height: 1.4; overflow-wrap: anywhere; }
-.piece-actions { margin: 0; display: flex; gap: 12px; font-size: 0.9em; }
-/* une option et sa portée : définie pour la partition, suivie de l'option générale, ou prise par la partition */
-.setting.own .setting-label, .setting.overridden .setting-label { color: var(--accent); }
-.setting.follows .setting-control { opacity: 0.75; }
-.setting-scope { grid-column: 2; margin: 4px 0 0; font-size: 0.9em; color: var(--muted); display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
-/* sous le nom de l'option, là où il y a de la place : n'ajoute pas de hauteur */
-.setting-scope.quiet { visibility: hidden; grid-column: 1; grid-row: 2; align-self: start; margin: 0; font-size: 0.8em; line-height: 1.3; }
-.setting:hover .setting-scope.quiet, .setting:focus-within .setting-scope.quiet { visibility: visible; }
-.drawer .badge { display: inline-block; padding: 0 6px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 14%, #fff); color: var(--accent); font-size: 0.85em; font-weight: 600; white-space: nowrap; }
-.drawer .muted { color: var(--muted); }
-.drawer button.link { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
-/* le métronome et la musique : leur bouton, et sa flèche, qui ouvre leurs réglages */
-.bar .toggle-menu { position: relative; display: flex; }
-.bar .toggles .toggle-menu button { border-radius: 0; margin-left: -1px; }
-.bar .toggles .toggle-menu button:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
-.bar .toggles .toggle-menu button.more { width: 1.4em; border-radius: 0 4px 4px 0; color: var(--muted); }
-/* un écart entre deux boutons : chaque flèche est à son bouton */
-.bar .toggles .toggle-menu + .toggle-menu { margin-left: 5px; }
-.bar .toggles .toggle-menu button.more.open, .bar .toggles .toggle-menu button.more:hover:not(:disabled) { color: var(--accent); }
-.bar .toggles button.partial { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, #fff) 0 4px, #fff 4px 8px); }
-/* petit panneau ouvert sous un bouton : la liste des parties, les réglages de la gravure */
-.popover { position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; min-width: 240px; padding: 10px 12px; background: #fff; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12); display: grid; gap: 6px; }
-.popover label { display: flex; gap: 8px; align-items: center; cursor: pointer; white-space: nowrap; }
-.popover-title { margin: 0 0 2px; font-weight: 600; }
-.popover-actions { display: flex; gap: 6px; margin-top: 4px; }
-.bar .popover-actions button { width: auto; padding: 3px 10px; margin: 0; border-radius: 4px; color: var(--ink); background: #fff; }
-/* parties jouées : chaque partie et son instrument, puis ses portées */
-.parts-list { min-width: 300px; }
-/* ce que bat le métronome : chaque choix et ce qu'il fait entendre */
-.metronome-list { width: 280px; }
-.metronome-list label { align-items: start; white-space: normal; }
-.metronome-list input { margin-top: 3px; accent-color: var(--accent); }
-.metronome-list .popover-hint { display: block; }
-.parts-list .part-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.parts-list .part-instrument { display: inline-flex; align-items: center; gap: 4px; }
-.bar .parts-list .part-instrument button.reset { width: auto; padding: 1px 6px; margin: 0; border-radius: 4px; color: var(--accent); background: #fff; }
-.parts-list .part-row select { font: inherit; padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: #fff; max-width: 11em; }
-.parts-list .part-name { font-weight: 600; }
-.parts-list .part-volume { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; }
-.parts-list .part-volume input { width: 72px; accent-color: var(--accent); }
-.parts-list .part-volume output { min-width: 3.6em; text-align: right; font-variant-numeric: tabular-nums; }
-.parts-list .part-staff { padding-left: 14px; }
-.parts-list .part-group { display: grid; gap: 4px; }
-.popover-hint { margin: 2px 0 0; color: var(--muted); font-size: 0.85em; line-height: 1.35; white-space: normal; }
-/* graver : un bouton flottant en bas de l'éditeur, contre les pages, et sa flèche vers les réglages
-   de la gravure */
-.editor { position: relative; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
+/* hors couche, pour passer par-dessus les styles que CodeMirror injecte */
 /* l'éditeur (CodeMirror) : le texte à chasse fixe, sans retour à la ligne ; de la place en bas pour le bouton */
 /* l'éditeur garde ses plans pour lui (le panneau de recherche passe sous les menus de la barre) */
 .editor-host { min-height: 0; isolation: isolate; }
@@ -379,37 +133,27 @@ button:disabled { opacity: .5; cursor: default; }
 .editor-host .cm-panel.cm-search label { font-size: 13px; color: var(--muted); }
 .editor-host .cm-panel.cm-search input[type=checkbox] { accent-color: var(--accent); vertical-align: -2px; }
 .editor-host .cm-panel.cm-search [name=close] { top: 6px; right: 8px; font-size: 20px; color: var(--muted); cursor: pointer; }
-/* barre de statut : la place du curseur, puis le sens du signe qu'il pointe */
-.status { display: flex; gap: 16px; align-items: baseline; min-width: 0; padding: 5px 12px; border-top: 1px solid var(--line); background: var(--panel); font-size: 12px; color: var(--muted); white-space: nowrap; }
-.status-where { flex: none; }
-.status-what { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
-.status-what code { font-family: var(--mono); font-weight: 600; padding: 0 4px; border-radius: 3px; background: #fff; border: 1px solid var(--line); }
-.engrave { position: absolute; right: 24px; bottom: 20px; z-index: 2; display: flex; border-radius: 6px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18), 0 6px 16px rgba(0, 0, 0, 0.1); }
-.engrave > button { position: relative; display: flex; align-items: center; justify-content: center; height: 40px; border: 0; background: var(--accent); color: #fff; }
-.engrave > button:first-child { width: 44px; padding: 0; border-radius: 6px 0 0 6px; }
-.engrave > button:first-child:disabled { opacity: 1; background: color-mix(in srgb, var(--accent) 40%, #fff); }
-.engrave > button.more { width: 22px; padding: 0; border-radius: 0 6px 6px 0; border-left: 1px solid rgba(255, 255, 255, 0.35); }
-.engrave > button:hover:not(:disabled) { filter: brightness(1.12); }
-.engrave .popover { top: auto; bottom: calc(100% + 8px); }
 
-/* les fenêtres de dialogue (export, conversion) : au centre, un choix par carte */
-.dialog { width: min(460px, calc(100% - 32px)); padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18); }
-.dialog::backdrop { background: rgba(27, 29, 31, 0.32); }
-.dialog form { display: grid; gap: 14px; padding: 18px 20px 16px; }
-.dialog h2 { margin: 0; font-size: 1.05rem; }
-.dialog fieldset { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; }
-.dialog legend { margin-bottom: 6px; padding: 0; font-weight: 600; }
-.dialog-choice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: #fff; cursor: pointer; }
-.dialog-choice.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, #fff); }
-.dialog-choice input { margin: 3px 0 0; accent-color: var(--accent); }
-.dialog-choice-label { display: block; font-weight: 600; }
-.dialog-choice-hint { display: block; margin-top: 2px; color: var(--muted); font-size: 0.92em; line-height: 1.35; }
-.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
-.dialog-actions .primary { border-color: var(--accent); background: var(--accent); color: #fff; }
-.dialog-actions .primary:hover { background: color-mix(in srgb, var(--accent) 85%, #000); }
-.dialog-intro { margin: -6px 0 0; color: var(--muted); line-height: 1.4; }
-.dialog-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px 14px; }
-.dialog-fields label { display: grid; gap: 4px; font-weight: 600; }
-.dialog-fields select, .dialog-fields input { font: inherit; font-weight: 400; padding: 5px 6px; border: 1px solid var(--line); border-radius: 5px; background: #fff; color: var(--ink); }
-.dialog-check { display: flex; gap: 8px; align-items: center; margin: 2px 0 0 12px; cursor: pointer; }
-.dialog-check input { margin: 0; accent-color: var(--accent); }
+/* l'impression, hors couche : elle l'emporte sur l'écran */
+@page { size: A4 portrait; margin: 0; }
+@media print {
+  body { background: #fff; }
+  .source, .edge, .splitter { display: none !important; }
+  .text-mark { display: none; }
+  .app, .split { display: block; height: auto; }
+  .preview { overflow: visible; padding: 0; gap: 0; display: block; }
+  /* La page gravée s'adapte à la zone imprimable réelle (marges du navigateur comprises)
+     et ne peut jamais être coupée entre deux feuilles. */
+  .page {
+    box-shadow: none;
+    width: auto;
+    max-width: 100%;
+    height: calc(100vh - 1mm);
+    margin: 0 auto;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    break-after: page;
+    page-break-after: always;
+  }
+  .page:last-child { break-after: auto; page-break-after: auto; }
+}

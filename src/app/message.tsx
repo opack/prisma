@@ -6,6 +6,7 @@
 import type { ReactNode } from "react";
 
 const QUOTED = /« ([^»]*?) »/g;
+const CODE = "font-mono text-[0.92em] px-1 rounded-[3px] bg-[rgba(27,29,31,0.07)] whitespace-pre";
 
 /** Les morceaux d'un message : du texte, ou une citation du texte .prisma. */
 function pieces(message: string): { text: string; code: boolean }[] {
@@ -21,7 +22,7 @@ function pieces(message: string): { text: string; code: boolean }[] {
 }
 
 export function Message({ text }: { text: string }): ReactNode {
-  return pieces(text).map((p, k) => (p.code ? <code key={k}>{p.text}</code> : p.text));
+  return pieces(text).map((p, k) => (p.code ? <code key={k} className={CODE}>{p.text}</code> : p.text));
 }
 
 /** Le même, en éléments du DOM, pour l'infobulle de l'éditeur. */
@@ -31,6 +32,7 @@ export function messageNode(text: string): Node {
     if (!p.code) span.append(p.text);
     else {
       const code = document.createElement("code");
+      code.className = CODE;
       code.textContent = p.text;
       span.append(code);
     }
