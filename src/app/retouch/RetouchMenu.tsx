@@ -135,6 +135,7 @@ export function RetouchMenu({ x, y, octave, strings, content, canHold, duration,
               })}
             </div>
           )}
+          {!content && !elsewhere && <p className="mt-2 mb-0 text-muted text-[12px] leading-[1.35]">La note choisie, le choix reste ouvert : son doigté, sa trille, sa durée.</p>}
           {elsewhere && <p className="mt-2 mb-0 text-muted text-[12px] leading-[1.35]">Choisissez une case : la note passe sur la corde {target}, avec ses tenues, et coupe ce qui y sonnait encore.</p>}
           {parts && !elsewhere && (
             <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1 mt-2 pt-2 text-[13px] border-t border-line">

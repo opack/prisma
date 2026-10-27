@@ -2,7 +2,8 @@
  * La retouche depuis la partition : un clic y place le curseur du texte sur le signe cliqué (en
  * édition, sans prendre le clavier) ; un double-clic ouvre le choix de la note de la case
  * (RetouchMenu). Chaque choix réécrit le texte, comme une frappe, puis la partition est remise en
- * page ; la durée, les ajouts et l'octave laissent le choix ouvert. Pendant l'écoute, la partition ne
+ * page ; la durée, les ajouts et l'octave laissent le choix ouvert, et la note écrite dans une case
+ * vide aussi, pour lui donner aussitôt son doigté, sa trille, sa durée. Pendant l'écoute, la partition ne
  * s'édite pas, et l'écoute qui démarre ferme le choix.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -95,9 +96,12 @@ export function useRetouch({ current, rewrite, editor, linked, score, names }: D
       octaves: open.duration && !stringsAt(open.at) ? octaveRoomOf(open.at) : undefined,
       onClose: close,
       // une note, la tenue, le vide : dans la case cliquée (sur une tenue, une note nouvelle commence là ; vide, la note s'arrête avant)
+      // dans une case vide, la note choisie : le choix reste ouvert sur elle, pour son doigté, sa trille, sa durée
       onPick: (content) => {
-        rewrite(retouch(text(), open.clicked, content));
-        setOpen(null);
+        const r = retouch(text(), open.clicked, content);
+        const fresh = !open.content && /^\d+$/.test(content);
+        if (rewrite(r) && fresh) setOpen(describe(r!.text, open.clicked, open.where));
+        else setOpen(null);
       },
       onHold: (note) => {
         rewrite(holdIn(text(), open.at, note));
@@ -120,8 +124,10 @@ export function useRetouch({ current, rewrite, editor, linked, score, names }: D
       // sur une corde : la note passe à la case choisie, sur cette corde ou une autre ; sur une tenue et sa corde, une note nouvelle commence dans la case cliquée
       onString: (string, fret) => {
         const home = string === open.at.octave! - STRING_LANE;
-        rewrite(home && open.content.startsWith("-") ? retouch(text(), open.clicked, String(fret)) : placeOnString(text(), open.at, string, fret));
-        setOpen(null);
+        const r = home && open.content.startsWith("-") ? retouch(text(), open.clicked, String(fret)) : placeOnString(text(), open.at, string, fret);
+        // dans une case vide de la corde, comme une note : le choix reste ouvert sur elle
+        if (rewrite(r) && home && !open.content) setOpen(describe(r!.text, open.clicked, open.where));
+        else setOpen(null);
       },
       onTarget: (string) => setLane(string === open.at.octave! - STRING_LANE ? undefined : STRING_LANE + string),
     };

@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { importMusicXml, writePrisma } from "../../src/core/index.ts";
-import { CLAIR_SECTIONS, GREENSLEEVES_CHORDS, TECHNIQUES } from "../../src/site/examples/pieces.ts";
+import { CLAIR_SECTIONS, GREENSLEEVES_CHORDS, SCALE, TECHNIQUES } from "../../src/site/examples/pieces.ts";
 
 const GYMNOPEDIE = writePrisma(importMusicXml(readFileSync(new URL("../fixtures/gymnopedie1.musicxml", import.meta.url), "utf8")));
 const DESKTOP = { width: 1300, height: 850 };
@@ -209,6 +209,19 @@ test.describe("au doigt", () => {
     await settle(page);
     await expect(page).toHaveScreenshot("app-telephone-retouche.png");
   });
+});
+
+// une case vide : la note choisie, le choix reste ouvert sur elle, avec son doigté, sa trille, sa durée
+test("app retouche case vide", async ({ page }) => {
+  await openApp(page, { source: SCALE, editing: false });
+  // la case au-dessus du 10, sur la ligne +1, est vide
+  const box = (await page.locator(".page text", { hasText: /^10$/ }).boundingBox())!;
+  await page.mouse.dblclick(box.x + box.width / 2, box.y - box.height / 2);
+  await expect(page.getByRole("dialog")).toContainText("La note choisie");
+  await page.getByRole("dialog").getByRole("button", { name: /^5 / }).click();
+  await settle(page);
+  await expect(page.getByRole("dialog")).toContainText("Durée");
+  await expect(page).toHaveScreenshot("app-retouche-case-vide.png");
 });
 
 test("app retouche d'une note", async ({ page }) => {
