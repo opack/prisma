@@ -10,20 +10,20 @@ import { Popover } from "../ui/popover/Popover.tsx";
 import { PopoverCheck } from "../ui/popover/PopoverCheck.tsx";
 import { PopoverChoices } from "../ui/popover/PopoverChoices.tsx";
 import { PopoverHint } from "../ui/popover/PopoverHint.tsx";
-import { usePopover } from "../ui/popover/usePopover.ts";
+import { DialogTrigger, Pressable } from "react-aria-components";
+import { Button } from "../ui/button/Button.tsx";
+import { ButtonGroup } from "../ui/button/ButtonGroup.tsx";
 
-/** Les boutons de lecture, en icônes, collés en un seul groupe : le premier et le dernier arrondis. */
-const TRANSPORT = "flex items-center justify-center px-0 -ml-px rounded-none first:ml-0 first:rounded-[4px_0_0_4px] last:rounded-[0_4px_4px_0] only:rounded";
-/** Allumé (le métronome, la musique, le suivi), ou éteint. */
-const ON = "relative z-1 text-accent bg-accent-12 border-accent";
-const toggled = (on: boolean) => (on ? ON : "text-muted");
-/** Un bouton à réglages (le métronome, la musique) : le bouton, puis sa flèche, collée. */
-const TOGGLE = "flex items-center justify-center w-[2.4em] compact:w-[2.1em] px-0 ml-0 rounded-[4px_0_0_4px]";
-const more = (open: boolean) => `flex items-center justify-center w-[1.4em] px-0 -ml-px rounded-[0_4px_4px_0] ${open ? "text-accent" : "text-muted enabled:hover:text-accent"}`;
+/** La flèche d'un bouton à réglages (le métronome, la musique), qui ouvre son panneau. */
+function More() {
+  return (
+    <svg width="8" height="16" viewBox="0 0 8 16" aria-hidden="true">
+      <path d="M1 6.5h6L4 10z" fill="currentColor" />
+    </svg>
+  );
+}
 /** Une ligne de la liste des parties : la partie (ou sa portée), son instrument, son volume. */
 const ROW = "flex items-center justify-between gap-2.5";
-/** Toutes, Aucune : sous la liste, à la taille du texte. */
-const ACTION = "flex items-center justify-center w-auto m-0 -ml-px px-2.5 py-[3px] text-ink bg-white rounded-none first:ml-0 first:rounded-[4px_0_0_4px]";
 import { CLICK_GRIDS } from "../options/options.ts";
 import type { ClickGrid } from "./performance.ts";
 
@@ -124,34 +124,32 @@ export function ListenControls({ score, disabled, metronome, onMetronome, clickG
         )}
         <span className="ml-0.5 text-muted text-[0.9em] compact:hidden">bpm</span>
       </span>
-      <span className="flex">
-        <button className={`${TRANSPORT} w-[2.4em] compact:w-[2.1em]`} onClick={go(() => player.rewind())} disabled={disabled} title="Revenir au début du morceau" aria-label="Revenir au début">
+      <ButtonGroup label="Lecture">
+        <Button size="icon" onClick={go(() => player.rewind())} disabled={disabled} title="Revenir au début du morceau" aria-label="Revenir au début">
           <Icon d="M2 3h2v10H2zM9 3v10L4 8zM14 3v10L9 8z" />
-        </button>
-        <button className={`${TRANSPORT} w-[2.4em] compact:w-[2.1em]`} onClick={go(() => player.previous())} disabled={disabled} title="Début de la section (deux clics : section précédente)" aria-label="Section précédente">
+        </Button>
+        <Button size="icon" onClick={go(() => player.previous())} disabled={disabled} title="Début de la section (deux clics : section précédente)" aria-label="Section précédente">
           <Icon d="M3 3h2v10H3zM13 3v10L5 8z" />
-        </button>
-        <button className={`${TRANSPORT} w-[3em] compact:w-[2.6em]`} onClick={toggle} disabled={disabled} title={labels[state]} aria-label={labels[state]}>
+        </Button>
+        <Button size="icon" onClick={toggle} disabled={disabled} title={labels[state]} aria-label={labels[state]}>
           {state === "loading" ? <span className="leading-[14px]">…</span> : <Icon d={state === "playing" ? "M4 3h3v10H4zM9 3h3v10H9z" : "M4 2.5v11L13 8z"} />}
-        </button>
-        <button className={`${TRANSPORT} w-[2.4em] compact:w-[2.1em]`} onClick={go(() => player.next())} disabled={disabled || entry + 1 >= entries} title="Section suivante" aria-label="Section suivante">
+        </Button>
+        <Button size="icon" onClick={go(() => player.next())} disabled={disabled || entry + 1 >= entries} title="Section suivante" aria-label="Section suivante">
           <Icon d="M11 3h2v10h-2zM3 3v10l8-5z" />
-        </button>
-        <button className={`${TRANSPORT} w-[2.4em] compact:w-[2.1em]`} onClick={() => player.stop()} disabled={state === "idle"} title="Arrêter et revenir au début" aria-label="Arrêter">
+        </Button>
+        <Button size="icon" onClick={() => player.stop()} disabled={state === "idle"} title="Arrêter et revenir au début" aria-label="Arrêter">
           <Icon d="M3.5 3.5h9v9h-9z" />
-        </button>
-      </span>
-      <span className="flex">
-        <button
-          className={`${TRANSPORT} w-[2.4em] compact:w-[2.1em] ${toggled(following)}`}
-          aria-pressed={following}
-          onClick={() => follow.set(!following)}
-          title={following ? "Suivre la lecture : la partition suit le curseur, et y revient une seconde après qu'on l'a fait défiler à la main" : "Suivre la lecture : arrêté"}
-          aria-label="Suivre la lecture"
-        >
-          <Icon d="M8 2.5a5.5 5.5 0 1 0 0 11a5.5 5.5 0 1 0 0-11zM8 4a4 4 0 1 1 0 8a4 4 0 1 1 0-8zM8 6.3a1.7 1.7 0 1 1 0 3.4a1.7 1.7 0 1 1 0-3.4zM7.25 .5h1.5v2h-1.5zM7.25 13.5h1.5v2h-1.5zM.5 7.25h2v1.5h-2zM13.5 7.25h2v1.5h-2z" />
-        </button>
-      </span>
+        </Button>
+      </ButtonGroup>
+      <Button
+        size="icon"
+        pressed={following}
+        onClick={() => follow.set(!following)}
+        title={following ? "Suivre la lecture : la partition suit le curseur, et y revient une seconde après qu'on l'a fait défiler à la main" : "Suivre la lecture : arrêté"}
+        aria-label="Suivre la lecture"
+      >
+        <Icon d="M8 2.5a5.5 5.5 0 1 0 0 11a5.5 5.5 0 1 0 0-11zM8 4a4 4 0 1 1 0 8a4 4 0 1 1 0-8zM8 6.3a1.7 1.7 0 1 1 0 3.4a1.7 1.7 0 1 1 0-3.4zM7.25 .5h1.5v2h-1.5zM7.25 13.5h1.5v2h-1.5zM.5 7.25h2v1.5h-2zM13.5 7.25h2v1.5h-2z" />
+      </Button>
       <span className="flex">
         <MetronomeMenu metronome={metronome} onMetronome={onMetronome} clickGrid={clickGrid} onClickGrid={onClickGrid} />
         <PartsMenu score={score} muted={muted} onMuted={onMuted} instruments={instruments} onInstrument={onInstrument} volumes={volumes} onVolume={onVolume} />
@@ -167,23 +165,22 @@ export function ListenControls({ score, disabled, metronome, onMetronome, clickG
 type MetronomeProps = { metronome: boolean; onMetronome: (on: boolean) => void; clickGrid: ClickGrid; onClickGrid: (grid: ClickGrid) => void };
 
 function MetronomeMenu({ metronome, onMetronome, clickGrid, onClickGrid }: MetronomeProps) {
-  const { open, setOpen, root } = usePopover<HTMLSpanElement>();
   return (
-    <span className="relative flex" ref={root}>
-      <button className={`${TOGGLE} ${toggled(metronome)}`} aria-pressed={metronome} onClick={() => onMetronome(!metronome)} title={metronome ? "Métronome : marque les temps" : "Métronome : coupé"} aria-label="Métronome">
+    <ButtonGroup>
+      <Button size="icon" pressed={metronome} onClick={() => onMetronome(!metronome)} title={metronome ? "Métronome : marque les temps" : "Métronome : coupé"} aria-label="Métronome">
         <Icon d="M6.2 1.5h3.6L13 14.5H3zM7 4.5l-.9 8h3.8l-.9-8zM8 11.8 12.6 3.6l.9.5-4.4 8z" />
-      </button>
-      <button className={more(open)} aria-haspopup="true" aria-expanded={open} onClick={() => setOpen((v) => !v)} title="Ce que bat le métronome" aria-label="Battre">
-        <svg width="8" height="16" viewBox="0 0 8 16" aria-hidden="true">
-          <path d="M1 6.5h6L4 10z" fill="currentColor" />
-        </svg>
-      </button>
-      {open && (
-        <Popover label="Battre" title="Battre" className="min-w-[240px] w-[280px]">
+      </Button>
+      <DialogTrigger>
+        <Pressable>
+          <Button size="caret" title="Ce que bat le métronome" aria-label="Battre">
+            <More />
+          </Button>
+        </Pressable>
+        <Popover label="Battre" title="Battre" className="w-[280px]">
           <PopoverChoices name="click-grid-bar" options={CLICK_GRIDS} value={clickGrid} onChange={onClickGrid} />
         </Popover>
-      )}
-    </span>
+      </DialogTrigger>
+    </ButtonGroup>
   );
 }
 
@@ -196,7 +193,6 @@ function MetronomeMenu({ metronome, onMetronome, clickGrid, onClickGrid }: Metro
 type PartsProps = { score?: Score; muted: number[]; onMuted: (staves: number[]) => void; instruments: string[]; onInstrument: (part: number, instrument: string) => void; volumes: number[]; onVolume: (part: number, db: number) => void };
 
 function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, onVolume }: PartsProps) {
-  const { open, setOpen, root } = usePopover<HTMLSpanElement>();
   // le dernier choix où une portée au moins jouait : la musique rendue le retrouve
   const before = useRef<number[]>([]);
   const names = score ? staffNames(score.parts) : [];
@@ -213,24 +209,22 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, 
   }
   const all = names.map((_, k) => k);
   const silent = names.length > 0 && muted.length >= names.length;
-  // toutes les portées jouées : allumé ; quelques-unes : allumé, à rayures
-  const state = !muted.length ? toggled(true) : silent ? toggled(false) : `${ON} bg-[repeating-linear-gradient(135deg,var(--color-accent-12)_0_4px,#fff_4px_8px)]`;
   const title = !muted.length ? "Musique : toutes les portées jouées" : silent ? "Musique : coupée (le métronome seul)" : `Musique : ${muted.length} portée${muted.length > 1 ? "s" : ""} muette${muted.length > 1 ? "s" : ""} sur ${names.length}`;
   const toggle = (k: number) => onMuted(muted.includes(k) ? muted.filter((x) => x !== k) : [...muted, k].sort((a, b) => a - b));
   if (!silent) before.current = muted;
   const music = () => onMuted(silent ? before.current : all);
   return (
-    <span className="relative flex ml-[5px]" ref={root}>
-      <button className={`${TOGGLE} ${state}`} aria-pressed={!silent} onClick={music} disabled={!names.length} title={title} aria-label="Musique">
+    <ButtonGroup className="ml-[5px]">
+      <Button size="icon" pressed={!silent} onClick={music} disabled={!names.length} title={title} aria-label="Musique">
         <Icon d="M6 2.5 13 1v9.2a2.3 2.3 0 1 1-1.5-2.15V4.1L7.5 5v6.7A2.3 2.3 0 1 1 6 9.55z" />
-      </button>
-      <button className={more(open)} aria-haspopup="true" aria-expanded={open} onClick={() => setOpen((v) => !v)} disabled={!names.length} title="Portées jouées et instruments des parties" aria-label="Parties et instruments">
-        <svg width="8" height="16" viewBox="0 0 8 16" aria-hidden="true">
-          <path d="M1 6.5h6L4 10z" fill="currentColor" />
-        </svg>
-      </button>
-      {open && (
-        <Popover label="Parties et instruments" title="Parties et instruments" className="min-w-[300px]">
+      </Button>
+      <DialogTrigger>
+        <Pressable>
+          <Button size="caret" disabled={!names.length} title="Portées jouées et instruments des parties" aria-label="Parties et instruments">
+            <More />
+          </Button>
+        </Pressable>
+        <Popover label="Parties et instruments" title="Parties et instruments" className="w-min min-w-[300px]">
           {groups.map((g, i) => {
             // l'instrument de la partition (écrit après le nom de la partie, ou deviné) ; un autre choix se rétablit d'un clic
             const fromScore = score ? scoreInstrument(score.parts[i]) : PIANO;
@@ -245,9 +239,9 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, 
                   ))}
                 </select>
                 {chosen && (
-                  <button className="flex items-center justify-center w-auto m-0 px-1.5 py-px text-accent bg-white rounded" onClick={() => onInstrument(i, fromScore)} title={`Reprendre l'instrument de la partition (${instrumentLabel(fromScore)})`} aria-label="Reprendre l'instrument de la partition">
+                  <Button size="small" onClick={() => onInstrument(i, fromScore)} title={`Reprendre l'instrument de la partition (${instrumentLabel(fromScore)})`} aria-label="Reprendre l'instrument de la partition">
                     ↺
-                  </button>
+                  </Button>
                 )}
               </span>
             );
@@ -285,17 +279,17 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, 
               </div>
             );
           })}
-          <div className="flex gap-1.5 mt-1">
-            <button className={ACTION} onClick={() => onMuted([])} disabled={!muted.length}>
+          <ButtonGroup className="mt-1 justify-self-start">
+            <Button size="small" onClick={() => onMuted([])} disabled={!muted.length}>
               Toutes
-            </button>
-            <button className={ACTION} onClick={() => onMuted(all)} disabled={silent}>
+            </Button>
+            <Button size="small" onClick={() => onMuted(all)} disabled={silent}>
               Aucune
-            </button>
-          </div>
+            </Button>
+          </ButtonGroup>
           <PopoverHint>Une portée muette n'est pas jouée : à vous de la jouer, avec le métronome au besoin. L'instrument d'une partie est celui que la partition écrit après son nom, ou que son nom fait deviner ; un autre choix, comme le volume, vaut pour ce morceau.</PopoverHint>
         </Popover>
-      )}
-    </span>
+      </DialogTrigger>
+    </ButtonGroup>
   );
 }

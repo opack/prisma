@@ -1,5 +1,5 @@
 /** Un choix d'un panneau, parmi quelques-uns : chaque possibilité, et ce qu'elle fait, dessous. */
-import { HINT } from "./hint.ts";
+import { PopoverHint } from "./PopoverHint.tsx";
 
 export type PopoverOption<T> = { value: T; label: string; hint: string };
 
@@ -13,7 +13,7 @@ function PopoverChoice<T>({ name, option, checked, onChange }: { name: string; o
       <input className="mt-[3px] accent-accent" type="radio" name={name} checked={checked} onChange={onChange} />
       <span>
         {option.label}
-        <span className={`${HINT} block`}>{option.hint}</span>
+        <PopoverHint>{option.hint}</PopoverHint>
       </span>
     </label>
   );

@@ -77,7 +77,7 @@ export function FocusView({ pages, options }: { pages: Page[]; options: RenderOp
         // la place qu'on ne joue pas : le système à venir, à peine atténué, ou celui qu'on vient de jouer, effacé
         const role = cur < 0 || k === cur ? "" : k === after(cur) ? "opacity-80" : "opacity-35";
         return (
-          <div key={`${place}:${k}`} className={`min-h-0 bg-white shadow-[0_1px_3px_rgba(0,0,0,.18),0_6px_18px_rgba(0,0,0,.08)] [transition:opacity_.3s] animate-[focus-in_.35s_ease-out] [&_svg]:block [&_svg]:w-full [&_svg]:h-full ${role}`}>
+          <div key={`${place}:${k}`} className={`min-h-0 bg-white shadow-[0_1px_3px_rgba(0,0,0,.18),0_6px_18px_rgba(0,0,0,.08)] [transition:opacity_.3s] animate-focus-in [&_svg]:block [&_svg]:w-full [&_svg]:h-full ${role}`}>
             {ps && (
               // centré dans sa place : la place a la hauteur du plus haut système
               <svg viewBox={`${frame.x0} ${top(ps)} ${frame.w} ${frame.h}`} preserveAspectRatio="xMidYMid meet" fontFamily={FONT} style={{ fontVariantNumeric: "tabular-nums" }}>

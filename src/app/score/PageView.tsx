@@ -8,6 +8,7 @@ import { octaveTint } from "./colors.ts";
 import { player } from "../playback/player.ts";
 import { follow } from "./follow.ts";
 import { pick } from "./pick.ts";
+import "./page.css";
 import { textMark } from "./textMark.ts";
 import { mainOf, rowLane } from "../../core/locate.ts";
 import { keyName, parseKey, prismaKey } from "../../core/key.ts";
@@ -621,7 +622,7 @@ export function OrderLine({ order, y, cx = PAGE.w / 2, live = false }: { order: 
       {live && (
         <g className="seek">
           {order.map((label, i) => (
-            <rect key={i} x={x0 + i * step - 0.8} y={y - 0.8} width={step} height={4.9} fill="transparent" onClick={() => player.seekEntry(i)}>
+            <rect key={i} x={x0 + i * step - 0.8} y={y - 0.8} width={step} height={4.9} fill="transparent" className="cursor-pointer" onClick={() => player.seekEntry(i)}>
               <title>{`Écouter à partir de cette section ${label}`}</title>
             </rect>
           ))}
@@ -1092,7 +1093,7 @@ export function Excerpt({ pages, options, scale = 1 }: { pages: Page[]; options:
   const y1 = Math.max(...placed.map((ps) => ps.y + ps.height)) + pad;
   return (
     <svg
-      className="excerpt"
+      className="excerpt block max-w-full h-auto"
       viewBox={`${x0} ${y0} ${x1 - x0} ${y1 - y0}`}
       width={`${(x1 - x0) * scale}mm`}
       height={`${(y1 - y0) * scale}mm`}
@@ -1233,7 +1234,7 @@ export function TextMarks({ systems }: { systems: PlacedSystem[] }) {
     top = ps.y + staff.rowsTop + (hit ? hit.i : 0) * ps.rowH;
     bottom = hit ? top + ps.rowH : ps.y + staff.bottom;
   }
-  return <rect ref={ref} className="text-mark" x={ps.xs[ci] - 0.3} y={top} width={ps.ws[ci] + 0.6} height={bottom - top} rx={0.8} fill="rgba(43, 93, 110, 0.12)" stroke="#2b5d6e" strokeWidth={0.35} style={{ pointerEvents: "none" }} />;
+  return <rect ref={ref} className="text-mark print:hidden" x={ps.xs[ci] - 0.3} y={top} width={ps.ws[ci] + 0.6} height={bottom - top} rx={0.8} fill="rgba(43, 93, 110, 0.12)" stroke="#2b5d6e" strokeWidth={0.35} style={{ pointerEvents: "none" }} />;
 }
 
 /**
@@ -1338,7 +1339,7 @@ export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
       {systems.map((ps, k) => {
         const { top, bottom } = band(ps);
         const left = ps.xs[ps.sys.anchors[0]], last = ps.sys.anchors[ps.sys.anchors.length - 1];
-        return <rect key={k} x={left} y={top} width={ps.xs[last] + ps.ws[last] - left} height={bottom - top} className="system-area" fill="transparent" data-start={ps.sys.start} data-end={ps.sys.end} data-top={ps.y} data-bottom={ps.y + ps.height} onPointerDown={(e) => (tap.current.touch = e.pointerType === "touch")} onClick={(e) => seek(ps, e)} onDoubleClick={(e) => edit(ps, e)} />;
+        return <rect key={k} x={left} y={top} width={ps.xs[last] + ps.ws[last] - left} height={bottom - top} className="system-area cursor-pointer" fill="transparent" data-start={ps.sys.start} data-end={ps.sys.end} data-top={ps.y} data-bottom={ps.y + ps.height} onPointerDown={(e) => (tap.current.touch = e.pointerType === "touch")} onClick={(e) => seek(ps, e)} onDoubleClick={(e) => edit(ps, e)} />;
       })}
     </g>
   );

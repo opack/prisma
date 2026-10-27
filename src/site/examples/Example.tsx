@@ -3,6 +3,7 @@
  * Un exemple montre sa partition, ou à la demande son texte, à copier pour le coller dans
  * l'application : les deux disent la même chose.
  */
+import { Button } from "../../app/ui/button/Button.tsx";
 import { useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { parsePrisma } from "../../core/index.ts";
@@ -63,9 +64,9 @@ function CopyButton({ text, target }: { text: string; target: React.RefObject<HT
   };
   const name = copied ? "Copié" : "Copier le texte";
   return (
-    <button type="button" className="absolute top-2 right-2 grid place-items-center w-8 h-8 p-0 border border-line rounded-md bg-white text-accent cursor-pointer hover:border-accent" onClick={copy} aria-label={name} title={name}>
+    <Button className="absolute top-2 right-2" size="icon" onClick={copy} aria-label={name} title={name}>
       {copied ? <CheckIcon /> : <CopyIcon />}
-    </button>
+    </Button>
   );
 }
 

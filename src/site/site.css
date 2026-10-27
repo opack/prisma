@@ -1,62 +1,15 @@
 /* Le site de présentation : la police de l'application, ses couleurs, et la gravure telle quelle. */
 /* l'ordre des couches, quel que soit l'ordre des imports : thème, base, écrans, classes */
 @layer theme, base, components, utilities;
-:root {
-  --ink: #1b1d1f;
-  --muted: #5b6064;
-  --line: #d9dcd6;
-  --panel: #f4f5f2;
-  --accent: #2b5d6e;
-  --accent-ink: #ffffff;
-  --ui: "Atkinson Hyperlegible", system-ui, sans-serif;
-  --mono: "Cascadia Mono", Consolas, "DejaVu Sans Mono", Menlo, monospace;
-}
-
-/* les éléments, après le preflight de Tailwind (voir tailwind.css) */
+/* le texte courant des pages, par défaut : ses paragraphes, ses liens soulignés, ses listes à puces
+   et ses titres (l'écriture Prisma : le composant Prisma ; la police et les couleurs de la page : les
+   classes de <body>, dans chaque page HTML ; sa largeur et ses sections : Page et Section) */
 @layer base {
-  * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
-  body { margin: 0; background: #fff; color: var(--ink); font-family: var(--ui); font-size: 18px; line-height: 1.6; }
-  /* les liens soulignés et les puces des listes, que le preflight de Tailwind retire */
-  a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+  p { margin: 0 0 14px; }
+  a { color: var(--color-accent); text-decoration: underline; text-underline-offset: 3px; }
+  a:focus-visible { outline: 3px solid var(--color-accent-40); outline-offset: 2px; }
   ul { list-style: disc; }
-  a:focus-visible, button:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 55%, #fff); outline-offset: 2px; }
-  b { font-weight: 700; }
-  code { font-family: var(--mono); font-size: 0.9em; padding: 1px 5px; background: var(--panel); border-radius: 4px; }
   h1, h2 { line-height: 1.15; letter-spacing: -0.01em; }
   h1 { font-size: clamp(2.6rem, 6vw, 4.6rem); margin: 0 0 20px; }
   h2 { font-size: clamp(1.5rem, 2.6vw, 2rem); margin: 0 0 14px; }
-  p { margin: 0 0 14px; }
-
-  /* les pages : leur largeur, et leurs sections, séparées d'un trait */
-  main { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
-  section { padding: 56px 0; }
-  section + section { border-top: 1px solid var(--line); }
-  @media (max-width: 900px) { section { padding: 40px 0; } }
-}
-
-/* ce qui reste en CSS : le tableau de la comparaison, qui se replie en fiches sur un téléphone, et
-   la référence, du Markdown rendu, sans classes où poser Tailwind */
-@layer components {
-  .compare { width: 100%; border-collapse: collapse; font-size: 1rem; }
-  .compare th, .compare td { padding: 14px 16px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
-  .compare thead th { font-size: 0.95rem; color: var(--muted); border-bottom: 2px solid var(--ink); }
-  .compare tbody th { width: 16%; font-weight: 700; }
-  .compare td:last-child { background: color-mix(in srgb, var(--accent) 5%, #fff); }
-  @media (max-width: 600px) {
-    .compare thead { display: none; }
-    .compare, .compare tbody, .compare tr, .compare th, .compare td { display: block; width: auto; }
-    .compare tr { padding: 12px 0; border-bottom: 1px solid var(--line); }
-    .compare th, .compare td, .compare tbody th { border: 0; padding: 4px 0; width: auto; }
-    .compare td::before { display: block; font-size: 0.85rem; color: var(--muted); }
-    .compare td:nth-child(2)::before { content: "Partition classique"; }
-    .compare td:nth-child(3)::before { content: "Prisma"; }
-    .compare td:last-child { padding: 8px 10px; border-radius: 6px; }
-  }
-
-  /* la référence : sa mise en page vient de l'application (reference.css) */
-  .reference-page .guide { font-size: 17px; }
-  .reference-page .guide table { display: block; max-width: 100%; overflow-x: auto; }
-  @media (max-width: 600px) { .reference-page .guide { padding: 8px 0 32px; } }
 }

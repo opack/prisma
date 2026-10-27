@@ -7,7 +7,7 @@ const pianoKey = (black: boolean, current: boolean) =>
     "absolute top-0 flex items-end justify-center px-0 pt-0 border rounded-[0_0_5px_5px] font-mono font-semibold",
     black ? "z-1 h-[50px] pb-1 text-[11px] text-white" : "h-[84px] pb-1.5 text-[13px]",
     current
-      ? `bg-accent border-accent text-white ${black ? "" : "shadow-[inset_0_0_0_1px_var(--accent)]"}`
+      ? `bg-accent border-accent text-white ${black ? "" : "shadow-[inset_0_0_0_1px_var(--color-accent)]"}`
       : black
         ? "bg-[#2a2d30] border-[#2a2d30] hover:bg-[#454a4f]"
         : "bg-white border-[#b9bcb6] text-ink hover:bg-accent-10",

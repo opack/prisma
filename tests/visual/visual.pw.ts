@@ -63,8 +63,34 @@ test("site menu telephone", async ({ page }) => {
   await page.setViewportSize(PHONE);
   await page.goto("/apprendre.html");
   await settle(page);
-  await page.locator("header summary").click();
+  await page.getByRole("button", { name: "Pages du site" }).click();
   await expect(page).toHaveScreenshot("site-menu-telephone.png");
+  // un clic ailleurs le ferme
+  await page.mouse.click(20, 600);
+  await expect(page.getByRole("menu")).toHaveCount(0);
+});
+
+// l'accueil, plus bas que son haut : ses parties sous le bouton fixé en haut, et le retour en haut
+for (const [name, size] of [["bureau", DESKTOP], ["telephone", PHONE]] as const)
+  test(`site parties ${name}`, async ({ page }) => {
+    await page.setViewportSize(size);
+    await page.goto("/index.html");
+    await settle(page);
+    await page.locator("#temps").evaluate((el) => el.scrollIntoView({ behavior: "instant" }));
+    await settle(page);
+    await page.getByRole("button", { name: /^Sur cette page/ }).click();
+    await expect(page).toHaveScreenshot(`site-parties-${name}.png`);
+  });
+
+// la référence sur un téléphone : son sommaire, sous le bouton collé en haut, ouvert plus bas dans la page
+test("site sommaire telephone", async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.goto("/reference.html");
+  await settle(page);
+  await page.locator("[id=\"3-le-temps\"]").evaluate((h) => h.scrollIntoView({ behavior: "instant" }));
+  await settle(page);
+  await page.getByRole("button", { name: /^Sommaire/ }).click();
+  await expect(page).toHaveScreenshot("site-sommaire-telephone.png");
 });
 
 // le clavier de l'accueil, une touche noire puis une blanche survolées : la même dans les deux octaves
@@ -153,7 +179,22 @@ for (const [name, size] of [["telephone", PHONE], ["tablette", TABLET]] as const
 test("app telephone menu", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS, editing: false, size: PHONE });
   await page.getByRole("button", { name: "Menu", exact: true }).click();
+  await page.getByRole("menuitem", { name: /Partition/ }).click();
+  await settle(page);
   await expect(page).toHaveScreenshot("app-telephone-menu.png");
+});
+
+// une tablette : un seul bouton « Menu » ; un titre choisi montre ses actions à la place des titres,
+// « ‹ Menu » y revient
+test("app tablette menu", async ({ page }) => {
+  await openApp(page, { source: CLAIR_SECTIONS, editing: false, size: TABLET });
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  await page.getByRole("menuitem", { name: /Fichier/ }).click();
+  await page.getByRole("menuitem", { name: "Menu", exact: true }).click();
+  await expect(page.getByRole("menu")).toHaveAttribute("aria-label", "Menu");
+  await page.getByRole("menuitem", { name: /Affichage/ }).click();
+  await settle(page);
+  await expect(page).toHaveScreenshot("app-tablette-menu.png");
 });
 
 // au doigt, deux touchers sur une case ouvrent sa retouche
@@ -232,6 +273,49 @@ test("app menu ouvert", async ({ page }) => {
   await page.getByRole("button", { name: "Partition", exact: true }).click();
   await settle(page);
   await expect(page).toHaveScreenshot("app-menu.png");
+});
+
+// au clavier : Entrée ouvre le menu, les flèches y passent d'une action à l'autre ; Échap le ferme et
+// rend le focus à son bouton
+test("app menu au clavier", async ({ page }) => {
+  await openApp(page, { source: CLAIR_SECTIONS });
+  await page.getByRole("button", { name: "Affichage", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  await settle(page);
+  await expect(page).toHaveScreenshot("app-menu-clavier.png");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Affichage", exact: true })).toBeFocused();
+});
+
+// au clavier, Tab passe des menus aux boutons de l'écoute : le bouton qui a le focus a son contour
+test("app tab jusqu'à l'écoute", async ({ page }) => {
+  await openApp(page, { source: CLAIR_SECTIONS });
+  await page.getByRole("button", { name: "Fichier", exact: true }).focus();
+  for (let i = 0; i < 7; i++) await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Écouter" })).toBeFocused();
+  await expect(page.locator("header")).toHaveScreenshot("app-tab-ecoute.png");
+});
+
+// la barre des menus : un menu ouvert, le survol d'un autre titre l'ouvre à sa place ; les flèches
+// passent au menu voisin ; Tab ferme le menu ; un clic ailleurs aussi
+test("app menus au survol", async ({ page }) => {
+  await openApp(page, { source: CLAIR_SECTIONS });
+  const opened = page.getByRole("menu");
+  await page.getByRole("button", { name: "Fichier", exact: true }).click();
+  await page.getByRole("button", { name: "Affichage", exact: true }).hover();
+  await expect(opened).toHaveAttribute("aria-label", "Affichage");
+  await settle(page);
+  await expect(page).toHaveScreenshot("app-menus-survol.png");
+  await page.keyboard.press("ArrowRight");
+  await expect(opened).toHaveAttribute("aria-label", "Aide");
+  await page.keyboard.press("Tab");
+  await expect(opened).toHaveCount(0);
+  await page.getByRole("button", { name: "Partition", exact: true }).click();
+  await page.mouse.click(900, 600);
+  await expect(opened).toHaveCount(0);
 });
 
 test("app réglages de la mise en page", async ({ page }) => {
@@ -331,12 +415,12 @@ test("app lecture focalisée", async ({ page }) => {
 for (const [fit, zoom, name] of [["height", 2, "gauche"], ["width", 1, "haut"]] as const)
   test(`app retour au début ${name}`, async ({ page }) => {
     await openApp(page, { source: GYMNOPEDIE, editing: false, view: { fit, zoom } });
-    await page.locator(".preview").evaluate((p) => p.scrollTo({ left: p.scrollWidth, top: p.scrollHeight }));
+    await page.locator("section[data-fit]").evaluate((p) => p.scrollTo({ left: p.scrollWidth, top: p.scrollHeight }));
     await settle(page);
     await expect(page).toHaveScreenshot(`app-retour-${name}.png`);
     await page.getByRole("button", { name: "Retour au début de la partition" }).click();
     await settle(page);
-    await expect(page.locator(".preview")).toHaveJSProperty(fit === "height" ? "scrollLeft" : "scrollTop", 0);
+    await expect(page.locator("section[data-fit]")).toHaveJSProperty(fit === "height" ? "scrollLeft" : "scrollTop", 0);
     await expect(page.getByRole("button", { name: "Retour au début de la partition" })).toHaveCount(0);
   });
 
@@ -405,7 +489,7 @@ test("app dépôt", async ({ page }) => {
     d.items.add(new File(["0 |1 ||"], "morceau.prisma"));
     return d;
   });
-  await page.dispatchEvent(".app", "dragenter", { dataTransfer: files });
+  await page.dispatchEvent("#root > div", "dragenter", { dataTransfer: files });
   await settle(page);
   await expect(page).toHaveScreenshot("app-depot.png");
 });
@@ -418,7 +502,7 @@ test("app avis", async ({ page }) => {
     d.items.add(new File(["x"], "photo.png"));
     return d;
   });
-  await page.dispatchEvent(".app", "drop", { dataTransfer: files });
+  await page.dispatchEvent("#root > div", "drop", { dataTransfer: files });
   await settle(page);
   await expect(page.locator("header")).toHaveScreenshot("app-avis.png");
 });

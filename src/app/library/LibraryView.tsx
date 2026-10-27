@@ -10,17 +10,15 @@ import { engraveOptions } from "../score/render.ts";
 import { thumbOf } from "./thumbs.ts";
 import type { Thumb } from "./thumbs.ts";
 import { access, canUseLibrary, pickFolder, recentOpenings, savedFolder, scan } from "./library.ts";
-import { BackButton } from "../ui/BackButton.tsx";
-import { IconButton } from "../ui/IconButton.tsx";
+import { BackButton } from "../ui/button/BackButton.tsx";
+import { Button } from "../ui/button/Button.tsx";
+import { ButtonGroup } from "../ui/button/ButtonGroup.tsx";
 
 /** Une explication de la bibliothèque (le dossier à choisir, à autoriser…). */
 const NOTE = "text-muted leading-[1.5]";
-const ACTION = "bg-accent border-accent text-white hover:border-muted";
 /** Afficher, Trier par : leur nom, puis leur liste. */
 const TOOL = "flex items-center gap-2 text-muted whitespace-nowrap";
 const SELECT = "px-1.5 py-[5px] bg-white border border-line rounded";
-/** En liste, en vignettes. */
-const viewButton = (on: boolean) => `flex items-center px-[9px] py-1.5 ${on ? "relative text-accent bg-accent-12 border-accent" : "text-muted"}`;
 /** Un morceau, en ligne ou en vignette : tout le bouton se clique. */
 const ENTRY = "w-full text-left bg-transparent border-0 hover:bg-panel";
 /** Le fichier du morceau, son type, sa date. */
@@ -177,13 +175,13 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
           {(state.kind === "ready" || state.kind === "locked") && (
             <p className="flex flex-wrap items-center gap-2 mt-0 mb-4 text-muted">
               Dossier « {state.dir.name} »
-              <IconButton label="Changer de dossier" onClick={choose}>
+              <Button size="icon" onClick={choose} title="Changer de dossier" aria-label="Changer de dossier">
                 <FolderIcon />
-              </IconButton>
+              </Button>
               {state.kind === "ready" && (
-                <IconButton label="Actualiser" title="Actualiser : relire le dossier" onClick={() => load(state.dir)}>
+                <Button size="icon" onClick={() => load(state.dir)} title="Actualiser : relire le dossier" aria-label="Actualiser">
                   <RefreshIcon />
-                </IconButton>
+                </Button>
               )}
             </p>
           )}
@@ -196,25 +194,25 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
         {state.kind === "none" && (
           <div className={NOTE}>
             <p className="mt-0 mb-3">Choisissez le dossier où vous rangez vos partitions (.prisma et MusicXML) : la bibliothèque les montre toutes, sous-dossiers compris. Les fichiers restent où ils sont.</p>
-            <button className={ACTION} onClick={choose}>
+            <Button kind="primary" onClick={choose}>
               Choisir un dossier
-            </button>
+            </Button>
           </div>
         )}
         {state.kind === "locked" && (
           <div className={NOTE}>
             <p className="mt-0 mb-3">Le navigateur demande de confirmer l'accès au dossier « {state.dir.name} ».</p>
-            <button className={ACTION} onClick={() => load(state.dir, true)}>
+            <Button kind="primary" onClick={() => load(state.dir, true)}>
               Autoriser l'accès
-            </button>
+            </Button>
           </div>
         )}
         {state.kind === "error" && (
           <div className={NOTE}>
             <p className="mt-0 mb-3">Lecture du dossier impossible : {state.message}</p>
-            <button className={ACTION} onClick={choose}>
+            <Button kind="primary" onClick={choose}>
               Choisir un dossier
-            </button>
+            </Button>
           </div>
         )}
 
@@ -246,18 +244,18 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
                   Options de chaque partition
                 </label>
               )}
-              <span className="flex ml-auto" role="group" aria-label="Présentation">
-                <button className={`${viewButton(view === "list")} rounded-[4px_0_0_4px]`} aria-pressed={view === "list"} onClick={() => setView("list")} title="En liste" aria-label="En liste">
+              <ButtonGroup className="ml-auto" label="Présentation">
+                <Button size="icon" pressed={view === "list"} onClick={() => setView("list")} title="En liste" aria-label="En liste">
                   <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
                     <path fill="currentColor" d="M1.5 3h2v2h-2zM5.5 3.25h9v1.5h-9zM1.5 7h2v2h-2zM5.5 7.25h9v1.5h-9zM1.5 11h2v2h-2zM5.5 11.25h9v1.5h-9z" />
                   </svg>
-                </button>
-                <button className={`${viewButton(view === "thumbs")} -ml-px rounded-[0_4px_4px_0]`} aria-pressed={view === "thumbs"} onClick={() => setView("thumbs")} title="En vignettes : le haut de la première page" aria-label="En vignettes">
+                </Button>
+                <Button size="icon" pressed={view === "thumbs"} onClick={() => setView("thumbs")} title="En vignettes : le haut de la première page" aria-label="En vignettes">
                   <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
                     <path fill="currentColor" d="M1.5 1.5h5.5v5.5h-5.5zM9 1.5h5.5v5.5H9zM1.5 9h5.5v5.5h-5.5zM9 9h5.5v5.5H9z" />
                   </svg>
-                </button>
-              </span>
+                </Button>
+              </ButtonGroup>
             </div>
             {!state.entries.length && <p className={NOTE}>Aucune partition (.prisma ou MusicXML) dans ce dossier.</p>}
             {state.entries.length > 0 && !count && (

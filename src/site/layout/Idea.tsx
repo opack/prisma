@@ -1,5 +1,6 @@
 import { createContext } from "react";
 import type { ReactNode } from "react";
+import { Section } from "./Section.tsx";
 
 export type IdeaKind = "side" | "wide" | "step";
 /** Le genre de l'idée, pour son texte (IdeaText). */
@@ -13,9 +14,9 @@ export function Idea({ kind = "side", id, children }: { kind?: IdeaKind; id?: st
   const layout = kind === "wide" ? "grid grid-cols-[minmax(0,1fr)] gap-6 items-center" : `grid grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-10 narrow:grid-cols-[minmax(0,1fr)] narrow:gap-6 ${kind === "step" ? "items-start" : "items-center"}`;
   return (
     <IdeaKindContext.Provider value={kind}>
-      <section className={layout} id={id}>
+      <Section className={layout} id={id}>
         {children}
-      </section>
+      </Section>
     </IdeaKindContext.Provider>
   );
 }

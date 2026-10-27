@@ -1,7 +1,6 @@
-/** Le mot d'explication d'un panneau, en bas. */
+/** Le mot d'explication d'un panneau, en petit : en bas du panneau, ou sous une possibilité d'un choix. */
 import type { ReactNode } from "react";
-import { HINT } from "./hint.ts";
 
 export function PopoverHint({ children }: { children: ReactNode }) {
-  return <p className={HINT}>{children}</p>;
+  return <span className="block mt-0.5 mb-0 text-muted text-[0.85em] leading-[1.35] whitespace-normal">{children}</span>;
 }

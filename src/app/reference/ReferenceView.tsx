@@ -3,7 +3,6 @@
  * y est gravé par le vrai moteur de gravure, sous son texte (le site les montre à sa façon). La référence suit donc toujours
  * la gravure, sans images à régénérer.
  */
-import { Marked } from "marked";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -12,50 +11,11 @@ import { parsePrisma } from "../../core/index.ts";
 import { engrave } from "../score/engrave.ts";
 import { Excerpt } from "../score/PageView.tsx";
 import { alignOf } from "../options/options.ts";
-import { slug } from "./slug.ts";
-import { ScrollBackButton } from "../ui/ScrollBackButton.tsx";
-import "./reference.css";
+import { render } from "./markdown.ts";
+import { ContentsMenu } from "../ui/ContentsMenu.tsx";
+import { ScrollBackButton } from "../ui/button/ScrollBackButton.tsx";
 import type { RenderOptions } from "../options/options.ts";
 
-/** Un titre de la référence, pour la table des matières : son niveau, son texte, son ancre. */
-type Heading = { depth: number; text: string; id: string };
-
-
-/**
- * HTML de la référence, avec une place réservée pour chaque exemple gravé, et ses titres. Une page
- * du site (« guitare.html ») se lit depuis site, le dossier du site : dans l'application, elle
- * s'ouvre à côté, sans quitter le morceau.
- */
-function render(markdown: string, site: string) {
-  const examples: string[] = [];
-  const headings: Heading[] = [];
-  const marked = new Marked({
-    renderer: {
-      // chaque titre reçoit une ancre ; ceux des parties et sous-parties font la table des matières
-      heading({ tokens, depth }) {
-        const html = this.parser.parseInline(tokens);
-        const text = html.replace(/<[^>]+>/g, "").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/&quot;/g, '"');
-        const id = slug(text) || `titre-${headings.length}`;
-        if (depth === 2 || depth === 3) headings.push({ depth, text, id });
-        return `<h${depth} id="${id}">${html}</h${depth}>`;
-      },
-      code({ text, lang }) {
-        if (lang !== "prisma") return false;
-        examples.push(text);
-        return `<div class="example" data-example="${examples.length - 1}"></div>`;
-      },
-      // les autres documents du dépôt ne sont pas servis par l'application : leur nom suffit
-      link({ href, tokens }) {
-        const text = this.parser.parseInline(tokens);
-        if (href.endsWith(".md")) return `<strong>${text}</strong>`;
-        if (!/^[a-z]+:/.test(href) && href.endsWith(".html")) return `<a href="${site}${href}"${site ? ' target="_blank" rel="noopener"' : ""}>${text}</a>`;
-        return false;
-      },
-    },
-  });
-  const html = marked.parse(markdown, { async: false });
-  return { html, examples, headings };
-}
 
 function Example({ text, options }: { text: string; options: RenderOptions }) {
   const result = useMemo(() => {
@@ -152,7 +112,15 @@ export function ReferenceView({ options, example, site = "../.." }: { options: R
           ))}
         </ul>
       </nav>
-      <article className="guide">
+      {/* sur un écran étroit, sans la place du sommaire : un bouton, collé en haut, qui dit la partie lue et l'ouvre */}
+      <ContentsMenu
+        className="sticky top-0 z-10 hidden [@media(max-width:980px)]:block"
+        title="Sommaire"
+        entries={headings.map((h) => ({ id: h.id, label: h.text, depth: h.depth === 3 ? 3 : 2 }))}
+        current={current}
+        onGo={(id) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+      />
+      <article className="guide max-w-[860px] m-0 pt-6 px-8 pb-16 text-[15px] leading-[1.55]">
         <div ref={root} dangerouslySetInnerHTML={{ __html: html }} />
         {slots.map((el, i) => {
           const text = examples[Number((el as HTMLElement).dataset.example)];

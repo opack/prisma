@@ -24,6 +24,53 @@ import { sourceColors } from "./sourceColors.ts";
 import type { SourceColors } from "./sourceColors.ts";
 import type { OctaveColors } from "../score/colors.ts";
 
+/**
+ * L'allure de l'éditeur, dans son thème (CodeMirror le limite à l'éditeur) : le texte à chasse fixe,
+ * de la place en bas pour le bouton de mise en page, les numéros de ligne, la liste de la complétion,
+ * le message d'une erreur, le panneau de recherche à la taille du reste de l'application.
+ */
+const theme = EditorView.theme({
+  "&": { height: "100%", background: "#fff", color: "var(--color-ink)" },
+  "&.cm-focused": { outline: "none" },
+  // la sélection se dessine d'ordinaire sous le texte, et les couloirs d'octave la cacheraient : par-dessus, en multiplication, elle les teinte et le texte reste lisible
+  ".cm-selectionLayer": { zIndex: "1 !important", mixBlendMode: "multiply" },
+  ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": { background: "color-mix(in srgb, var(--color-accent) 22%, #fff)" },
+  ".cm-searchMatch": { background: "color-mix(in srgb, #ffbe28 35%, #fff)" },
+  // une erreur de lecture : soulignée en rouge, sur un fond rosé qui se voit même sous un seul caractère
+  ".cm-lintRange.cm-lintRange-error": { backgroundImage: "none", backgroundColor: "rgba(214, 40, 40, 0.16)", textDecoration: "underline wavy #d22c2c", textDecorationSkipInk: "none", textUnderlineOffset: "3px" },
+  ".cm-scroller": { fontFamily: "var(--font-mono)", fontSize: "13px", lineHeight: "1.45", fontVariantLigatures: "none" },
+  ".cm-content": { padding: "12px 16px 76px 10px", caretColor: "var(--color-ink)" },
+  ".cm-line": { padding: "0" },
+  ".cm-cursor": { borderLeftColor: "var(--color-ink)" },
+  // numéros de ligne : la ligne du curseur en évidence, une erreur en rouge
+  ".cm-gutters": { minWidth: "3.2em", background: "var(--color-panel)", borderRight: "1px solid var(--color-line)", color: "var(--color-muted)", userSelect: "none" },
+  ".cm-lineNumbers .cm-gutterElement": { padding: "0 8px 0 10px" },
+  ".cm-activeLineGutter": { background: "none", color: "var(--color-ink)", fontWeight: "600" },
+  ".cm-gutterElement.cm-error-line": { color: "var(--color-error)", background: "var(--color-error-bg)", fontWeight: "600" },
+  // la liste de la complétion : ce qui s'écrit en chasse fixe, son sens à côté
+  ".cm-tooltip.cm-tooltip-autocomplete": { border: "1px solid var(--color-line)", borderRadius: "6px", background: "#fff", boxShadow: "0 6px 18px rgba(0, 0, 0, 0.12)", overflow: "hidden" },
+  ".cm-tooltip-autocomplete > ul": { fontFamily: "var(--font-mono)", fontSize: "13px", maxHeight: "18em" },
+  ".cm-tooltip-autocomplete > ul > li": { padding: "2px 10px 2px 8px" },
+  ".cm-tooltip-autocomplete > ul > li[aria-selected]": { background: "var(--color-accent)", color: "#fff" },
+  ".cm-tooltip-autocomplete .cm-completionDetail": { fontFamily: "var(--font-ui)", fontStyle: "normal", fontSize: "12.5px", color: "var(--color-muted)", marginLeft: "1.2em" },
+  ".cm-tooltip-autocomplete li[aria-selected] .cm-completionDetail": { color: "rgba(255, 255, 255, 0.85)" },
+  ".cm-tooltip-autocomplete completion-section": { fontFamily: "var(--font-ui)", fontSize: "11.5px", color: "var(--color-muted)", padding: "4px 8px 2px", borderBottom: "0" },
+  ".cm-tooltip-autocomplete .cm-completionMatchedText": { textDecoration: "none", fontWeight: "700" },
+  // le message d'une erreur, au survol de son soulignement
+  ".cm-tooltip.cm-tooltip-hover": { fontFamily: "var(--font-ui)", fontSize: "13px", border: "1px solid var(--color-line)", borderRadius: "6px", background: "#fff", boxShadow: "0 4px 14px rgba(0, 0, 0, 0.12)", overflow: "hidden" },
+  ".cm-tooltip-lint .cm-diagnostic": { padding: "6px 10px", maxWidth: "420px" },
+  // le panneau de recherche (Ctrl+F)
+  ".cm-panels": { background: "var(--color-panel)", borderColor: "var(--color-line)", fontFamily: "var(--font-ui)", fontSize: "13px" },
+  ".cm-panel.cm-search": { padding: "8px 32px 8px 10px", fontSize: "14px", lineHeight: "1.3" },
+  ".cm-panel.cm-search .cm-textfield": { font: "14px var(--font-mono)", padding: "4px 8px", border: "1px solid var(--color-line)", borderRadius: "5px", background: "#fff", minWidth: "14em" },
+  ".cm-panel.cm-search .cm-textfield:focus": { outline: "2px solid color-mix(in srgb, var(--color-accent) 45%, transparent)", outlineOffset: "0", borderColor: "var(--color-accent)" },
+  ".cm-panel.cm-search .cm-button": { font: "13px var(--font-ui)", padding: "4px 10px", border: "1px solid var(--color-line)", borderRadius: "5px", background: "#fff", color: "var(--color-ink)" },
+  ".cm-panel.cm-search .cm-button:hover": { borderColor: "var(--color-accent)" },
+  ".cm-panel.cm-search label": { fontSize: "13px", color: "var(--color-muted)" },
+  ".cm-panel.cm-search input[type=checkbox]": { accentColor: "var(--color-accent)", verticalAlign: "-2px" },
+  ".cm-panel.cm-search [name=close]": { top: "6px", right: "8px", fontSize: "20px", color: "var(--color-muted)", cursor: "pointer" },
+});
+
 /** Les mots du panneau de recherche et remplacement de CodeMirror. */
 const SEARCH_PHRASES: Record<string, string> = {
   Find: "Rechercher",
@@ -145,6 +192,7 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
       state: EditorState.create({
         doc: value,
         extensions: [
+          theme,
           lineNumbers(),
           highlightActiveLineGutter(),
           errorLineField,
@@ -245,8 +293,8 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
   return (
     <>
       <div className="relative grid grid-cols-[minmax(0,1fr)] min-h-0">
-        {/* editor-host : le crochet des styles de CodeMirror (styles.css) */}
-        <div className="editor-host" ref={host} />
+        {/* l'éditeur garde ses plans pour lui (le panneau de recherche passe sous les menus de la barre) */}
+        <div className="min-h-0 isolate" ref={host} />
         {children}
       </div>
       <div className="flex items-baseline gap-4 min-w-0 px-3 py-[5px] text-[12px] text-muted whitespace-nowrap bg-panel border-t border-line" role="status" aria-live="polite">

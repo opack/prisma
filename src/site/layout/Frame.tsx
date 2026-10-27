@@ -1,4 +1,6 @@
 /** Le haut et le bas des pages du site. */
+import { Menu, MenuItem, MenuTrigger, Popover, Pressable } from "react-aria-components";
+import { Button } from "../../app/ui/button/Button.tsx";
 import { ButtonLink } from "./ButtonLink.tsx";
 
 /** Le haut et le bas : la largeur des pages, le nom (ou une phrase) à gauche, les liens à droite. */
@@ -26,6 +28,33 @@ function PageLink({ page, current, label, className = "" }: { page: Page; curren
   );
 }
 
+/** Les pages du site, dans un menu : celle où l'on est, comme le texte. */
+function PagesMenu({ current }: { current: Page }) {
+  return (
+    <MenuTrigger>
+      {/* sur un téléphone seulement */}
+      <span className="hidden phone:flex">
+        <Pressable>
+          <Button size="icon" title="Pages du site" aria-label="Pages du site">
+            <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden>
+              <path fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" d="M2.5 4h11M2.5 8h11M2.5 12h11" />
+            </svg>
+          </Button>
+        </Pressable>
+      </span>
+      <Popover className="min-w-[260px] p-1.5 bg-white border border-line rounded-md shadow-[0_6px_18px_rgba(0,0,0,0.12)] outline-none" placement="bottom end" offset={6}>
+        <Menu className="grid outline-none" aria-label="Pages du site">
+          {PAGES.map(([page, label]) => (
+            <MenuItem key={page} href={`${page}.html`} className={`px-2.5 py-2 rounded no-underline outline-none data-focused:bg-panel ${page === current ? "text-ink" : "text-accent"}`}>
+              {label}
+            </MenuItem>
+          ))}
+        </Menu>
+      </Popover>
+    </MenuTrigger>
+  );
+}
+
 export function Header({ current }: { current: Page }) {
   return (
     <header className={`${FRAME} phone:flex-nowrap`}>
@@ -40,18 +69,7 @@ export function Header({ current }: { current: Page }) {
           Ouvrir l'application
         </ButtonLink>
         {/* sur un téléphone, les pages sous un bouton */}
-        <details className="relative hidden phone:block">
-          <summary className="list-none flex cursor-pointer p-2 border border-line rounded-md text-ink [&::-webkit-details-marker]:hidden" aria-label="Pages du site" title="Pages du site">
-            <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden>
-              <path fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" d="M2.5 4h11M2.5 8h11M2.5 12h11" />
-            </svg>
-          </summary>
-          <div className="absolute right-0 top-[calc(100%+6px)] z-20 grid min-w-[260px] p-1.5 bg-white border border-line rounded-md shadow-[0_6px_18px_rgba(0,0,0,0.12)]">
-            {PAGES.map(([page, label]) => (
-              <PageLink key={page} page={page} current={current} label={label} className="px-2.5 py-2 rounded no-underline hover:bg-panel" />
-            ))}
-          </div>
-        </details>
+        <PagesMenu current={current} />
       </nav>
     </header>
   );

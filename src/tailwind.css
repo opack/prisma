@@ -17,28 +17,41 @@
 @custom-variant compact (@media (max-width: 1000px));
 @custom-variant stacked (@media (max-width: 720px));
 
-@theme inline {
-  --color-ink: var(--ink);
-  --color-muted: var(--muted);
-  --color-line: var(--line);
-  --color-panel: var(--panel);
-  --color-chrome: var(--chrome);
-  --color-accent: var(--accent);
-  --color-accent-ink: var(--accent-ink);
-  --color-error: var(--error);
-  --color-error-bg: var(--error-bg);
+/* les couleurs et les polices, communes à l'application et au site ; en classes (text-ink, bg-panel,
+   font-mono…) et, pour le CSS qui reste, en variables (var(--color-ink), var(--font-mono)…) */
+@theme {
+  --color-ink: #1b1d1f;
+  --color-muted: #5b6064;
+  --color-line: #cfd2cd;
+  --color-panel: #f7f7f5;
+  /* le fond de l'application, autour des pages */
+  --color-chrome: #e9eae6;
+  --color-accent: #2b5d6e;
+  --color-error: #9b2c2c;
+  --color-error-bg: #fbeceb;
   /* l'accent éclairci de blanc, pour les fonds (un bouton allumé, une case choisie) */
-  --color-accent-7: color-mix(in srgb, var(--accent) 7%, #fff);
-  --color-accent-8: color-mix(in srgb, var(--accent) 8%, #fff);
-  --color-accent-10: color-mix(in srgb, var(--accent) 10%, #fff);
-  --color-accent-12: color-mix(in srgb, var(--accent) 12%, #fff);
-  --color-accent-14: color-mix(in srgb, var(--accent) 14%, #fff);
-  --color-accent-22: color-mix(in srgb, var(--accent) 22%, #fff);
-  --color-accent-40: color-mix(in srgb, var(--accent) 40%, #fff);
-  --font-ui: var(--ui);
-  --font-mono: var(--mono);
+  --color-accent-5: color-mix(in srgb, var(--color-accent) 5%, #fff);
+  --color-accent-7: color-mix(in srgb, var(--color-accent) 7%, #fff);
+  --color-accent-8: color-mix(in srgb, var(--color-accent) 8%, #fff);
+  --color-accent-10: color-mix(in srgb, var(--color-accent) 10%, #fff);
+  --color-accent-12: color-mix(in srgb, var(--color-accent) 12%, #fff);
+  --color-accent-14: color-mix(in srgb, var(--color-accent) 14%, #fff);
+  --color-accent-22: color-mix(in srgb, var(--color-accent) 22%, #fff);
+  --color-accent-40: color-mix(in srgb, var(--color-accent) 40%, #fff);
+  --font-ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  /* une seule police à chasse fixe qui contient aussi les traits ─ ┼ : sinon le navigateur les prend
+     dans une autre police et les colonnes se décalent */
+  --font-mono: "Cascadia Mono", Consolas, "DejaVu Sans Mono", Menlo, monospace;
+  /* l'apparition d'un système, dans la lecture focalisée */
+  --animate-focus-in: focus-in 0.35s ease-out;
+  @keyframes focus-in {
+    from { opacity: 0; }
+  }
 }
 
+/* les titres en gras, et la main sur ce qui se clique (le preflight les retire) ; l'allure des
+   boutons : le composant Button (app/ui/button) */
 @layer base {
   h1, h2, h3, h4, h5, h6 { font-weight: 700; }
+  button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
 }

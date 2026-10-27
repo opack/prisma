@@ -14,6 +14,9 @@ import { Idea } from "../layout/Idea.tsx";
 import { IdeaText } from "../layout/IdeaText.tsx";
 import { Lead } from "../layout/Lead.tsx";
 import { OnThisPage } from "../layout/OnThisPage.tsx";
+import { Page } from "../layout/Page.tsx";
+import { Section } from "../layout/Section.tsx";
+import { Prisma } from "../layout/Prisma.tsx";
 
 /** Un fa dièse qui revient, puis un fa naturel : la partition classique les écrit avec une armure et un bécarre ; Prisma, 7 et 6. */
 const SHARP = `---
@@ -50,7 +53,7 @@ const ROWS: { what: string; classic: ReactNode; prisma: ReactNode }[] = [
     classic: "♯, ♭ et ♮ devant les notes, valables jusqu'à la barre de mesure, à retenir en lisant.",
     prisma: (
       <>
-        Aucune : chacune des douze notes a son propre nombre. Le <code>7</code> est toujours la même note.
+        Aucune : chacune des douze notes a son propre nombre. Le <Prisma>7</Prisma> est toujours la même note.
       </>
     ),
   },
@@ -73,7 +76,7 @@ const ROWS: { what: string; classic: ReactNode; prisma: ReactNode }[] = [
     classic: "Reprises, cases 1. et 2., D.C., D.S., coda, Fine : il faut repérer les signes et sauter dans la page en jouant.",
     prisma: (
       <>
-        Le morceau est découpé en sections (A, B, C…), chacune écrite une seule fois. L'ordre dans lequel les jouer, par exemple <code>A A B A</code>, est écrit en tête de la
+        Le morceau est découpé en sections (A, B, C…), chacune écrite une seule fois. L'ordre dans lequel les jouer, par exemple <Prisma>A A B A</Prisma>, est écrit en tête de la
         partition : on le suit, sans aucun saut à repérer.
       </>
     ),
@@ -90,7 +93,7 @@ const LOSSES: { what: string; why: ReactNode }[] = [
     why: (
       <>
         L'armure rappelle la gamme du morceau à chaque ligne. Pour jouer, Prisma n'en a pas besoin : chaque note est écrite telle qu'elle se joue. Pour qui veut la connaître, pour
-        improviser ou comprendre l'harmonie, l'en-tête peut l'écrire une fois, en tête de la partition (<code>key: 8</code> pour <i>sol</i> majeur), sans rien changer aux notes.
+        improviser ou comprendre l'harmonie, l'en-tête peut l'écrire une fois, en tête de la partition (<Prisma>key: 8</Prisma> pour <i>sol</i> majeur), sans rien changer aux notes.
       </>
     ),
   },
@@ -114,6 +117,9 @@ const LOSSES: { what: string; why: ReactNode }[] = [
 ];
 
 /** Les parties de la page, pour « Sur cette page ». */
+/** Une tête de colonne du tableau : son nom, gris, au-dessus d'un trait noir. */
+const HEAD = "px-4 py-3.5 text-left align-top text-[0.95rem] text-muted border-b-2 border-ink";
+
 const PARTS = {
   kept: { id: "garde", label: "Ce que Prisma garde" },
   removed: { id: "retire", label: "Ce qu'il retire" },
@@ -136,17 +142,17 @@ export function Comparison() {
   return (
     <>
       <Header current="comparaison" />
-      <main>
-        <section className="pt-10">
+      <Page>
+        <Section first>
           <h1>Prisma et la partition classique</h1>
           <Lead>
             La partition classique est un outil remarquable, affiné pendant des siècles. Mais une bonne part de ce qu'elle demande d'apprendre ne sert qu'à elle-même : les clés,
             l'armure, les altérations, les figures de durée. Voici ce que Prisma garde, ce qu'il retire, et ce qu'il perd.
           </Lead>
           <OnThisPage parts={Object.values(PARTS)} />
-        </section>
+        </Section>
 
-        <section id={PARTS.kept.id}>
+        <Section id={PARTS.kept.id}>
           <h2>Ce que Prisma garde</h2>
           <p>Tout ce qui sert à jouer, et que la partition classique a bien trouvé :</p>
           <ul className="m-0 pl-[1.2em] max-w-[44em] [&_li]:mb-1.5">
@@ -157,31 +163,38 @@ export function Comparison() {
             <li>les doigtés ;</li>
             <li>les indications d'interprétation : liaisons de phrasé, nuances, pédale, tempo et caractère.</li>
           </ul>
-        </section>
+        </Section>
 
-        <section id={PARTS.removed.id}>
+        <Section id={PARTS.removed.id}>
           <h2>Ce que Prisma retire</h2>
-          <table className="compare">
-            <thead>
+          {/* sur un téléphone, une fiche par ligne : chaque case dit sa colonne au-dessus d'elle */}
+          <table className="w-full border-collapse text-[1rem] phone:block">
+            <thead className="phone:hidden">
               <tr>
-                <th scope="col">
+                <th scope="col" className={HEAD}>
                   <span className="sr-only">Ce qui s'apprend</span>
                 </th>
-                <th scope="col">Partition classique</th>
-                <th scope="col">Prisma</th>
+                <th scope="col" className={HEAD}>
+                  Partition classique
+                </th>
+                <th scope="col" className={HEAD}>
+                  Prisma
+                </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="phone:block">
               {ROWS.map((r) => (
-                <tr key={r.what}>
-                  <th scope="row">{r.what}</th>
-                  <td>{r.classic}</td>
-                  <td>{r.prisma}</td>
+                <tr key={r.what} className="phone:block phone:py-3 phone:border-b phone:border-line">
+                  <th scope="row" className="w-[16%] px-4 py-3.5 text-left align-top font-bold border-b border-line phone:block phone:w-auto phone:border-0 phone:px-0 phone:py-1">
+                    {r.what}
+                  </th>
+                  <td className="px-4 py-3.5 align-top border-b border-line phone:block phone:border-0 phone:px-0 phone:py-1 phone:before:block phone:before:text-[0.85rem] phone:before:text-muted phone:before:content-['Partition_classique']">{r.classic}</td>
+                  <td className="px-4 py-3.5 align-top border-b border-line bg-accent-5 phone:block phone:border-0 phone:px-2.5 phone:py-2 phone:rounded-md phone:before:block phone:before:text-[0.85rem] phone:before:text-muted phone:before:content-['Prisma']">{r.prisma}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </section>
+        </Section>
 
         <Idea id={PARTS.sharp.id}>
           <IdeaText>
@@ -193,7 +206,7 @@ export function Comparison() {
               note. Quand la mélodie a besoin d'un <i>fa naturel</i>, il faut un bécarre devant la note, valable jusqu'à la barre de mesure.
             </p>
             <p>
-              En Prisma, le <i>fa dièse</i> s'écrit <code>7</code>, à chaque fois, et le <i>fa naturel</i> <code>6</code> : rien à retenir d'une note à l'autre.
+              En Prisma, le <i>fa dièse</i> s'écrit <Prisma>7</Prisma>, à chaque fois, et le <i>fa naturel</i> <Prisma>6</Prisma> : rien à retenir d'une note à l'autre.
             </p>
           </IdeaText>
           <Example text={SHARP} label="Sol, fa dièse, sol, puis fa naturel, mi" />
@@ -203,7 +216,7 @@ export function Comparison() {
           <IdeaText>
             <h2>Un exemple : les renvois</h2>
             <p>
-              <i>Au clair de la lune</i> se joue <code>A A B A</code>. La partition classique l'écrit avec une reprise autour de A, puis B, puis un <i>D.C. al Fine</i> : revenir au début
+              <i>Au clair de la lune</i> se joue <Prisma>A A B A</Prisma>. La partition classique l'écrit avec une reprise autour de A, puis B, puis un <i>D.C. al Fine</i> : revenir au début
               et s'arrêter au mot <i>Fine</i>, sans refaire la reprise. Il faut repérer chaque signe et savoir où sauter.
             </p>
             <p>
@@ -220,30 +233,30 @@ export function Comparison() {
           <IdeaText>
             <h2>Ce que Prisma rend plus simple : les accords</h2>
             <p>
-              En Prisma, un accord se lit et se construit en comptant. L'écart entre deux nombres est toujours le même, quelles que soient les notes : <code>4</code>, c'est une tierce
-              majeure ; <code>3</code>, une tierce mineure ; <code>7</code>, une quinte.
+              En Prisma, un accord se lit et se construit en comptant. L'écart entre deux nombres est toujours le même, quelles que soient les notes : <Prisma>4</Prisma>, c'est une tierce
+              majeure ; <Prisma>3</Prisma>, une tierce mineure ; <Prisma>7</Prisma>, une quinte.
             </p>
             <p>Partez de la note qui donne son nom à l'accord, sa fondamentale, et ajoutez :</p>
             <ul>
               <li>
-                pour un accord majeur, <code>+4</code> et <code>+7</code> : <i>do</i> majeur s'écrit <code>1 5 8</code> ;
+                pour un accord majeur, <Prisma>+4</Prisma> et <Prisma>+7</Prisma> : <i>do</i> majeur s'écrit <Prisma>1 5 8</Prisma> ;
               </li>
               <li>
-                pour un accord mineur, <code>+3</code> et <code>+7</code> : <i>do</i> mineur s'écrit <code>1 4 8</code> ;
+                pour un accord mineur, <Prisma>+3</Prisma> et <Prisma>+7</Prisma> : <i>do</i> mineur s'écrit <Prisma>1 4 8</Prisma> ;
               </li>
               <li>
-                pour un accord de septième, <code>+4</code>, <code>+7</code> et <code>+10</code> : <i>do</i> 7 s'écrit <code>1 5 8 11</code> ;
+                pour un accord de septième, <Prisma>+4</Prisma>, <Prisma>+7</Prisma> et <Prisma>+10</Prisma> : <i>do</i> 7 s'écrit <Prisma>1 5 8 11</Prisma> ;
               </li>
               <li>
-                pour un accord diminué, <code>+3</code> et <code>+6</code> : <i>do</i> diminué s'écrit <code>1 4 7</code>.
+                pour un accord diminué, <Prisma>+3</Prisma> et <Prisma>+6</Prisma> : <i>do</i> diminué s'écrit <Prisma>1 4 7</Prisma>.
               </li>
             </ul>
             <p>
-              Pour lire un accord, on fait l'inverse : on regarde les écarts. Et pour en changer, on change un nombre : de <i>do</i> majeur à <i>do</i> mineur, le <code>5</code> devient <code>4</code>. La recette vaut
-              pour toutes les fondamentales : <i>ré</i> mineur, c'est <code>3 6 10</code>.
+              Pour lire un accord, on fait l'inverse : on regarde les écarts. Et pour en changer, on change un nombre : de <i>do</i> majeur à <i>do</i> mineur, le <Prisma>5</Prisma> devient <Prisma>4</Prisma>. La recette vaut
+              pour toutes les fondamentales : <i>ré</i> mineur, c'est <Prisma>3 6 10</Prisma>.
             </p>
             <p>
-              Le nom d'un accord se lit de même : sa fondamentale, puis sa sorte. <code>1</code> est <i>do</i> majeur, <code>1:m</code> <i>do</i> mineur, <code>8:7</code>{" "}
+              Le nom d'un accord se lit de même : sa fondamentale, puis sa sorte. <Prisma>1</Prisma> est <i>do</i> majeur, <Prisma>1:m</Prisma> <i>do</i> mineur, <Prisma>8:7</Prisma>{" "}
               <i>sol</i> 7. Pas de lettre à traduire en note : le nombre est déjà la note.
             </p>
           </IdeaText>
@@ -258,8 +271,8 @@ export function Comparison() {
               un accord majeur, le second un accord mineur ; rien ne le montre, il faut connaître les notes pour le savoir. Avec des dièses et des bémols, c'est pire encore.
             </p>
             <p>
-              En Prisma, <i>do mi sol</i> s'écrit <code>1 5 8</code>, des écarts de <code>4</code> puis <code>3</code> ; <i>mi sol si</i>, <code>5 8 12</code>, des écarts de{" "}
-              <code>3</code> puis <code>4</code>. La différence se lit.
+              En Prisma, <i>do mi sol</i> s'écrit <Prisma>1 5 8</Prisma>, des écarts de <Prisma>4</Prisma> puis <Prisma>3</Prisma> ; <i>mi sol si</i>, <Prisma>5 8 12</Prisma>, des écarts de{" "}
+              <Prisma>3</Prisma> puis <Prisma>4</Prisma>. La différence se lit.
             </p>
           </IdeaText>
           <div className="flex flex-wrap items-start gap-6">
@@ -274,7 +287,7 @@ export function Comparison() {
           </div>
         </Idea>
 
-        <section id={PARTS.lost.id}>
+        <Section id={PARTS.lost.id}>
           <h2>Ce que Prisma perd</h2>
           <p>Ce choix a un prix. Le voici, sans détour.</p>
           <dl className="m-0 grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-x-10 gap-y-6">
@@ -285,9 +298,9 @@ export function Comparison() {
               </div>
             ))}
           </dl>
-        </section>
+        </Section>
 
-        <section id={PARTS.who.id}>
+        <Section id={PARTS.who.id}>
           <h2>Pour qui ?</h2>
           <p>
             Pour qui veut jouer les morceaux qui lui plaisent sans passer d'abord par des mois, voire des années, de solfège : un adulte qui commence ou recommence, un enfant qui
@@ -297,15 +310,15 @@ export function Comparison() {
             Prisma n'est pas une étape avant la partition classique : c'est une autre façon d'écrire la même musique, faite pour être lue tout de suite. Comme parler la langue d'un
             pays sans des années d'études : on en profite pleinement, dès l'arrivée.
           </p>
-        </section>
+        </Section>
 
-        <section className="text-center">
+        <Section className="text-center">
           <h2>Le plus simple est d'essayer.</h2>
           <ButtonLink primary href={APP}>
             Ouvrir l'application
           </ButtonLink>
-        </section>
-      </main>
+        </Section>
+      </Page>
       <Footer current="comparaison" />
     </>
   );

@@ -1,0 +1,31 @@
+/*
+ * Une page gravée (PageView) : une feuille A4 blanche, ombrée. Dans la partition (data-fit, et le zoom
+ * --zoom), sa taille suit l'ajustement ; à l'impression, elle tient sur sa feuille. En CSS : sa taille
+ * dépend de la partition qui la contient, et l'impression passe par @page.
+ */
+@layer theme, base, components, utilities;
+@layer components {
+  .page { display: block; width: min(100%, 210mm); height: auto; aspect-ratio: 210 / 297; flex: none; box-shadow: 0 1px 3px rgba(0,0,0,.18), 0 6px 18px rgba(0,0,0,.08); background: #fff; }
+  @media screen {
+    /* zoomée, la page s'agrandit, la partition défile */
+    [data-fit] .page { width: calc(min(100%, 210mm) * var(--zoom, 1)); max-width: none; margin-inline: auto; }
+    /* à la hauteur : de toute la hauteur, chacune au début de son défilement, la dernière contre le bord */
+    [data-fit="height"] .page { height: calc(100% * var(--zoom, 1)); width: auto; margin: 0; scroll-snap-align: start; }
+    [data-fit="height"] .page:last-child { scroll-snap-align: end; }
+    /* à la largeur : aussi large que la place de la partition */
+    [data-fit="width"] .page { width: calc(100% * var(--zoom, 1)); height: auto; }
+  }
+  /* sur un écran étroit, à la hauteur, jamais plus large que l'écran */
+  @media screen and (max-width: 900px) {
+    [data-fit="height"] .page { height: min(calc(100% * var(--zoom, 1)), calc((100cqw - 44px) * 297 / 210 * var(--zoom, 1))); }
+  }
+}
+
+/* l'impression, hors couche : elle l'emporte sur l'écran */
+@page { size: A4 portrait; margin: 0; }
+@media print {
+  /* la page s'adapte à la zone imprimable réelle (marges du navigateur comprises), et n'est jamais
+     coupée entre deux feuilles */
+  .page { box-shadow: none; width: auto; max-width: 100%; height: calc(100vh - 1mm); margin: 0 auto; break-inside: avoid; break-after: page; }
+  .page:last-child { break-after: auto; }
+}

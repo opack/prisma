@@ -14,6 +14,21 @@ import { Caption } from "../layout/Caption.tsx";
 import { Idea } from "../layout/Idea.tsx";
 import { IdeaText } from "../layout/IdeaText.tsx";
 import { Lead } from "../layout/Lead.tsx";
+import { PartsBar } from "../layout/PartsBar.tsx";
+import { Button } from "../../app/ui/button/Button.tsx";
+import { Page } from "../layout/Page.tsx";
+import { Section } from "../layout/Section.tsx";
+import { Prisma } from "../layout/Prisma.tsx";
+
+/** Les parties de l'accueil, pour le bouton du haut sur un téléphone. */
+const PARTS = [
+  { id: "principe", label: "Le nombre, c'est la note" },
+  { id: "octave", label: "L'octave, c'est la ligne" },
+  { id: "temps", label: "Le temps se lit comme une règle" },
+  { id: "premier-morceau", label: "Un premier morceau" },
+  { id: "adapter", label: "Une partition qui s'adapte à vous" },
+  { id: "vos-morceaux", label: "Vos morceaux" },
+];
 
 const PALETTES: { value: OctaveColors; label: string }[] = [
   { value: "rainbow", label: "Arc-en-ciel" },
@@ -31,8 +46,8 @@ export function Home() {
   return (
     <>
       <Header current="index" />
-      <main>
-        <section className="grid grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-12 items-center pt-10 narrow:grid-cols-[minmax(0,1fr)] narrow:gap-6">
+      <Page>
+        <Section first id="haut" className="grid grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-12 items-center narrow:grid-cols-[minmax(0,1fr)] narrow:gap-6">
           <div>
             <h1>Une note, un nombre.</h1>
             <Lead>
@@ -52,33 +67,33 @@ export function Home() {
             <HeroKeyboard />
             <Caption className="mt-2.5">Sur un clavier, ça se voit : survolez ou touchez une touche, d'une octave à l'autre le même nombre tombe sous le même doigt.</Caption>
           </div>
-        </section>
+        </Section>
 
         <Idea id="principe">
           <IdeaText>
             <h2>Le nombre, c'est la note</h2>
             <p>
-              Les douze notes de l'octave, du <i>do</i> au <i>si</i>, demi-ton par demi-ton, sont numérotées de <code>1</code> à <code>12</code>. La gamme de <i>do</i> s'écrit <code>1 3 5 6 8 10 12</code> : au piano, les touches
-              blanches ; les noires sont entre deux, <code>2 4 7 9 11</code>. Il n'y a rien d'autre à apprendre pour trouver une note.
+              Les douze notes de l'octave, du <i>do</i> au <i>si</i>, demi-ton par demi-ton, sont numérotées de <Prisma>1</Prisma> à <Prisma>12</Prisma>. La gamme de <i>do</i> s'écrit <Prisma>1 3 5 6 8 10 12</Prisma> : au piano, les touches
+              blanches ; les noires sont entre deux, <Prisma>2 4 7 9 11</Prisma>. Il n'y a rien d'autre à apprendre pour trouver une note.
             </p>
-            <p>Le <i>fa dièse</i> et le <i>sol bémol</i>, deux noms pour une même note, sont ici un seul nombre : <code>7</code>.</p>
+            <p>Le <i>fa dièse</i> et le <i>sol bémol</i>, deux noms pour une même note, sont ici un seul nombre : <Prisma>7</Prisma>.</p>
           </IdeaText>
           <Example text={SCALE} label="La gamme de do, de 1 à 12, puis le 1 de l'octave du dessus" />
         </Idea>
 
-        <Idea>
+        <Idea id="octave">
           <IdeaText>
             <h2>L'octave, c'est la ligne</h2>
             <p>
-              Chaque ligne de notes porte le numéro de son octave, compté depuis celle du <i>do</i> central : <code>0</code>, puis <code>+1</code> au-dessus, <code>-1</code> au-dessous. Sur la partition,
+              Chaque ligne de notes porte le numéro de son octave, compté depuis celle du <i>do</i> central : <Prisma>0</Prisma>, puis <Prisma>+1</Prisma> au-dessus, <Prisma>-1</Prisma> au-dessous. Sur la partition,
               chaque octave a son couloir, toujours de la même couleur.
             </p>
-            <p>Ici, le même <code>5</code> (le <i>mi</i>) dans quatre octaves, du grave à l'aigu.</p>
+            <p>Ici, le même <Prisma>5</Prisma> (le <i>mi</i>) dans quatre octaves, du grave à l'aigu.</p>
           </IdeaText>
           <Example text={LANES} label="Le même 5 dans les octaves -2, -1, 0 et +1" />
         </Idea>
 
-        <Idea>
+        <Idea id="temps">
           <IdeaText>
             <h2>Le temps se lit comme une règle</h2>
             <p>
@@ -90,7 +105,7 @@ export function Home() {
           <Example text={RULER} label="Une note de deux temps, deux notes d'un demi-temps, une note d'un temps" />
         </Idea>
 
-        <Idea kind="wide">
+        <Idea kind="wide" id="premier-morceau">
           <IdeaText>
             <h2>Un premier morceau</h2>
             <p>
@@ -104,14 +119,14 @@ export function Home() {
           </div>
           <IdeaText>
             <p>
-              Pas besoin d'être un as de la mise en forme : une barre <code>|</code> entre les cases, une ligne par octave, trois tirets <code>---</code> entre deux portées.
+              Pas besoin d'être un as de la mise en forme : une barre <Prisma>|</Prisma> entre les cases, une ligne par octave, trois tirets <Prisma>---</Prisma> entre deux portées.
               L'éditeur s'occupe du reste : il prolonge la règle et ouvre les lignes de notes, barres comprises, en gardant les colonnes alignées. Et le texte se lit déjà comme la
               partition : chaque colonne est un temps.
             </p>
           </IdeaText>
         </Idea>
 
-        <Idea kind="wide">
+        <Idea kind="wide" id="adapter">
           <IdeaText>
             <h2>Une partition qui s'adapte à vous</h2>
             <p>
@@ -123,10 +138,10 @@ export function Home() {
               <li>Une ligne par note : chaque note prend sa propre ligne, la plus aiguë au-dessus, et la mélodie monte et descend sous vos yeux.</li>
               <li>
                 Les sections à la ligne : un morceau découpé en parties (A, B…) se lit comme une chanson. Chaque partie est écrite une fois et commence sa propre ligne ; l'ordre
-                de jeu, ici <code>A A B A</code>, est écrit en tête. Ou bien à la suite, pour une partition plus courte.
+                de jeu, ici <Prisma>A A B A</Prisma>, est écrit en tête. Ou bien à la suite, pour une partition plus courte.
               </li>
               <li>
-                Les accords d'accompagnement par leur nom Prisma (<code>10:m</code> pour <i>la</i> mineur), leurs notes (<code>10 1 5</code>), ou les deux ; ou par leur nom
+                Les accords d'accompagnement par leur nom Prisma (<Prisma>10:m</Prisma> pour <i>la</i> mineur), leurs notes (<Prisma>10 1 5</Prisma>), ou les deux ; ou par leur nom
                 anglais (<i>Am</i>), pour qui le connaît.
               </li>
               <li>Une portée à la fois : coupez le son de celle que vous jouez (une main au piano, votre voix dans le chœur), l'application joue les autres.</li>
@@ -140,24 +155,24 @@ export function Home() {
             <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Essayer trois réglages">
               <span className={TRY_LABEL}>Couleurs</span>
               {PALETTES.map((p) => (
-                <button key={p.value} className={`text-[0.95rem] px-3 py-[5px] border rounded-md cursor-pointer ${colors === p.value ? "border-accent text-accent bg-accent-10 font-bold" : "border-line bg-white text-ink"}`} aria-pressed={colors === p.value} onClick={() => setColors(p.value)}>
+                <Button key={p.value} size="small" pressed={colors === p.value} onClick={() => setColors(p.value)}>
                   {p.label}
-                </button>
+                </Button>
               ))}
               <span className={TRY_LABEL}>Place des notes</span>
-              <button className={`text-[0.95rem] px-3 py-[5px] border rounded-md cursor-pointer ${!pitch ? "border-accent text-accent bg-accent-10 font-bold" : "border-line bg-white text-ink"}`} aria-pressed={!pitch} onClick={() => setPitch(false)}>
+              <Button size="small" pressed={!pitch} onClick={() => setPitch(false)}>
                 En haut
-              </button>
-              <button className={`text-[0.95rem] px-3 py-[5px] border rounded-md cursor-pointer ${pitch ? "border-accent text-accent bg-accent-10 font-bold" : "border-line bg-white text-ink"}`} aria-pressed={pitch} onClick={() => setPitch(true)}>
+              </Button>
+              <Button size="small" pressed={pitch} onClick={() => setPitch(true)}>
                 Une ligne par note
-              </button>
+              </Button>
               <span className={TRY_LABEL}>Sections</span>
-              <button className={`text-[0.95rem] px-3 py-[5px] border rounded-md cursor-pointer ${!inline ? "border-accent text-accent bg-accent-10 font-bold" : "border-line bg-white text-ink"}`} aria-pressed={!inline} onClick={() => setInline(false)}>
+              <Button size="small" pressed={!inline} onClick={() => setInline(false)}>
                 À la ligne
-              </button>
-              <button className={`text-[0.95rem] px-3 py-[5px] border rounded-md cursor-pointer ${inline ? "border-accent text-accent bg-accent-10 font-bold" : "border-line bg-white text-ink"}`} aria-pressed={inline} onClick={() => setInline(true)}>
+              </Button>
+              <Button size="small" pressed={inline} onClick={() => setInline(true)}>
                 À la suite
-              </button>
+              </Button>
             </div>
           </IdeaText>
           <Example
@@ -168,7 +183,7 @@ export function Home() {
           />
         </Idea>
 
-        <Idea>
+        <Idea id="vos-morceaux">
           <IdeaText>
             <h2>Vos morceaux</h2>
             <p>
@@ -184,7 +199,7 @@ export function Home() {
           </IdeaText>
         </Idea>
 
-        <section className="text-center">
+        <Section className="text-center">
           <h2>Essayez avec un morceau que vous aimez.</h2>
           <ButtonLink primary href={APP}>
             Ouvrir l'application
@@ -192,8 +207,9 @@ export function Home() {
           <Caption className="mt-3.5">
             Pour commencer, <a href="apprendre.html">apprenez pas à pas</a> ; pour tout savoir, <a href="reference.html">consultez la référence</a>.
           </Caption>
-        </section>
-      </main>
+        </Section>
+      </Page>
+      <PartsBar parts={PARTS} start="haut" back={{ label: "Retour en haut de la page", onClick: () => scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }) }} />
       <Footer current="index" />
     </>
   );

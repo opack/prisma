@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Button } from "../ui/button/Button.tsx";
 import type { ReactNode } from "react";
 import { octaveTint } from "../score/colors.ts";
 import type { OctaveColors } from "../score/colors.ts";
@@ -319,9 +320,9 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
     <aside id="options" data-drawer className="print:hidden! absolute top-0 right-0 bottom-0 z-15 flex flex-col w-[min(440px,100%)] bg-panel border-l border-line shadow-[-8px_0_24px_rgba(0,0,0,0.08)]" aria-label="Options">
       <header className="flex items-center justify-between px-4 pt-3 pb-1">
         <h2 className="m-0 text-[1rem]">Options</h2>
-        <button className="w-7 h-7 p-0 text-[20px] leading-none text-muted bg-transparent border-0 rounded-md hover:bg-line hover:text-inherit" onClick={onClose} aria-label="Fermer les options" title="Fermer (Échap)">
+        <Button kind="quiet" size="icon" onClick={onClose} aria-label="Fermer les options" title="Fermer (Échap)">
           ×
-        </button>
+        </Button>
       </header>
       <div className="flex mx-3 mt-0 mb-2 overflow-hidden border border-line rounded-md" role="radiogroup" aria-label="Portée des options">
         <button role="radio" aria-checked={!onPiece} className={porteeButton(!onPiece)} onClick={() => setPortee("general")} title="Les options de tous les morceaux">

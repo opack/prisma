@@ -16,6 +16,9 @@ import { Caption } from "../layout/Caption.tsx";
 import { Idea } from "../layout/Idea.tsx";
 import { IdeaText } from "../layout/IdeaText.tsx";
 import { Lead } from "../layout/Lead.tsx";
+import { Page } from "../layout/Page.tsx";
+import { Section } from "../layout/Section.tsx";
+import { Prisma } from "../layout/Prisma.tsx";
 import { SourceText } from "../examples/SourceText.tsx";
 
 /**
@@ -77,8 +80,8 @@ export function Guitar() {
   return (
     <>
       <Header current="guitare" />
-      <main>
-        <section>
+      <Page>
+        <Section>
           <h1>La guitare et la basse</h1>
           <Lead>
             Une tablature dit où poser les doigts, pas quand. Prisma garde la tablature telle que les guitaristes la lisent, une ligne par corde et la case en nombre, et la pose
@@ -93,7 +96,7 @@ export function Guitar() {
             </ButtonLink>
           </Actions>
           <OnThisPage parts={Object.values(PARTS)} />
-        </section>
+        </Section>
 
         <Idea kind="wide" id={PARTS.tab.id}>
           <IdeaText>
@@ -124,8 +127,8 @@ export function Guitar() {
 
         <Topic id={PARTS.strings.id} title="Une ligne par corde, un nombre par case" text={PENTATONIC} label="La gamme pentatonique de mi mineur, en première position">
           <p>
-            Chaque ligne est une corde, numérotée de <code>1</code>, la plus aiguë, en haut, à <code>6</code>, la plus grave : l'ordre de toute tablature. La marge rappelle sa
-            note à vide. Le nombre est la case où appuyer, de <code>0</code> (la corde à vide) à <code>24</code>.
+            Chaque ligne est une corde, numérotée de <Prisma>1</Prisma>, la plus aiguë, en haut, à <Prisma>6</Prisma>, la plus grave : l'ordre de toute tablature. La marge rappelle sa
+            note à vide. Le nombre est la case où appuyer, de <Prisma>0</Prisma> (la corde à vide) à <Prisma>24</Prisma>.
           </p>
           <p>
             C'est le principe de Prisma au piano : le couloir dit où placer la main, le nombre où appuyer. On lit et l'on joue, sans rien calculer. Le rythme est celui de toute
@@ -136,7 +139,7 @@ export function Guitar() {
 
         <Topic id={PARTS.ring.id} title="La tenue : ce qui sonne encore" text={RING} label="Un arpège de la mineur laissé sonner, puis un arpège de mi où seule la basse tient">
           <p>
-            Le trait <code>-</code> prolonge une note : la corde sonne jusqu'au bout du trait, puis la main l'étouffe. La tablature, elle, laisse ce choix à l'oreille de qui
+            Le trait <Prisma>-</Prisma> prolonge une note : la corde sonne jusqu'au bout du trait, puis la main l'étouffe. La tablature, elle, laisse ce choix à l'oreille de qui
             connaît déjà le morceau.
           </p>
           <p>
@@ -147,22 +150,22 @@ export function Guitar() {
 
         <Topic id={PARTS.tuning.id} title="L'accordage et le capo" text={DROP_D} label="Des accords de puissance en accordage drop-d">
           <p>
-            L'accordage et le capo s'écrivent après le nom de la partie, en tête du morceau : <code>parts: Guitare (drop-d, capo 2)</code>. Les accordages courants y sont, de{" "}
-            <code>standard</code> à <code>dadgad</code> ou <code>open-g</code>. La marge de chaque corde donne alors sa note, et l'écoute suit.
+            L'accordage et le capo s'écrivent après le nom de la partie, en tête du morceau : <Prisma>parts: Guitare (drop-d, capo 2)</Prisma>. Les accordages courants y sont, de{" "}
+            <Prisma>standard</Prisma> à <Prisma>dadgad</Prisma> ou <Prisma>open-g</Prisma>. La marge de chaque corde donne alors sa note, et l'écoute suit.
           </p>
           <p>
-            Avec un capo, les cases se comptent depuis lui, comme en tablature : <code>0</code> est la corde jouée au capo.
+            Avec un capo, les cases se comptent depuis lui, comme en tablature : <Prisma>0</Prisma> est la corde jouée au capo.
           </p>
           <p>Ici, en drop-d, la 6ᵉ corde baissée en <i>ré</i> : un doigt couché sur les trois cordes graves joue l'accord de puissance.</p>
         </Topic>
 
         <Topic id={PARTS.chords.id} title="Les accords et leurs grilles" text={GREENSLEEVES_CHORDS} label="Greensleeves avec ses accords et leurs grilles" options={{ chords: "grid" }}>
           <p>
-            Les accords à gratter s'écrivent sur la ligne <code>@c</code>, au-dessus de la règle, par leur nom Prisma (<code>10:m</code> pour <i>la</i> mineur) ou anglais (
+            Les accords à gratter s'écrivent sur la ligne <Prisma>@c</Prisma>, au-dessus de la règle, par leur nom Prisma (<Prisma>10:m</Prisma> pour <i>la</i> mineur) ou anglais (
             <i>Am</i>). La partition dessine leur grille : l'application prend la forme la plus simple sur la guitare du morceau, son accordage et son capo compris.
           </p>
           <p>
-            Pour une autre forme, on l'écrit après le nom, de la corde la plus grave à la plus aiguë, comme tout guitariste : <code>10:m=x02210</code>. Et pour garder la
+            Pour une autre forme, on l'écrit après le nom, de la corde la plus grave à la plus aiguë, comme tout guitariste : <Prisma>10:m=x02210</Prisma>. Et pour garder la
             partition légère, les grilles peuvent se regrouper une fois en tête du morceau, comme dans un recueil de chansons.
           </p>
         </Topic>
@@ -171,18 +174,18 @@ export function Guitar() {
           <p>Dans la case, les signes de toutes les tablatures :</p>
           <ul>
             <li>
-              <code>x</code> la note étouffée, <code>&lt;12&gt;</code> l'harmonique naturelle ;
+              <Prisma>x</Prisma> la note étouffée, <Prisma>&lt;12&gt;</Prisma> l'harmonique naturelle ;
             </li>
             <li>
-              <code>7/</code> le glissé vers la note suivante de la corde (<code>9\</code> vers le grave), <code>7\\</code> vers rien, <code>//7</code> depuis rien ;
+              <Prisma>7/</Prisma> le glissé vers la note suivante de la corde (<Prisma>9\</Prisma> vers le grave), <Prisma>7\\</Prisma> vers rien, <Prisma>//7</Prisma> depuis rien ;
             </li>
             <li>
-              <code>7b9</code> le bend, tiré jusqu'à la case 9, et <code>7b9r</code> relâché.
+              <Prisma>7b9</Prisma> le bend, tiré jusqu'à la case 9, et <Prisma>7b9r</Prisma> relâché.
             </li>
           </ul>
           <p>
-            Une liaison entre deux notes d'une corde est un hammer-on ou un pull-off, gravé <code>H</code> ou <code>P</code>. Sur la ligne <code>@</code> : le sens du médiator (
-            <code>d</code> et <code>u</code>, gravés ⊓ et V), l'étouffé de la paume (<code>P.M.---</code>) et le vibrato (<code>~~~~</code>). L'écoute les joue.{" "}
+            Une liaison entre deux notes d'une corde est un hammer-on ou un pull-off, gravé <Prisma>H</Prisma> ou <Prisma>P</Prisma>. Sur la ligne <Prisma>@</Prisma> : le sens du médiator (
+            <Prisma>d</Prisma> et <Prisma>u</Prisma>, gravés ⊓ et V), l'étouffé de la paume (<Prisma>P.M.---</Prisma>) et le vibrato (<Prisma>~~~~</Prisma>). L'écoute les joue.{" "}
             <a href={referenceLink("techniques")}>Le détail est dans la référence.</a>
           </p>
         </Topic>
@@ -212,7 +215,7 @@ export function Guitar() {
 
         <Topic id={PARTS.bass.id} title="La basse" text={BASS} label="À la basse, la fondamentale et la quinte">
           <p>
-            Tout ce qui précède vaut pour la basse, sur quatre cordes : <code>parts: Basse électrique</code>. Ici, la fondamentale et la quinte, de <i>la</i> puis de <i>do</i>.
+            Tout ce qui précède vaut pour la basse, sur quatre cordes : <Prisma>parts: Basse électrique</Prisma>. Ici, la fondamentale et la quinte, de <i>la</i> puis de <i>do</i>.
           </p>
         </Topic>
 
@@ -230,7 +233,7 @@ export function Guitar() {
           </IdeaText>
         </Idea>
 
-        <section className="text-center">
+        <Section className="text-center">
           <h2>Essayez avec un morceau que vous jouez.</h2>
           <ButtonLink primary href={APP}>
             Ouvrir l'application
@@ -238,8 +241,8 @@ export function Guitar() {
           <Caption className="mt-3.5">
             Pour apprendre Prisma depuis le début, <a href="apprendre.html">suivez les étapes</a> ; pour chaque signe, <a href="reference.html">consultez la référence</a>.
           </Caption>
-        </section>
-      </main>
+        </Section>
+      </Page>
       <Footer current="guitare" />
     </>
   );
