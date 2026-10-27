@@ -1262,11 +1262,19 @@ function band(ps: PlacedSystem) {
   return { top: ps.y + ps.rulerTop, bottom: ps.y + last.voiceTop + last.voiceBand };
 }
 
+/** Deux touchers du doigt font un double toucher s'ils sont aussi proches, dans le temps (ms) et sur la page (px). */
+const TAP_DELAY = 350;
+const TAP_SLOP = 30;
+
 /**
  * Zones cliquables, une par système : un clic sur une colonne y place le curseur de lecture, d'où
- * la lecture démarre ou reprend (ou repart tout de suite si elle est en cours).
+ * la lecture démarre ou reprend (ou repart tout de suite si elle est en cours). Un double-clic,
+ * ou au doigt deux touchers rapprochés, ouvre la retouche de la case.
  */
 export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
+  // le dernier toucher du doigt (quand, où), et le dernier double toucher, dont le navigateur peut
+  // donner aussi son double-clic
+  const tap = useRef({ touch: false, at: 0, x: 0, y: 0, double: 0 });
   // le signe sous le pointeur : son instant, sa portée, son octave, le contenu de sa case
   const placeOf = (ps: PlacedSystem, e: React.MouseEvent<SVGRectElement>) => {
     const m = e.currentTarget.getScreenCTM();
@@ -1304,6 +1312,16 @@ export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
   };
   // un clic place l'écoute (et le curseur du texte) ; un double-clic ouvre la retouche de la case
   const seek = (ps: PlacedSystem, e: React.MouseEvent<SVGRectElement>) => {
+    const t = tap.current;
+    if (t.touch) {
+      const now = performance.now(), near = Math.hypot(e.clientX - t.x, e.clientY - t.y) <= TAP_SLOP;
+      const twice = now - t.at <= TAP_DELAY && near;
+      Object.assign(t, { at: twice ? 0 : now, x: e.clientX, y: e.clientY });
+      if (twice) {
+        t.double = now;
+        return edit(ps, e);
+      }
+    }
     const p = placeOf(ps, e);
     if (!p) return;
     follow.release();
@@ -1311,6 +1329,7 @@ export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
     pick.emit(p.at, p.where, "click");
   };
   const edit = (ps: PlacedSystem, e: React.MouseEvent<SVGRectElement>) => {
+    if (e.type === "dblclick" && performance.now() - tap.current.double <= TAP_DELAY) return;
     const p = placeOf(ps, e);
     if (p) pick.emit(p.at, p.where, "edit");
   };
@@ -1319,7 +1338,7 @@ export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
       {systems.map((ps, k) => {
         const { top, bottom } = band(ps);
         const left = ps.xs[ps.sys.anchors[0]], last = ps.sys.anchors[ps.sys.anchors.length - 1];
-        return <rect key={k} x={left} y={top} width={ps.xs[last] + ps.ws[last] - left} height={bottom - top} className="system-area" fill="transparent" data-start={ps.sys.start} data-end={ps.sys.end} data-top={ps.y} data-bottom={ps.y + ps.height} onClick={(e) => seek(ps, e)} onDoubleClick={(e) => edit(ps, e)} />;
+        return <rect key={k} x={left} y={top} width={ps.xs[last] + ps.ws[last] - left} height={bottom - top} className="system-area" fill="transparent" data-start={ps.sys.start} data-end={ps.sys.end} data-top={ps.y} data-bottom={ps.y + ps.height} onPointerDown={(e) => (tap.current.touch = e.pointerType === "touch")} onClick={(e) => seek(ps, e)} onDoubleClick={(e) => edit(ps, e)} />;
       })}
     </g>
   );

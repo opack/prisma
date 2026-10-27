@@ -18,7 +18,7 @@ const TRANSPORT = "flex items-center justify-center px-0 -ml-px rounded-none fir
 const ON = "relative z-1 text-accent bg-accent-12 border-accent";
 const toggled = (on: boolean) => (on ? ON : "text-muted");
 /** Un bouton à réglages (le métronome, la musique) : le bouton, puis sa flèche, collée. */
-const TOGGLE = "flex items-center justify-center w-[2.4em] px-0 ml-0 rounded-[4px_0_0_4px]";
+const TOGGLE = "flex items-center justify-center w-[2.4em] compact:w-[2.1em] px-0 ml-0 rounded-[4px_0_0_4px]";
 const more = (open: boolean) => `flex items-center justify-center w-[1.4em] px-0 -ml-px rounded-[0_4px_4px_0] ${open ? "text-accent" : "text-muted enabled:hover:text-accent"}`;
 /** Une ligne de la liste des parties : la partie (ou sa portée), son instrument, son volume. */
 const ROW = "flex items-center justify-between gap-2.5";
@@ -122,28 +122,28 @@ export function ListenControls({ score, disabled, metronome, onMetronome, clickG
             ↺
           </button>
         )}
-        <span className="ml-0.5 text-muted text-[0.9em]">bpm</span>
+        <span className="ml-0.5 text-muted text-[0.9em] compact:hidden">bpm</span>
       </span>
       <span className="flex">
-        <button className={`${TRANSPORT} w-[2.4em]`} onClick={go(() => player.rewind())} disabled={disabled} title="Revenir au début du morceau" aria-label="Revenir au début">
+        <button className={`${TRANSPORT} w-[2.4em] compact:w-[2.1em]`} onClick={go(() => player.rewind())} disabled={disabled} title="Revenir au début du morceau" aria-label="Revenir au début">
           <Icon d="M2 3h2v10H2zM9 3v10L4 8zM14 3v10L9 8z" />
         </button>
-        <button className={`${TRANSPORT} w-[2.4em]`} onClick={go(() => player.previous())} disabled={disabled} title="Début de la section (deux clics : section précédente)" aria-label="Section précédente">
+        <button className={`${TRANSPORT} w-[2.4em] compact:w-[2.1em]`} onClick={go(() => player.previous())} disabled={disabled} title="Début de la section (deux clics : section précédente)" aria-label="Section précédente">
           <Icon d="M3 3h2v10H3zM13 3v10L5 8z" />
         </button>
-        <button className={`${TRANSPORT} w-[3em]`} onClick={toggle} disabled={disabled} title={labels[state]} aria-label={labels[state]}>
+        <button className={`${TRANSPORT} w-[3em] compact:w-[2.6em]`} onClick={toggle} disabled={disabled} title={labels[state]} aria-label={labels[state]}>
           {state === "loading" ? <span className="leading-[14px]">…</span> : <Icon d={state === "playing" ? "M4 3h3v10H4zM9 3h3v10H9z" : "M4 2.5v11L13 8z"} />}
         </button>
-        <button className={`${TRANSPORT} w-[2.4em]`} onClick={go(() => player.next())} disabled={disabled || entry + 1 >= entries} title="Section suivante" aria-label="Section suivante">
+        <button className={`${TRANSPORT} w-[2.4em] compact:w-[2.1em]`} onClick={go(() => player.next())} disabled={disabled || entry + 1 >= entries} title="Section suivante" aria-label="Section suivante">
           <Icon d="M11 3h2v10h-2zM3 3v10l8-5z" />
         </button>
-        <button className={`${TRANSPORT} w-[2.4em]`} onClick={() => player.stop()} disabled={state === "idle"} title="Arrêter et revenir au début" aria-label="Arrêter">
+        <button className={`${TRANSPORT} w-[2.4em] compact:w-[2.1em]`} onClick={() => player.stop()} disabled={state === "idle"} title="Arrêter et revenir au début" aria-label="Arrêter">
           <Icon d="M3.5 3.5h9v9h-9z" />
         </button>
       </span>
       <span className="flex">
         <button
-          className={`${TRANSPORT} w-[2.4em] ${toggled(following)}`}
+          className={`${TRANSPORT} w-[2.4em] compact:w-[2.1em] ${toggled(following)}`}
           aria-pressed={following}
           onClick={() => follow.set(!following)}
           title={following ? "Suivre la lecture : la partition suit le curseur, et y revient une seconde après qu'on l'a fait défiler à la main" : "Suivre la lecture : arrêté"}

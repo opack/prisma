@@ -7,6 +7,7 @@ import { firstCell } from "./editor/templates.ts";
 import type { Template } from "./editor/templates.ts";
 import { ExportDialog } from "./files/ExportDialog.tsx";
 import { Menu } from "./ui/Menu.tsx";
+import type { MenuItem } from "./ui/Menu.tsx";
 import { ListenControls } from "./playback/ListenControls.tsx";
 import { EngraveButton } from "./score/EngraveButton.tsx";
 import { SourceEditor } from "./editor/SourceEditor.tsx";
@@ -884,6 +885,47 @@ export function App() {
     [options.metronome, muted, gains, options.clickSounds, options.clickGrid, options.countIn, options.clickVolume],
   );
 
+
+  // les menus de la barre
+  const fileMenu: MenuItem[] = [
+    { label: "Nouveau…", onSelect: () => setChoosingNew(true) },
+    { label: "Ouvrir…", onSelect: openFile, shortcut: "Ctrl+O" },
+    { label: "Bibliothèque", onSelect: () => setShowLibrary((v) => !v), checked: showLibrary, shortcut: "Ctrl+B" },
+    "separator",
+    { label: "Enregistrer", onSelect: () => saveFile(), shortcut: "Ctrl+S" },
+    { label: "Enregistrer sous…", onSelect: () => saveFile(true), shortcut: "Ctrl+Maj+S" },
+    { label: "Exporter en MusicXML…", onSelect: () => setExporting(true) },
+    "separator",
+    { label: "Recharger", onSelect: reloadFile, disabled: !handle },
+    "separator",
+    // le site qui présente Prisma, autour de l'application (app/) ; le navigateur prévient
+    // avant de quitter un morceau aux modifications non enregistrées
+    { label: "Retour au site", onSelect: () => location.assign("..") },
+  ];
+  const scoreMenu: MenuItem[] = [
+    { label: "Mettre en page", onSelect: engraveNow, shortcut: "Ctrl+Entrée" },
+    { label: "Mettre en page automatiquement", onSelect: () => setOptions({ autoEngrave: !options.autoEngrave }), checked: options.autoEngrave },
+    { label: "Options", onSelect: () => setShowOptions((v) => !v), checked: showOptions },
+    "separator",
+    { label: "Convertir pour la guitare ou la basse…", onSelect: startConversion },
+    "separator",
+    { label: "Imprimer…", onSelect: () => window.print(), shortcut: "Ctrl+P", disabled: !pages.length || showGuide || showLibrary },
+  ];
+  const viewMenu: MenuItem[] = [
+    { label: "Éditeur", onSelect: () => setEditing(!editing), checked: editing, shortcut: "Ctrl+E" },
+    { label: "Piste de lecture", onSelect: () => setView({ progress: !view.progress }), checked: view.progress },
+    { label: "Plein écran", onSelect: toggleFullScreen, checked: fullScreen, shortcut: "F11" },
+    "separator",
+    { label: "Zoom avant", onSelect: () => zoomBy(1), shortcut: "Ctrl++", disabled: view.zoom >= ZOOMS[ZOOMS.length - 1] || focused },
+    { label: "Zoom arrière", onSelect: () => zoomBy(-1), shortcut: "Ctrl+−", disabled: view.zoom <= ZOOMS[0] || focused },
+    { label: `Taille normale${view.zoom !== 1 ? ` (zoom ${Math.round(view.zoom * 100)} %)` : ""}`, onSelect: () => setView({ zoom: 1 }), shortcut: "Ctrl+0", disabled: view.zoom === 1 || focused },
+    "separator",
+    { label: "Ajuster à la hauteur", onSelect: () => setView({ fit: "height", zoom: 1 }), checked: view.fit === "height" && view.zoom === 1 },
+    { label: "Ajuster à la largeur", onSelect: () => setView({ fit: "width", zoom: 1 }), checked: view.fit === "width" && view.zoom === 1 },
+    { label: "Lecture focalisée : deux systèmes", onSelect: () => setView({ fit: "focus", zoom: 1 }), checked: view.fit === "focus" },
+  ];
+  const helpMenu: MenuItem[] = [{ label: "Référence", onSelect: () => setShowGuide((v) => !v), checked: showGuide }];
+
   return (
     <div className="app relative flex flex-col h-full" onDragEnter={onDragEnter} onDragLeave={onDragLeave} onDragOver={onDragOver} onDrop={onDrop}>
       {dragging && (
@@ -892,55 +934,18 @@ export function App() {
           <span className="text-muted">.prisma ou .musicxml</span>
         </div>
       )}
-      <header className="flex gap-2 items-center px-4 py-2 bg-panel border-b border-line print:hidden!">
+      <header className="flex gap-2 items-center px-4 py-2 bg-panel border-b border-line print:hidden! stacked:flex-wrap stacked:px-2">
         <span className="font-bold tracking-[.06em] mr-3">Prisma</span>
-        <Menu
-          label="Fichier"
-          items={[
-            { label: "Nouveau…", onSelect: () => setChoosingNew(true) },
-            { label: "Ouvrir…", onSelect: openFile, shortcut: "Ctrl+O" },
-            { label: "Bibliothèque", onSelect: () => setShowLibrary((v) => !v), checked: showLibrary, shortcut: "Ctrl+B" },
-            "separator",
-            { label: "Enregistrer", onSelect: () => saveFile(), shortcut: "Ctrl+S" },
-            { label: "Enregistrer sous…", onSelect: () => saveFile(true), shortcut: "Ctrl+Maj+S" },
-            { label: "Exporter en MusicXML…", onSelect: () => setExporting(true) },
-            "separator",
-            { label: "Recharger", onSelect: reloadFile, disabled: !handle },
-            "separator",
-            // le site qui présente Prisma, autour de l'application (app/) ; le navigateur prévient
-            // avant de quitter un morceau aux modifications non enregistrées
-            { label: "Retour au site", onSelect: () => location.assign("..") },
-          ]}
-        />
-        <Menu
-          label="Partition"
-          items={[
-            { label: "Mettre en page", onSelect: engraveNow, shortcut: "Ctrl+Entrée" },
-            { label: "Mettre en page automatiquement", onSelect: () => setOptions({ autoEngrave: !options.autoEngrave }), checked: options.autoEngrave },
-            { label: "Options", onSelect: () => setShowOptions((v) => !v), checked: showOptions },
-            "separator",
-            { label: "Convertir pour la guitare ou la basse…", onSelect: startConversion },
-            "separator",
-            { label: "Imprimer…", onSelect: () => window.print(), shortcut: "Ctrl+P", disabled: !pages.length || showGuide || showLibrary },
-          ]}
-        />
-        <Menu
-          label="Affichage"
-          items={[
-            { label: "Éditeur", onSelect: () => setEditing(!editing), checked: editing, shortcut: "Ctrl+E" },
-            { label: "Piste de lecture", onSelect: () => setView({ progress: !view.progress }), checked: view.progress },
-            { label: "Plein écran", onSelect: toggleFullScreen, checked: fullScreen, shortcut: "F11" },
-            "separator",
-            { label: "Zoom avant", onSelect: () => zoomBy(1), shortcut: "Ctrl++", disabled: view.zoom >= ZOOMS[ZOOMS.length - 1] || focused },
-            { label: "Zoom arrière", onSelect: () => zoomBy(-1), shortcut: "Ctrl+−", disabled: view.zoom <= ZOOMS[0] || focused },
-            { label: `Taille normale${view.zoom !== 1 ? ` (zoom ${Math.round(view.zoom * 100)} %)` : ""}`, onSelect: () => setView({ zoom: 1 }), shortcut: "Ctrl+0", disabled: view.zoom === 1 || focused },
-            "separator",
-            { label: "Ajuster à la hauteur", onSelect: () => setView({ fit: "height", zoom: 1 }), checked: view.fit === "height" && view.zoom === 1 },
-            { label: "Ajuster à la largeur", onSelect: () => setView({ fit: "width", zoom: 1 }), checked: view.fit === "width" && view.zoom === 1 },
-            { label: "Lecture focalisée : deux systèmes", onSelect: () => setView({ fit: "focus", zoom: 1 }), checked: view.fit === "focus" },
-          ]}
-        />
-        <Menu label="Aide" items={[{ label: "Référence", onSelect: () => setShowGuide((v) => !v), checked: showGuide }]} />
+        {/* quatre menus ; quand la place manque, un seul, qui les range sous leurs titres */}
+        <span className="flex gap-2 compact:hidden">
+          <Menu label="Fichier" items={fileMenu} />
+          <Menu label="Partition" items={scoreMenu} />
+          <Menu label="Affichage" items={viewMenu} />
+          <Menu label="Aide" items={helpMenu} />
+        </span>
+        <span className="hidden compact:block">
+          <Menu label="Menu" items={[{ heading: "Fichier" }, ...fileMenu, { heading: "Partition" }, ...scoreMenu, { heading: "Affichage" }, ...viewMenu, { heading: "Aide" }, ...helpMenu]} />
+        </span>
         <input
           ref={fileInput}
           type="file"
@@ -953,7 +958,7 @@ export function App() {
           }}
         />
         {/* le nom du fichier ; un point, à la couleur de l'accent, tant qu'il y a des modifications non enregistrées */}
-        <span className="text-muted ml-2 truncate min-w-[6em]" title={[unsaved || savedText === null ? "Modifications non enregistrées" : "", handle ? "Enregistrer réécrit ce fichier" : ""].filter(Boolean).join(" ; ") || undefined}>
+        <span className="text-muted ml-2 truncate min-w-[6em] stacked:flex-1" title={[unsaved || savedText === null ? "Modifications non enregistrées" : "", handle ? "Enregistrer réécrit ce fichier" : ""].filter(Boolean).join(" ; ") || undefined}>
           {fileName}
           {unsaved || savedText === null ? (
             <>
@@ -969,6 +974,8 @@ export function App() {
             {notice}
           </span>
         )}
+        {/* l'écoute ; quand la place manque, sur sa propre ligne, sous les menus */}
+        <span className="contents stacked:flex stacked:order-last stacked:w-full stacked:items-center stacked:gap-1">
         <ListenControls
           score={score}
           disabled={!score || !pages.length}
@@ -985,6 +992,7 @@ export function App() {
           tempo={piece.tempo ?? null}
           onTempo={(tempo) => updatePiece({ tempo: tempo ?? undefined })}
         />
+        </span>
         <button
           className={"flex items-center px-2 py-1.5 " + (showOptions ? "text-accent" : "text-muted enabled:hover:text-accent")}
           onClick={() => setShowOptions((v) => !v)}
@@ -1084,8 +1092,9 @@ export function App() {
           )}
         </section>
 
+        {/* au doigt, deux touchers ouvrent la retouche, sans agrandir la page */}
         <section
-          className="preview"
+          className="preview touch-manipulation"
           ref={preview}
           aria-label={reading ? "Partition" : "Aperçu"}
           // la molette fait défiler de côté les pages côte à côte

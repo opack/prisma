@@ -12,6 +12,10 @@
 /* les écrans étroits du site : une colonne (narrow), un téléphone (phone) */
 @custom-variant narrow (@media (max-width: 900px));
 @custom-variant phone (@media (max-width: 600px));
+/* la barre d'outils de l'application, selon la place : un seul menu et des boutons plus serrés
+   (compact), puis l'écoute sur sa propre ligne (stacked) */
+@custom-variant compact (@media (max-width: 1000px));
+@custom-variant stacked (@media (max-width: 720px));
 
 @theme inline {
   --color-ink: var(--ink);

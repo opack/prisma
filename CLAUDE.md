@@ -22,7 +22,7 @@ Le projet est décrit dans [README.md](README.md) (architecture, choix technique
 - Restent en CSS, seulement : la mise en page de la vue principale (`app/styles.css`), la gravure, le thème de CodeMirror, l'impression, la référence (du Markdown rendu) et le tableau de la comparaison.
 - Deux classes qui règlent la même propriété ne vont pas sur le même élément : on choisit par une condition (`on ? "border-accent" : "border-line"`).
 - Une classe CSS ne porte jamais le nom d'une classe Tailwind (`fixed`, `hidden`, `block`…) : Tailwind la prendrait pour la sienne.
-- Les écrans étroits du site : `narrow:` (900 px) et `phone:` (600 px).
+- Les écrans étroits : `narrow:` (900 px) et `phone:` (600 px) ; pour la barre d'outils de l'application, `compact:` (1000 px, un seul menu) et `stacked:` (720 px, l'écoute sur sa ligne).
 - L'impression en noir et blanc doit rester lisible.
 
 ## Les composants

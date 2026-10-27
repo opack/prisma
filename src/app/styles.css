@@ -80,6 +80,16 @@
     .split.fit-focus .preview { overflow: hidden; }
     .print-pages { display: none; }
   }
+  /* un écran étroit : l'éditeur ou la partition, l'un à la place de l'autre ; la languette, contre le
+     bord droit en édition ; à la hauteur, une page n'est jamais plus large que l'écran */
+  @media screen and (max-width: 900px) {
+    .split:not(.reading) { grid-template-columns: minmax(0, 1fr); }
+    .split:not(.reading) .preview, .split .splitter { display: none; }
+    .source { border-right: 0; }
+    .split:not(.reading) .edge { left: auto; right: 0; border-left: 1px solid var(--line); border-right: 0; border-radius: 6px 0 0 6px; }
+    .preview { container-type: inline-size; }
+    .split.fit-height .page { height: min(calc(100% * var(--zoom, 1)), calc((100cqw - 44px) * 297 / 210 * var(--zoom, 1))); }
+  }
   /* les paragraphes de la référence, espacés (sur le site, ceux de ses pages) */
   .guide p { margin: 1em 0; }
   /* la référence ou la bibliothèque, à la place de la partition */

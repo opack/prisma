@@ -13,12 +13,13 @@ import { CLAIR_SECTIONS, GREENSLEEVES_CHORDS, TECHNIQUES } from "../../src/site/
 const GYMNOPEDIE = writePrisma(importMusicXml(readFileSync(new URL("../fixtures/gymnopedie1.musicxml", import.meta.url), "utf8")));
 const DESKTOP = { width: 1300, height: 850 };
 const PHONE = { width: 390, height: 844 };
+const TABLET = { width: 820, height: 1180 };
 
-type State = { source: string; editing?: boolean; options?: Record<string, unknown>; view?: Record<string, unknown> };
+type State = { source: string; editing?: boolean; options?: Record<string, unknown>; view?: Record<string, unknown>; size?: { width: number; height: number } };
 
-/** L'application, dans un état connu : son texte, l'éditeur ouvert ou non, ses options, sa vue. */
-async function openApp(page: Page, { source, editing = true, options, view }: State) {
-  await page.setViewportSize(DESKTOP);
+/** L'application, dans un état connu : son texte, l'éditeur ouvert ou non, ses options, sa vue, la taille de l'écran. */
+async function openApp(page: Page, { source, editing = true, options, view, size = DESKTOP }: State) {
+  await page.setViewportSize(size);
   await page.addInitScript(
     ([s, e, o, v]) => {
       if (sessionStorage.getItem("visual")) return;
@@ -56,6 +57,15 @@ for (const [name, size] of [["bureau", DESKTOP], ["telephone", PHONE]] as const)
       await settle(page);
       await expect(page).toHaveScreenshot(`site-${pagePath}-${name}.png`, { fullPage: true });
     });
+
+// sur un téléphone, les pages du site sous le bouton du haut
+test("site menu telephone", async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.goto("/apprendre.html");
+  await settle(page);
+  await page.locator("header summary").click();
+  await expect(page).toHaveScreenshot("site-menu-telephone.png");
+});
 
 // le clavier de l'accueil, une touche noire puis une blanche survolées : la même dans les deux octaves
 for (const n of ["2", "5"])
@@ -129,6 +139,35 @@ test("app options métronome", async ({ page }) => {
   await page.getByRole("tab", { name: "Métronome" }).click();
   await settle(page);
   await expect(page).toHaveScreenshot("app-options-metronome.png");
+});
+
+// l'application sur un écran étroit : l'éditeur ou la partition, un seul menu ; sur un téléphone,
+// l'écoute sur sa propre ligne
+for (const [name, size] of [["telephone", PHONE], ["tablette", TABLET]] as const)
+  for (const editing of [false, true])
+    test(`app ${name} ${editing ? "edition" : "lecture"}`, async ({ page }) => {
+      await openApp(page, { source: CLAIR_SECTIONS, editing, size });
+      await expect(page).toHaveScreenshot(`app-${name}-${editing ? "edition" : "lecture"}.png`);
+    });
+
+test("app telephone menu", async ({ page }) => {
+  await openApp(page, { source: CLAIR_SECTIONS, editing: false, size: PHONE });
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  await expect(page).toHaveScreenshot("app-telephone-menu.png");
+});
+
+// au doigt, deux touchers sur une case ouvrent sa retouche
+test.describe("au doigt", () => {
+  test.use({ hasTouch: true });
+  test("app telephone retouche", async ({ page }) => {
+    await openApp(page, { source: CLAIR_SECTIONS, editing: false, size: PHONE });
+    const box = (await page.locator(".page text", { hasText: /^5$/ }).first().boundingBox())!;
+    const [x, y] = [box.x + box.width / 2, box.y + box.height / 2];
+    await page.touchscreen.tap(x, y);
+    await page.touchscreen.tap(x, y);
+    await settle(page);
+    await expect(page).toHaveScreenshot("app-telephone-retouche.png");
+  });
 });
 
 test("app retouche d'une note", async ({ page }) => {
@@ -270,7 +309,9 @@ async function openLibrary(page: Page, view: "list" | "thumbs") {
 for (const view of ["list", "thumbs"] as const)
   test(`app bibliothèque ${view}`, async ({ page }) => {
     await openLibrary(page, view);
-    await expect(page).toHaveScreenshot(`app-bibliotheque-${view}.png`, { mask: [page.getByText(/^\d{2}\/\d{2}\/\d{4}$/)] });
+    // les dates (celles des fichiers, qui changent) : effacées, sans toucher à la place qu'elles prennent
+    await page.getByText(/^\d{2}\/\d{2}\/\d{4}$/).evaluateAll((dates) => dates.forEach((d) => ((d as HTMLElement).style.color = "transparent")));
+    await expect(page).toHaveScreenshot(`app-bibliotheque-${view}.png`);
   });
 
 test("app référence", async ({ page }) => {

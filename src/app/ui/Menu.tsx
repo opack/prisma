@@ -1,11 +1,14 @@
 /**
  * Menu déroulant de la barre d'outils : un bouton qui ouvre une liste d'actions, chacune
- * avec son raccourci. Se ferme au choix d'une action, avec Échap ou par un clic ailleurs.
+ * avec son raccourci, rangées au besoin sous des titres (le menu unique d'un écran étroit).
+ * Sur un téléphone, la liste prend la largeur de l'écran, sans les raccourcis.
+ * Se ferme au choix d'une action, avec Échap ou par un clic ailleurs.
  */
 import { useEffect, useRef, useState } from "react";
 
 export type MenuItem =
   | { label: string; onSelect: () => void; shortcut?: string; disabled?: boolean; checked?: boolean }
+  | { heading: string }
   | "separator";
 
 export function Menu({ label, items }: { label: string; items: MenuItem[] }) {
@@ -34,10 +37,14 @@ export function Menu({ label, items }: { label: string; items: MenuItem[] }) {
         {label}
       </button>
       {open && (
-        <div className="absolute top-[calc(100%+4px)] left-0 z-10 grid min-w-[260px] p-1 bg-white border border-line rounded-md shadow-[0_6px_18px_rgba(0,0,0,0.12)]" role="menu">
+        <div className="absolute top-[calc(100%+4px)] left-0 z-10 grid min-w-[260px] max-h-[calc(100vh-80px)] overflow-y-auto phone:fixed phone:inset-x-2 phone:top-12 phone:max-h-[calc(100vh-56px)] p-1 bg-white border border-line rounded-md shadow-[0_6px_18px_rgba(0,0,0,0.12)]" role="menu">
           {items.map((item, i) =>
             item === "separator" ? (
               <hr key={i} className="mx-1.5 my-1 border-0 border-t border-line" />
+            ) : "heading" in item ? (
+              <p key={i} className="mt-1.5 mb-0.5 px-2.5 text-muted text-[12px] font-semibold first:mt-0" role="presentation">
+                {item.heading}
+              </p>
             ) : (
               <button
                 key={i}
@@ -52,7 +59,7 @@ export function Menu({ label, items }: { label: string; items: MenuItem[] }) {
               >
                 <span className="text-accent">{item.checked ? "✓" : ""}</span>
                 <span>{item.label}</span>
-                {item.shortcut && <span className="text-muted text-[12px]">{item.shortcut}</span>}
+                {item.shortcut && <span className="text-muted text-[12px] phone:hidden">{item.shortcut}</span>}
               </button>
             ),
           )}
