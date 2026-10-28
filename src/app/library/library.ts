@@ -1,42 +1,74 @@
 /**
- * Bibliothèque de partitions : un dossier du disque, choisi une fois, dont l'application montre
- * les morceaux (sous-dossiers compris). Les fichiers restent la seule référence : rien n'est
- * copié dans le navigateur, seul l'accès au dossier y est mémorisé (Chrome, Edge).
+ * Bibliothèque de partitions : les morceaux d'une source (un dossier du disque, sous-dossiers
+ * compris ; demain un drive en ligne). Les fichiers restent la seule référence : rien n'est copié
+ * dans le navigateur, seul l'accès à la source y est mémorisé. Une source donne ses fichiers ; la
+ * bibliothèque en lit le titre, le compositeur et les réglages, la même pour toutes les sources.
  */
 
 import type { RenderOptions } from "../options/options.ts";
 import { readSettings } from "../options/piece.ts";
+import type { StoredFile, StoredFolder } from "../files/stored.ts";
 
-type DirPicker = { showDirectoryPicker?: (o?: { id?: string; mode?: "read" | "readwrite" }) => Promise<FileSystemDirectoryHandle> };
-type Permissions = { queryPermission(o: { mode: "readwrite" }): Promise<PermissionState>; requestPermission(o: { mode: "readwrite" }): Promise<PermissionState> };
-type Iterable = { values(): AsyncIterable<FileSystemHandle> };
-
-const w = (typeof window !== "undefined" ? window : {}) as DirPicker;
-
-/** Le navigateur sait-il ouvrir un dossier et en garder l'accès ? */
-export const canUseLibrary = typeof w.showDirectoryPicker === "function" && typeof indexedDB !== "undefined";
-
-/** Un morceau de la bibliothèque. */
-export type LibraryEntry = {
-  /** Chemin depuis le dossier de la bibliothèque, nom du fichier compris : « Satie/gymnopedie.prisma ». */
+/** Un fichier d'une source, avant d'être lu. */
+export type SourceFile = {
+  /** Chemin depuis la racine de la source, nom du fichier compris : « Satie/gymnopedie.prisma ». */
   path: string;
   /** Sous-dossier, vide à la racine. */
   folder: string;
   name: string;
+  modified: number;
+  file: StoredFile;
+  /** Dossier du fichier : ses réglages y sont, un MusicXML importé s'y enregistre en .prisma, à côté de lui. */
+  dir: StoredFolder;
+  /** Le début du fichier, assez pour son titre et son compositeur (à défaut, tout le texte). */
+  head?: () => Promise<string>;
+};
+
+/** Une source de la bibliothèque : un dossier du disque, un drive en ligne. */
+export type LibrarySource = {
+  /** Ce que la bibliothèque en dit : « Dossier « Partitions » ». */
+  label: string;
+  /** L'accès : déjà accordé, ou à redemander (ask : en réponse à un clic). */
+  access(ask?: boolean): Promise<boolean>;
+  /** Ses partitions (.prisma et MusicXML), sous-dossiers compris, les dossiers cachés exceptés. */
+  files(): Promise<SourceFile[]>;
+};
+
+/** Un morceau de la bibliothèque. */
+export type LibraryEntry = Omit<SourceFile, "head"> & {
   kind: "prisma" | "musicxml";
   title?: string;
   composer?: string;
-  modified: number;
-  handle: FileSystemFileHandle;
-  /** Dossier du fichier : un MusicXML importé s'y enregistre en .prisma, à côté de lui. */
-  dir: FileSystemDirectoryHandle;
   /** Les options définies pour la partition, dans ses réglages à côté d'elle (pour sa vignette). */
   own?: Partial<RenderOptions>;
 };
 
-// l'accès au dossier se garde dans IndexedDB (un accès ne se range pas dans localStorage), avec
-// le cache des aperçus
-const DB = "prisma", STORE = "library", KEY = "folder";
+const KINDS: [RegExp, LibraryEntry["kind"]][] = [
+  [/\.prisma$/i, "prisma"],
+  [/\.(musicxml|xml)$/i, "musicxml"],
+];
+
+/** La sorte d'un fichier de partition, ou undefined pour un autre fichier. */
+export const kindOf = (name: string) => KINDS.find(([re]) => re.test(name))?.[1];
+
+/** Les morceaux d'une source : chaque partition, son titre, son compositeur, ses options. */
+export async function scan(source: LibrarySource): Promise<LibraryEntry[]> {
+  const out: LibraryEntry[] = [];
+  for (const { head, ...f } of await source.files()) {
+    const kind = kindOf(f.name);
+    if (!kind) continue;
+    const start = head ? await head() : await f.file.text();
+    // ses réglages, à côté d'elle : illisibles, la vignette prend les options générales
+    const own = kind === "prisma" ? ((await readSettings(f.dir, f.name).catch(() => null))?.options ?? undefined) : undefined;
+    out.push({ ...f, kind, ...describe(start, kind), ...(own ? { own } : {}) });
+  }
+  return out;
+}
+
+// l'accès à la source se garde dans IndexedDB (un accès au disque ne se range pas dans
+// localStorage), avec le cache des aperçus
+const DB = "prisma";
+const STORE = "library";
 export const THUMBS = "thumbs";
 
 function db(): Promise<IDBDatabase> {
@@ -57,66 +89,6 @@ export async function tx<T>(mode: IDBTransactionMode, run: (s: IDBObjectStore) =
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
-}
-
-/** Le dossier de la bibliothèque, s'il a été choisi. */
-export async function savedFolder(): Promise<FileSystemDirectoryHandle | null> {
-  try {
-    return ((await tx("readonly", (s) => s.get(KEY))) as FileSystemDirectoryHandle | undefined) ?? null;
-  } catch {
-    return null;
-  }
-}
-
-/** Choisit le dossier de la bibliothèque et le retient. Renvoie null si l'utilisateur annule. */
-export async function pickFolder(): Promise<FileSystemDirectoryHandle | null> {
-  try {
-    const dir = await w.showDirectoryPicker!({ id: "prisma-library", mode: "readwrite" });
-    await tx("readwrite", (s) => s.put(dir, KEY));
-    return dir;
-  } catch (e) {
-    if ((e as Error)?.name === "AbortError") return null;
-    throw e;
-  }
-}
-
-/**
- * L'accès au dossier : déjà accordé, ou à redemander. Le navigateur ne le redonne qu'après un
- * geste de l'utilisateur (ask : en réponse à un clic).
- */
-export async function access(dir: FileSystemDirectoryHandle, ask = false): Promise<boolean> {
-  const p = dir as unknown as Permissions;
-  if ((await p.queryPermission({ mode: "readwrite" })) === "granted") return true;
-  return ask && (await p.requestPermission({ mode: "readwrite" })) === "granted";
-}
-
-const KINDS: [RegExp, LibraryEntry["kind"]][] = [
-  [/\.prisma$/i, "prisma"],
-  [/\.(musicxml|xml)$/i, "musicxml"],
-];
-
-/** Tous les morceaux du dossier et de ses sous-dossiers (les dossiers cachés exceptés). */
-export async function scan(dir: FileSystemDirectoryHandle): Promise<LibraryEntry[]> {
-  const out: LibraryEntry[] = [];
-  const walk = async (d: FileSystemDirectoryHandle, folder: string) => {
-    for await (const h of (d as unknown as Iterable).values()) {
-      if (h.name.startsWith(".")) continue;
-      if (h.kind === "directory") {
-        await walk(h as FileSystemDirectoryHandle, folder ? `${folder}/${h.name}` : h.name);
-        continue;
-      }
-      const kind = KINDS.find(([re]) => re.test(h.name))?.[1];
-      if (!kind) continue;
-      const handle = h as FileSystemFileHandle;
-      const file = await handle.getFile();
-      const head = await file.slice(0, 32_000).text();
-      // ses réglages, à côté d'elle : illisibles, la vignette prend les options générales
-      const own = kind === "prisma" ? ((await readSettings(d, h.name).catch(() => null))?.options ?? undefined) : undefined;
-      out.push({ path: folder ? `${folder}/${h.name}` : h.name, folder, name: h.name, kind, modified: file.lastModified, handle, dir: d, ...describe(head, kind), ...(own ? { own } : {}) });
-    }
-  };
-  await walk(dir, "");
-  return out;
 }
 
 /** Titre et compositeur, lus au début du fichier : l'en-tête d'un .prisma, les crédits d'un MusicXML. */

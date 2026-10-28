@@ -16,7 +16,8 @@ import { markOpened } from "../library/library.ts";
 import type { LibraryEntry } from "../library/library.ts";
 import { readSettings, settingsName } from "../options/piece.ts";
 import type { PieceSettings } from "../options/piece.ts";
-import { OPENABLE, canWriteInPlace, download, pickExportTarget, pickFile, pickSaveTarget, targetIn, writeFile } from "./files.ts";
+import { OPENABLE, canWriteInPlace, download, pickExportTarget, pickFile, pickSaveTarget, targetIn } from "./files.ts";
+import type { Readable, StoredFile, StoredFolder } from "./stored.ts";
 import { SAMPLE } from "./sample.ts";
 import { loadSource, saveSource } from "./storage.ts";
 
@@ -43,7 +44,7 @@ type Deps = {
   editor: RefObject<EditorHandle | null>;
   notify: (message: string) => void;
   /** Un autre morceau, et ses réglages (lus à côté de lui, ou vides). */
-  onLoaded: (settings: PieceSettings, dir: FileSystemDirectoryHandle | null) => void;
+  onLoaded: (settings: PieceSettings, dir: StoredFolder | null) => void;
   setEditing: (on: boolean) => void;
   /** Un morceau ouvert depuis la bibliothèque, ou déposé sur la fenêtre. */
   onOpenedFrom: (from: "library" | "drop") => void;
@@ -56,13 +57,13 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, setEditing,
   const [engravedSource, setEngravedSource] = useState(source);
   const dirty = source !== engravedSource;
   const [fileName, setFileName] = useState("morceau.prisma");
-  /** Fichier .prisma ouvert ou enregistré, réécrit en place par « Enregistrer » (Chrome, Edge). */
-  const [handle, setHandle] = useState<FileSystemFileHandle | null>(null);
+  /** Fichier .prisma ouvert ou enregistré, réécrit en place par « Enregistrer » (Chrome, Edge, un drive en ligne). */
+  const [handle, setHandle] = useState<StoredFile | null>(null);
   /** Texte tel qu'il est sur le disque, pour savoir s'il reste des modifications à enregistrer. */
   const [savedText, setSavedText] = useState<string | null>(null);
   const unsaved = savedText !== null && source !== savedText;
   /** Dossier d'un MusicXML ouvert depuis la bibliothèque : son .prisma s'y enregistre, à côté de lui. */
-  const [saveDir, setSaveDir] = useState<FileSystemDirectoryHandle | null>(null);
+  const [saveDir, setSaveDir] = useState<StoredFolder | null>(null);
   /** Le choix des options de l'export, et du modèle d'un nouveau morceau, ouverts. */
   const [exporting, setExporting] = useState(false);
   const [choosingNew, setChoosingNew] = useState(false);
@@ -123,7 +124,7 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, setEditing,
         setFileName(target.name);
       }
       if (target) {
-        await writeFile(target, source);
+        await target.write(source);
         setSavedText(source);
         notify(`Enregistré dans ${target.name}`);
       } else {
@@ -151,7 +152,7 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, setEditing,
       if (canWriteInPlace) {
         const target = await pickExportTarget(name);
         if (!target) return; // annulé
-        await writeFile(target, xml);
+        await target.write(xml);
         notify(`Exporté dans ${target.name}`);
       } else {
         download(name, xml);
@@ -163,7 +164,7 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, setEditing,
   };
 
   /** Lit un fichier, .prisma ou MusicXML (importé) ; un fichier rechargé garde le mode en cours. */
-  const open = async (file: File, fileHandle: FileSystemFileHandle | null = null, keepMode = false, dir: FileSystemDirectoryHandle | null = null) => {
+  const open = async (file: Readable, fileHandle: StoredFile | null = null, keepMode = false, dir: StoredFolder | null = null) => {
     const text = await file.text();
     let prisma = text;
     const isXml = /\.(musicxml|xml)$/i.test(file.name);
@@ -212,7 +213,7 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, setEditing,
     if (!canWriteInPlace) return fileInput.current?.click();
     try {
       const picked = await pickFile();
-      if (picked) await open(picked.file, picked.handle);
+      if (picked) await open(picked, picked);
     } catch (e) {
       notify(`Ouverture impossible : ${(e as Error).message}`);
     }
@@ -221,7 +222,7 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, setEditing,
   const openEntry = async (entry: LibraryEntry) => {
     if (!confirmDiscard(`Ouvrir ${entry.name} ? Les modifications non enregistrées seront perdues.`)) return;
     try {
-      await open(await entry.handle.getFile(), entry.kind === "prisma" ? entry.handle : null, false, entry.dir);
+      await open(entry.file, entry.kind === "prisma" ? entry.file : null, false, entry.dir);
       markOpened(entry.path);
       onOpenedFrom("library");
     } catch (e) {
@@ -229,7 +230,7 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, setEditing,
     }
   };
   /** Ouvre un fichier déposé sur la fenêtre. */
-  const openDropped = async (dropped: { file: File; handle: FileSystemFileHandle | null }) => {
+  const openDropped = async (dropped: { file: File; handle: StoredFile | null }) => {
     if (!OPENABLE.test(dropped.file.name)) {
       notify(`« ${dropped.file.name} » : format non pris en charge (.prisma ou .musicxml non compressé)`);
       return;
@@ -270,7 +271,7 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, setEditing,
     if (!handle) return;
     if (unsaved && !window.confirm(`Recharger ${handle.name} depuis le disque ? Les modifications non enregistrées seront perdues.`)) return;
     try {
-      await open(await handle.getFile(), handle, true);
+      await open(handle, handle, true);
       notify(`${handle.name} rechargé`);
     } catch (e) {
       notify(`Rechargement impossible : ${(e as Error).message}`);

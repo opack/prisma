@@ -5,6 +5,9 @@
  * Access). Ailleurs, on se rabat sur le sélecteur de fichier classique pour ouvrir et
  * sur un téléchargement pour enregistrer.
  */
+import { diskFile } from "./stored.ts";
+import type { StoredFile, StoredFolder } from "./stored.ts";
+
 type PickerType = { description: string; accept: Record<string, string[]> };
 type Picker = {
   showOpenFilePicker?: (o: { types: PickerType[]; multiple?: boolean }) => Promise<FileSystemFileHandle[]>;
@@ -20,10 +23,10 @@ const XML: PickerType = { description: "MusicXML", accept: { "application/xml": 
 const isAbort = (e: unknown) => (e as Error)?.name === "AbortError";
 
 /** Ouvre un fichier .prisma ou .musicxml. Renvoie null si l'utilisateur annule. */
-export async function pickFile(): Promise<{ file: File; handle: FileSystemFileHandle } | null> {
+export async function pickFile(): Promise<StoredFile | null> {
   try {
     const [handle] = await w.showOpenFilePicker!({ types: [PRISMA, XML], multiple: false });
-    return { file: await handle.getFile(), handle };
+    return diskFile(handle);
   } catch (e) {
     if (isAbort(e)) return null;
     throw e;
@@ -31,9 +34,9 @@ export async function pickFile(): Promise<{ file: File; handle: FileSystemFileHa
 }
 
 /** Demande où enregistrer un nouveau fichier .prisma. Renvoie null si l'utilisateur annule. */
-export async function pickSaveTarget(suggestedName: string): Promise<FileSystemFileHandle | null> {
+export async function pickSaveTarget(suggestedName: string): Promise<StoredFile | null> {
   try {
-    return await w.showSaveFilePicker!({ suggestedName, types: [PRISMA] });
+    return diskFile(await w.showSaveFilePicker!({ suggestedName, types: [PRISMA] }));
   } catch (e) {
     if (isAbort(e)) return null;
     throw e;
@@ -41,9 +44,9 @@ export async function pickSaveTarget(suggestedName: string): Promise<FileSystemF
 }
 
 /** Demande où enregistrer un MusicXML exporté. Renvoie null si l'utilisateur annule. */
-export async function pickExportTarget(suggestedName: string): Promise<FileSystemFileHandle | null> {
+export async function pickExportTarget(suggestedName: string): Promise<StoredFile | null> {
   try {
-    return await w.showSaveFilePicker!({ suggestedName, types: [XML] });
+    return diskFile(await w.showSaveFilePicker!({ suggestedName, types: [XML] }));
   } catch (e) {
     if (isAbort(e)) return null;
     throw e;
@@ -57,7 +60,7 @@ export const OPENABLE = /\.(prisma|txt|musicxml|xml)$/i;
  * Fichier déposé sur la fenêtre, avec son accès en écriture quand le navigateur le donne
  * (Chrome, Edge) : on peut alors l'enregistrer en place, comme un fichier ouvert.
  */
-export async function droppedFile(data: DataTransfer): Promise<{ file: File; handle: FileSystemFileHandle | null } | null> {
+export async function droppedFile(data: DataTransfer): Promise<{ file: File; handle: StoredFile | null } | null> {
   const item = [...data.items].find((i) => i.kind === "file");
   if (!item) return null;
   const withHandle = item as DataTransferItem & { getAsFileSystemHandle?: () => Promise<FileSystemHandle | null> };
@@ -66,7 +69,7 @@ export async function droppedFile(data: DataTransfer): Promise<{ file: File; han
   const file = item.getAsFile();
   if (!file) return null;
   const handle = await pending?.catch(() => null);
-  return { file, handle: handle?.kind === "file" ? (handle as FileSystemFileHandle) : null };
+  return { file, handle: handle?.kind === "file" ? diskFile(handle as FileSystemFileHandle) : null };
 }
 
 /**
@@ -74,20 +77,10 @@ export async function droppedFile(data: DataTransfer): Promise<{ file: File; han
  * s'enregistre en .prisma à côté de lui. Un fichier de ce nom existe déjà : on demande avant de
  * le remplacer (null si l'utilisateur refuse).
  */
-export async function targetIn(dir: FileSystemDirectoryHandle, name: string): Promise<FileSystemFileHandle | null> {
-  try {
-    const existing = await dir.getFileHandle(name);
-    return window.confirm(`${name} existe déjà dans ce dossier. Le remplacer ?`) ? existing : null;
-  } catch (e) {
-    if ((e as Error)?.name !== "NotFoundError") throw e;
-    return dir.getFileHandle(name, { create: true });
-  }
-}
-
-export async function writeFile(handle: FileSystemFileHandle, text: string) {
-  const out = await handle.createWritable();
-  await out.write(text);
-  await out.close();
+export async function targetIn(dir: StoredFolder, name: string): Promise<StoredFile | null> {
+  const existing = await dir.file(name);
+  if (!existing) return dir.create(name);
+  return window.confirm(`${name} existe déjà dans ce dossier. Le remplacer ?`) ? existing : null;
 }
 
 export function download(name: string, text: string) {

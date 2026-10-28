@@ -9,7 +9,8 @@ import type { RenderOptions } from "../options/options.ts";
 import { engraveOptions } from "../score/render.ts";
 import { thumbOf } from "./thumbs.ts";
 import type { Thumb } from "./thumbs.ts";
-import { access, canUseLibrary, pickFolder, recentOpenings, savedFolder, scan } from "./library.ts";
+import { canUseDisk, pickFolder, savedFolder } from "./diskLibrary.ts";
+import { recentOpenings, scan } from "./library.ts";
 import { BackButton } from "../ui/button/BackButton.tsx";
 import { Button } from "../ui/button/Button.tsx";
 import { ButtonGroup } from "../ui/button/ButtonGroup.tsx";
@@ -23,7 +24,7 @@ const SELECT = "px-1.5 py-[5px] bg-white border border-line rounded";
 const ENTRY = "w-full text-left bg-transparent border-0 hover:bg-panel";
 /** Le fichier du morceau, son type, sa date. */
 const META = "col-span-full flex items-center gap-2.5 text-muted";
-import type { LibraryEntry } from "./library.ts";
+import type { LibraryEntry, LibrarySource } from "./library.ts";
 
 type Sort = "title" | "composer" | "recent";
 const SORTS: { value: Sort; label: string }[] = [
@@ -69,8 +70,8 @@ type State =
   | { kind: "unsupported" }
   | { kind: "loading" }
   | { kind: "none" }
-  | { kind: "locked"; dir: FileSystemDirectoryHandle }
-  | { kind: "ready"; dir: FileSystemDirectoryHandle; entries: LibraryEntry[] }
+  | { kind: "locked"; source: LibrarySource }
+  | { kind: "ready"; source: LibrarySource; entries: LibraryEntry[] }
   | { kind: "error"; message: string };
 
 /** Pour chercher et trier sans tenir compte des accents ni des majuscules. */
@@ -104,7 +105,7 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
       /* stockage indisponible : sans conséquence */
     }
   };
-  const [state, setState] = useState<State>(canUseLibrary ? { kind: "loading" } : { kind: "unsupported" });
+  const [state, setState] = useState<State>(canUseDisk ? { kind: "loading" } : { kind: "unsupported" });
   const [query, setQuery] = useState("");
   const [sort, setSortState] = useState<Sort>(loadSort);
   const [kinds, setKindsState] = useState<Kinds>(loadKinds);
@@ -125,23 +126,23 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
     }
   };
 
-  const load = async (dir: FileSystemDirectoryHandle, ask = false) => {
+  const load = async (source: LibrarySource, ask = false) => {
     try {
-      if (!(await access(dir, ask))) return setState({ kind: "locked", dir });
+      if (!(await source.access(ask))) return setState({ kind: "locked", source });
       setState({ kind: "loading" });
-      setState({ kind: "ready", dir, entries: await scan(dir) });
+      setState({ kind: "ready", source, entries: await scan(source) });
     } catch (e) {
       setState({ kind: "error", message: (e as Error).message });
     }
   };
   useEffect(() => {
-    if (!canUseLibrary) return;
-    savedFolder().then((dir) => (dir ? load(dir) : setState({ kind: "none" })));
+    if (!canUseDisk) return;
+    savedFolder().then((source) => (source ? load(source) : setState({ kind: "none" })));
   }, []);
   const choose = async () => {
     try {
-      const dir = await pickFolder();
-      if (dir) await load(dir, true);
+      const source = await pickFolder();
+      if (source) await load(source, true);
     } catch (e) {
       setState({ kind: "error", message: (e as Error).message });
     }
@@ -174,12 +175,12 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
           <h1 className="mx-0 mt-2 mb-1 text-[26px]">Bibliothèque</h1>
           {(state.kind === "ready" || state.kind === "locked") && (
             <p className="flex flex-wrap items-center gap-2 mt-0 mb-4 text-muted">
-              Dossier « {state.dir.name} »
+              {state.source.label}
               <Button size="icon" onClick={choose} title="Changer de dossier" aria-label="Changer de dossier">
                 <FolderIcon />
               </Button>
               {state.kind === "ready" && (
-                <Button size="icon" onClick={() => load(state.dir)} title="Actualiser : relire le dossier" aria-label="Actualiser">
+                <Button size="icon" onClick={() => load(state.source)} title="Actualiser : relire le dossier" aria-label="Actualiser">
                   <RefreshIcon />
                 </Button>
               )}
@@ -201,8 +202,8 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
         )}
         {state.kind === "locked" && (
           <div className={NOTE}>
-            <p className="mt-0 mb-3">Le navigateur demande de confirmer l'accès au dossier « {state.dir.name} ».</p>
-            <Button kind="primary" onClick={() => load(state.dir, true)}>
+            <p className="mt-0 mb-3">Le navigateur demande de confirmer l'accès au {state.source.label.replace(/^./, (c) => c.toLowerCase())}.</p>
+            <Button kind="primary" onClick={() => load(state.source, true)}>
               Autoriser l'accès
             </Button>
           </div>

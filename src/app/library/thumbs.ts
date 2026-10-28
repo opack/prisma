@@ -53,7 +53,7 @@ export function thumbOf(entry: LibraryEntry, options: EngraveOptions): Promise<C
     const stored = await tx<Cached | undefined>("readonly", (s) => s.get(entry.path), THUMBS).catch(() => undefined);
     if (fresh(stored)) return stored!;
     const run = chain.then(async () => {
-      const text = await (await entry.handle.getFile()).text();
+      const text = await entry.file.text();
       return compute({ text, kind: entry.kind, name: entry.name, options });
     });
     chain = run.catch(() => undefined);

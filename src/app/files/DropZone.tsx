@@ -5,8 +5,9 @@
 import { useRef, useState } from "react";
 import type { DragEvent, ReactNode } from "react";
 import { droppedFile } from "./files.ts";
+import type { StoredFile } from "./stored.ts";
 
-export function DropZone({ onFile, className = "", children }: { onFile: (dropped: { file: File; handle: FileSystemFileHandle | null }) => void; className?: string; children: ReactNode }) {
+export function DropZone({ onFile, className = "", children }: { onFile: (dropped: { file: File; handle: StoredFile | null }) => void; className?: string; children: ReactNode }) {
   const [over, setOver] = useState(false);
   const depth = useRef(0);
   const hasFile = (e: DragEvent) => [...e.dataTransfer.types].includes("Files");

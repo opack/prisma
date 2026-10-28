@@ -7,6 +7,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MutableRefObject } from "react";
+import type { StoredFile, StoredFolder } from "../files/stored.ts";
 import { loadOptions, saveOptions } from "./options.ts";
 import type { RenderOptions } from "./options.ts";
 import { isEmpty, isPieceKey, parseSettings, saveSettings, writeSettings } from "./piece.ts";
@@ -39,7 +40,7 @@ export function useSettings() {
   const [piece, setPiece] = useState<PieceSettings>(loadPiece);
   const options = useMemo<RenderOptions>(() => ({ ...general, ...piece.options }), [general, piece.options]);
   /** Dossier du morceau, où s'enregistrent ses réglages (un morceau ouvert depuis la bibliothèque). */
-  const [pieceDir, setPieceDir] = useState<FileSystemDirectoryHandle | null>(null);
+  const [pieceDir, setPieceDir] = useState<StoredFolder | null>(null);
   /** Change à chaque morceau ouvert : ce qui suit un changement de morceau n'est pas un choix de l'utilisateur. */
   const [pieceId, setPieceId] = useState(0);
   // un réglage changé à la main, à enregistrer (pas ceux qu'on vient de lire)
@@ -54,7 +55,7 @@ export function useSettings() {
       return next;
     });
   /** Un autre morceau : ses réglages, lus à côté de lui ou vides. */
-  const resetPiece = (s: PieceSettings, dir: FileSystemDirectoryHandle | null) => {
+  const resetPiece = (s: PieceSettings, dir: StoredFolder | null) => {
     changed.current = false;
     setPiece(s);
     persistPiece(s);
@@ -81,7 +82,7 @@ export function useSettings() {
  * Les réglages du morceau enregistrés à côté de lui, peu après le dernier changement ; il faut son
  * dossier et le morceau lui-même sur le disque (un MusicXML importé : à son premier enregistrement en .prisma).
  */
-export function useSettingsAutosave(piece: PieceSettings, dir: FileSystemDirectoryHandle | null, handle: FileSystemFileHandle | null, changed: MutableRefObject<boolean>, onError: (message: string) => void) {
+export function useSettingsAutosave(piece: PieceSettings, dir: StoredFolder | null, handle: StoredFile | null, changed: MutableRefObject<boolean>, onError: (message: string) => void) {
   useEffect(() => {
     if (!changed.current || !dir || !handle) return;
     const name = handle.name;

@@ -8,6 +8,7 @@
  */
 import type { RenderOptions } from "./options.ts";
 import { loadOptions } from "./options.ts";
+import type { StoredFolder } from "../files/stored.ts";
 import { isInstrument } from "../playback/instruments.ts";
 
 /** Les options qu'une partition peut définir pour elle-même : tout ce qui fait son rendu. */
@@ -89,24 +90,21 @@ function loadOptionsFrom(raw: object): RenderOptions {
 }
 
 /** Les réglages d'un morceau, s'il y en a, dans le dossier du morceau. */
-export async function readSettings(dir: FileSystemDirectoryHandle, pieceName: string): Promise<PieceSettings | null> {
-  let file: File;
+export async function readSettings(dir: StoredFolder, pieceName: string): Promise<PieceSettings | null> {
+  let text: string;
   try {
-    file = await (await dir.getFileHandle(settingsName(pieceName))).getFile();
+    const file = await dir.file(settingsName(pieceName));
+    if (!file) return null;
+    text = await file.text();
   } catch {
     return null;
   }
-  return parseSettings(await file.text());
+  return parseSettings(text);
 }
 
 /** Enregistre les réglages d'un morceau à côté de lui ; sans réglage, le fichier disparaît. */
-export async function saveSettings(dir: FileSystemDirectoryHandle, pieceName: string, s: PieceSettings) {
+export async function saveSettings(dir: StoredFolder, pieceName: string, s: PieceSettings) {
   const name = settingsName(pieceName);
-  if (isEmpty(s)) {
-    await dir.removeEntry(name).catch(() => undefined);
-    return;
-  }
-  const out = await (await dir.getFileHandle(name, { create: true })).createWritable();
-  await out.write(writeSettings(s));
-  await out.close();
+  if (isEmpty(s)) return dir.remove(name);
+  await (await dir.create(name)).write(writeSettings(s));
 }

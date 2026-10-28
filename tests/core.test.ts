@@ -1821,6 +1821,47 @@ describe("bibliothèque", () => {
     expect(describeFile(xml, "musicxml")).toEqual({ title: "Clair & net", composer: "Anonyme" });
     expect(describeFile("<movement-title>Mouvement</movement-title>", "musicxml").title).toBe("Mouvement");
   });
+
+  /** Une source en mémoire, comme le sera un drive en ligne : des chemins et leurs textes. */
+  async function memorySource(files: Record<string, string>) {
+    const { kindOf } = await import("../src/app/library/library.ts");
+    const stored = (name: string, text: string) => ({ name, text: async () => text, write: async () => {} });
+    const folder = (path: string) => ({
+      name: path.split("/").at(-1) ?? "",
+      file: async (name: string) => (files[path ? `${path}/${name}` : name] !== undefined ? stored(name, files[path ? `${path}/${name}` : name]) : null),
+      create: async (name: string) => stored(name, ""),
+      remove: async () => {},
+    });
+    return {
+      label: "Mémoire",
+      access: async () => true,
+      files: async () =>
+        Object.entries(files)
+          .filter(([path]) => kindOf(path))
+          .map(([path, text]) => {
+            const folderPath = path.split("/").slice(0, -1).join("/");
+            const name = path.split("/").at(-1)!;
+            return { path, folder: folderPath, name, modified: 1, file: stored(name, text), dir: folder(folderPath) };
+          }),
+    };
+  }
+
+  it("lit les morceaux d'une source : leur sorte, leur titre, les options de leurs réglages", async () => {
+    const { scan } = await import("../src/app/library/library.ts");
+    const source = await memorySource({
+      "Au clair.prisma": "---\nformat: 1\ntitle: Au clair de la lune\n---\nm1 |1  ||\n",
+      "Au clair.prisma.json": JSON.stringify({ format: 1, options: { fingerings: false } }),
+      "Satie/Gymnopedie.musicxml": "<work-title>Gymnopédie</work-title><creator type=\"composer\">Erik Satie</creator>",
+      "notes.txt": "pas une partition",
+    });
+    const entries = await scan(source);
+    expect(entries.map((e) => [e.path, e.folder, e.kind, e.title, e.composer])).toEqual([
+      ["Au clair.prisma", "", "prisma", "Au clair de la lune", undefined],
+      ["Satie/Gymnopedie.musicxml", "Satie", "musicxml", "Gymnopédie", "Erik Satie"],
+    ]);
+    expect(entries[0].own).toEqual({ fingerings: false });
+    expect(entries[1].own).toBeUndefined();
+  });
 });
 
 describe("ce que montre le curseur", () => {
