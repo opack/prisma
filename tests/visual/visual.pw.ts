@@ -211,6 +211,77 @@ test.describe("au doigt", () => {
   });
 });
 
+// une case vide : la note choisie, le choix reste ouvert sur elle, avec son doigté, sa trille, sa durée
+// un morceau reçu par un lien : son titre, son compositeur, ses notes ; à ouvrir, ou à enregistrer dans la bibliothèque
+test("app partition reçue", async ({ page }) => {
+  const text = CLAIR_SECTIONS.replace("bpm: 100", "bpm: 100\nnotes: À jouer lentement, la main droite seule d'abord");
+  await openApp(page, { source: TECHNIQUES, editing: false });
+  // le lien, écrit par l'application elle-même (le serveur de développement sert ses modules)
+  await page.evaluate(async (t) => {
+    const module = "/src/app/files/share.ts";
+    const { encodeShare } = await import(/* @vite-ignore */ module);
+    location.hash = `p=${await encodeShare({ name: "Au clair de la lune.prisma", text: t, settings: {} })}`;
+  }, text);
+  await expect(page.getByRole("dialog")).toContainText("Partition reçue");
+  await settle(page);
+  await expect(page).toHaveScreenshot("app-partition-recue.png");
+  // le morceau en cours, jamais enregistré : on confirme de le remplacer
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Ouvrir", exact: true }).click();
+  await settle(page);
+  await expect(page.locator(".page").first()).toContainText("Au clair de la lune");
+});
+
+// Fichier › Importer un lien : un lien collé qui ne se lit pas le dit ; le bon montre la partition reçue
+test("app importer un lien", async ({ page }) => {
+  await openApp(page, { source: TECHNIQUES, editing: false });
+  const link = await page.evaluate(async (t) => {
+    const module = "/src/app/files/share.ts";
+    const { encodeShare, shareLink } = await import(/* @vite-ignore */ module);
+    return shareLink(await encodeShare({ name: "Au clair de la lune.prisma", text: t, settings: {} }), location.href);
+  }, CLAIR_SECTIONS);
+  await menu(page, "Fichier", "Importer un lien…");
+  // le champ a le focus : on colle aussitôt
+  await page.keyboard.type(link.slice(0, link.length - 12));
+  await page.getByRole("button", { name: "Importer", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("ne se lit pas");
+  await settle(page);
+  await expect(page).toHaveScreenshot("app-importer-lien.png");
+  await page.getByRole("textbox", { name: "Lien", exact: true }).fill(link);
+  await page.getByRole("button", { name: "Importer", exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText("Partition reçue");
+  await expect(page.getByRole("dialog")).toContainText("Au clair de la lune");
+});
+
+// reçu avec une bibliothèque choisie : il s'y enregistre, puis s'ouvre, ses réglages à côté de lui
+test("app partition reçue, avec une bibliothèque", async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as unknown as { showDirectoryPicker: () => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker = async () => (await navigator.storage.getDirectory()).getDirectoryHandle("recus", { create: true });
+  });
+  await openApp(page, { source: "", editing: false });
+  await menu(page, "Fichier", "Bibliothèque");
+  await page.getByRole("button", { name: "Choisir un dossier" }).click();
+  await page.evaluate(async (t) => {
+    const module = "/src/app/files/share.ts";
+    const { encodeShare } = await import(/* @vite-ignore */ module);
+    location.hash = `p=${await encodeShare({ name: "Au clair de la lune.prisma", text: t, settings: { tempo: 72 } })}`;
+  }, CLAIR_SECTIONS);
+  await expect(page.getByRole("dialog")).toContainText("Dossier « recus »");
+  await settle(page);
+  await expect(page).toHaveScreenshot("app-partition-recue-bibliotheque.png");
+  await page.getByRole("button", { name: "Enregistrer dans la bibliothèque" }).click();
+  await settle(page);
+  const saved = await page.evaluate(async () => {
+    const dir = await (await navigator.storage.getDirectory()).getDirectoryHandle("recus");
+    const read = async (n: string) => (await (await dir.getFileHandle(n)).getFile()).text();
+    return { piece: await read("Au clair de la lune.prisma"), settings: JSON.parse(await read("Au clair de la lune.prisma.json")) };
+  });
+  expect(saved.piece).toContain("title: Au clair de la lune");
+  expect(saved.settings.tempo).toBe(72);
+  await expect(page.getByRole("spinbutton", { name: "Tempo de l'écoute" })).toHaveValue("72");
+  await expect(page.locator("[data-library]")).toHaveCount(0);
+});
+
 // les notes du morceau (notes:), jamais imprimées : sous un bouton, à côté de son nom
 test("app notes du morceau", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS.replace("bpm: 100", "bpm: 100\nnotes: À jouer lentement, la main droite seule d'abord"), editing: false });
@@ -219,7 +290,6 @@ test("app notes du morceau", async ({ page }) => {
   await expect(page).toHaveScreenshot("app-notes.png");
 });
 
-// une case vide : la note choisie, le choix reste ouvert sur elle, avec son doigté, sa trille, sa durée
 test("app retouche case vide", async ({ page }) => {
   await openApp(page, { source: SCALE, editing: false });
   // la case au-dessus du 10, sur la ligne +1, est vide

@@ -21,6 +21,7 @@ const KEY = "folder";
 export function diskLibrary(root: FileSystemDirectoryHandle): LibrarySource {
   return {
     label: `Dossier « ${root.name} »`,
+    root: diskFolder(root),
     access: async (ask = false) => {
       const p = root as unknown as Permissions;
       if ((await p.queryPermission({ mode: "readwrite" })) === "granted") return true;

@@ -9,6 +9,8 @@ type Ctx = {
   library: { shown: boolean; toggle: () => void };
   save: (as: boolean) => void;
   exportFile: () => void;
+  share: () => void;
+  importLink: () => void;
   reload?: () => void;
   engrave: () => void;
   autoEngrave: { on: boolean; toggle: () => void };
@@ -38,6 +40,9 @@ export function appMenus(c: Ctx): MenuDef[] {
         { label: "Enregistrer", onSelect: () => c.save(false), shortcut: "Ctrl+S" },
         { label: "Enregistrer sous…", onSelect: () => c.save(true), shortcut: "Ctrl+Maj+S" },
         { label: "Exporter en MusicXML…", onSelect: c.exportFile },
+        "separator",
+        { label: "Partager par un lien", onSelect: c.share },
+        { label: "Importer un lien…", onSelect: c.importLink },
         "separator",
         { label: "Recharger", onSelect: () => c.reload?.(), disabled: !c.reload },
         "separator",

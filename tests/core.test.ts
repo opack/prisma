@@ -1840,6 +1840,7 @@ describe("bibliothèque", () => {
     });
     return {
       label: "Mémoire",
+      root: folder(""),
       access: async () => true,
       files: async () =>
         Object.entries(files)

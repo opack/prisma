@@ -20,6 +20,9 @@ import { useConversion } from "./editor/useConversion.ts";
 import { useErrors } from "./editor/useErrors.ts";
 import { DropZone } from "./files/DropZone.tsx";
 import { ExportDialog } from "./files/ExportDialog.tsx";
+import { ImportLinkDialog } from "./files/ImportLinkDialog.tsx";
+import { ReceivedDialog } from "./files/ReceivedDialog.tsx";
+import { useShare } from "./files/useShare.ts";
 import { NewDialog } from "./files/NewDialog.tsx";
 import { loadEditing, loadSource, saveEditing } from "./files/storage.ts";
 import { tryParse, useDocument } from "./files/useDocument.ts";
@@ -87,9 +90,10 @@ export function App() {
     notify,
     onLoaded: settings.resetPiece,
     setEditing,
-    onOpenedFrom: (from) => setPanel((cur) => (from === "library" || cur === "guide" ? null : cur)),
+    onOpenedFrom: (from) => setPanel((cur) => (from !== "drop" || cur === "guide" ? null : cur)),
   });
   useSettingsAutosave(piece, settings.pieceDir, doc.handle, settings.changed, notify);
+  const sharing = useShare({ source: doc.source, fileName: doc.fileName, piece, notify, openShared: doc.openShared });
   const { score, problem: engravedProblem } = doc.engraved;
   const engraving = JSON.stringify(engraveOptions(options));
   const pages = useMemo(() => (score ? engravePages(score, JSON.parse(engraving)) : []), [score, engraving]);
@@ -122,6 +126,8 @@ export function App() {
     library: { shown: panel === "library", toggle: () => togglePanel("library") },
     save: doc.saveFile,
     exportFile: () => doc.setExporting(true),
+    share: sharing.share,
+    importLink: () => sharing.setImporting(true),
     reload: doc.handle ? doc.reloadFile : undefined,
     engrave: doc.engraveNow,
     autoEngrave: { on: options.autoEngrave, toggle: () => setOptions({ autoEngrave: !options.autoEngrave }) },
@@ -197,6 +203,8 @@ export function App() {
         {panel === "library" && <LibraryView options={general} onOpen={doc.openEntry} onClose={() => setPanel(null)} />}
         {doc.exporting && <ExportDialog onExport={doc.exportFile} onClose={() => doc.setExporting(false)} />}
         {doc.choosingNew && <NewDialog onCreate={doc.newFile} onClose={() => doc.setChoosingNew(false)} />}
+        {sharing.importing && <ImportLinkDialog onImport={sharing.importLink} onClose={() => sharing.setImporting(false)} />}
+        {sharing.received && <ReceivedDialog shared={sharing.received} library={sharing.library?.label} onOpen={sharing.accept} onClose={sharing.close} />}
         {conversion.parts && <ConvertDialog parts={conversion.parts} noteNames={options.noteNames === "english" ? "english" : "latin"} onConvert={conversion.convert} onClose={conversion.cancel} />}
         <main
           ref={split}

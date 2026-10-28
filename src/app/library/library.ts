@@ -28,6 +28,8 @@ export type SourceFile = {
 export type LibrarySource = {
   /** Ce que la bibliothèque en dit : « Dossier « Partitions » ». */
   label: string;
+  /** Sa racine : on y enregistre un morceau reçu. */
+  root: StoredFolder;
   /** L'accès : déjà accordé, ou à redemander (ask : en réponse à un clic). */
   access(ask?: boolean): Promise<boolean>;
   /** Ses partitions (.prisma et MusicXML), sous-dossiers compris, les dossiers cachés exceptés. */

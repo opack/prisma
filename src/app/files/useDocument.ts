@@ -1,7 +1,7 @@
 /**
  * Le morceau ouvert : son texte, sa dernière mise en page (ou ce qui l'empêche), son fichier sur le
  * disque, et ce qu'on en fait : le mettre en page, l'enregistrer, l'exporter en MusicXML, en ouvrir
- * un autre (un fichier, un morceau de la bibliothèque, un fichier déposé), en commencer un nouveau,
+ * un autre (un fichier, un morceau de la bibliothèque, un fichier déposé, un morceau reçu par un lien), en commencer un nouveau,
  * le recharger. Avant de remplacer un texte aux modifications non enregistrées, on demande ; avant
  * de quitter la page aussi.
  */
@@ -14,9 +14,11 @@ import { firstCell } from "../editor/templates.ts";
 import type { Template } from "../editor/templates.ts";
 import { markOpened } from "../library/library.ts";
 import type { LibraryEntry } from "../library/library.ts";
-import { readSettings, settingsName } from "../options/piece.ts";
+import { readSettings, saveSettings, settingsName } from "../options/piece.ts";
 import type { PieceSettings } from "../options/piece.ts";
 import { OPENABLE, canWriteInPlace, download, pickExportTarget, pickFile, pickSaveTarget, targetIn } from "./files.ts";
+import { UNNAMED } from "./share.ts";
+import type { Shared } from "./share.ts";
 import type { Readable, StoredFile, StoredFolder } from "./stored.ts";
 import { SAMPLE } from "./sample.ts";
 import { loadSource, saveSource } from "./storage.ts";
@@ -46,8 +48,8 @@ type Deps = {
   /** Un autre morceau, et ses réglages (lus à côté de lui, ou vides). */
   onLoaded: (settings: PieceSettings, dir: StoredFolder | null) => void;
   setEditing: (on: boolean) => void;
-  /** Un morceau ouvert depuis la bibliothèque, ou déposé sur la fenêtre. */
-  onOpenedFrom: (from: "library" | "drop") => void;
+  /** Un morceau ouvert depuis la bibliothèque, déposé sur la fenêtre, ou reçu par un lien. */
+  onOpenedFrom: (from: "library" | "drop" | "link") => void;
 };
 
 export function useDocument({ autoEngrave, editor, notify, onLoaded, setEditing, onOpenedFrom }: Deps) {
@@ -56,7 +58,7 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, setEditing,
   /** Dernier texte gravé : le bouton de mise en page n'est actif que si le texte actuel en diffère. */
   const [engravedSource, setEngravedSource] = useState(source);
   const dirty = source !== engravedSource;
-  const [fileName, setFileName] = useState("morceau.prisma");
+  const [fileName, setFileName] = useState(UNNAMED);
   /** Fichier .prisma ouvert ou enregistré, réécrit en place par « Enregistrer » (Chrome, Edge, un drive en ligne). */
   const [handle, setHandle] = useState<StoredFile | null>(null);
   /** Texte tel qu'il est sur le disque, pour savoir s'il reste des modifications à enregistrer. */
@@ -163,15 +165,15 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, setEditing,
     }
   };
 
-  /** Lit un fichier, .prisma ou MusicXML (importé) ; un fichier rechargé garde le mode en cours. */
-  const open = async (file: Readable, fileHandle: StoredFile | null = null, keepMode = false, dir: StoredFolder | null = null) => {
+  /** Lit un fichier, .prisma ou MusicXML (importé) ; un fichier rechargé garde le mode en cours. Ses réglages : donnés (un morceau reçu), ou lus à côté de lui. */
+  const open = async (file: Readable, fileHandle: StoredFile | null = null, keepMode = false, dir: StoredFolder | null = null, given?: PieceSettings) => {
     const text = await file.text();
     let prisma = text;
     const isXml = /\.(musicxml|xml)$/i.test(file.name);
     const name = isXml ? file.name.replace(/\.(musicxml|xml)$/i, ".prisma") : file.name;
     // les réglages du morceau, à côté de lui ; illisibles, on le dit et on part des options générales
-    let settings: PieceSettings = {};
-    if (dir) {
+    let settings: PieceSettings = given ?? {};
+    if (dir && !given) {
       try {
         settings = (await readSettings(dir, name)) ?? {};
       } catch (e) {
@@ -244,6 +246,30 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, setEditing,
     }
   };
 
+  /**
+   * Ouvre un morceau reçu par un lien ; « into » : d'abord enregistré dans ce dossier (avec ses
+   * réglages), pour s'y réécrire ensuite. Faux si l'on n'a rien ouvert (annulé, impossible).
+   */
+  const openShared = async (shared: Shared, into?: StoredFolder) => {
+    if (!confirmDiscard(`Ouvrir ${shared.name} ? Les modifications non enregistrées seront perdues.`)) return false;
+    try {
+      const file = into ? await targetIn(into, shared.name) : null;
+      if (into && !file) return false; // il y avait déjà un fichier de ce nom, qu'on garde
+      if (file && into) {
+        await file.write(shared.text);
+        await saveSettings(into, shared.name, shared.settings);
+      }
+      await open({ name: shared.name, text: async () => shared.text }, file, false, into ?? null, shared.settings);
+      if (!file) setSavedText(null);
+      onOpenedFrom("link");
+      notify(file ? `${shared.name} enregistré dans la bibliothèque` : `${shared.name} ouvert`);
+      return true;
+    } catch (e) {
+      notify(`Ouverture impossible : ${(e as Error).message}`);
+      return false;
+    }
+  };
+
   /** Fichier › Nouveau : le choix d'un modèle d'abord, puis le morceau en cours remplacé. */
   const newFile = (template: Template) => {
     setChoosingNew(false);
@@ -258,7 +284,7 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, setEditing,
     setSavedText(null);
     setSaveDir(null);
     onLoaded({}, null);
-    setFileName("morceau.prisma");
+    setFileName(UNNAMED);
     saveSource(text);
     setEditing(true);
     // le curseur dans la première case du modèle
@@ -282,7 +308,7 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, setEditing,
     source, setSource, current, engraved, dirty, engraveNow, rewrite,
     fileName, handle, savedText, unsaved,
     saveFile, exporting, setExporting, exportFile,
-    open, openFile, openEntry, openDropped, fileInput,
+    open, openFile, openEntry, openDropped, openShared, fileInput,
     choosingNew, setChoosingNew, newFile, reloadFile,
   };
 }
