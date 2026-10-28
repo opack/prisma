@@ -151,7 +151,7 @@ export function App() {
 
   return (
     <DropZone className="relative flex flex-col h-full print:block print:h-auto" onFile={doc.openDropped}>
-      <Toolbar menus={menus} fileName={doc.fileName} saved={!doc.unsaved && doc.savedText !== null} rewritable={!!doc.handle} notice={notice} optionsOpen={showOptions} onOptions={() => setShowOptions((v) => !v)}>
+      <Toolbar menus={menus} fileName={doc.fileName} saved={!doc.unsaved && doc.savedText !== null} rewritable={!!doc.handle} notes={score?.meta.notes} notice={notice} optionsOpen={showOptions} onOptions={() => setShowOptions((v) => !v)}>
         <ListenControls
           score={score}
           disabled={!score || !pages.length}

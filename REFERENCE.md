@@ -28,6 +28,24 @@ De haut en bas : la **règle de comptage** (`m1` pour la mesure 1, puis les temp
 
 Un morceau Prisma existe sous deux formes : un **texte** (le fichier `.prisma`), qu'on tape au clavier, et une **partition**, la page imprimable produite par l'application. Les deux disent exactement la même chose. Ici, chaque exemple se montre sous ses deux formes : son texte et sa gravure.
 
+### L'en-tête
+
+En tête du fichier, entre deux lignes `---`, ce que la partition annonce : son titre (`title`), son sous-titre (`subtitle`), son compositeur (`composer`), son tempo (`bpm`)… Une clé n'est jamais imprimée : `notes`, pour ce qu'on veut garder avec le morceau sans l'écrire sur la page, un rappel pour soi ou un mot pour qui le reçoit.
+
+```prisma
+---
+title: Petite gamme
+composer: Exercice
+notes: À jouer lentement, la main droite seule d'abord
+---
+
+m1 |1  |2  |3  |4  ||
+───┼───┼───┼───┼───┼┼
+0  |1  |3  |5  |6  ||
+```
+
+Le titre et le compositeur s'impriment en tête de la première page ; la note reste dans le texte, et l'application la montre sous un bouton, à côté du nom du morceau.
+
 ## 2. Les hauteurs
 
 ### Les numéros

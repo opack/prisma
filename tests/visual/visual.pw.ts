@@ -211,6 +211,14 @@ test.describe("au doigt", () => {
   });
 });
 
+// les notes du morceau (notes:), jamais imprimées : sous un bouton, à côté de son nom
+test("app notes du morceau", async ({ page }) => {
+  await openApp(page, { source: CLAIR_SECTIONS.replace("bpm: 100", "bpm: 100\nnotes: À jouer lentement, la main droite seule d'abord"), editing: false });
+  await page.getByRole("button", { name: "Notes du morceau" }).click();
+  await settle(page);
+  await expect(page).toHaveScreenshot("app-notes.png");
+});
+
 // une case vide : la note choisie, le choix reste ouvert sur elle, avec son doigté, sa trille, sa durée
 test("app retouche case vide", async ({ page }) => {
   await openApp(page, { source: SCALE, editing: false });

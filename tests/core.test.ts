@@ -913,6 +913,12 @@ describe("sous-titre", () => {
     expect(writePrisma(s).split("\n").slice(0, 6)).toEqual(["---", "format: 1", "title: Nocturne", "subtitle: Op. 9 n° 2", "composer: Chopin", "---"]);
   });
 
+  it("garde les notes du frontmatter, après la source, sans les graver", () => {
+    const s = parsePrisma("---\nnotes: Doigtés de la main gauche à revoir\ntitle: Nocturne\nsource: nocturne.musicxml\n---\nm1 |1  ||\n0  |1  ||\n");
+    expect(s.meta.notes).toBe("Doigtés de la main gauche à revoir");
+    expect(writePrisma(s).split("\n").slice(0, 6)).toEqual(["---", "format: 1", "title: Nocturne", "source: nocturne.musicxml", "notes: Doigtés de la main gauche à revoir", "---"]);
+  });
+
   it("importe le sous-titre des textes de page, en recollant ses morceaux", () => {
     const credit = `<credit page="1"><credit-type>subtitle</credit-type><credit-words>from Suite L. 75\n</credit-words><credit-words>3</credit-words><credit-words>rd</credit-words><credit-words> Movement</credit-words></credit>`;
     expect(importMusicXml(withHead(credit)).meta.subtitle).toBe("from Suite L. 75 3rd Movement");

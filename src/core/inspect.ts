@@ -66,6 +66,7 @@ export const FRONTMATTER: Record<string, string> = {
   subtitle: "sous-titre, gravé sous le titre",
   composer: "compositeur",
   source: "source du morceau",
+  notes: "notes sur le morceau, pour soi ou pour qui le reçoit : gardées dans le fichier, jamais imprimées",
   bpm: "tempo de départ, en temps par minute",
   key: "tonalité du morceau, pour information : sa tonique de 1 à 12, suivie de « :m » si elle est mineure (« 8 », « 5:m »), ou son nom anglais (« G », « Em »)",
   parts: "noms des parties, de haut en bas, et entre parenthèses l'instrument qui joue chacune à l'écoute (sinon son nom le fait deviner) ; pour une guitare ou une basse, aussi son accordage et son capo",

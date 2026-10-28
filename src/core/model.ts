@@ -218,6 +218,8 @@ export type Meta = {
   /** Tonalité, pour information, telle qu'écrite : « 8 », « 5:m », « G », « Em » (voir key.ts). */
   key?: string;
   source?: string;
+  /** Notes sur le morceau, pour soi ou pour qui le reçoit : gardées dans le fichier, jamais gravées. */
+  notes?: string;
   /** Largeur d'une case dans le texte .prisma (3 par défaut). */
   cell?: number;
   /** Autres clés du frontmatter, conservées telles quelles. */

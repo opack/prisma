@@ -96,7 +96,7 @@ export function parseFrontmatter(lines: string[]): FrontmatterResult {
   throw new PrismaError("frontmatter non fermé : il manque la ligne « --- » de fin", lines.length);
 }
 
-const ORDER = ["format", "title", "subtitle", "composer", "bpm", "key", "parts", "source", "order", "division", "cell"];
+const ORDER = ["format", "title", "subtitle", "composer", "bpm", "key", "parts", "source", "notes", "order", "division", "cell"];
 
 /** Frontmatter d'un fichier écrit : toujours avec la version du format, en tête. */
 export function writeFrontmatter(meta: Meta): string[] {
