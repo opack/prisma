@@ -5,23 +5,23 @@ import { CLAIR_SECTIONS, GREENSLEEVES_CHORDS } from "../src/site/examples/pieces
 describe("partage par un lien", () => {
   it("le morceau, son nom et ses réglages reviennent tels qu'ils sont partis", async () => {
     const sent = { name: "Au clair de la lune.prisma", text: CLAIR_SECTIONS, settings: { tempo: 72, options: { fingerings: false } } };
-    const link = shareLink(await encodeShare(sent), "https://prisma-music.netlify.app/app/");
-    expect(link.startsWith("https://prisma-music.netlify.app/app/#p=")).toBe(true);
+    const link = shareLink(await encodeShare(sent), "https://prisma.valdera.fr/app/");
+    expect(link.startsWith("https://prisma.valdera.fr/app/#p=")).toBe(true);
     const data = sharedIn(new URL(link).hash);
     expect(data).not.toBeNull();
     expect(await decodeShare(data!)).toEqual(sent);
   });
 
   it("un morceau courant tient dans un lien court", async () => {
-    const link = shareLink(await encodeShare({ name: "g.prisma", text: GREENSLEEVES_CHORDS, settings: {} }), "https://prisma-music.netlify.app/app/");
+    const link = shareLink(await encodeShare({ name: "g.prisma", text: GREENSLEEVES_CHORDS, settings: {} }), "https://prisma.valdera.fr/app/");
     expect(link.length).toBeLessThan(LONG_LINK / 4);
   });
 
   it("un lien collé se lit, entier ou réduit à son fragment, même coupé de retours à la ligne", () => {
-    expect(sharedInLink("https://prisma-music.netlify.app/app/#p=AbC-_1")).toBe("AbC-_1");
+    expect(sharedInLink("https://prisma.valdera.fr/app/#p=AbC-_1")).toBe("AbC-_1");
     expect(sharedInLink("  #p=AbC\n-_1 ")).toBe("AbC-_1");
-    expect(sharedInLink("https://prisma-music.netlify.app/app/")).toBeNull();
-    expect(sharedInLink("Regarde ça : https://prisma-music.netlify.app/app/#p=AbC")).toBe("AbC");
+    expect(sharedInLink("https://prisma.valdera.fr/app/")).toBeNull();
+    expect(sharedInLink("Regarde ça : https://prisma.valdera.fr/app/#p=AbC")).toBe("AbC");
     expect(sharedInLink("p=AbC")).toBe("AbC");
     // ce qui suit « #p= », seul
     expect(sharedInLink("7V1Jkts2FL0KShuP7CJIkaK0cn")).toBe("7V1Jkts2FL0KShuP7CJIkaK0cn");

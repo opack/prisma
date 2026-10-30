@@ -10,7 +10,8 @@
     "strict": true,
     "skipLibCheck": true,
     "types": [
-      "node"
+      "node",
+      "vite-plugin-pwa/client"
     ],
     "jsx": "react-jsx",
     "lib": [

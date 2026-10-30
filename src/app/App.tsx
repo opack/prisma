@@ -23,6 +23,7 @@ import { ExportDialog } from "./files/ExportDialog.tsx";
 import { ImportLinkDialog } from "./files/ImportLinkDialog.tsx";
 import { ReceivedDialog } from "./files/ReceivedDialog.tsx";
 import { useShare } from "./files/useShare.ts";
+import { useAppUpdate } from "./ui/useAppUpdate.ts";
 import { NewDialog } from "./files/NewDialog.tsx";
 import { loadEditing, loadSource, saveEditing } from "./files/storage.ts";
 import { tryParse, useDocument } from "./files/useDocument.ts";
@@ -93,6 +94,7 @@ export function App() {
     onOpenedFrom: (from) => setPanel((cur) => (from !== "drop" || cur === "guide" ? null : cur)),
   });
   useSettingsAutosave(piece, settings.pieceDir, doc.handle, settings.changed, notify);
+  const appUpdate = useAppUpdate(notify);
   const sharing = useShare({ source: doc.source, fileName: doc.fileName, piece, notify, openShared: doc.openShared });
   const { score, problem: engravedProblem } = doc.engraved;
   const engraving = JSON.stringify(engraveOptions(options));
@@ -157,7 +159,7 @@ export function App() {
 
   return (
     <DropZone className="relative flex flex-col h-full print:block print:h-auto" onFile={doc.openDropped}>
-      <Toolbar menus={menus} fileName={doc.fileName} saved={!doc.unsaved && doc.savedText !== null} rewritable={!!doc.handle} notes={score?.meta.notes} notice={notice} optionsOpen={showOptions} onOptions={() => setShowOptions((v) => !v)}>
+      <Toolbar menus={menus} fileName={doc.fileName} saved={!doc.unsaved && doc.savedText !== null} rewritable={!!doc.handle} notes={score?.meta.notes} notice={notice} onUpdate={appUpdate.waiting ? appUpdate.apply : undefined} optionsOpen={showOptions} onOptions={() => setShowOptions((v) => !v)}>
         <ListenControls
           score={score}
           disabled={!score || !pages.length}

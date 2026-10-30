@@ -1,17 +1,18 @@
 /**
- * La barre du haut : le nom, les menus, le fichier ouvert (un point à la couleur de l'accent tant
+ * La barre du haut : le logo et le nom, les menus, le fichier ouvert (un point à la couleur de l'accent tant
  * qu'il y a des modifications non enregistrées) et ses notes (`notes:`, sous un bouton), l'avis du
- * moment, l'écoute (children) et le bouton des options. Quand la place manque, l'écoute passe sur
+ * moment, une nouvelle version à prendre, l'écoute (children) et le bouton des options. Quand la place manque, l'écoute passe sur
  * sa propre ligne, sous les menus.
  */
 import type { ReactNode } from "react";
 import { DialogTrigger, Pressable } from "react-aria-components";
 import { Button } from "./ui/button/Button.tsx";
+import { Logo } from "./ui/Logo.tsx";
 import { Popover } from "./ui/popover/Popover.tsx";
 import { MenuBar } from "./ui/menu/MenuBar.tsx";
 import type { MenuDef } from "./ui/menu/MenuBar.tsx";
 
-type Props = { menus: MenuDef[]; fileName: string; saved: boolean; rewritable: boolean; notes?: string; notice: string | null; optionsOpen: boolean; onOptions: () => void; children: ReactNode };
+type Props = { menus: MenuDef[]; fileName: string; saved: boolean; rewritable: boolean; notes?: string; notice: string | null; onUpdate?: () => void; optionsOpen: boolean; onOptions: () => void; children: ReactNode };
 
 /** Les notes du morceau, jamais imprimées : sous un bouton, à côté de son nom. */
 function Notes({ notes }: { notes: string }) {
@@ -31,11 +32,14 @@ function Notes({ notes }: { notes: string }) {
   );
 }
 
-export function Toolbar({ menus, fileName, saved, rewritable, notes, notice, optionsOpen, onOptions, children }: Props) {
+export function Toolbar({ menus, fileName, saved, rewritable, notes, notice, onUpdate, optionsOpen, onOptions, children }: Props) {
   const tip = [saved ? "" : "Modifications non enregistrées", rewritable ? "Enregistrer réécrit ce fichier" : ""].filter(Boolean).join(" ; ");
   return (
     <header className="flex gap-2 items-center px-4 py-2 bg-panel border-b border-line print:hidden! stacked:flex-wrap stacked:px-2">
-      <span className="font-bold tracking-[.06em] mr-3">Prisma</span>
+      <span className="flex items-center gap-1.5 font-bold tracking-[.06em] mr-3">
+        <Logo className="size-5" />
+        Prisma
+      </span>
       <MenuBar menus={menus} />
       <span className="text-muted ml-2 truncate min-w-[6em] stacked:flex-1" title={tip || undefined}>
         {fileName}
@@ -53,6 +57,11 @@ export function Toolbar({ menus, fileName, saved, rewritable, notes, notice, opt
         <span className="text-accent ml-3 whitespace-nowrap" role="status">
           {notice}
         </span>
+      )}
+      {onUpdate && (
+        <Button kind="primary" size="small" className="ml-2 whitespace-nowrap" onClick={onUpdate} title="Une nouvelle version de Prisma est prête : recharger l'application pour la prendre">
+          Mettre à jour
+        </Button>
       )}
       <span className="contents stacked:flex stacked:order-last stacked:w-full stacked:items-center stacked:gap-1">{children}</span>
       <Button kind="quiet" size="icon" onClick={onOptions} pressed={optionsOpen} aria-controls="options" title="Options" aria-label="Options">

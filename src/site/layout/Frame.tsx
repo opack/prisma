@@ -1,6 +1,7 @@
 /** Le haut et le bas des pages du site. */
 import { Menu, MenuItem, MenuTrigger, Popover, Pressable } from "react-aria-components";
 import { Button } from "../../app/ui/button/Button.tsx";
+import { Logo } from "../../app/ui/Logo.tsx";
 import { ButtonLink } from "./ButtonLink.tsx";
 
 /** Le haut et le bas : la largeur des pages, le nom (ou une phrase) à gauche, les liens à droite. */
@@ -58,7 +59,8 @@ function PagesMenu({ current }: { current: Page }) {
 export function Header({ current }: { current: Page }) {
   return (
     <header className={`${FRAME} phone:flex-nowrap`}>
-      <a className="font-bold text-[1.4rem] text-ink no-underline tracking-[-0.01em]" href="index.html">
+      <a className="inline-flex items-center gap-2 font-bold text-[1.4rem] text-ink no-underline tracking-[-0.01em]" href="index.html">
+        <Logo className="size-7" />
         Prisma
       </a>
       <nav className={`${NAV} phone:flex-nowrap phone:gap-2`} aria-label="Pages du site">

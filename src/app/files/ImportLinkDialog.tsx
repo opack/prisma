@@ -23,7 +23,7 @@ export function ImportLinkDialog({ onImport, onClose }: Props) {
             setLink(e.target.value);
             setProblem(null);
           }}
-          placeholder="https://prisma-music.netlify.app/app/#p=…"
+          placeholder="https://prisma.valdera.fr/app/#p=…"
           aria-invalid={!!problem}
           aria-describedby={problem ? `${id}-problem` : undefined}
         />
