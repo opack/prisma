@@ -1124,7 +1124,7 @@ function PlayCursor({ page, lookAhead }: { page: Page; lookAhead: boolean }) {
   const ahead = useRef("");
   // la partition suit le curseur et montre d'avance la mesure suivante, quand l'écran le permet
   useEffect(() => {
-    const el = ref.current, pane = el?.closest<HTMLElement>(".preview");
+    const el = ref.current, pane = el?.closest<HTMLElement>("[data-fit]");
     if (!following) ahead.current = "";
     if (!el || !pane || !following) return;
     const g = glide(pane);
@@ -1148,7 +1148,7 @@ function PlayCursor({ page, lookAhead }: { page: Page; lookAhead: boolean }) {
     // la suivante à sa droite ; si les deux n'y tiennent pas, la case jouée revient au premier
     // quart avant d'approcher du bord
     const pad = parseFloat(getComputedStyle(pane).scrollPaddingLeft || "0");
-    if (pane.closest(".fit-height") && pageBox.width <= view.width - pad) g.to("left", x(pageBox.left) - pad);
+    if (pane.dataset.fit === "height" && pageBox.width <= view.width - pad) g.to("left", x(pageBox.left) - pad);
     else {
       const start = left(bars[b]), end = right(bars[Math.min(b + 1, bars.length - 1)]);
       if (box.left < view.left || end > view.right - m) {

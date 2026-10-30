@@ -282,6 +282,20 @@ test("app partition reçue, avec une bibliothèque", async ({ page }) => {
   await expect(page.locator("[data-library]")).toHaveCount(0);
 });
 
+// suivre la lecture : la partition défile jusqu'au curseur, placé à la fin du morceau puis au début
+test("app suivi de la lecture", async ({ page }) => {
+  const head = CLAIR_SECTIONS.slice(0, CLAIR_SECTIONS.indexOf("\n---\n", 4) + 5).replace(/^order:.*\n/m, "");
+  const section = CLAIR_SECTIONS.split("\n\n").find((s) => s.includes("[A]"))!.replace("[A]", "");
+  await openApp(page, { source: head + Array(12).fill(section).join("\n\n"), editing: false, view: { fit: "width", zoom: 1, progress: true } });
+  const pane = page.locator("section[data-fit]");
+  expect(await pane.evaluate((e) => e.scrollTop)).toBe(0);
+  await page.getByRole("slider", { name: "Position dans le morceau" }).focus();
+  await page.keyboard.press("End");
+  await expect.poll(() => pane.evaluate((e) => e.scrollTop)).toBeGreaterThan(500);
+  await page.keyboard.press("Home");
+  await expect.poll(() => pane.evaluate((e) => e.scrollTop)).toBeLessThan(300);
+});
+
 // les notes du morceau (notes:), jamais imprimées : sous un bouton, à côté de son nom
 test("app notes du morceau", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS.replace("bpm: 100", "bpm: 100\nnotes: À jouer lentement, la main droite seule d'abord"), editing: false });
