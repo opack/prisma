@@ -8,8 +8,8 @@
 import { useEffect, useState } from "react";
 import { parseFrontmatter } from "../../core/index.ts";
 import type { PieceSettings } from "../options/piece.ts";
-import { savedFolder } from "../library/diskLibrary.ts";
 import type { LibrarySource } from "../library/library.ts";
+import { savedSource } from "../library/sources.ts";
 import { LONG_LINK, decodeShare, encodeShare, shareLink, shareName, sharedIn, sharedInLink } from "./share.ts";
 import type { Shared } from "./share.ts";
 import type { StoredFolder } from "./stored.ts";
@@ -51,7 +51,7 @@ export function useShare({ source, fileName, piece, notify, openShared }: Deps) 
       decodeShare(data).then((shared) => {
         if (!shared) return notify("Lien de partage illisible : il a peut-être été coupé en route");
         setReceived(shared);
-        savedFolder().then(setLibrary);
+        savedSource().then(setLibrary);
       });
     };
     receive();
@@ -96,7 +96,7 @@ export function useShare({ source, fileName, piece, notify, openShared }: Deps) 
     if (!shared) return "Ce lien ne se lit pas : il a peut-être été coupé en route. Copiez-le de nouveau, en entier.";
     setImporting(false);
     setReceived(shared);
-    savedFolder().then(setLibrary);
+    savedSource().then(setLibrary);
     return null;
   };
 

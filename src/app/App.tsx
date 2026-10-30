@@ -28,6 +28,8 @@ import { NewDialog } from "./files/NewDialog.tsx";
 import { loadEditing, loadSource, saveEditing } from "./files/storage.ts";
 import { tryParse, useDocument } from "./files/useDocument.ts";
 import { LibraryView } from "./library/LibraryView.tsx";
+import { pcloudReturned } from "./library/pcloud.ts";
+import { saveToLibrary } from "./library/sources.ts";
 import { appMenus } from "./menus.ts";
 import { OptionsDrawer } from "./options/OptionsDrawer.tsx";
 import { PIECE_KEYS, settingsName } from "./options/piece.ts";
@@ -55,6 +57,9 @@ import { useFullScreen } from "./ui/useFullScreen.ts";
 import { useNotice } from "./ui/useNotice.ts";
 import { useShortcuts } from "./useShortcuts.ts";
 
+/** De retour de la connexion à pCloud : lu une fois, au chargement (React peut rappeler l'initialisation d'un état). */
+const fromPcloud = pcloudReturned();
+
 export function App() {
   const [notice, notify] = useNotice();
   const settings = useSettings();
@@ -64,7 +69,8 @@ export function App() {
 
   // les panneaux à la place de l'éditeur et de la partition (la référence, la bibliothèque : l'une
   // chasse l'autre), et celui des options, par-dessus, qu'Échap ferme
-  const [panel, setPanel] = useState<"guide" | "library" | null>(null);
+  // de retour de la connexion à pCloud : la bibliothèque, qu'on était allé ouvrir
+  const [panel, setPanel] = useState<"guide" | "library" | null>(fromPcloud ? "library" : null);
   const togglePanel = (p: "guide" | "library") => setPanel((cur) => (cur === p ? null : p));
   const [showOptions, setShowOptions] = useState(false);
   useEffect(() => {
@@ -90,6 +96,7 @@ export function App() {
     editor,
     notify,
     onLoaded: settings.resetPiece,
+    onSavedIn: settings.placePiece,
     setEditing,
     onOpenedFrom: (from) => setPanel((cur) => (from !== "drop" || cur === "guide" ? null : cur)),
   });
@@ -127,6 +134,7 @@ export function App() {
     openFile: doc.openFile,
     library: { shown: panel === "library", toggle: () => togglePanel("library") },
     save: doc.saveFile,
+    saveToLibrary: () => saveToLibrary(doc.saveInto, notify),
     exportFile: () => doc.setExporting(true),
     share: sharing.share,
     importLink: () => sharing.setImporting(true),

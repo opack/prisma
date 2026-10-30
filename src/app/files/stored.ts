@@ -8,8 +8,8 @@
 /** Un fichier qu'on lit : son nom, son texte. */
 export type Readable = { name: string; text(): Promise<string> };
 
-/** Un fichier qu'on lit et réécrit en place. */
-export type StoredFile = Readable & { write(text: string): Promise<void> };
+/** Un fichier qu'on lit et réécrit en place ; where : où il est, pour le dire (« sur cet ordinateur », « sur pCloud »). */
+export type StoredFile = Readable & { where: string; write(text: string): Promise<void> };
 
 /** Un dossier : ses fichiers, par leur nom. */
 export type StoredFolder = {
@@ -26,6 +26,7 @@ export type StoredFolder = {
 export function diskFile(handle: FileSystemFileHandle): StoredFile {
   return {
     name: handle.name,
+    where: "sur cet ordinateur",
     text: async () => (await handle.getFile()).text(),
     write: async (text) => {
       const out = await handle.createWritable();

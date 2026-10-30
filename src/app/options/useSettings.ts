@@ -62,6 +62,11 @@ export function useSettings() {
     setPieceDir(dir);
     setPieceId((n) => n + 1);
   };
+  /** Le morceau enregistré dans un dossier : ses réglages l'y suivent, au prochain enregistrement automatique. */
+  const placePiece = (dir: StoredFolder) => {
+    changed.current = true;
+    setPieceDir(dir);
+  };
   /** Les options générales (l'édition, l'écoute, le menu : toujours celles-là). */
   const setOptions = (patch: Partial<RenderOptions>) => {
     const next = { ...general, ...patch };
@@ -75,7 +80,7 @@ export function useSettings() {
     for (const k of keys) delete own[k];
     updatePiece({ options: Object.keys(own).length ? (own as PieceSettings["options"]) : undefined });
   };
-  return { general, options, setOptions, piece, updatePiece, resetPiece, setPieceOptions, unsetPieceOptions, pieceDir, pieceId, changed };
+  return { general, options, setOptions, piece, updatePiece, resetPiece, placePiece, setPieceOptions, unsetPieceOptions, pieceDir, pieceId, changed };
 }
 
 /**

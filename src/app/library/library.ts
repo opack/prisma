@@ -26,8 +26,11 @@ export type SourceFile = {
 
 /** Une source de la bibliothèque : un dossier du disque, un drive en ligne. */
 export type LibrarySource = {
+  kind: "disk" | "pcloud";
   /** Ce que la bibliothèque en dit : « Dossier « Partitions » ». */
   label: string;
+  /** L'accès à redonner : ce qu'on en dit, et le bouton qui le redonne. */
+  locked: { hint: string; action: string };
   /** Sa racine : on y enregistre un morceau reçu. */
   root: StoredFolder;
   /** L'accès : déjà accordé, ou à redemander (ask : en réponse à un clic). */
@@ -53,17 +56,25 @@ const KINDS: [RegExp, LibraryEntry["kind"]][] = [
 /** La sorte d'un fichier de partition, ou undefined pour un autre fichier. */
 export const kindOf = (name: string) => KINDS.find(([re]) => re.test(name))?.[1];
 
-/** Les morceaux d'une source : chaque partition, son titre, son compositeur, ses options. */
+/** Les fichiers lus à la fois : en ligne, chaque lecture attend le réseau. */
+const AT_ONCE = 6;
+
+/** Les morceaux d'une source : chaque partition, son titre, son compositeur, ses options (dans l'ordre de la source). */
 export async function scan(source: LibrarySource): Promise<LibraryEntry[]> {
-  const out: LibraryEntry[] = [];
-  for (const { head, ...f } of await source.files()) {
-    const kind = kindOf(f.name);
-    if (!kind) continue;
-    const start = head ? await head() : await f.file.text();
-    // ses réglages, à côté d'elle : illisibles, la vignette prend les options générales
-    const own = kind === "prisma" ? ((await readSettings(f.dir, f.name).catch(() => null))?.options ?? undefined) : undefined;
-    out.push({ ...f, kind, ...describe(start, kind), ...(own ? { own } : {}) });
-  }
+  const files = (await source.files()).filter((f) => kindOf(f.name));
+  const out: LibraryEntry[] = new Array(files.length);
+  let next = 0;
+  const reader = async () => {
+    for (let i = next++; i < files.length; i = next++) {
+      const { head, ...f } = files[i];
+      const kind = kindOf(f.name)!;
+      const start = head ? await head() : await f.file.text();
+      // ses réglages, à côté d'elle : illisibles, la vignette prend les options générales
+      const own = kind === "prisma" ? ((await readSettings(f.dir, f.name).catch(() => null))?.options ?? undefined) : undefined;
+      out[i] = { ...f, kind, ...describe(start, kind), ...(own ? { own } : {}) };
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(AT_ONCE, files.length) }, reader));
   return out;
 }
 

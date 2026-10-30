@@ -1,3 +1,11 @@
+/** Les réglages de la construction, dans .env : l'identifiant de l'app chez pCloud. */
+interface ImportMetaEnv {
+  readonly VITE_PCLOUD_CLIENT_ID?: string;
+}
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+
 /** L'heure de la construction de l'application (vite.config.ts). */
 declare const __BUILD__: string;
 

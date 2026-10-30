@@ -48,11 +48,13 @@ type Deps = {
   /** Un autre morceau, et ses réglages (lus à côté de lui, ou vides). */
   onLoaded: (settings: PieceSettings, dir: StoredFolder | null) => void;
   setEditing: (on: boolean) => void;
+  /** Le morceau enregistré dans ce dossier : ses réglages l'y suivent. */
+  onSavedIn: (dir: StoredFolder) => void;
   /** Un morceau ouvert depuis la bibliothèque, déposé sur la fenêtre, ou reçu par un lien. */
   onOpenedFrom: (from: "library" | "drop" | "link") => void;
 };
 
-export function useDocument({ autoEngrave, editor, notify, onLoaded, setEditing, onOpenedFrom }: Deps) {
+export function useDocument({ autoEngrave, editor, notify, onLoaded, onSavedIn, setEditing, onOpenedFrom }: Deps) {
   const [source, setSource] = useState(loadSource);
   const [engraved, setEngraved] = useState(() => tryParse(source));
   /** Dernier texte gravé : le bouton de mise en page n'est actif que si le texte actuel en diffère. */
@@ -128,12 +130,31 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, setEditing,
       if (target) {
         await target.write(source);
         setSavedText(source);
-        notify(`Enregistré dans ${target.name}`);
+        notify(`${target.name} enregistré ${target.where}`);
       } else {
         download(fileName, source);
         setSavedText(source);
-        notify(`Téléchargé sous le nom ${fileName}`);
+        notify(`${fileName} téléchargé (dans le dossier des téléchargements)`);
       }
+    } catch (e) {
+      notify(`Enregistrement impossible : ${(e as Error).message}`);
+    }
+  };
+
+  /**
+   * Fichier › Enregistrer dans la bibliothèque : le morceau écrit à la racine de la bibliothèque
+   * (un dossier de l'ordinateur, pCloud), sous son nom ; il s'y réécrit ensuite, ses réglages à côté.
+   */
+  const saveInto = async (dir: StoredFolder) => {
+    try {
+      const target = await targetIn(dir, fileName);
+      if (!target) return; // un fichier de ce nom, qu'on garde
+      await target.write(source);
+      setHandle(target);
+      setSaveDir(null);
+      setSavedText(source);
+      onSavedIn(dir);
+      notify(`${target.name} enregistré dans la bibliothèque, ${target.where}`);
     } catch (e) {
       notify(`Enregistrement impossible : ${(e as Error).message}`);
     }
@@ -155,7 +176,7 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, setEditing,
         const target = await pickExportTarget(name);
         if (!target) return; // annulé
         await target.write(xml);
-        notify(`Exporté dans ${target.name}`);
+        notify(`${target.name} exporté ${target.where}`);
       } else {
         download(name, xml);
         notify(`Exporté sous le nom ${name}`);
@@ -262,7 +283,7 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, setEditing,
       await open({ name: shared.name, text: async () => shared.text }, file, false, into ?? null, shared.settings);
       if (!file) setSavedText(null);
       onOpenedFrom("link");
-      notify(file ? `${shared.name} enregistré dans la bibliothèque` : `${shared.name} ouvert`);
+      notify(file ? `${shared.name} enregistré dans la bibliothèque, ${file.where}` : `${shared.name} ouvert`);
       return true;
     } catch (e) {
       notify(`Ouverture impossible : ${(e as Error).message}`);
@@ -307,7 +328,7 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, setEditing,
   return {
     source, setSource, current, engraved, dirty, engraveNow, rewrite,
     fileName, handle, savedText, unsaved,
-    saveFile, exporting, setExporting, exportFile,
+    saveFile, saveInto, exporting, setExporting, exportFile,
     open, openFile, openEntry, openDropped, openShared, fileInput,
     choosingNew, setChoosingNew, newFile, reloadFile,
   };

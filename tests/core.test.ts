@@ -1831,7 +1831,7 @@ describe("bibliothèque", () => {
   /** Une source en mémoire, comme le sera un drive en ligne : des chemins et leurs textes. */
   async function memorySource(files: Record<string, string>) {
     const { kindOf } = await import("../src/app/library/library.ts");
-    const stored = (name: string, text: string) => ({ name, text: async () => text, write: async () => {} });
+    const stored = (name: string, text: string) => ({ name, where: "en mémoire", text: async () => text, write: async () => {} });
     const folder = (path: string) => ({
       name: path.split("/").at(-1) ?? "",
       file: async (name: string) => (files[path ? `${path}/${name}` : name] !== undefined ? stored(name, files[path ? `${path}/${name}` : name]) : null),
@@ -1839,7 +1839,9 @@ describe("bibliothèque", () => {
       remove: async () => {},
     });
     return {
+      kind: "disk" as const,
       label: "Mémoire",
+      locked: { hint: "", action: "" },
       root: folder(""),
       access: async () => true,
       files: async () =>

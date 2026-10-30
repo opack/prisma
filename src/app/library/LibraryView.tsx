@@ -1,6 +1,8 @@
 /**
- * La bibliothèque : les morceaux du dossier choisi, rangés par sous-dossier, à chercher et à
- * trier, en liste ou en vignettes (le haut de leur première page) ; un clic ouvre le morceau.
+ * La bibliothèque : les morceaux du dossier choisi (un dossier de l'ordinateur, ou le dossier de
+ * Prisma sur pCloud), rangés par sous-dossier, à chercher et à trier, en liste ou en vignettes (le
+ * haut de leur première page) ; un clic ouvre le morceau. Sans bibliothèque, le choix entre les deux,
+ * expliqué ; sur pCloud, où Prisma ne voit que son dossier, comment y mettre ses partitions.
  */
 import { FolderIcon, RefreshIcon } from "../ui/icons.tsx";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -9,8 +11,10 @@ import type { RenderOptions } from "../options/options.ts";
 import { engraveOptions } from "../score/render.ts";
 import { thumbOf } from "./thumbs.ts";
 import type { Thumb } from "./thumbs.ts";
-import { canUseDisk, pickFolder, savedFolder } from "./diskLibrary.ts";
+import { pickFolder } from "./diskLibrary.ts";
 import { recentOpenings, scan } from "./library.ts";
+import { PCLOUD_FOLDER, PcloudAuthError, connect, disconnect, session } from "./pcloud.ts";
+import { available, choose, savedSource } from "./sources.ts";
 import { BackButton } from "../ui/button/BackButton.tsx";
 import { Button } from "../ui/button/Button.tsx";
 import { ButtonGroup } from "../ui/button/ButtonGroup.tsx";
@@ -70,7 +74,7 @@ type State =
   | { kind: "unsupported" }
   | { kind: "loading" }
   | { kind: "none" }
-  | { kind: "locked"; source: LibrarySource }
+  | { kind: "locked"; source: LibrarySource; reason?: string }
   | { kind: "ready"; source: LibrarySource; entries: LibraryEntry[] }
   | { kind: "error"; message: string };
 
@@ -105,7 +109,7 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
       /* stockage indisponible : sans conséquence */
     }
   };
-  const [state, setState] = useState<State>(canUseDisk ? { kind: "loading" } : { kind: "unsupported" });
+  const [state, setState] = useState<State>(available.disk || available.pcloud ? { kind: "loading" } : { kind: "unsupported" });
   const [query, setQuery] = useState("");
   const [sort, setSortState] = useState<Sort>(loadSort);
   const [kinds, setKindsState] = useState<Kinds>(loadKinds);
@@ -132,20 +136,33 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
       setState({ kind: "loading" });
       setState({ kind: "ready", source, entries: await scan(source) });
     } catch (e) {
+      // la connexion à pCloud ne vaut plus : la redonner
+      if (e instanceof PcloudAuthError) return setState({ kind: "locked", source, reason: e.message });
       setState({ kind: "error", message: (e as Error).message });
     }
   };
   useEffect(() => {
-    if (!canUseDisk) return;
-    savedFolder().then((source) => (source ? load(source) : setState({ kind: "none" })));
+    if (!available.disk && !available.pcloud) return;
+    savedSource().then((source) => (source ? load(source) : setState({ kind: "none" })));
   }, []);
-  const choose = async () => {
+  const chooseFolder = async () => {
     try {
       const source = await pickFolder();
-      if (source) await load(source, true);
+      if (!source) return;
+      choose("disk");
+      await load(source, true);
     } catch (e) {
       setState({ kind: "error", message: (e as Error).message });
     }
+  };
+  const choosePcloud = () => {
+    choose("pcloud");
+    connect();
+  };
+  const leavePcloud = () => {
+    disconnect();
+    choose(null);
+    setState({ kind: "none" });
   };
 
   const groups = useMemo(() => {
@@ -176,7 +193,7 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
           {(state.kind === "ready" || state.kind === "locked") && (
             <p className="flex flex-wrap items-center gap-2 mt-0 mb-4 text-muted">
               {state.source.label}
-              <Button size="icon" onClick={choose} title="Changer de dossier" aria-label="Changer de dossier">
+              <Button size="icon" onClick={() => setState({ kind: "none" })} title="Changer de bibliothèque : un autre dossier, ou pCloud" aria-label="Changer de bibliothèque">
                 <FolderIcon />
               </Button>
               {state.kind === "ready" && (
@@ -184,7 +201,15 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
                   <RefreshIcon />
                 </Button>
               )}
+              {state.source.kind === "pcloud" && session() && (
+                <Button size="small" onClick={leavePcloud} title="Se déconnecter de pCloud, dans ce navigateur">
+                  Se déconnecter
+                </Button>
+              )}
             </p>
+          )}
+          {state.kind === "ready" && state.source.kind === "pcloud" && state.entries.length > 0 && (
+            <p className={`${NOTE} -mt-2 mb-4 text-[13px]`}>Prisma ne voit que ce dossier de votre pCloud : vos partitions doivent y être.</p>
           )}
         </header>
 
@@ -192,27 +217,21 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
           <p className={NOTE}>La bibliothèque a besoin de garder l'accès à un dossier de votre disque, ce que seuls Chrome et Edge savent faire. Ici, ouvrez vos morceaux par Fichier › Ouvrir, ou en les glissant dans la fenêtre.</p>
         )}
         {state.kind === "loading" && <p className={NOTE}>Lecture du dossier…</p>}
-        {state.kind === "none" && (
-          <div className={NOTE}>
-            <p className="mt-0 mb-3">Choisissez le dossier où vous rangez vos partitions (.prisma et MusicXML) : la bibliothèque les montre toutes, sous-dossiers compris. Les fichiers restent où ils sont.</p>
-            <Button kind="primary" onClick={choose}>
-              Choisir un dossier
-            </Button>
-          </div>
-        )}
+        {state.kind === "none" && <Sources onFolder={chooseFolder} onPcloud={choosePcloud} />}
         {state.kind === "locked" && (
           <div className={NOTE}>
-            <p className="mt-0 mb-3">Le navigateur demande de confirmer l'accès au {state.source.label.replace(/^./, (c) => c.toLowerCase())}.</p>
+            <p className="mt-0 mb-3">{state.source.locked.hint}</p>
+            {state.reason && <p className="-mt-1 mb-3 text-[13px] text-error">{state.reason}</p>}
             <Button kind="primary" onClick={() => load(state.source, true)}>
-              Autoriser l'accès
+              {state.source.locked.action}
             </Button>
           </div>
         )}
         {state.kind === "error" && (
           <div className={NOTE}>
             <p className="mt-0 mb-3">Lecture du dossier impossible : {state.message}</p>
-            <Button kind="primary" onClick={choose}>
-              Choisir un dossier
+            <Button kind="primary" onClick={() => setState({ kind: "none" })}>
+              Choisir une bibliothèque
             </Button>
           </div>
         )}
@@ -258,7 +277,7 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
                 </Button>
               </ButtonGroup>
             </div>
-            {!state.entries.length && <p className={NOTE}>Aucune partition (.prisma ou MusicXML) dans ce dossier.</p>}
+            {!state.entries.length && (state.source.kind === "pcloud" ? <PcloudEmpty /> : <p className={NOTE}>Aucune partition (.prisma ou MusicXML) dans ce dossier.</p>)}
             {state.entries.length > 0 && !count && (
               <p className={NOTE}>{query.trim() ? `Aucun morceau ne correspond à « ${query.trim()} ».` : kinds === "prisma" ? "Aucune partition Prisma dans ce dossier." : "Aucun MusicXML à importer dans ce dossier."}</p>
             )}
@@ -306,6 +325,49 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
         )}
       </div>
     </main>
+  );
+}
+
+/** Sans bibliothèque : le choix entre un dossier de l'ordinateur et pCloud, ce que permet chacun. */
+function Sources({ onFolder, onPcloud }: { onFolder: () => void; onPcloud: () => void }) {
+  return (
+    <div className={`${NOTE} grid gap-5`}>
+      <p className="m-0">La bibliothèque montre toutes vos partitions (.prisma et MusicXML) d'un dossier, sous-dossiers compris. Les fichiers restent où ils sont : Prisma les lit et les réécrit en place.</p>
+      {available.disk && (
+        <section className="grid gap-2 justify-items-start">
+          <h2 className="m-0 text-ink text-[16px]">Un dossier de cet ordinateur</h2>
+          <p className="m-0">Le dossier de votre choix, sur cet ordinateur seulement.</p>
+          <Button kind="primary" onClick={onFolder}>
+            Choisir un dossier
+          </Button>
+        </section>
+      )}
+      {available.pcloud && (
+        <section className="grid gap-2 justify-items-start">
+          <h2 className="m-0 text-ink text-[16px]">pCloud</h2>
+          <p className="m-0">
+            Vos partitions depuis tous vos appareils, tablette comprise. Prisma n'a accès qu'à un dossier de votre pCloud, « {PCLOUD_FOLDER} » : c'est là que vos partitions doivent être. Si vous avez pCloud Drive sur cet ordinateur, ce même dossier peut aussi servir de bibliothèque ici.
+          </p>
+          <Button kind={available.disk ? "normal" : "primary"} onClick={onPcloud}>
+            Se connecter à pCloud
+          </Button>
+        </section>
+      )}
+    </div>
+  );
+}
+
+/** Le dossier de Prisma sur pCloud, vide : comment y mettre ses partitions. */
+function PcloudEmpty() {
+  return (
+    <div className={NOTE}>
+      <p className="mt-0 mb-2">Aucune partition pour l'instant dans le dossier « {PCLOUD_FOLDER} » de votre pCloud. Pour en ajouter :</p>
+      <ul className="m-0 pl-5 grid gap-1 list-disc">
+        <li>déplacez-y vos fichiers .prisma et MusicXML, depuis pCloud (le site, l'application) ou pCloud Drive sur votre ordinateur ;</li>
+        <li>ou ouvrez un morceau (Fichier › Ouvrir), puis Fichier › Enregistrer dans la bibliothèque.</li>
+      </ul>
+      <p className="mt-2 mb-0">Puis actualisez la bibliothèque.</p>
+    </div>
   );
 }
 

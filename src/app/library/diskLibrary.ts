@@ -20,7 +20,9 @@ const KEY = "folder";
 /** Un dossier du disque, en source de la bibliothèque. */
 export function diskLibrary(root: FileSystemDirectoryHandle): LibrarySource {
   return {
+    kind: "disk",
     label: `Dossier « ${root.name} »`,
+    locked: { hint: `Le navigateur demande de confirmer l'accès au dossier « ${root.name} ».`, action: "Autoriser l'accès" },
     root: diskFolder(root),
     access: async (ask = false) => {
       const p = root as unknown as Permissions;

@@ -481,6 +481,64 @@ async function openLibrary(page: Page, view: "list" | "thumbs") {
   await settle(page);
 }
 
+/**
+ * Une bibliothèque sur pCloud, connectée : l'API simulée (page.route) sert ces fichiers du dossier
+ * de l'app, comme la vraie (une liste, des liens de téléchargement).
+ */
+async function openPcloud(page: Page, files: Record<string, string>, { refused = false } = {}) {
+  const entries = Object.entries(files);
+  await page.route("https://eapi.pcloud.com/**", async (route) => {
+    const url = new URL(route.request().url());
+    const method = url.pathname.slice(1);
+    const json = (o: unknown) => route.fulfill({ contentType: "application/json", body: JSON.stringify(o) });
+    if (refused) return json({ result: 2094, error: "Invalid 'access_token' provided." });
+    if (method === "listfolder")
+      return json({ result: 0, metadata: { name: "Prisma", isfolder: true, contents: entries.map(([name], i) => ({ name, isfolder: false, fileid: i + 1, modified: "Wed, 28 Oct 2026 10:00:00 +0000" })) } });
+    if (method === "getfilelink") return json({ result: 0, hosts: ["eapi.pcloud.com"], path: `/fichier/${url.searchParams.get("fileid")}` });
+    if (method.startsWith("fichier/")) return route.fulfill({ body: entries[Number(method.split("/")[1]) - 1][1] });
+    return json({ result: 2009, error: "File not found." });
+  });
+  // le relais du site, qui lit un fichier pour la page
+  await page.route("**/api/pcloud-file**", (route) => route.fulfill({ contentType: "text/plain; charset=utf-8", body: entries[Number(new URL(route.request().url()).searchParams.get("fileid")) - 1][1] }));
+  await openApp(page, { source: CLAIR_SECTIONS });
+  // connecté à pCloud, qui est la bibliothèque choisie (après l'ouverture : elle vide le stockage)
+  await page.evaluate(() => {
+    localStorage.setItem("prisma:pcloud", JSON.stringify({ token: "banc", host: "eapi.pcloud.com" }));
+    localStorage.setItem("prisma:library-source", "pcloud");
+  });
+  await menu(page, "Fichier", "Bibliothèque");
+  await page.waitForTimeout(800);
+}
+
+// le dossier de Prisma sur pCloud, vide : comment y mettre ses partitions
+test("app bibliothèque pcloud vide", async ({ page }) => {
+  await openPcloud(page, {});
+  await expect(page.locator("[data-library]")).toContainText("Aucune partition pour l'instant");
+  await settle(page);
+  await expect(page).toHaveScreenshot("app-bibliotheque-pcloud-vide.png");
+});
+
+// une connexion que pCloud refuse : se reconnecter, et pourquoi
+test("app bibliothèque pcloud refusée", async ({ page }) => {
+  await openPcloud(page, {}, { refused: true });
+  await expect(page.locator("[data-library]")).toContainText("code 2094");
+  await settle(page);
+  await expect(page).toHaveScreenshot("app-bibliotheque-pcloud-refusee.png");
+});
+
+test("app bibliothèque pcloud", async ({ page }) => {
+  await openPcloud(page, { "Au clair de la lune.prisma": CLAIR_SECTIONS, "Techniques.prisma": TECHNIQUES });
+  await page.getByRole("button", { name: "En liste" }).click();
+  await expect(page.locator("[data-library]")).toContainText("Au clair de la lune");
+  await settle(page);
+  await expect(page).toHaveScreenshot("app-bibliotheque-pcloud.png");
+  // un morceau s'ouvre de pCloud (le morceau en cours, jamais enregistré : on confirme de le remplacer)
+  page.once("dialog", (d) => d.accept());
+  await page.locator("[data-library] button", { hasText: "Techniques" }).click();
+  await settle(page);
+  await expect(page.locator(".page").first()).toContainText("Guitare");
+});
+
 for (const view of ["list", "thumbs"] as const)
   test(`app bibliothèque ${view}`, async ({ page }) => {
     await openLibrary(page, view);

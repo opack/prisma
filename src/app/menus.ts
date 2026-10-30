@@ -8,6 +8,7 @@ type Ctx = {
   openFile: () => void;
   library: { shown: boolean; toggle: () => void };
   save: (as: boolean) => void;
+  saveToLibrary: () => void;
   exportFile: () => void;
   share: () => void;
   importLink: () => void;
@@ -39,6 +40,7 @@ export function appMenus(c: Ctx): MenuDef[] {
         "separator",
         { label: "Enregistrer", onSelect: () => c.save(false), shortcut: "Ctrl+S" },
         { label: "Enregistrer sous…", onSelect: () => c.save(true), shortcut: "Ctrl+Maj+S" },
+        { label: "Enregistrer dans la bibliothèque", onSelect: c.saveToLibrary },
         { label: "Exporter en MusicXML…", onSelect: c.exportFile },
         "separator",
         { label: "Partager par un lien", onSelect: c.share },
