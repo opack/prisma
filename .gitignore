@@ -2,3 +2,7 @@
 /dist
 /test-results
 /tests/visual/captures
+# les réglages de chaque poste et ses secrets : jamais dans le dépôt (voir .env.example)
+.env
+.env.*
+!.env.example
