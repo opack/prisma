@@ -2,7 +2,7 @@
  * La barre du haut : le logo et le nom, les menus, le fichier ouvert (un point à la couleur de l'accent tant
  * qu'il y a des modifications non enregistrées) et ses notes (`notes:`, sous un bouton), l'avis du
  * moment, une nouvelle version à prendre, l'écoute (children) et le bouton des options. Quand la place manque, l'écoute passe sur
- * sa propre ligne, sous les menus.
+ * sa propre ligne, sous les menus (au doigt, dès une tablette : ses boutons sont plus grands).
  */
 import type { ReactNode } from "react";
 import { DialogTrigger, Pressable } from "react-aria-components";
@@ -63,7 +63,7 @@ export function Toolbar({ menus, fileName, saved, rewritable, notes, notice, onU
           Mettre à jour
         </Button>
       )}
-      <span className="contents stacked:flex stacked:order-last stacked:w-full stacked:items-center stacked:gap-1">{children}</span>
+      <span className="contents stacked:flex stacked:flex-wrap stacked:justify-end stacked:order-last stacked:w-full stacked:items-center stacked:gap-1 touch:gap-y-1.5">{children}</span>
       <Button kind="quiet" size="icon" onClick={onOptions} pressed={optionsOpen} aria-controls="options" title="Options" aria-label="Options">
         <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
           <path

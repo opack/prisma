@@ -4,7 +4,8 @@
  * une icône (icon), ou étroit, pour la flèche qui ouvre un panneau (caret). Le contour du clavier est celui que décide React Aria : au clavier seulement, pas
  * après un clic. Sa place (className) dépend de ce qui l'entoure ; ses autres attributs (title,
  * aria-label, onClick…) passent au bouton. Dans un MenuTrigger ou un DialogTrigger, il se pose dans
- * un Pressable de React Aria.
+ * un Pressable de React Aria. Au doigt (touch:), il grandit : 44 px de haut au moins, ses icônes
+ * de 20 px, pour se toucher sans viser.
  */
 import { forwardRef } from "react";
 import type { ButtonHTMLAttributes } from "react";
@@ -18,7 +19,12 @@ const KINDS = {
   quiet: "border-transparent bg-transparent text-ink enabled:hover:bg-ink/6 aria-expanded:bg-ink/6",
 };
 const PRESSED = "relative z-1 border-accent bg-accent-12 text-accent";
-const SIZES = { text: "px-3 py-1", small: "px-2 py-px text-[0.9em]", icon: "w-[2.3em] h-[2.1em] p-0", caret: "w-[1.4em] h-[2.1em] p-0" };
+const SIZES = {
+  text: "px-3 py-1 touch:min-h-11 touch:px-4",
+  small: "px-2 py-px text-[0.9em] touch:min-h-9 touch:px-3",
+  icon: "w-[2.3em] h-[2.1em] p-0 touch:w-12 touch:h-11 touch:[&>svg]:size-5",
+  caret: "w-[1.4em] h-[2.1em] p-0 touch:w-7 touch:h-11",
+};
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button({ kind = "normal", pressed, size = "text", className = "", type = "button", ...props }, ref) {
   const { focusProps, isFocusVisible } = useFocusRing();

@@ -114,11 +114,11 @@ export function ListenControls({ score, disabled, metronome, onMetronome, clickG
           value={draft ?? bpm}
           onChange={(e) => edit(e.target.value)}
           onBlur={() => setDraft(null)}
-          className="w-[3.4em] pl-1.5 pr-0.5 py-1 text-right bg-transparent border-0 outline-none"
+          className="w-[3.4em] pl-1.5 pr-0.5 py-1 touch:py-2.5 text-right bg-transparent border-0 outline-none"
           aria-label="Tempo de l'écoute"
         />
         {chosen !== null && (
-          <button className="m-0 px-1 py-0 text-[1em] leading-none text-muted bg-none border-0 cursor-pointer hover:text-ink" onClick={() => (setChosen(null), setDraft(null))} title={`Revenir au tempo de la partition (${written} bpm)`}>
+          <button className="m-0 px-1 touch:px-2.5 py-0 touch:py-2.5 text-[1em] leading-none text-muted bg-none border-0 cursor-pointer hover:text-ink" onClick={() => (setChosen(null), setDraft(null))} title={`Revenir au tempo de la partition (${written} bpm)`}>
             ↺
           </button>
         )}

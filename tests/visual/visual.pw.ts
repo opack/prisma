@@ -209,6 +209,12 @@ test.describe("au doigt", () => {
     await settle(page);
     await expect(page).toHaveScreenshot("app-telephone-retouche.png");
   });
+  // des boutons assez grands pour le doigt, l'écoute sur sa propre ligne (même tablette couchée)
+  for (const [name, size] of [["telephone", PHONE], ["tablette", TABLET], ["tablette couchee", { width: TABLET.height, height: TABLET.width }]] as const)
+    test(`app ${name} au doigt`, async ({ page }) => {
+      await openApp(page, { source: CLAIR_SECTIONS, editing: false, size });
+      await expect(page).toHaveScreenshot(`app-${name.replace(" ", "-")}-au-doigt.png`);
+    });
 });
 
 // une case vide : la note choisie, le choix reste ouvert sur elle, avec son doigté, sa trille, sa durée
