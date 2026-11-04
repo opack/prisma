@@ -339,7 +339,7 @@ function TempoControl({ bpm, written, chosen, onTempo }: TempoProps) {
           value={draft ?? bpm}
           onChange={(e) => edit(e.target.value)}
           onBlur={() => setDraft(null)}
-          className="w-[3.4em] pl-1.5 pr-0.5 py-1 text-right bg-transparent border-0 outline-none"
+          className="w-[2.6em] px-1 py-0.5 text-center text-[1.2em] font-semibold tabular-nums bg-transparent border-0 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           aria-label="Tempo de l'écoute"
         />
         {chosen && (
