@@ -19,9 +19,10 @@ export function FocusView({ pages, options }: { pages: Page[]; options: RenderOp
   const at = (t: number | null) => (t === null ? -1 : systems.findIndex((ps) => t >= ps.sys.start && t < ps.sys.end));
   const cur = at(tick);
   const ci = cur >= 0 ? columnAt(systems[cur], tick!) : -1;
-  // le système joué après celui-ci : la suite, le retour d'une reprise, la section suivante
+  // l'autre système joué après celui-ci : la suite, le retour d'une reprise, la section suivante ;
+  // une reprise ou une section rejouée sur place (« A A B ») ne compte pas, la place resterait en double
   const after = (k: number) => {
-    const then = player.upcoming(systems[k].sys.end);
+    const then = player.elsewhere(systems[k].sys.start, systems[k].sys.end);
     return then === null ? -1 : at(then);
   };
   const start = (): Slots => [0, systems.length > 1 ? 1 : -1];
@@ -45,7 +46,7 @@ export function FocusView({ pages, options }: { pages: Page[]; options: RenderOp
     const b = bars.findIndex((bar) => bar.includes(ci));
     if (b < bars.length - 2) return;
     const next = after(cur);
-    if (next >= 0 && next !== cur && slots[1 - here] !== next) setSlots((s) => (here ? [next, s[1]] : [s[0], next]));
+    if (next >= 0 && slots[1 - here] !== next) setSlots((s) => (here ? [next, s[1]] : [s[0], next]));
   }, [tick, cur, ci, slots, systems]);
 
   // une même échelle pour les deux places : la largeur des systèmes, la hauteur du plus haut

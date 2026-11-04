@@ -12,7 +12,7 @@
 import { PIANO, boostOf, instrumentLabel, soundOf } from "./instruments.ts";
 import { TICKS_PER_BEAT } from "../../core/index.ts";
 import type { Score } from "../../core/index.ts";
-import { clicks, countIn, entryAt, entryStart, holds, inFirstBar, nextTick, passages, playedBars, playedLength, playedNotes, playedSections, playedTick, scoreTick, stretched, unstretched } from "./performance.ts";
+import { clicks, countIn, entryAt, entryStart, holds, inFirstBar, nextElsewhere, nextTick, passages, playedBars, playedLength, playedNotes, playedSections, playedTick, scoreTick, stretched, unstretched } from "./performance.ts";
 import type { PlayedBar, PlayedSection } from "./performance.ts";
 import type { Click, ClickGrid, Hold, PlayedNote, Passage } from "./performance.ts";
 import { DEFAULT_CLICK_SOUNDS, click, clickVolume, loadClick } from "./metronome.ts";
@@ -346,6 +346,16 @@ class Player {
     const { state } = this.snapshot;
     if (state !== "playing" && state !== "paused") return null;
     return nextTick(this.passages, state === "playing" ? this.now() : this.pos, until);
+  }
+
+  /**
+   * L'instant du morceau où l'on quittera [from, to) (le système joué) pour un autre : où regarder
+   * ensuite quand une reprise ou une section rejouée y ramène d'abord.
+   */
+  elsewhere(from: number, to: number): number | null {
+    const { state } = this.snapshot;
+    if (state !== "playing" && state !== "paused") return null;
+    return nextElsewhere(this.passages, state === "playing" ? this.now() : this.pos, from, to);
   }
 
   /** Ce que publie un instant joué : la case du morceau et la section de l'ordre de jeu. */
