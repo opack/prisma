@@ -416,6 +416,25 @@ test("app métronome", async ({ page }) => {
   await expect(page).toHaveScreenshot("app-metronome.png");
 });
 
+// le tempo : + l'avance de 1, un appui long de 5 en 5 ; le ↺ du champ revient au tempo de la partition
+test("app tempo", async ({ page }) => {
+  await openApp(page, { source: CLAIR_SECTIONS });
+  const field = page.getByRole("spinbutton", { name: "Tempo de l'écoute" });
+  const plus = page.getByRole("button", { name: "Plus rapide", exact: true });
+  await plus.click();
+  await expect(field).toHaveValue("101");
+  await plus.hover();
+  await page.mouse.down();
+  await page.waitForTimeout(700);
+  await page.mouse.up();
+  await expect(field).toHaveValue("106");
+  await page.mouse.move(0, 400);
+  await settle(page);
+  await expect(page.locator("header")).toHaveScreenshot("app-tempo.png");
+  await page.getByRole("button", { name: "Revenir au tempo de la partition" }).click();
+  await expect(field).toHaveValue("100");
+});
+
 test("app menu ouvert", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS });
   await page.getByRole("button", { name: "Partition", exact: true }).click();
@@ -442,7 +461,7 @@ test("app menu au clavier", async ({ page }) => {
 test("app tab jusqu'à l'écoute", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS });
   await page.getByRole("button", { name: "Fichier", exact: true }).focus();
-  for (let i = 0; i < 7; i++) await page.keyboard.press("Tab");
+  for (let i = 0; i < 9; i++) await page.keyboard.press("Tab");
   await expect(page.getByRole("button", { name: "Écouter" })).toBeFocused();
   await expect(page.locator("header")).toHaveScreenshot("app-tab-ecoute.png");
 });

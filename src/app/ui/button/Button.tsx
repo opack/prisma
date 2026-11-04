@@ -35,7 +35,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       type={type}
       aria-pressed={pressed}
       data-focus-visible={isFocusVisible || undefined}
-      className={`${className} inline-flex items-center justify-center gap-1.5 border rounded leading-tight cursor-pointer outline-none data-focus-visible:relative data-focus-visible:z-2 data-focus-visible:outline-solid data-focus-visible:outline-2 data-focus-visible:outline-offset-1 data-focus-visible:outline-accent disabled:opacity-50 disabled:cursor-default ${pressed ? PRESSED : KINDS[kind]} ${SIZES[size]}`}
+      className={`${className} inline-flex items-center justify-center gap-1.5 border rounded leading-tight cursor-pointer touch-manipulation outline-none data-focus-visible:relative data-focus-visible:z-2 data-focus-visible:outline-solid data-focus-visible:outline-2 data-focus-visible:outline-offset-1 data-focus-visible:outline-accent disabled:opacity-50 disabled:cursor-default ${pressed ? PRESSED : KINDS[kind]} ${SIZES[size]}`}
     />
   );
 });
