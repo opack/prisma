@@ -278,7 +278,7 @@ test("app partition reçue, avec une bibliothèque", async ({ page }) => {
   });
   expect(saved.piece).toContain("title: Au clair de la lune");
   expect(saved.settings.tempo).toBe(72);
-  await expect(page.getByRole("spinbutton", { name: "Tempo de l'écoute" })).toHaveValue("72");
+  await expect(page.getByRole("button", { name: "Tempo : 72 bpm" })).toBeVisible();
   await expect(page.locator("[data-library]")).toHaveCount(0);
 });
 
@@ -410,6 +410,21 @@ test("app métronome", async ({ page }) => {
   await expect(page).toHaveScreenshot("app-metronome.png");
 });
 
+// le tempo : + l'avance de 5, son panneau en donne la part du tempo écrit ; 70 % le choisit
+test("app tempo", async ({ page }) => {
+  await openApp(page, { source: CLAIR_SECTIONS });
+  const tempo = page.getByRole("button", { name: /^Tempo : / });
+  const before = Number((await tempo.getAttribute("aria-label"))!.match(/\d+/)![0]);
+  await page.getByRole("button", { name: "Plus rapide", exact: true }).click();
+  await expect(page.getByRole("button", { name: `Tempo : ${before + 5} bpm` })).toBeVisible();
+  await page.getByRole("button", { name: `Tempo : ${before + 5} bpm` }).click();
+  await page.getByRole("button", { name: "70 %" }).click();
+  await settle(page);
+  await expect(page).toHaveScreenshot("app-tempo.png");
+  await page.getByRole("button", { name: "Revenir au tempo de la partition" }).click();
+  await expect(page.getByRole("button", { name: `Tempo : ${before} bpm` })).toBeVisible();
+});
+
 test("app menu ouvert", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS });
   await page.getByRole("button", { name: "Partition", exact: true }).click();
@@ -436,7 +451,7 @@ test("app menu au clavier", async ({ page }) => {
 test("app tab jusqu'à l'écoute", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS });
   await page.getByRole("button", { name: "Fichier", exact: true }).focus();
-  for (let i = 0; i < 7; i++) await page.keyboard.press("Tab");
+  for (let i = 0; i < 9; i++) await page.keyboard.press("Tab");
   await expect(page.getByRole("button", { name: "Écouter" })).toBeFocused();
   await expect(page.locator("header")).toHaveScreenshot("app-tab-ecoute.png");
 });

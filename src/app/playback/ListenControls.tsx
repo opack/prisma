@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import type { MouseEvent, PointerEvent } from "react";
 import type { Score } from "../../core/index.ts";
 import { DEFAULT_BPM, player } from "./player.ts";
 import { follow } from "../score/follow.ts";
 import { MAX_TEMPO, MIN_TEMPO } from "../options/piece.ts";
+import { TEMPO_PERCENTS, TEMPO_STEP, percentOf, sliderRange, stepTempo, tempoAt } from "./tempo.ts";
 import { INSTRUMENTS, PIANO, instrumentLabel, scoreInstrument } from "./instruments.ts";
 import { MAX_VOLUME, MIN_VOLUME } from "../options/piece.ts";
 import { staffNames } from "./staves.ts";
@@ -43,8 +45,8 @@ const MAX_BPM = MAX_TEMPO;
 
 /**
  * Commandes d'écoute de la barre : début, section précédente, lecture et pause, section suivante,
- * arrêt ; et le tempo, celui de la partition
- * par défaut, qu'on peut changer (même en cours de lecture) puis rétablir.
+ * arrêt ; et le tempo, celui de la partition par défaut, qu'on peut changer (même en cours de
+ * lecture) puis rétablir.
  */
 type Props = {
   score?: Score;
@@ -75,15 +77,9 @@ export function ListenControls({ score, disabled, metronome, onMetronome, clickG
   const written = score?.meta.bpm ?? DEFAULT_BPM;
   const chosen = tempo;
   const setChosen = onTempo;
-  const [draft, setDraft] = useState<string | null>(null); // saisie en cours, pas encore un tempo valable
   const bpm = chosen ?? written;
   useEffect(() => player.setTempo(bpm), [bpm]);
 
-  const edit = (text: string) => {
-    setDraft(text);
-    const n = Number(text);
-    if (Number.isInteger(n) && n >= MIN_BPM && n <= MAX_BPM) setChosen(n === written ? null : n);
-  };
   const toggle = () => {
     if (state === "playing") player.pause();
     else if (state === "loading") player.stop();
@@ -106,24 +102,7 @@ export function ListenControls({ score, disabled, metronome, onMetronome, clickG
         </span>
       )}
       <span className="flex-1" />
-      <span className="flex items-center pr-1.5 bg-white border border-line rounded focus-within:border-muted" title={`Tempo de l'écoute, en temps par minute (${MIN_BPM} à ${MAX_BPM})`}>
-        <input
-          type="number"
-          min={MIN_BPM}
-          max={MAX_BPM}
-          value={draft ?? bpm}
-          onChange={(e) => edit(e.target.value)}
-          onBlur={() => setDraft(null)}
-          className="w-[3.4em] pl-1.5 pr-0.5 py-1 text-right bg-transparent border-0 outline-none"
-          aria-label="Tempo de l'écoute"
-        />
-        {chosen !== null && (
-          <button className="m-0 px-1 py-0 text-[1em] leading-none text-muted bg-none border-0 cursor-pointer hover:text-ink" onClick={() => (setChosen(null), setDraft(null))} title={`Revenir au tempo de la partition (${written} bpm)`}>
-            ↺
-          </button>
-        )}
-        <span className="ml-0.5 text-muted text-[0.9em] compact:hidden">bpm</span>
-      </span>
+      <TempoControl bpm={bpm} written={written} chosen={chosen !== null} onTempo={(n) => setChosen(n === written ? null : n)} />
       <ButtonGroup label="Lecture">
         <Button size="icon" onClick={go(() => player.rewind())} disabled={disabled} title="Revenir au début du morceau" aria-label="Revenir au début">
           <Icon d="M2 3h2v10H2zM9 3v10L4 8zM14 3v10L9 8z" />
@@ -290,6 +269,123 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, 
           <PopoverHint>Une portée muette n'est pas jouée : à vous de la jouer, avec le métronome au besoin. L'instrument d'une partie est celui que la partition écrit après son nom, ou que son nom fait deviner ; un autre choix, comme le volume, vaut pour ce morceau.</PopoverHint>
         </Popover>
       </DialogTrigger>
+    </ButtonGroup>
+  );
+}
+
+/**
+ * Un appui qui se répète tant qu'on le tient (le tempo, d'un pas à l'autre) : une fois tout de
+ * suite, puis après une pause, de plus en plus vite. Au clavier (Entrée, Espace), une fois par
+ * appui. Le menu d'un appui long, sur tablette, ne s'ouvre pas.
+ */
+function useRepeat(action: () => void) {
+  const latest = useRef(action);
+  latest.current = action;
+  const timer = useRef<number | undefined>(undefined);
+  const stop = () => window.clearTimeout(timer.current);
+  useEffect(() => stop, []);
+  const start = (e: PointerEvent) => {
+    if (e.button !== 0) return;
+    stop();
+    latest.current();
+    let delay = 400;
+    const tick = () => {
+      latest.current();
+      delay = Math.max(50, delay * 0.8);
+      timer.current = window.setTimeout(tick, delay);
+    };
+    timer.current = window.setTimeout(tick, delay);
+    // relâché ailleurs, ou sur le bouton devenu inactif (une borne atteinte) : l'appui finit
+    window.addEventListener("pointerup", stop, { once: true });
+    window.addEventListener("pointercancel", stop, { once: true });
+  };
+  return {
+    onPointerDown: start,
+    onContextMenu: (e: MouseEvent) => e.preventDefault(),
+    onClick: (e: MouseEvent) => {
+      if (e.detail === 0) latest.current();
+    },
+  };
+}
+
+/**
+ * Le tempo de l'écoute, à portée du doigt : − et + d'un pas de 5 (un appui long répète), et entre
+ * eux le tempo, qui ouvre son panneau : une part du tempo écrit (« à 70 % »), le curseur, le pas de
+ * 1, la saisie, et le retour au tempo de la partition. Allumé quand il n'est pas celui de la
+ * partition. Sur un téléphone, la place manque : le tempo seul, et son panneau.
+ */
+type TempoProps = { bpm: number; written: number; chosen: boolean; onTempo: (bpm: number) => void };
+
+function TempoControl({ bpm, written, chosen, onTempo }: TempoProps) {
+  const [draft, setDraft] = useState<string | null>(null); // saisie en cours, pas encore un tempo valable
+  const slower = useRepeat(() => onTempo(stepTempo(bpm, -TEMPO_STEP)));
+  const faster = useRepeat(() => onTempo(stepTempo(bpm, TEMPO_STEP)));
+  const percent = percentOf(bpm, written);
+  const range = sliderRange(written);
+  const edit = (text: string) => {
+    setDraft(text);
+    const n = Number(text);
+    if (Number.isInteger(n) && n >= MIN_BPM && n <= MAX_BPM) onTempo(n);
+  };
+  const about = chosen ? `${bpm} bpm, ${percent} % du tempo de la partition (${written})` : `${bpm} bpm, le tempo de la partition`;
+  return (
+    <ButtonGroup label="Tempo">
+      <Button size="icon" className="phone:hidden" {...slower} disabled={bpm <= MIN_BPM} title={`Plus lent, de ${TEMPO_STEP} bpm (appui long : de suite)`} aria-label="Plus lent">
+        <Icon d="M3 7.25h10v1.5H3z" />
+      </Button>
+      <DialogTrigger>
+        <Pressable>
+          <Button className="phone:rounded" pressed={chosen} title={`Tempo de l'écoute : ${about}`} aria-label={`Tempo : ${bpm} bpm`}>
+            <span className="min-w-[1.8em] text-right tabular-nums">{bpm}</span>
+            <span className="text-[0.9em] compact:hidden">bpm</span>
+          </Button>
+        </Pressable>
+        <Popover label="Tempo" title="Tempo" className="w-[380px] max-w-[calc(100vw-24px)]">
+          <p className="m-0 text-muted">
+            <span className="text-ink text-[1.3em] font-semibold tabular-nums">{bpm}</span> bpm, {chosen ? `${percent} % de la partition (${written})` : "celui de la partition"}
+          </p>
+          <ButtonGroup label="Part du tempo de la partition" className="mt-1">
+            {TEMPO_PERCENTS.map((p) => (
+              <Button key={p} className="flex-1 whitespace-nowrap" pressed={bpm === tempoAt(written, p)} onClick={() => onTempo(tempoAt(written, p))} title={`${tempoAt(written, p)} bpm`}>
+                {p} %
+              </Button>
+            ))}
+          </ButtonGroup>
+          <span className="flex items-center gap-1.5 mt-1">
+            <Button onClick={() => onTempo(stepTempo(bpm, -1))} disabled={bpm <= MIN_BPM} aria-label="Plus lent, de 1">
+              −1
+            </Button>
+            <input className="flex-1 min-w-0 accent-accent" type="range" min={range.min} max={range.max} step={1} value={bpm} onChange={(e) => onTempo(Number(e.target.value))} aria-label="Tempo, au curseur" />
+            <Button onClick={() => onTempo(stepTempo(bpm, 1))} disabled={bpm >= MAX_BPM} aria-label="Plus rapide, de 1">
+              +1
+            </Button>
+          </span>
+          <span className="flex items-center gap-1.5 mt-1">
+            <span className="flex items-center pr-1.5 bg-white border border-line rounded focus-within:border-muted">
+              <input
+                type="number"
+                min={MIN_BPM}
+                max={MAX_BPM}
+                value={draft ?? bpm}
+                onChange={(e) => edit(e.target.value)}
+                onBlur={() => setDraft(null)}
+                className="w-[3.4em] pl-1.5 pr-0.5 py-0.5 text-right bg-transparent border-0 outline-none"
+                aria-label="Tempo de l'écoute"
+                title={`Le tempo, en temps par minute (${MIN_BPM} à ${MAX_BPM})`}
+              />
+              <span className="ml-0.5 text-muted text-[0.9em]">bpm</span>
+            </span>
+            <span className="flex-1" />
+            <Button size="small" onClick={() => (onTempo(written), setDraft(null))} disabled={!chosen} title="Revenir au tempo de la partition" aria-label="Revenir au tempo de la partition">
+              ↺ Partition ({written})
+            </Button>
+          </span>
+          <PopoverHint>Dans la barre, − et + changent le tempo de {TEMPO_STEP} ; un appui long continue. Le tempo choisi vaut pour ce morceau.</PopoverHint>
+        </Popover>
+      </DialogTrigger>
+      <Button size="icon" className="phone:hidden" {...faster} disabled={bpm >= MAX_BPM} title={`Plus rapide, de ${TEMPO_STEP} bpm (appui long : de suite)`} aria-label="Plus rapide">
+        <Icon d="M7.25 3h1.5v4.25H13v1.5H8.75V13h-1.5V8.75H3v-1.5h4.25z" />
+      </Button>
     </ButtonGroup>
   );
 }
