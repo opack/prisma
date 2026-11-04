@@ -12,13 +12,22 @@
 /* les écrans étroits du site : une colonne (narrow), un téléphone (phone) */
 @custom-variant narrow (@media (max-width: 900px));
 @custom-variant phone (@media (max-width: 600px));
-/* la barre d'outils de l'application, selon la place : un seul menu et des boutons plus serrés
-   (compact), puis l'écoute sur sa propre ligne (stacked) ; au doigt, les boutons plus grands
-   demandent cette ligne plus tôt (une tablette, même couchée) */
-@custom-variant compact (@media (max-width: 1000px));
-@custom-variant stacked {
-  @media (max-width: 720px) { @slot; }
-  @media (pointer: coarse) and (max-width: 1200px) { @slot; }
+/* la barre d'outils de l'application, toujours sur une ligne : quand la place manque, le logo
+   sans le nom (bare), puis un seul menu (compact), puis les réglages de l'écoute sous un bouton ⋯
+   (crowded) ; sur un téléphone (phone), les options aussi, et le nom du morceau dans le menu. Au
+   doigt, les boutons plus grands demandent ces replis plus tôt. Les mêmes largeurs dans MenuBar
+   (COMPACT). */
+@custom-variant bare {
+  @media (max-width: 600px) { @slot; }
+  @media (pointer: coarse) and (max-width: 1280px) { @slot; }
+}
+@custom-variant compact {
+  @media (max-width: 1100px) { @slot; }
+  @media (pointer: coarse) and (max-width: 1220px) { @slot; }
+}
+@custom-variant crowded {
+  @media (max-width: 800px) { @slot; }
+  @media (pointer: coarse) and (max-width: 900px) { @slot; }
 }
 /* au doigt (une tablette, un téléphone) : des boutons assez grands pour être touchés sans viser */
 @custom-variant touch (@media (pointer: coarse));

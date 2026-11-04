@@ -3,14 +3,15 @@
  * application de bureau : un clic sur un titre ouvre son menu ; un menu ouvert, le survol d'un autre
  * titre, ou les flèches gauche et droite, passent à celui-ci ; les flèches passent aussi d'un titre
  * à l'autre, menus fermés ; Tab ferme le menu et passe au titre suivant ; Échap, ou un clic ailleurs,
- * le ferme. Quand la place manque, un seul bouton « Menu » : un titre choisi (un clic, Entrée, la
+ * le ferme. Quand la place manque, un seul bouton « Menu » (trois traits), qui peut porter en tête
+ * le nom du morceau (heading) : un titre choisi (un clic, Entrée, la
  * flèche droite) montre ses actions à la place des titres, « ‹ Menu » (ou la flèche gauche) y revient ;
  * pas de sous-menu à rejoindre à la souris, ni de place à trouver à côté sur un téléphone. Une
  * action montre son raccourci (pas sur un téléphone) ; une action qui se coche (l'éditeur,
  * l'ajustement) se dit cochée. Sur les briques de React Aria : MenuTrigger, Menu.
  */
 import { Fragment, useEffect, useRef, useState } from "react";
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { Header, Keyboard, Menu, MenuItem as Item, MenuSection, MenuTrigger, Popover, Pressable, Separator } from "react-aria-components";
 import { Button } from "../button/Button.tsx";
 
@@ -73,11 +74,11 @@ function Actions({ items }: { items: MenuItem[] }) {
   ));
 }
 
-export function MenuBar({ menus }: { menus: MenuDef[] }) {
+export function MenuBar({ menus, heading }: { menus: MenuDef[]; heading?: ReactNode }) {
   return (
     <>
       <Bar menus={menus} />
-      <CompactMenu menus={menus} />
+      <CompactMenu menus={menus} heading={heading} />
     </>
   );
 }
@@ -157,10 +158,13 @@ function useMedia(query: string) {
 }
 
 /** La largeur où la barre laisse la place au seul « Menu » (la variante compact:, dans tailwind.css). */
-const COMPACT = "(max-width: 1000px)";
+const COMPACT = "(max-width: 1100px), (pointer: coarse) and (max-width: 1220px)";
 
-/** Quand la place manque : un seul bouton « Menu », dont un titre choisi montre ses actions à la place des titres. */
-function CompactMenu({ menus }: { menus: MenuDef[] }) {
+/**
+ * Quand la place manque : un seul bouton « Menu », dont un titre choisi montre ses actions à la place
+ * des titres ; en tête des titres, ce qu'on lui donne (le nom du morceau, sur un téléphone).
+ */
+function CompactMenu({ menus, heading }: { menus: MenuDef[]; heading?: ReactNode }) {
   // la fenêtre élargie, la barre revient : le menu ouvert se ferme avec son bouton
   const compact = useMedia(COMPACT);
   const [open, setOpen] = useState(false);
@@ -177,7 +181,11 @@ function CompactMenu({ menus }: { menus: MenuDef[] }) {
     <span className="hidden compact:block">
       <MenuTrigger isOpen={open && compact} onOpenChange={change}>
         <Pressable>
-          <Button kind="quiet">Menu</Button>
+          <Button kind="quiet" size="icon" title="Menu" aria-label="Menu">
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
+              <path fill="currentColor" d="M2 3.25h12v1.5H2zM2 7.25h12v1.5H2zM2 11.25h12v1.5H2z" />
+            </svg>
+          </Button>
         </Pressable>
         <Popover className={PANEL} placement="bottom start" offset={4}>
           {menu ? (
@@ -197,6 +205,7 @@ function CompactMenu({ menus }: { menus: MenuDef[] }) {
           ) : (
             // la flèche droite ouvre le titre, comme Entrée
             <div onKeyDownCapture={(e) => e.key === "ArrowRight" && (e.preventDefault(), enter(menus.findIndex((m) => m.label === (e.target as HTMLElement).closest<HTMLElement>("[data-key]")?.dataset.key)))}>
+              {heading}
               <Menu key="titres" className="grid outline-none" aria-label="Menu" autoFocus="first">
                 {menus.map((m, i) => (
                   <Item key={m.label} id={m.label} textValue={m.label} onAction={() => setSection(i)} shouldCloseOnSelect={false} className={ITEM}>

@@ -167,24 +167,36 @@ export function App() {
 
   return (
     <DropZone className="relative flex flex-col h-full print:block print:h-auto" onFile={doc.openDropped}>
-      <Toolbar menus={menus} fileName={doc.fileName} saved={!doc.unsaved && doc.savedText !== null} rewritable={!!doc.handle} notes={score?.meta.notes} notice={notice} onUpdate={appUpdate.waiting ? appUpdate.apply : undefined} optionsOpen={showOptions} onOptions={() => setShowOptions((v) => !v)}>
-        <ListenControls
-          score={score}
-          disabled={!score || !pages.length}
-          metronome={options.metronome}
-          onMetronome={(metronome) => setOptions({ metronome })}
-          clickGrid={options.clickGrid}
-          onClickGrid={(clickGrid) => setOptions({ clickGrid })}
-          muted={sound.muted}
-          onMuted={sound.setMuted}
-          instruments={sound.instruments}
-          onInstrument={sound.setInstrument}
-          volumes={sound.volumes}
-          onVolume={sound.setVolume}
-          tempo={piece.tempo ?? null}
-          onTempo={(tempo) => updatePiece({ tempo: tempo ?? undefined })}
-        />
-      </Toolbar>
+      <Toolbar
+        menus={menus}
+        fileName={doc.fileName}
+        saved={!doc.unsaved && doc.savedText !== null}
+        rewritable={!!doc.handle}
+        notes={score?.meta.notes}
+        notice={notice}
+        onUpdate={appUpdate.waiting ? appUpdate.apply : undefined}
+        optionsOpen={showOptions}
+        onOptions={() => setShowOptions((v) => !v)}
+        listen={(place) => (
+          <ListenControls
+            place={place}
+            score={score}
+            disabled={!score || !pages.length}
+            metronome={options.metronome}
+            onMetronome={(metronome) => setOptions({ metronome })}
+            clickGrid={options.clickGrid}
+            onClickGrid={(clickGrid) => setOptions({ clickGrid })}
+            muted={sound.muted}
+            onMuted={sound.setMuted}
+            instruments={sound.instruments}
+            onInstrument={sound.setInstrument}
+            volumes={sound.volumes}
+            onVolume={sound.setVolume}
+            tempo={piece.tempo ?? null}
+            onTempo={(tempo) => updatePiece({ tempo: tempo ?? undefined })}
+          />
+        )}
+      />
       <input
         ref={doc.fileInput}
         type="file"
