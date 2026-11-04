@@ -129,7 +129,7 @@ Cinq pages à la racine (`index.html`, `apprendre.html`, `reference.html`, `guit
 
 `reference.test.ts` vérifie chaque exemple de la référence : il doit se lire sans erreur et être écrit exactement comme l'application l'écrirait. La documentation ne peut donc pas montrer un exemple faux ou mal mis en forme.
 
-Le banc de captures (`npm run visual`, Playwright, `tests/visual/`) photographie chaque page du site (au bureau et sur un téléphone), les écrans et panneaux de l'application (au bureau, et quelques-uns sur une tablette et un téléphone), et la gravure d'un petit corpus, en impression comprise, et compare chaque capture pixel à pixel à sa référence. Il sert aux refontes qui ne doivent rien changer à l'œil : les références se prennent sur le code de départ, dans un `git worktree` à côté, puis le code modifié s'y compare.
+Le banc de captures (`npm run visual`, Playwright, `tests/visual/`) photographie chaque page du site (au bureau et sur un téléphone), les écrans et panneaux de l'application (au bureau, et quelques-uns sur une tablette et un téléphone, à la souris et au doigt), et la gravure d'un petit corpus, en impression comprise, et compare chaque capture pixel à pixel à sa référence. Il sert aux refontes qui ne doivent rien changer à l'œil : les références se prennent sur le code de départ, dans un `git worktree` à côté, puis le code modifié s'y compare.
 
 ```sh
 npx playwright install chromium                    # une fois

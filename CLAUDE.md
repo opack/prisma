@@ -24,7 +24,7 @@ Le projet est décrit dans [README.md](README.md) (architecture, choix technique
 - Les couleurs et les polices : une seule palette, dans le `@theme` de `src/tailwind.css` ; en CSS, `var(--color-ink)`, `var(--font-mono)`.
 - Deux classes qui règlent la même propriété ne vont pas sur le même élément : on choisit par une condition (`on ? "border-accent" : "border-line"`).
 - Une classe CSS ne porte jamais le nom d'une classe Tailwind (`fixed`, `hidden`, `block`…) : Tailwind la prendrait pour la sienne.
-- Les écrans étroits : `narrow:` (900 px) et `phone:` (600 px) ; pour la barre d'outils de l'application, `compact:` (1000 px, un seul menu) et `stacked:` (720 px, l'écoute sur sa ligne).
+- Les écrans étroits : `narrow:` (900 px) et `phone:` (600 px) ; pour la barre d'outils de l'application, `compact:` (1000 px, un seul menu) et `stacked:` (720 px, ou 1 200 px au doigt : l'écoute sur sa ligne). Au doigt (`pointer: coarse`) : `touch:`, pour des cibles de 44 px.
 - L'impression en noir et blanc doit rester lisible.
 
 ## Les composants

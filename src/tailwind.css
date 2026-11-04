@@ -13,9 +13,15 @@
 @custom-variant narrow (@media (max-width: 900px));
 @custom-variant phone (@media (max-width: 600px));
 /* la barre d'outils de l'application, selon la place : un seul menu et des boutons plus serrés
-   (compact), puis l'écoute sur sa propre ligne (stacked) */
+   (compact), puis l'écoute sur sa propre ligne (stacked) ; au doigt, les boutons plus grands
+   demandent cette ligne plus tôt (une tablette, même couchée) */
 @custom-variant compact (@media (max-width: 1000px));
-@custom-variant stacked (@media (max-width: 720px));
+@custom-variant stacked {
+  @media (max-width: 720px) { @slot; }
+  @media (pointer: coarse) and (max-width: 1200px) { @slot; }
+}
+/* au doigt (une tablette, un téléphone) : des boutons assez grands pour être touchés sans viser */
+@custom-variant touch (@media (pointer: coarse));
 
 /* les couleurs et les polices, communes à l'application et au site ; en classes (text-ink, bg-panel,
    font-mono…) et, pour le CSS qui reste, en variables (var(--color-ink), var(--font-mono)…) */
