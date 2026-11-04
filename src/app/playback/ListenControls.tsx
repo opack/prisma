@@ -4,7 +4,7 @@ import type { Score } from "../../core/index.ts";
 import { DEFAULT_BPM, player } from "./player.ts";
 import { follow } from "../score/follow.ts";
 import { MAX_TEMPO, MIN_TEMPO } from "../options/piece.ts";
-import { TEMPO_PERCENTS, TEMPO_STEP, percentOf, sliderRange, stepTempo, tempoAt } from "./tempo.ts";
+import { PERCENT_STEP, TEMPO_STEP, percentOf, stepPercent, stepTempo } from "./tempo.ts";
 import { INSTRUMENTS, PIANO, instrumentLabel, scoreInstrument } from "./instruments.ts";
 import { MAX_VOLUME, MIN_VOLUME } from "../options/piece.ts";
 import { staffNames } from "./staves.ts";
@@ -275,7 +275,7 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, 
 
 /**
  * Un appui qui se répète tant qu'on le tient (le tempo, d'un pas à l'autre) : une fois tout de
- * suite, puis après une pause, de plus en plus vite. Au clavier (Entrée, Espace), une fois par
+ * suite, puis après une pause, à pas réguliers (trois par seconde), qu'on suit des yeux. Au clavier (Entrée, Espace), une fois par
  * appui. Le menu d'un appui long, sur tablette, ne s'ouvre pas.
  */
 function useRepeat(action: () => void) {
@@ -288,13 +288,11 @@ function useRepeat(action: () => void) {
     if (e.button !== 0) return;
     stop();
     latest.current();
-    let delay = 400;
     const tick = () => {
       latest.current();
-      delay = Math.max(50, delay * 0.8);
-      timer.current = window.setTimeout(tick, delay);
+      timer.current = window.setTimeout(tick, 330);
     };
-    timer.current = window.setTimeout(tick, delay);
+    timer.current = window.setTimeout(tick, 500);
     // relâché ailleurs, ou sur le bouton devenu inactif (une borne atteinte) : l'appui finit
     window.addEventListener("pointerup", stop, { once: true });
     window.addEventListener("pointercancel", stop, { once: true });
@@ -310,9 +308,8 @@ function useRepeat(action: () => void) {
 
 /**
  * Le tempo de l'écoute, à portée du doigt : − et + d'un pas de 5 (un appui long répète), et entre
- * eux le tempo, qui ouvre son panneau : une part du tempo écrit (« à 70 % »), le curseur, le pas de
- * 1, la saisie, et le retour au tempo de la partition. Allumé quand il n'est pas celui de la
- * partition. Sur un téléphone, la place manque : le tempo seul, et son panneau.
+ * eux le tempo, qui ouvre son panneau : −10 %, 100 % et +10 % du tempo écrit, et la saisie, avec
+ * le retour au tempo de la partition. Allumé quand il n'est pas celui de la partition. Sur un téléphone, la place manque : le tempo seul, et son panneau.
  */
 type TempoProps = { bpm: number; written: number; chosen: boolean; onTempo: (bpm: number) => void };
 
@@ -321,7 +318,6 @@ function TempoControl({ bpm, written, chosen, onTempo }: TempoProps) {
   const slower = useRepeat(() => onTempo(stepTempo(bpm, -TEMPO_STEP)));
   const faster = useRepeat(() => onTempo(stepTempo(bpm, TEMPO_STEP)));
   const percent = percentOf(bpm, written);
-  const range = sliderRange(written);
   const edit = (text: string) => {
     setDraft(text);
     const n = Number(text);
@@ -340,47 +336,42 @@ function TempoControl({ bpm, written, chosen, onTempo }: TempoProps) {
             <span className="text-[0.9em] compact:hidden">bpm</span>
           </Button>
         </Pressable>
-        <Popover label="Tempo" title="Tempo" className="w-[380px] max-w-[calc(100vw-24px)]">
+        <Popover label="Tempo" title="Tempo" className="w-[280px]">
           <p className="m-0 text-muted">
             <span className="text-ink text-[1.3em] font-semibold tabular-nums">{bpm}</span> bpm, {chosen ? `${percent} % de la partition (${written})` : "celui de la partition"}
           </p>
           <ButtonGroup label="Part du tempo de la partition" className="mt-1">
-            {TEMPO_PERCENTS.map((p) => (
-              <Button key={p} className="flex-1 whitespace-nowrap" pressed={bpm === tempoAt(written, p)} onClick={() => onTempo(tempoAt(written, p))} title={`${tempoAt(written, p)} bpm`}>
-                {p} %
-              </Button>
-            ))}
+            <Button className="flex-1 whitespace-nowrap" onClick={() => onTempo(stepPercent(bpm, written, -1))} disabled={bpm <= MIN_BPM} title={`${stepPercent(bpm, written, -1)} bpm`}>
+              −{PERCENT_STEP} %
+            </Button>
+            <Button className="flex-1 whitespace-nowrap" pressed={!chosen} onClick={() => (onTempo(written), setDraft(null))} title={`Le tempo de la partition : ${written} bpm`}>
+              100 %
+            </Button>
+            <Button className="flex-1 whitespace-nowrap" onClick={() => onTempo(stepPercent(bpm, written, 1))} disabled={bpm >= MAX_BPM} title={`${stepPercent(bpm, written, 1)} bpm`}>
+              +{PERCENT_STEP} %
+            </Button>
           </ButtonGroup>
-          <span className="flex items-center gap-1.5 mt-1">
-            <Button onClick={() => onTempo(stepTempo(bpm, -1))} disabled={bpm <= MIN_BPM} aria-label="Plus lent, de 1">
-              −1
-            </Button>
-            <input className="flex-1 min-w-0 accent-accent" type="range" min={range.min} max={range.max} step={1} value={bpm} onChange={(e) => onTempo(Number(e.target.value))} aria-label="Tempo, au curseur" />
-            <Button onClick={() => onTempo(stepTempo(bpm, 1))} disabled={bpm >= MAX_BPM} aria-label="Plus rapide, de 1">
-              +1
-            </Button>
+          <span className="flex items-center justify-self-start mt-1 pr-1.5 bg-white border border-line rounded focus-within:border-muted" title={`Le tempo, en temps par minute (${MIN_BPM} à ${MAX_BPM})`}>
+            <input
+              type="number"
+              min={MIN_BPM}
+              max={MAX_BPM}
+              value={draft ?? bpm}
+              onChange={(e) => edit(e.target.value)}
+              onBlur={() => setDraft(null)}
+              className="w-[3.4em] pl-1.5 pr-0.5 py-1 text-right bg-transparent border-0 outline-none"
+              aria-label="Tempo de l'écoute"
+            />
+            {chosen && (
+              <button className="m-0 px-1 py-0 text-[1em] leading-none text-muted bg-none border-0 cursor-pointer hover:text-ink" onClick={() => (onTempo(written), setDraft(null))} title={`Revenir au tempo de la partition (${written} bpm)`} aria-label="Revenir au tempo de la partition">
+                ↺
+              </button>
+            )}
+            <span className="ml-0.5 text-muted text-[0.9em]">bpm</span>
           </span>
-          <span className="flex items-center gap-1.5 mt-1">
-            <span className="flex items-center pr-1.5 bg-white border border-line rounded focus-within:border-muted">
-              <input
-                type="number"
-                min={MIN_BPM}
-                max={MAX_BPM}
-                value={draft ?? bpm}
-                onChange={(e) => edit(e.target.value)}
-                onBlur={() => setDraft(null)}
-                className="w-[3.4em] pl-1.5 pr-0.5 py-0.5 text-right bg-transparent border-0 outline-none"
-                aria-label="Tempo de l'écoute"
-                title={`Le tempo, en temps par minute (${MIN_BPM} à ${MAX_BPM})`}
-              />
-              <span className="ml-0.5 text-muted text-[0.9em]">bpm</span>
-            </span>
-            <span className="flex-1" />
-            <Button size="small" onClick={() => (onTempo(written), setDraft(null))} disabled={!chosen} title="Revenir au tempo de la partition" aria-label="Revenir au tempo de la partition">
-              ↺ Partition ({written})
-            </Button>
-          </span>
-          <PopoverHint>Dans la barre, − et + changent le tempo de {TEMPO_STEP} ; un appui long continue. Le tempo choisi vaut pour ce morceau.</PopoverHint>
+          <PopoverHint>
+            <span className="phone:hidden">Dans la barre, − et + changent le tempo de {TEMPO_STEP} ; un appui long continue. </span>Le tempo choisi vaut pour ce morceau.
+          </PopoverHint>
         </Popover>
       </DialogTrigger>
       <Button size="icon" className="phone:hidden" {...faster} disabled={bpm >= MAX_BPM} title={`Plus rapide, de ${TEMPO_STEP} bpm (appui long : de suite)`} aria-label="Plus rapide">

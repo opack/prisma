@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampTempo, percentOf, sliderRange, stepTempo, tempoAt } from "../src/app/playback/tempo.ts";
+import { clampTempo, percentOf, stepPercent, stepTempo, tempoAt } from "../src/app/playback/tempo.ts";
 import { MAX_TEMPO, MIN_TEMPO } from "../src/app/options/piece.ts";
 
 describe("le tempo de l'écoute", () => {
@@ -22,10 +22,19 @@ describe("le tempo de l'écoute", () => {
     expect(percentOf(77, 120)).toBe(64);
   });
 
-  it("se règle au curseur du quart au double du tempo écrit, dans les bornes", () => {
-    expect(sliderRange(120)).toEqual({ min: 30, max: 240 });
-    expect(sliderRange(60)).toEqual({ min: MIN_TEMPO, max: 120 });
-    expect(sliderRange(200)).toEqual({ min: 50, max: MAX_TEMPO });
+  it("passe d'une dizaine de pour cent du tempo écrit à la suivante", () => {
+    expect(stepPercent(100, 100, 1)).toBe(110);
+    expect(stepPercent(100, 100, -1)).toBe(90);
+    expect(stepPercent(64, 100, 1)).toBe(70);
+    expect(stepPercent(64, 100, -1)).toBe(60);
+    // 70 % de 75 : 52,5, arrondi à 53 ; −10 % ne revient pas sur 53, il va à 60 % (45)
+    expect(stepPercent(53, 75, -1)).toBe(45);
+    expect(stepPercent(53, 75, 1)).toBe(60);
+  });
+
+  it("reste aux bornes", () => {
+    expect(stepPercent(MIN_TEMPO, 100, -1)).toBe(MIN_TEMPO);
+    expect(stepPercent(MAX_TEMPO, 100, 1)).toBe(MAX_TEMPO);
     expect(clampTempo(19.4)).toBe(MIN_TEMPO);
   });
 });

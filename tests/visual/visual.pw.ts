@@ -416,19 +416,28 @@ test("app métronome", async ({ page }) => {
   await expect(page).toHaveScreenshot("app-metronome.png");
 });
 
-// le tempo : + l'avance de 5, son panneau en donne la part du tempo écrit ; 70 % le choisit
+// le tempo : + l'avance de 5 ; dans son panneau, −10 % revient à la dizaine de pour cent d'en
+// dessous (100 %, puis 90 %) ; le ↺ du champ revient au tempo de la partition
 test("app tempo", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS });
-  const tempo = page.getByRole("button", { name: /^Tempo : / });
-  const before = Number((await tempo.getAttribute("aria-label"))!.match(/\d+/)![0]);
   await page.getByRole("button", { name: "Plus rapide", exact: true }).click();
-  await expect(page.getByRole("button", { name: `Tempo : ${before + 5} bpm` })).toBeVisible();
-  await page.getByRole("button", { name: `Tempo : ${before + 5} bpm` }).click();
-  await page.getByRole("button", { name: "70 %" }).click();
+  await page.getByRole("button", { name: "Tempo : 105 bpm" }).click();
+  await page.getByRole("button", { name: "−10 %" }).click();
+  await expect(page.getByRole("button", { name: "Tempo : 100 bpm" })).toBeVisible();
+  await page.getByRole("button", { name: "−10 %" }).click();
   await settle(page);
   await expect(page).toHaveScreenshot("app-tempo.png");
   await page.getByRole("button", { name: "Revenir au tempo de la partition" }).click();
-  await expect(page.getByRole("button", { name: `Tempo : ${before} bpm` })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Tempo : 100 bpm" })).toBeVisible();
+});
+
+// sur un téléphone : le tempo seul dans la barre, et son panneau, tout entier dans l'écran
+test("app tempo telephone", async ({ page }) => {
+  await openApp(page, { source: CLAIR_SECTIONS, editing: false, size: PHONE });
+  await page.getByRole("button", { name: "Tempo : 100 bpm" }).click();
+  await page.getByRole("button", { name: "+10 %" }).click();
+  await settle(page);
+  await expect(page).toHaveScreenshot("app-tempo-telephone.png");
 });
 
 test("app menu ouvert", async ({ page }) => {
