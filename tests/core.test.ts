@@ -1509,6 +1509,25 @@ describe("écoute", () => {
     expect(nextTick(ps, 4.5 * T, 3 * T)).toBeNull(); // la fin du morceau
   });
 
+  it("sait quel autre système on jouera ensuite, une reprise sur place passée", async () => {
+    const { nextElsewhere, nextTick } = await import("../src/app/playback/performance.ts");
+    const s = bars(3, { repeats: [{ barIndex: 1, end: true }] }); // joué 1 2 1 2 3
+    const ps = passages(s);
+    // un système des mesures 1 et 2 : la reprise y reste, on en sort à la mesure 3
+    expect(nextElsewhere(ps, 0.5 * T, 0, 2 * T)).toBe(2 * T);
+    expect(nextElsewhere(ps, 2.5 * T, 0, 2 * T)).toBe(2 * T);
+    // un système de la mesure 2 : la reprise ramène à la 1, ailleurs ; la seconde fois, la 3
+    expect(nextElsewhere(ps, 1.5 * T, T, 2 * T)).toBe(0);
+    expect(nextElsewhere(ps, 3.5 * T, T, 2 * T)).toBe(2 * T);
+    // le dernier système : on n'en sort plus
+    expect(nextElsewhere(ps, 4.5 * T, 2 * T, 3 * T)).toBeNull();
+    // une reprise qui s'ouvre dans le premier système (joué 1 2 3 2 3) : le passage suivant y commence
+    // encore, on en sort à la mesure 3 ; nextTick, lui, s'arrêtait au début de la reprise
+    const opened = passages(bars(3, { repeats: [{ barIndex: 1, start: true }, { barIndex: 2, end: true }] }));
+    expect(nextTick(opened, 0.5 * T, 2 * T)).toBe(T);
+    expect(nextElsewhere(opened, 0.5 * T, 0, 2 * T)).toBe(2 * T);
+  });
+
   it("revient au passage le plus récent quand on clique en arrière, et va à une section par sa lettre", async () => {
     const { playedTick, entryAt, entryStart } = await import("../src/app/playback/performance.ts");
     // A B B B C, une mesure chacune : joué 1 2 2 2 3

@@ -348,6 +348,23 @@ export function nextTick(ps: Passage[], played: number, until: number): number |
   return p ? scoreTick(ps, p.at + Math.min(until, p.to) - p.from) : null;
 }
 
+/**
+ * L'instant du morceau joué ensuite hors de [from, to) (un système), depuis un instant joué qui y
+ * tombe : la suite, le retour d'une reprise vers un autre système, la section suivante ; une reprise
+ * ou une section rejouée sans quitter le système est passée. null si l'on n'en sort plus.
+ */
+export function nextElsewhere(ps: Passage[], played: number, from: number, to: number): number | null {
+  const i = ps.findIndex((p) => played >= p.at && played < p.at + p.to - p.from);
+  if (i < 0) return null;
+  for (const [k, p] of ps.slice(i).entries()) {
+    // le passage en cours, depuis l'instant joué ; les suivants, depuis leur début
+    const start = k === 0 ? p.from + played - p.at : p.from;
+    if (start < from || start >= to) return start;
+    if (p.to > to) return to;
+  }
+  return null;
+}
+
 /** Le rang, dans l'ordre de jeu, de la section jouée à cet instant. */
 export const entryAt = (ps: Passage[], played: number) => passageAt(ps, played)?.entry ?? null;
 

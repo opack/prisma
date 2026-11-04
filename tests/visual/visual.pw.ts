@@ -296,6 +296,43 @@ test("app suivi de la lecture", async ({ page }) => {
   await expect.poll(() => pane.evaluate((e) => e.scrollTop)).toBeLessThan(300);
 });
 
+// la lecture focalisée, revenue au début de plus loin : la place du bas montre la suite, pas une
+// seconde fois le premier système, même quand une reprise s'ouvre dans celui-ci (« ||: » à sa
+// dernière mesure) ou qu'il se rejoue aussitôt (« A A B… »)
+const REPEAT_OPENS = (() => {
+  // n mesures à quatre temps ; « ||: » devant la dernière si open
+  const line = (m: number, n: number, open = false) => {
+    const sep = (k: number) => (open && k === n - 1 ? "||:" : k ? "||" : "|");
+    const row = (cells: string) => Array.from({ length: n }, (_, k) => sep(k) + cells).join("") + "||";
+    return `${`m${m}`.padEnd(3)}${row("1  |2  |3  |4  ")}\n0  ${row("1  |3  |5  |6  ")}`;
+  };
+  return `---\nformat: 1\n---\n\n${[line(1, 4, true), ...[5, 9, 13, 17].map((m) => line(m, 4))].join("\n\n")}\n\nm21|1  |2  |3  |4  :||\n0  |8  |-  |-  |-  :||\n`;
+})();
+for (const [name, source] of [
+  ["reprise ouverte", REPEAT_OPENS],
+  ["section rejouée", (() => {
+    const [head, a, b] = CLAIR_SECTIONS.replace(/^order:.*$/m, "order: A A B C D E").split("\n\n");
+    return [head, a, ...["B", "C", "D", "E"].map((l) => b.replace("[B]", `[${l}]`))].join("\n\n");
+  })()],
+] as const)
+  test(`app lecture focalisée retour au début, ${name}`, async ({ page }) => {
+    await openApp(page, { source, editing: false, view: { fit: "focus", zoom: 1, progress: true } });
+    const places = () => page.locator("div.animate-focus-in > svg").evaluateAll((svgs) => svgs.map((s) => s.textContent));
+    const [first, second] = await places();
+    expect(first).not.toBe(second);
+    const slider = page.getByRole("slider", { name: "Position dans le morceau" });
+    await slider.focus();
+    await page.keyboard.press("End");
+    await expect.poll(async () => (await places()).includes(first)).toBe(false);
+    await page.keyboard.press("Home");
+    await expect.poll(places).toEqual([first, second]);
+    // de même avec le bouton
+    await page.keyboard.press("End");
+    await expect.poll(async () => (await places()).includes(first)).toBe(false);
+    await page.getByRole("button", { name: "Revenir au début" }).click();
+    await expect.poll(places).toEqual([first, second]);
+  });
+
 // les notes du morceau (notes:), jamais imprimées : sous un bouton, à côté de son nom
 test("app notes du morceau", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS.replace("bpm: 100", "bpm: 100\nnotes: À jouer lentement, la main droite seule d'abord"), editing: false });
