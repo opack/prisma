@@ -209,12 +209,27 @@ test.describe("au doigt", () => {
     await settle(page);
     await expect(page).toHaveScreenshot("app-telephone-retouche.png");
   });
-  // des boutons assez grands pour le doigt, l'écoute sur sa propre ligne (même tablette couchée)
+  // des boutons assez grands pour le doigt, la barre sur une ligne : le logo seul, un seul menu,
+  // puis les réglages de l'écoute sous le bouton ⋯
   for (const [name, size] of [["telephone", PHONE], ["tablette", TABLET], ["tablette couchee", { width: TABLET.height, height: TABLET.width }]] as const)
     test(`app ${name} au doigt`, async ({ page }) => {
       await openApp(page, { source: CLAIR_SECTIONS, editing: false, size });
       await expect(page).toHaveScreenshot(`app-${name.replace(" ", "-")}-au-doigt.png`);
     });
+  // sur un téléphone, sous le bouton ⋯ : le tempo, le suivi, le métronome, la musique et les options ;
+  // dans le menu, le nom du morceau en tête
+  test("app telephone au doigt plus", async ({ page }) => {
+    await openApp(page, { source: CLAIR_SECTIONS, editing: false, size: PHONE });
+    await page.getByRole("button", { name: "Plus", exact: true }).click();
+    await settle(page);
+    await expect(page).toHaveScreenshot("app-telephone-au-doigt-plus.png");
+  });
+  test("app telephone au doigt menu", async ({ page }) => {
+    await openApp(page, { source: CLAIR_SECTIONS, editing: false, size: PHONE });
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
+    await settle(page);
+    await expect(page).toHaveScreenshot("app-telephone-au-doigt-menu.png");
+  });
 });
 
 // une case vide : la note choisie, le choix reste ouvert sur elle, avec son doigté, sa trille, sa durée

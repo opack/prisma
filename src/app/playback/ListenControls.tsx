@@ -68,9 +68,14 @@ type Props = {
   /** Le tempo choisi pour ce morceau, ou null : celui de la partition. */
   tempo: number | null;
   onTempo: (bpm: number | null) => void;
+  /**
+   * Sa place : dans la barre (bar), tout, ses réglages (le tempo, le suivi, le métronome, la musique)
+   * en moins quand la place manque (crowded:) ; sous le bouton ⋯ (more), ses réglages seuls.
+   */
+  place: "bar" | "more";
 };
 
-export function ListenControls({ score, disabled, metronome, onMetronome, clickGrid, onClickGrid, muted, onMuted, instruments, onInstrument, volumes, onVolume, tempo, onTempo }: Props) {
+export function ListenControls({ score, disabled, metronome, onMetronome, clickGrid, onClickGrid, muted, onMuted, instruments, onInstrument, volumes, onVolume, tempo, onTempo, place }: Props) {
   const { state, error, entry: playing, entries } = useSyncExternalStore(player.subscribe, player.getSnapshot);
   const following = useSyncExternalStore(follow.subscribe, follow.enabled);
   const entry = playing ?? 0;
@@ -94,15 +99,19 @@ export function ListenControls({ score, disabled, metronome, onMetronome, clickG
     move();
   };
 
+  const bar = place === "bar";
+  // un réglage, dans la barre : il passe sous le bouton ⋯ quand la place manque
+  const setting = bar ? "crowded:hidden" : "";
   return (
     <>
-      {error && (
+      {bar && error && (
         <span className="ml-3 text-accent whitespace-nowrap" role="status">
           {error}
         </span>
       )}
-      <span className="flex-1" />
-      <TempoControl bpm={bpm} written={written} chosen={chosen !== null} onTempo={(n) => setChosen(n === written ? null : n)} />
+      {bar && <span className="flex-1" />}
+      <TempoControl className={setting} bpm={bpm} written={written} chosen={chosen !== null} onTempo={(n) => setChosen(n === written ? null : n)} />
+      {bar && (
       <ButtonGroup label="Lecture">
         <Button size="icon" onClick={go(() => player.rewind())} disabled={disabled} title="Revenir au début du morceau" aria-label="Revenir au début">
           <Icon d="M2 3h2v10H2zM9 3v10L4 8zM14 3v10L9 8z" />
@@ -120,8 +129,10 @@ export function ListenControls({ score, disabled, metronome, onMetronome, clickG
           <Icon d="M3.5 3.5h9v9h-9z" />
         </Button>
       </ButtonGroup>
+      )}
       <Button
         size="icon"
+        className={setting}
         pressed={following}
         onClick={() => follow.set(!following)}
         title={following ? "Suivre la lecture : la partition suit le curseur, et y revient une seconde après qu'on l'a fait défiler à la main" : "Suivre la lecture : arrêté"}
@@ -129,7 +140,7 @@ export function ListenControls({ score, disabled, metronome, onMetronome, clickG
       >
         <Icon d="M8 2.5a5.5 5.5 0 1 0 0 11a5.5 5.5 0 1 0 0-11zM8 4a4 4 0 1 1 0 8a4 4 0 1 1 0-8zM8 6.3a1.7 1.7 0 1 1 0 3.4a1.7 1.7 0 1 1 0-3.4zM7.25 .5h1.5v2h-1.5zM7.25 13.5h1.5v2h-1.5zM.5 7.25h2v1.5h-2zM13.5 7.25h2v1.5h-2z" />
       </Button>
-      <span className="flex">
+      <span className={`${setting} flex`}>
         <MetronomeMenu metronome={metronome} onMetronome={onMetronome} clickGrid={clickGrid} onClickGrid={onClickGrid} />
         <PartsMenu score={score} muted={muted} onMuted={onMuted} instruments={instruments} onInstrument={onInstrument} volumes={volumes} onVolume={onVolume} />
       </span>
@@ -311,12 +322,12 @@ function useStep(step: (delta: number) => void, small: number, big: number) {
 
 /**
  * Le tempo de l'écoute, à portée du doigt : − et + de 1 (un appui long : de 5 en 5), et entre eux
- * le champ, pour un tempo précis, avec son ↺ qui revient au tempo de la partition. Sur un
- * téléphone, la place manque : le champ seul.
+ * le champ, pour un tempo précis, avec son ↺ qui revient au tempo de la partition. Quand la place
+ * manque dans la barre, il passe sous le bouton ⋯, entier. Sa place (className) dépend de ce qui l'entoure.
  */
-type TempoProps = { bpm: number; written: number; chosen: boolean; onTempo: (bpm: number) => void };
+type TempoProps = { bpm: number; written: number; chosen: boolean; onTempo: (bpm: number) => void; className?: string };
 
-function TempoControl({ bpm, written, chosen, onTempo }: TempoProps) {
+function TempoControl({ bpm, written, chosen, onTempo, className = "" }: TempoProps) {
   const [draft, setDraft] = useState<string | null>(null); // saisie en cours, pas encore un tempo valable
   const slower = useStep((d) => onTempo(stepTempo(bpm, -d)), 1, TEMPO_STEP);
   const faster = useStep((d) => onTempo(stepTempo(bpm, d)), 1, TEMPO_STEP);
@@ -327,11 +338,11 @@ function TempoControl({ bpm, written, chosen, onTempo }: TempoProps) {
   };
   const hold = `appui long : de ${TEMPO_STEP} en ${TEMPO_STEP}`;
   return (
-    <ButtonGroup label="Tempo">
-      <Button size="icon" className="phone:hidden" {...slower} disabled={bpm <= MIN_BPM} title={`Plus lent, de 1 bpm (${hold})`} aria-label="Plus lent">
+    <ButtonGroup label="Tempo" className={className}>
+      <Button size="icon" {...slower} disabled={bpm <= MIN_BPM} title={`Plus lent, de 1 bpm (${hold})`} aria-label="Plus lent">
         <Icon d="M3 7.25h10v1.5H3z" />
       </Button>
-      <span className="flex items-center h-[2.1em] touch:h-11 pr-1.5 bg-white border border-line focus-within:relative focus-within:z-1 focus-within:border-muted phone:rounded" title={`Tempo de l'écoute, en temps par minute (${MIN_BPM} à ${MAX_BPM})`}>
+      <span className="flex items-center h-[2.1em] touch:h-11 pr-1.5 bg-white border border-line focus-within:relative focus-within:z-1 focus-within:border-muted" title={`Tempo de l'écoute, en temps par minute (${MIN_BPM} à ${MAX_BPM})`}>
         <input
           type="number"
           min={MIN_BPM}
@@ -349,7 +360,7 @@ function TempoControl({ bpm, written, chosen, onTempo }: TempoProps) {
         )}
         <span className="ml-0.5 text-muted text-[0.9em] compact:hidden">bpm</span>
       </span>
-      <Button size="icon" className="phone:hidden" {...faster} disabled={bpm >= MAX_BPM} title={`Plus rapide, de 1 bpm (${hold})`} aria-label="Plus rapide">
+      <Button size="icon" {...faster} disabled={bpm >= MAX_BPM} title={`Plus rapide, de 1 bpm (${hold})`} aria-label="Plus rapide">
         <Icon d="M7.25 3h1.5v4.25H13v1.5H8.75V13h-1.5V8.75H3v-1.5h4.25z" />
       </Button>
     </ButtonGroup>
