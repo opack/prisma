@@ -331,7 +331,7 @@ function TempoControl({ bpm, written, chosen, onTempo }: TempoProps) {
       <Button size="icon" className="phone:hidden" {...slower} disabled={bpm <= MIN_BPM} title={`Plus lent, de 1 bpm (${hold})`} aria-label="Plus lent">
         <Icon d="M3 7.25h10v1.5H3z" />
       </Button>
-      <span className="flex items-center pr-1.5 bg-white border border-line focus-within:relative focus-within:z-1 focus-within:border-muted phone:rounded" title={`Tempo de l'écoute, en temps par minute (${MIN_BPM} à ${MAX_BPM})`}>
+      <span className="flex items-center h-[2.1em] touch:h-11 pr-1.5 bg-white border border-line focus-within:relative focus-within:z-1 focus-within:border-muted phone:rounded" title={`Tempo de l'écoute, en temps par minute (${MIN_BPM} à ${MAX_BPM})`}>
         <input
           type="number"
           min={MIN_BPM}
@@ -339,7 +339,7 @@ function TempoControl({ bpm, written, chosen, onTempo }: TempoProps) {
           value={draft ?? bpm}
           onChange={(e) => edit(e.target.value)}
           onBlur={() => setDraft(null)}
-          className="w-[2.6em] px-1 py-0.5 text-center text-[1.2em] font-semibold tabular-nums bg-transparent border-0 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          className="w-[2.6em] px-1 py-0 leading-none text-center text-[1.2em] font-semibold tabular-nums bg-transparent border-0 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           aria-label="Tempo de l'écoute"
         />
         {chosen && (
