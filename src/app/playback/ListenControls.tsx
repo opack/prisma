@@ -274,22 +274,25 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, 
 }
 
 /**
- * Un appui qui se répète tant qu'on le tient (le tempo, d'un pas à l'autre) : une fois tout de
- * suite, puis après une pause, à pas réguliers (trois par seconde), qu'on suit des yeux. Au clavier (Entrée, Espace), une fois par
- * appui. Le menu d'un appui long, sur tablette, ne s'ouvre pas.
+ * Un bouton de pas (le tempo) : un clic avance d'un petit pas, un double-clic d'un grand (le
+ * second clic complète le premier), un appui long avance de grands pas réguliers (une première
+ * fois après 500 ms, puis toutes les 330 ms), sans le clic qui le termine. Le menu d'un appui
+ * long, sur tablette, ne s'ouvre pas.
  */
-function useRepeat(action: () => void) {
-  const latest = useRef(action);
-  latest.current = action;
+function useStep(step: (delta: number) => void, small: number, big: number) {
+  const latest = useRef(step);
+  latest.current = step;
   const timer = useRef<number | undefined>(undefined);
+  const held = useRef(false);
   const stop = () => window.clearTimeout(timer.current);
   useEffect(() => stop, []);
   const start = (e: PointerEvent) => {
     if (e.button !== 0) return;
     stop();
-    latest.current();
+    held.current = false;
     const tick = () => {
-      latest.current();
+      held.current = true;
+      latest.current(big);
       timer.current = window.setTimeout(tick, 330);
     };
     timer.current = window.setTimeout(tick, 500);
@@ -301,13 +304,14 @@ function useRepeat(action: () => void) {
     onPointerDown: start,
     onContextMenu: (e: MouseEvent) => e.preventDefault(),
     onClick: (e: MouseEvent) => {
-      if (e.detail === 0) latest.current();
+      if (held.current) return void (held.current = false);
+      latest.current(e.detail === 2 ? big - small : small);
     },
   };
 }
 
 /**
- * Le tempo de l'écoute, à portée du doigt : − et + d'un pas de 5 (un appui long répète), et entre
+ * Le tempo de l'écoute, à portée du doigt : − et + de 1 (double-clic : 5 ; appui long : de 5 en 5), et entre
  * eux le tempo, qui ouvre son panneau : −10 %, 100 % et +10 % du tempo écrit, et la saisie, avec
  * le retour au tempo de la partition. Allumé quand il n'est pas celui de la partition. Sur un téléphone, la place manque : le tempo seul, et son panneau.
  */
@@ -315,8 +319,8 @@ type TempoProps = { bpm: number; written: number; chosen: boolean; onTempo: (bpm
 
 function TempoControl({ bpm, written, chosen, onTempo }: TempoProps) {
   const [draft, setDraft] = useState<string | null>(null); // saisie en cours, pas encore un tempo valable
-  const slower = useRepeat(() => onTempo(stepTempo(bpm, -TEMPO_STEP)));
-  const faster = useRepeat(() => onTempo(stepTempo(bpm, TEMPO_STEP)));
+  const slower = useStep((d) => onTempo(stepTempo(bpm, -d)), 1, TEMPO_STEP);
+  const faster = useStep((d) => onTempo(stepTempo(bpm, d)), 1, TEMPO_STEP);
   const percent = percentOf(bpm, written);
   const edit = (text: string) => {
     setDraft(text);
@@ -326,7 +330,7 @@ function TempoControl({ bpm, written, chosen, onTempo }: TempoProps) {
   const about = chosen ? `${bpm} bpm, ${percent} % du tempo de la partition (${written})` : `${bpm} bpm, le tempo de la partition`;
   return (
     <ButtonGroup label="Tempo">
-      <Button size="icon" className="phone:hidden" {...slower} disabled={bpm <= MIN_BPM} title={`Plus lent, de ${TEMPO_STEP} bpm (appui long : de suite)`} aria-label="Plus lent">
+      <Button size="icon" className="phone:hidden" {...slower} disabled={bpm <= MIN_BPM} title={`Plus lent, de 1 bpm (double-clic : ${TEMPO_STEP} ; appui long : de ${TEMPO_STEP} en ${TEMPO_STEP})`} aria-label="Plus lent">
         <Icon d="M3 7.25h10v1.5H3z" />
       </Button>
       <DialogTrigger>
@@ -370,11 +374,11 @@ function TempoControl({ bpm, written, chosen, onTempo }: TempoProps) {
             <span className="ml-0.5 text-muted text-[0.9em]">bpm</span>
           </span>
           <PopoverHint>
-            <span className="phone:hidden">Dans la barre, − et + changent le tempo de {TEMPO_STEP} ; un appui long continue. </span>Le tempo choisi vaut pour ce morceau.
+            <span className="phone:hidden">Dans la barre, − et + changent le tempo de 1, de {TEMPO_STEP} d'un double-clic ; un appui long continue de {TEMPO_STEP} en {TEMPO_STEP}. </span>Le tempo choisi vaut pour ce morceau.
           </PopoverHint>
         </Popover>
       </DialogTrigger>
-      <Button size="icon" className="phone:hidden" {...faster} disabled={bpm >= MAX_BPM} title={`Plus rapide, de ${TEMPO_STEP} bpm (appui long : de suite)`} aria-label="Plus rapide">
+      <Button size="icon" className="phone:hidden" {...faster} disabled={bpm >= MAX_BPM} title={`Plus rapide, de 1 bpm (double-clic : ${TEMPO_STEP} ; appui long : de ${TEMPO_STEP} en ${TEMPO_STEP})`} aria-label="Plus rapide">
         <Icon d="M7.25 3h1.5v4.25H13v1.5H8.75V13h-1.5V8.75H3v-1.5h4.25z" />
       </Button>
     </ButtonGroup>

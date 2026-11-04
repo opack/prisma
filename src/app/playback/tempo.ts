@@ -1,10 +1,10 @@
 /**
- * Le tempo de l'écoute : ses pas (±5 dans la barre, ±10 % du tempo écrit dans le panneau),
+ * Le tempo de l'écoute : ses pas (±1 et ±5 dans la barre, ±10 % du tempo écrit dans le panneau),
  * toujours bornés, et sa part du tempo écrit, l'unité du travail (« à 70 % »).
  */
 import { MAX_TEMPO, MIN_TEMPO } from "../options/piece.ts";
 
-/** Le pas des boutons − et + de la barre. */
+/** Le grand pas des boutons − et + de la barre (double-clic, appui long) ; un clic avance de 1. */
 export const TEMPO_STEP = 5;
 
 /** Le pas du panneau, en part du tempo écrit (pour cent). */

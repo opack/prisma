@@ -416,12 +416,14 @@ test("app métronome", async ({ page }) => {
   await expect(page).toHaveScreenshot("app-metronome.png");
 });
 
-// le tempo : + l'avance de 5 ; dans son panneau, −10 % revient à la dizaine de pour cent d'en
+// le tempo : + l'avance de 1, de 5 d'un double-clic ; dans son panneau, −10 % revient à la dizaine de pour cent d'en
 // dessous (100 %, puis 90 %) ; le ↺ du champ revient au tempo de la partition
 test("app tempo", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS });
   await page.getByRole("button", { name: "Plus rapide", exact: true }).click();
-  await page.getByRole("button", { name: "Tempo : 105 bpm" }).click();
+  await expect(page.getByRole("button", { name: "Tempo : 101 bpm" })).toBeVisible();
+  await page.getByRole("button", { name: "Plus rapide", exact: true }).dblclick();
+  await page.getByRole("button", { name: "Tempo : 106 bpm" }).click();
   await page.getByRole("button", { name: "−10 %" }).click();
   await expect(page.getByRole("button", { name: "Tempo : 100 bpm" })).toBeVisible();
   await page.getByRole("button", { name: "−10 %" }).click();
