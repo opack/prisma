@@ -284,7 +284,7 @@ test("app partition reçue, avec une bibliothèque", async ({ page }) => {
   });
   expect(saved.piece).toContain("title: Au clair de la lune");
   expect(saved.settings.tempo).toBe(72);
-  await expect(page.getByRole("button", { name: "Tempo : 72 bpm" })).toBeVisible();
+  await expect(page.getByRole("spinbutton", { name: "Tempo de l'écoute" })).toHaveValue("72");
   await expect(page.locator("[data-library]")).toHaveCount(0);
 });
 
@@ -416,30 +416,23 @@ test("app métronome", async ({ page }) => {
   await expect(page).toHaveScreenshot("app-metronome.png");
 });
 
-// le tempo : + l'avance de 1, de 5 d'un double-clic ; dans son panneau, −10 % revient à la dizaine de pour cent d'en
-// dessous (100 %, puis 90 %) ; le ↺ du champ revient au tempo de la partition
+// le tempo : + l'avance de 1, un appui long de 5 en 5 ; le ↺ du champ revient au tempo de la partition
 test("app tempo", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS });
-  await page.getByRole("button", { name: "Plus rapide", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Tempo : 101 bpm" })).toBeVisible();
-  await page.getByRole("button", { name: "Plus rapide", exact: true }).dblclick();
-  await page.getByRole("button", { name: "Tempo : 106 bpm" }).click();
-  await page.getByRole("button", { name: "−10 %" }).click();
-  await expect(page.getByRole("button", { name: "Tempo : 100 bpm" })).toBeVisible();
-  await page.getByRole("button", { name: "−10 %" }).click();
+  const field = page.getByRole("spinbutton", { name: "Tempo de l'écoute" });
+  const plus = page.getByRole("button", { name: "Plus rapide", exact: true });
+  await plus.click();
+  await expect(field).toHaveValue("101");
+  await plus.hover();
+  await page.mouse.down();
+  await page.waitForTimeout(700);
+  await page.mouse.up();
+  await expect(field).toHaveValue("106");
+  await page.mouse.move(0, 400);
   await settle(page);
-  await expect(page).toHaveScreenshot("app-tempo.png");
+  await expect(page.locator("header")).toHaveScreenshot("app-tempo.png");
   await page.getByRole("button", { name: "Revenir au tempo de la partition" }).click();
-  await expect(page.getByRole("button", { name: "Tempo : 100 bpm" })).toBeVisible();
-});
-
-// sur un téléphone : le tempo seul dans la barre, et son panneau, tout entier dans l'écran
-test("app tempo telephone", async ({ page }) => {
-  await openApp(page, { source: CLAIR_SECTIONS, editing: false, size: PHONE });
-  await page.getByRole("button", { name: "Tempo : 100 bpm" }).click();
-  await page.getByRole("button", { name: "+10 %" }).click();
-  await settle(page);
-  await expect(page).toHaveScreenshot("app-tempo-telephone.png");
+  await expect(field).toHaveValue("100");
 });
 
 test("app menu ouvert", async ({ page }) => {

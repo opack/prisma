@@ -4,7 +4,7 @@ import type { Score } from "../../core/index.ts";
 import { DEFAULT_BPM, player } from "./player.ts";
 import { follow } from "../score/follow.ts";
 import { MAX_TEMPO, MIN_TEMPO } from "../options/piece.ts";
-import { PERCENT_STEP, TEMPO_STEP, percentOf, stepPercent, stepTempo } from "./tempo.ts";
+import { TEMPO_STEP, stepTempo } from "./tempo.ts";
 import { INSTRUMENTS, PIANO, instrumentLabel, scoreInstrument } from "./instruments.ts";
 import { MAX_VOLUME, MIN_VOLUME } from "../options/piece.ts";
 import { staffNames } from "./staves.ts";
@@ -274,10 +274,9 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, 
 }
 
 /**
- * Un bouton de pas (le tempo) : un clic avance d'un petit pas, un double-clic d'un grand (le
- * second clic complète le premier), un appui long avance de grands pas réguliers (une première
- * fois après 500 ms, puis toutes les 330 ms), sans le clic qui le termine. Le menu d'un appui
- * long, sur tablette, ne s'ouvre pas.
+ * Un bouton de pas (le tempo) : un clic avance d'un petit pas ; un appui long, de grands pas
+ * réguliers (une première fois après 500 ms, puis toutes les 330 ms), sans le clic qui le termine.
+ * Le menu d'un appui long, sur tablette, ne s'ouvre pas.
  */
 function useStep(step: (delta: number) => void, small: number, big: number) {
   const latest = useRef(step);
@@ -303,17 +302,17 @@ function useStep(step: (delta: number) => void, small: number, big: number) {
   return {
     onPointerDown: start,
     onContextMenu: (e: MouseEvent) => e.preventDefault(),
-    onClick: (e: MouseEvent) => {
-      if (held.current) return void (held.current = false);
-      latest.current(e.detail === 2 ? big - small : small);
+    onClick: () => {
+      if (held.current) held.current = false;
+      else latest.current(small);
     },
   };
 }
 
 /**
- * Le tempo de l'écoute, à portée du doigt : − et + de 1 (double-clic : 5 ; appui long : de 5 en 5), et entre
- * eux le tempo, qui ouvre son panneau : −10 %, 100 % et +10 % du tempo écrit, et la saisie, avec
- * le retour au tempo de la partition. Allumé quand il n'est pas celui de la partition. Sur un téléphone, la place manque : le tempo seul, et son panneau.
+ * Le tempo de l'écoute, à portée du doigt : − et + de 1 (un appui long : de 5 en 5), et entre eux
+ * le champ, pour un tempo précis, avec son ↺ qui revient au tempo de la partition. Sur un
+ * téléphone, la place manque : le champ seul.
  */
 type TempoProps = { bpm: number; written: number; chosen: boolean; onTempo: (bpm: number) => void };
 
@@ -321,64 +320,36 @@ function TempoControl({ bpm, written, chosen, onTempo }: TempoProps) {
   const [draft, setDraft] = useState<string | null>(null); // saisie en cours, pas encore un tempo valable
   const slower = useStep((d) => onTempo(stepTempo(bpm, -d)), 1, TEMPO_STEP);
   const faster = useStep((d) => onTempo(stepTempo(bpm, d)), 1, TEMPO_STEP);
-  const percent = percentOf(bpm, written);
   const edit = (text: string) => {
     setDraft(text);
     const n = Number(text);
     if (Number.isInteger(n) && n >= MIN_BPM && n <= MAX_BPM) onTempo(n);
   };
-  const about = chosen ? `${bpm} bpm, ${percent} % du tempo de la partition (${written})` : `${bpm} bpm, le tempo de la partition`;
+  const hold = `appui long : de ${TEMPO_STEP} en ${TEMPO_STEP}`;
   return (
     <ButtonGroup label="Tempo">
-      <Button size="icon" className="phone:hidden" {...slower} disabled={bpm <= MIN_BPM} title={`Plus lent, de 1 bpm (double-clic : ${TEMPO_STEP} ; appui long : de ${TEMPO_STEP} en ${TEMPO_STEP})`} aria-label="Plus lent">
+      <Button size="icon" className="phone:hidden" {...slower} disabled={bpm <= MIN_BPM} title={`Plus lent, de 1 bpm (${hold})`} aria-label="Plus lent">
         <Icon d="M3 7.25h10v1.5H3z" />
       </Button>
-      <DialogTrigger>
-        <Pressable>
-          <Button className="phone:rounded" pressed={chosen} title={`Tempo de l'écoute : ${about}`} aria-label={`Tempo : ${bpm} bpm`}>
-            <span className="min-w-[1.8em] text-right tabular-nums">{bpm}</span>
-            <span className="text-[0.9em] compact:hidden">bpm</span>
-          </Button>
-        </Pressable>
-        <Popover label="Tempo" title="Tempo" className="w-[280px]">
-          <p className="m-0 text-muted">
-            <span className="text-ink text-[1.3em] font-semibold tabular-nums">{bpm}</span> bpm, {chosen ? `${percent} % de la partition (${written})` : "celui de la partition"}
-          </p>
-          <ButtonGroup label="Part du tempo de la partition" className="mt-1">
-            <Button className="flex-1 whitespace-nowrap" onClick={() => onTempo(stepPercent(bpm, written, -1))} disabled={bpm <= MIN_BPM} title={`${stepPercent(bpm, written, -1)} bpm`}>
-              −{PERCENT_STEP} %
-            </Button>
-            <Button className="flex-1 whitespace-nowrap" pressed={!chosen} onClick={() => (onTempo(written), setDraft(null))} title={`Le tempo de la partition : ${written} bpm`}>
-              100 %
-            </Button>
-            <Button className="flex-1 whitespace-nowrap" onClick={() => onTempo(stepPercent(bpm, written, 1))} disabled={bpm >= MAX_BPM} title={`${stepPercent(bpm, written, 1)} bpm`}>
-              +{PERCENT_STEP} %
-            </Button>
-          </ButtonGroup>
-          <span className="flex items-center justify-self-start mt-1 pr-1.5 bg-white border border-line rounded focus-within:border-muted" title={`Le tempo, en temps par minute (${MIN_BPM} à ${MAX_BPM})`}>
-            <input
-              type="number"
-              min={MIN_BPM}
-              max={MAX_BPM}
-              value={draft ?? bpm}
-              onChange={(e) => edit(e.target.value)}
-              onBlur={() => setDraft(null)}
-              className="w-[3.4em] pl-1.5 pr-0.5 py-1 text-right bg-transparent border-0 outline-none"
-              aria-label="Tempo de l'écoute"
-            />
-            {chosen && (
-              <button className="m-0 px-1 py-0 text-[1em] leading-none text-muted bg-none border-0 cursor-pointer hover:text-ink" onClick={() => (onTempo(written), setDraft(null))} title={`Revenir au tempo de la partition (${written} bpm)`} aria-label="Revenir au tempo de la partition">
-                ↺
-              </button>
-            )}
-            <span className="ml-0.5 text-muted text-[0.9em]">bpm</span>
-          </span>
-          <PopoverHint>
-            <span className="phone:hidden">Dans la barre, − et + changent le tempo de 1, de {TEMPO_STEP} d'un double-clic ; un appui long continue de {TEMPO_STEP} en {TEMPO_STEP}. </span>Le tempo choisi vaut pour ce morceau.
-          </PopoverHint>
-        </Popover>
-      </DialogTrigger>
-      <Button size="icon" className="phone:hidden" {...faster} disabled={bpm >= MAX_BPM} title={`Plus rapide, de 1 bpm (double-clic : ${TEMPO_STEP} ; appui long : de ${TEMPO_STEP} en ${TEMPO_STEP})`} aria-label="Plus rapide">
+      <span className="flex items-center pr-1.5 bg-white border border-line focus-within:relative focus-within:z-1 focus-within:border-muted phone:rounded" title={`Tempo de l'écoute, en temps par minute (${MIN_BPM} à ${MAX_BPM})`}>
+        <input
+          type="number"
+          min={MIN_BPM}
+          max={MAX_BPM}
+          value={draft ?? bpm}
+          onChange={(e) => edit(e.target.value)}
+          onBlur={() => setDraft(null)}
+          className="w-[3.4em] pl-1.5 pr-0.5 py-1 text-right bg-transparent border-0 outline-none"
+          aria-label="Tempo de l'écoute"
+        />
+        {chosen && (
+          <button className="m-0 px-1 py-0 text-[1em] leading-none text-muted bg-none border-0 cursor-pointer hover:text-ink" onClick={() => (onTempo(written), setDraft(null))} title={`Revenir au tempo de la partition (${written} bpm)`} aria-label="Revenir au tempo de la partition">
+            ↺
+          </button>
+        )}
+        <span className="ml-0.5 text-muted text-[0.9em] compact:hidden">bpm</span>
+      </span>
+      <Button size="icon" className="phone:hidden" {...faster} disabled={bpm >= MAX_BPM} title={`Plus rapide, de 1 bpm (${hold})`} aria-label="Plus rapide">
         <Icon d="M7.25 3h1.5v4.25H13v1.5H8.75V13h-1.5V8.75H3v-1.5h4.25z" />
       </Button>
     </ButtonGroup>
