@@ -10,14 +10,14 @@ parts: Guitare
 
 m1 |1      |2      |3      |4      ||
 ───┼─ Guitare ─────┼───────┼───────┼┼
-1  |${cells.map((c) => c.padEnd(7)).join("|")}||
+1  |${cells.map((cell) => cell.padEnd(7)).join("|")}||
 ${marks.join("\n")}
 `;
 
 describe("techniques des cordes", () => {
   it("lisent dans la case la note étouffée, l'harmonique, le glissé et le bend", () => {
-    const s = parsePrisma(piece(["x", "<12>", "5/", "7b9r_3"]));
-    expect(s.notes.map(({ staff: _, string: __, start: ___, end: ____, ...n }) => n)).toEqual([
+    const score = parsePrisma(piece(["x", "<12>", "5/", "7b9r_3"]));
+    expect(score.notes.map(({ staff: _, string: __, start: ___, end: ____, ...n }) => n)).toEqual([
       { midi: 64, dead: true },
       { midi: 76, harmonic: true },
       { midi: 69, slide: "up" },
@@ -27,8 +27,8 @@ describe("techniques des cordes", () => {
 
   it("lisent sur la ligne @ le médiator, l'étouffé de la paume et le vibrato", () => {
     const s = parsePrisma(piece(["0", "1", "3", "5"], ["@   d       u       P.M.---", "@                           ~~~~~~~"]));
-    expect(s.articulations.map((a) => [a.t / T, a.kind])).toEqual([[0, "down"], [1, "up"]]);
-    expect(s.effects.map((e) => [e.kind, e.start / T, e.end / T])).toEqual([["palmMute", 2, 3], ["vibrato", 3, 4]]);
+    expect(s.articulations.map((articulation) => [articulation.t / T, articulation.kind])).toEqual([[0, "down"], [1, "up"]]);
+    expect(s.effects.map((effect) => [effect.kind, effect.start / T, effect.end / T])).toEqual([["palmMute", 2, 3], ["vibrato", 3, 4]]);
   });
 
   it("se réécrivent telles quelles", () => {
@@ -42,8 +42,8 @@ describe("techniques des cordes", () => {
       try {
         parsePrisma(text);
         return "";
-      } catch (e) {
-        return (e as Error).message;
+      } catch (error) {
+        return (error as Error).message;
       }
     };
     expect(err(piece(["<6>", "", "", ""]))).toContain("harmonique");
@@ -63,7 +63,7 @@ describe("techniques des cordes", () => {
     // l'harmonique à la case 7 : la quinte au-dessus de l'octave
     expect(played[1].midi).toBe(64 + 19);
     // le bend : la case 7, la 9, puis la 7 à nouveau, sans nouvelle attaque
-    expect(played.slice(2, 5).map((n) => n.midi)).toEqual([71, 73, 71]);
+    expect(played.slice(2, 5).map((playedNote) => playedNote.midi)).toEqual([71, 73, 71]);
     expect(played[3].velocity).toBeLessThan(played[2].velocity);
     // le pull-off de la 7 à la 5, sous la liaison
     expect(played[5].velocity).toBeLessThan(played[2].velocity);
@@ -71,7 +71,7 @@ describe("techniques des cordes", () => {
 
   it("lisent les glissés : vers la note suivante, vers rien, depuis rien, dans les deux sens", () => {
     const s = parsePrisma(piece(["9\\", "7//", "\\\\5", "//3\\\\"]));
-    expect(s.notes.map((n) => [n.midi - 64, n.slide, n.slideOut, n.slideIn])).toEqual([
+    expect(s.notes.map((note) => [note.midi - 64, note.slide, note.slideOut, note.slideIn])).toEqual([
       [9, "down", undefined, undefined],
       [7, undefined, "up", undefined],
       [5, undefined, undefined, "down"],
@@ -87,8 +87,8 @@ describe("techniques des cordes", () => {
       try {
         parsePrisma(piece(cells));
         return "";
-      } catch (e) {
-        return (e as Error).message;
+      } catch (error) {
+        return (error as Error).message;
       }
     };
     expect(err(["7/", "", "9", ""])).toContain("« 7// »");
@@ -102,7 +102,7 @@ describe("techniques des cordes", () => {
     const s = parsePrisma(piece(["//7", "", "7\\\\", ""]));
     const played = playedNotes(s, passages(s));
     // l'entrée : trois cases d'en dessous, la première attaquée, puis la note sans attaque
-    expect(played.slice(0, 4).map((n) => n.midi - 64)).toEqual([4, 5, 6, 7]);
+    expect(played.slice(0, 4).map((playedNote) => playedNote.midi - 64)).toEqual([4, 5, 6, 7]);
     expect(played[1].velocity).toBeLessThan(played[0].velocity);
     expect(played[3].velocity).toBeLessThan(played[0].velocity);
     // la sortie : la note attaquée, puis cinq cases vers le grave

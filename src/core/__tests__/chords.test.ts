@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { splitChord } from "../../app/score/engrave.ts";
 import { chordName, chordNameNotes, chordNotes, chordPrismaName } from "../chords.ts";
-import { importMusicXml, parsePrisma, TICKS_PER_BEAT as T, writePrisma } from "../index.ts";
-import { C4, musicXml, q } from "../../../tests/support/musicxml.ts";
+import { importMusicXml, parsePrisma, TICKS_PER_BEAT, writePrisma } from "../index.ts";
+import { C4, musicXml, QUARTER } from "../../../tests/support/musicxml.ts";
 import { roundTrip } from "../../../tests/support/round-trip.ts";
 
 describe("accords", () => {
@@ -48,12 +48,12 @@ describe("accords", () => {
   const piece = (chords: string) => [chords, "m1      |1  |2  |3  |4  ||", "0       |1  |-  |5  |-  ||", "---", ""].join("\n");
 
   it("lit la ligne @c, en nom Prisma, en nom anglais ou en notes Prisma, et l'écrit au-dessus de la règle", () => {
-    const s = parsePrisma(piece("@c       1       Am  10,1,5"));
-    expect(s.chords).toEqual([{ t: 0, text: "1" }, { t: 2 * T, text: "Am" }, { t: 3 * T, text: "10,1,5" }]);
-    const { text, back } = roundTrip(s);
-    expect(back.chords).toEqual(s.chords);
+    const score = parsePrisma(piece("@c       1       Am  10,1,5"));
+    expect(score.chords).toEqual([{ t: 0, text: "1" }, { t: 2 * TICKS_PER_BEAT, text: "Am" }, { t: 3 * TICKS_PER_BEAT, text: "10,1,5" }]);
+    const { text, back } = roundTrip(score);
+    expect(back.chords).toEqual(score.chords);
     const lines = text.split("\n");
-    expect(lines[lines.findIndex((l) => l.startsWith("m1")) - 1]).toMatch(/^@c +1 +Am +10,1,5$/);
+    expect(lines[lines.findIndex((line) => line.startsWith("m1")) - 1]).toMatch(/^@c +1 +Am +10,1,5$/);
   });
 
   it("grave le nom dans la notation choisie, Prisma par défaut", () => {
@@ -82,35 +82,35 @@ describe("accords", () => {
       {
         notes: [
           [
-            { midi: [C4], dur: 2 * q, before: harmony("A", "minor-seventh") },
-            { midi: [C4], dur: 2 * q, before: harmony("G", "major", "<bass><bass-step>B</bass-step></bass>") },
+            { midi: [C4], duration: 2 * QUARTER, before: harmony("A", "minor-seventh") },
+            { midi: [C4], duration: 2 * QUARTER, before: harmony("G", "major", "<bass><bass-step>B</bass-step></bass>") },
           ],
         ],
       },
     ]);
-    expect(importMusicXml(xml).chords).toEqual([{ t: 0, text: "10:m7" }, { t: 2 * T, text: "8/12" }]);
+    expect(importMusicXml(xml).chords).toEqual([{ t: 0, text: "10:m7" }, { t: 2 * TICKS_PER_BEAT, text: "8/12" }]);
   });
 
   it("lit les lettres de nuance de la police musicale, et sépare une nuance en tête de texte", () => {
-    const words = (w: string) => `<direction><direction-type><words>${w}</words></direction-type><staff>1</staff></direction>`;
-    const xml = musicXml([{ notes: [[{ midi: [C4], dur: 2 * q, before: words("\ue520\ue520 con sordina") }, { midi: [C4], dur: 2 * q, before: words("mf dolce") }]] }]);
-    expect(importMusicXml(xml).expressions.map((e) => `${e.kind}:${e.text}`)).toEqual(["dynamic:pp", "text:con sordina", "dynamic:mf", "text:dolce"]);
+    const words = (word: string) => `<direction><direction-type><words>${word}</words></direction-type><staff>1</staff></direction>`;
+    const xml = musicXml([{ notes: [[{ midi: [C4], duration: 2 * QUARTER, before: words("\ue520\ue520 con sordina") }, { midi: [C4], duration: 2 * QUARTER, before: words("mf dolce") }]] }]);
+    expect(importMusicXml(xml).expressions.map((expression) => `${expression.kind}:${expression.text}`)).toEqual(["dynamic:pp", "text:con sordina", "dynamic:mf", "text:dolce"]);
   });
 
   it("importe les accords écrits en simple texte au-dessus de la portée", () => {
-    const words = (w: string) => `<direction placement="above"><direction-type><words>${w}</words></direction-type><staff>1</staff></direction>`;
+    const words = (word: string) => `<direction placement="above"><direction-type><words>${word}</words></direction-type><staff>1</staff></direction>`;
     const xml = musicXml([
       {
         notes: [
           [
-            { midi: [C4], dur: 2 * q, before: words("A7") + words("dolce") },
-            { midi: [C4], dur: 2 * q, before: words(" E7 ") },
+            { midi: [C4], duration: 2 * QUARTER, before: words("A7") + words("dolce") },
+            { midi: [C4], duration: 2 * QUARTER, before: words(" E7 ") },
           ],
         ],
       },
     ]);
     const s = importMusicXml(xml);
-    expect(s.chords).toEqual([{ t: 0, text: "10:7" }, { t: 2 * T, text: "5:7" }]);
-    expect(s.expressions.map((e) => e.text)).toEqual(["dolce"]);
+    expect(s.chords).toEqual([{ t: 0, text: "10:7" }, { t: 2 * TICKS_PER_BEAT, text: "5:7" }]);
+    expect(s.expressions.map((expression) => expression.text)).toEqual(["dolce"]);
   });
 });

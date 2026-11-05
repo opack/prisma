@@ -1,21 +1,21 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { importMusicXml, parsePrisma, TICKS_PER_BEAT as T } from "../index.ts";
+import { importMusicXml, parsePrisma, TICKS_PER_BEAT } from "../index.ts";
 import { playOrder, sectionsOf } from "../musicxml.ts";
-import { C4, musicXml, q } from "../../../tests/support/musicxml.ts";
+import { C4, musicXml, QUARTER } from "../../../tests/support/musicxml.ts";
 import { roundTrip } from "../../../tests/support/round-trip.ts";
 
 describe("Gymnopédie n°1", () => {
   const score = importMusicXml(readFileSync(new URL("../../../tests/fixtures/gymnopedie1.musicxml", import.meta.url), "utf8"));
 
   it("importe 78 mesures de 3 temps", () => {
-    expect(new Set(score.beats.map((b) => b.barIndex)).size).toBe(78);
+    expect(new Set(score.beats.map((beat) => beat.barIndex)).size).toBe(78);
     expect(score.beats.length).toBe(78 * 3);
   });
 
   it("fusionne la tenue du fa♯ des mesures 9 à 12", () => {
-    const fa = score.notes.find((n) => n.staff === 0 && n.midi === 66 && n.start === 8 * 3 * T);
-    expect(fa?.end).toBe(12 * 3 * T);
+    const fa = score.notes.find((note) => note.staff === 0 && note.midi === 66 && note.start === 8 * 3 * TICKS_PER_BEAT);
+    expect(fa?.end).toBe(12 * 3 * TICKS_PER_BEAT);
   });
 
   it.each([40, 60, 96, 140])("survit à l'aller-retour à %i caractères", (w) => {
@@ -81,8 +81,8 @@ describe("ordre de jeu du MusicXML", () => {
   });
 
   it("importe une structure avec reprises, cases et D.C. al Fine", () => {
-    const words = (w: string) => `<direction><direction-type><words>${w}</words></direction-type><staff>1</staff></direction>`;
-    const bar = (extra: object = {}, end?: string) => ({ notes: [[{ midi: [C4], dur: 2 * q }, { midi: [C4], dur: 2 * q, before: end }]], ...extra });
+    const words = (word: string) => `<direction><direction-type><words>${word}</words></direction-type><staff>1</staff></direction>`;
+    const bar = (extra: object = {}, end?: string) => ({ notes: [[{ midi: [C4], duration: 2 * QUARTER }, { midi: [C4], duration: 2 * QUARTER, before: end }]], ...extra });
     const xml = musicXml([
       bar(),
       bar({ barline: `<repeat direction="backward"/>` }, words("Fine")),
@@ -90,17 +90,17 @@ describe("ordre de jeu du MusicXML", () => {
       bar({ barlineLeft: `<ending number="1" type="start"/>`, barline: `<ending number="1" type="stop"/><repeat direction="backward"/>` }),
       bar({ barlineLeft: `<ending number="2" type="start"/>`, barline: `<ending number="2" type="stop"/>` }, words("D.C. al Fine")),
     ]);
-    const s = importMusicXml(xml);
-    expect(s.markers.map((x) => `${x.label}@${x.barIndex}`)).toEqual(["A@0", "B@2", "C@3", "D@4"]);
-    expect(s.order.join(" ")).toBe("A A B C B D A");
-    expect(s.texts).toEqual([]);
-    const { text } = roundTrip(s);
+    const score = importMusicXml(xml);
+    expect(score.markers.map((x) => `${x.label}@${x.barIndex}`)).toEqual(["A@0", "B@2", "C@3", "D@4"]);
+    expect(score.order.join(" ")).toBe("A A B C B D A");
+    expect(score.texts).toEqual([]);
+    const { text } = roundTrip(score);
     expect(text).toContain("order: A A B C B D A");
-    expect(parsePrisma(text).order).toEqual(s.order);
+    expect(parsePrisma(text).order).toEqual(score.order);
   });
 
   it("ferme à la reprise suivante une 2e case restée ouverte", () => {
-    const bar = (extra: object = {}) => ({ notes: [[{ midi: [C4], dur: 4 * q }]], ...extra });
+    const bar = (extra: object = {}) => ({ notes: [[{ midi: [C4], duration: 4 * QUARTER }]], ...extra });
     // ||: 1 | 1re case :|| 2e case (jamais fermée) ||: 4 | 1re case :|| 2e case | 7
     const xml = musicXml([
       bar(),
@@ -124,9 +124,9 @@ describe("instruments transpositeurs", () => {
       <transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose></attributes>
       <note><pitch><step>D</step><octave>4</octave></pitch><duration>1</duration><notations><ornaments><trill-mark/></ornaments></notations></note>
       <note><pitch><step>E</step><octave>4</octave></pitch><duration>1</duration></note></measure></part></score-partwise>`;
-    const s = importMusicXml(xml);
+    const score = importMusicXml(xml);
     // ré écrit → do ; sa voisine de trille (mi écrit, dans l'armure de ré majeur) → ré
-    expect(s.notes.map((n) => [n.midi, n.trill])).toEqual([
+    expect(score.notes.map((note) => [note.midi, note.trill])).toEqual([
       [60, 62],
       [62, undefined],
     ]);
@@ -137,6 +137,6 @@ describe("instruments transpositeurs", () => {
       <part id="P1"><measure number="1"><attributes><divisions>1</divisions><time><beats>1</beats><beat-type>4</beat-type></time>
       <transpose><diatonic>-1</diatonic><chromatic>-2</chromatic><octave-change>-1</octave-change></transpose></attributes>
       <note><pitch><step>D</step><octave>5</octave></pitch><duration>1</duration></note></measure></part></score-partwise>`;
-    expect(importMusicXml(xml).notes.map((n) => n.midi)).toEqual([60]);
+    expect(importMusicXml(xml).notes.map((note) => note.midi)).toEqual([60]);
   });
 });

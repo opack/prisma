@@ -44,7 +44,7 @@ describe("bibliothèque", () => {
       "notes.txt": "pas une partition",
     });
     const entries = await scan(source);
-    expect(entries.map((e) => [e.path, e.folder, e.kind, e.title, e.composer])).toEqual([
+    expect(entries.map((libraryEntry) => [libraryEntry.path, libraryEntry.folder, libraryEntry.kind, libraryEntry.title, libraryEntry.composer])).toEqual([
       ["Au clair.prisma", "", "prisma", "Au clair de la lune", undefined],
       ["Satie/Gymnopedie.musicxml", "Satie", "musicxml", "Gymnopédie", "Erik Satie"],
     ]);

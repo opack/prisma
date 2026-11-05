@@ -7,9 +7,9 @@ import { REFERENCE_PARTS } from "../../site/pages/referenceLinks.ts";
 function examples(markdown: string): string[] {
   const out: string[] = [];
   const re = /^( *)```prisma\n([\s\S]*?)^\1```/gm;
-  for (let m = re.exec(markdown); m; m = re.exec(markdown)) {
-    const indent = m[1].length;
-    out.push(m[2].split("\n").map((l) => l.slice(indent)).join("\n"));
+  for (let match = re.exec(markdown); match; match = re.exec(markdown)) {
+    const indent = match[1].length;
+    out.push(match[2].split("\n").map((line) => line.slice(indent)).join("\n"));
   }
   return out;
 }
@@ -29,7 +29,7 @@ describe("référence", () => {
     expect(list.length).toBeGreaterThan(5);
   });
 
-  it.each(list.map((text, i) => [i + 1, text]))("exemple %i : se lit sans erreur, tel que l'application l'écrit", (_, text) => {
+  it.each(list.map((text, index) => [index + 1, text]))("exemple %i : se lit sans erreur, tel que l'application l'écrit", (_, text) => {
     expect(() => parsePrisma(text as string)).not.toThrow();
     expect(text).toBe(canonical(text as string));
   });
@@ -37,7 +37,7 @@ describe("référence", () => {
 
 describe("liens du site vers la référence", () => {
   it("chaque partie visée est un titre de la référence", () => {
-    const titles = readFileSync("REFERENCE.md", "utf8").split("\n").filter((l) => l.startsWith("#")).map((l) => l.replace(/^#+\s*/, ""));
-    for (const t of Object.values(REFERENCE_PARTS)) expect(titles).toContain(t);
+    const titles = readFileSync("REFERENCE.md", "utf8").split("\n").filter((line) => line.startsWith("#")).map((l) => l.replace(/^#+\s*/, ""));
+    for (const text of Object.values(REFERENCE_PARTS)) expect(titles).toContain(text);
   });
 });

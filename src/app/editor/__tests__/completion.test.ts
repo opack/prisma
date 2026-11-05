@@ -9,8 +9,8 @@ const source = completionSource(() => "latin");
 const labels = (doc: string, L: number, C: number) => {
   const state = EditorState.create({ doc });
   const line = state.doc.line(L + 1);
-  const r = source(new CompletionContext(state, Math.min(line.from + C, line.to), true));
-  return r ? r.options.map((o) => o.label) : [];
+  const completionResult = source(new CompletionContext(state, Math.min(line.from + C, line.to), true));
+  return completionResult ? completionResult.options.map((completion) => completion.label) : [];
 };
 
 const MARKS = `---
@@ -43,9 +43,9 @@ describe("complétion de la ligne @", () => {
   it("propose sous une portée ses nuances, soufflets, articulations ; la pédale au piano, le médiator à la guitare", () => {
     const piano = labels(MARKS, 9, 8);
     const guitar = labels(MARKS, 12, 12);
-    for (const l of ["mf", "<---", "(--)", "."]) {
-      expect(piano).toContain(l);
-      expect(guitar).toContain(l);
+    for (const line of ["mf", "<---", "(--)", "."]) {
+      expect(piano).toContain(line);
+      expect(guitar).toContain(line);
     }
     expect(piano).toContain("Ped.");
     expect(piano).not.toContain("d");
@@ -70,8 +70,8 @@ describe("ordre de la liste sur une ligne @", () => {
 describe("écriture d'une indication sur une ligne @", () => {
   const lines = MARKS.split("\n");
   const sys = systemOf(lines, 9)!;
-  const at = (k: number) => cases(lines[sys.ruler])[k].start;
-  const written = (r: ReturnType<typeof writeMark>) => r.lines.get(9);
+  const at = (index: number) => cases(lines[sys.ruler])[index].start;
+  const written = (rewrite: ReturnType<typeof writeMark>) => rewrite.lines.get(9);
   it("écrit un mot au début de sa case, et un signe qui dure jusqu'à la case suivante", () => {
     expect(written(writeMark(lines, sys, 9, at(1), 0, { head: "mf" }))).toBe("@       mf");
     expect(written(writeMark(lines, sys, 9, at(0), 0, { head: "<", fill: "-" }))).toBe("@   <-----");

@@ -11,10 +11,10 @@ describe("nouveautés", () => {
   });
 
   it("vont de la plus récente à la plus ancienne, chacune datée et avec ses changements", () => {
-    for (let i = 1; i < list.length; i++) expect(compareVersions(list[i].version, list[i - 1].version)).toBeLessThan(0);
-    for (const r of list) {
-      expect(r.date).toMatch(/^\d{1,2} \p{L}+ \d{4}$/u);
-      expect(r.html).toContain("<li>");
+    for (let index = 1; index < list.length; index++) expect(compareVersions(list[index].version, list[index - 1].version)).toBeLessThan(0);
+    for (const release of list) {
+      expect(release.date).toMatch(/^\d{1,2} \p{L}+ \d{4}$/u);
+      expect(release.html).toContain("<li>");
     }
   });
 

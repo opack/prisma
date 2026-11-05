@@ -11,7 +11,7 @@ const sys = [
   "───┼──────┼───┼┼",
   "-1 |8  -  |-  ||",
 ];
-const apply = (lines: string[], r: ReturnType<typeof writeCase>) => lines.map((l, k) => r.lines.get(k) ?? l);
+const apply = (lines: string[], rewrite: ReturnType<typeof writeCase>) => lines.map((line, index) => rewrite.lines.get(index) ?? line);
 
 describe("écrire dans un système", () => {
   it("trouve le système et la case du curseur", () => {
@@ -21,10 +21,10 @@ describe("écrire dans un système", () => {
   });
 
   it("écrit dans les espaces d'une case qui a la place", () => {
-    const r = writeCase(sys, systemOf(sys, 3)!, 3, caseAt(sys[1], 8)!, "5");
-    expect([...r.lines.keys()]).toEqual([3]);
-    expect(r.lines.get(3)).toBe("0  |1  5  |3  ||");
-    expect(r.caret).toEqual({ line: 3, col: 8 });
+    const rewrite = writeCase(sys, systemOf(sys, 3)!, 3, caseAt(sys[1], 8)!, "5");
+    expect([...rewrite.lines.keys()]).toEqual([3]);
+    expect(rewrite.lines.get(3)).toBe("0  |1  5  |3  ||");
+    expect(rewrite.caret).toEqual({ line: 3, col: 8 });
   });
 
   it("élargit la case sur tout le système quand elle est trop étroite", () => {
@@ -122,15 +122,15 @@ describe("écrire un accord sur la ligne @c", () => {
   it("élargit la case d'un accord trop long, comme celle d'une note ; les accords suivants gardent la leur", () => {
     const out = apply(lines, writeChord(lines, sys, 0, 4, 6, "10:m=x02210"));
     expect(out.slice(0, 2)).toEqual(["@c  10:m=x02210      8", "m1 |1           |2  |3  |4  ||"]);
-    expect(parsePrisma(text(out)).chords.map((c) => [c.t / 2880, c.text])).toEqual([[0, "10:m=x02210"], [2, "8"]]);
+    expect(parsePrisma(text(out)).chords.map((textMark) => [textMark.t / 2880, textMark.text])).toEqual([[0, "10:m=x02210"], [2, "8"]]);
     // le dernier accord de la ligne aussi
     const last = apply(lines, writeChord(lines, sys, 0, 12, 1, "8=320003"));
     expect(last.slice(0, 2)).toEqual(["@c  x02210  8=320003", "m1 |1  |2  |3        |4  ||"]);
   });
 
   it("n'élargit rien quand l'accord tient dans sa case", () => {
-    const r = writeChord(lines, sys, 0, 4, 6, "Am");
-    expect([...r.lines.keys()]).toEqual([0]);
-    expect(r.lines.get(0)).toBe("@c  Am      8");
+    const rewrite = writeChord(lines, sys, 0, 4, 6, "Am");
+    expect([...rewrite.lines.keys()]).toEqual([0]);
+    expect(rewrite.lines.get(0)).toBe("@c  Am      8");
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { importMusicXml, parsePrisma, TICKS_PER_BEAT as T, writePrisma } from "../index.ts";
+import { importMusicXml, parsePrisma, TICKS_PER_BEAT, writePrisma } from "../index.ts";
 
 describe("portées et parties", () => {
   const song = [
@@ -20,12 +20,12 @@ describe("portées et parties", () => {
   const swap = (from: string, to: string) => song.replace(from, to);
 
   it("lit les portées de chaque partie, nommées sur leur trait", () => {
-    const s = parsePrisma(song);
-    expect(s.parts).toEqual([{ name: "Chant", staves: 1 }, { name: "Piano", staves: 2 }]);
-    expect(s.meta.staves).toBeUndefined();
-    expect(s.notes.filter((n) => n.start === 0).map((n) => n.staff)).toEqual([0, 1, 2]);
-    expect(s.lyrics.map((l) => l.staff)).toEqual([0, 0]);
-    expect(s.pedals).toEqual([{ staff: 2, start: 0, end: 3 * T }]);
+    const score = parsePrisma(song);
+    expect(score.parts).toEqual([{ name: "Chant", staves: 1 }, { name: "Piano", staves: 2 }]);
+    expect(score.meta.staves).toBeUndefined();
+    expect(score.notes.filter((note) => note.start === 0).map((n) => n.staff)).toEqual([0, 1, 2]);
+    expect(score.lyrics.map((lyric) => lyric.staff)).toEqual([0, 0]);
+    expect(score.pedals).toEqual([{ staff: 2, start: 0, end: 3 * TICKS_PER_BEAT }]);
   });
 
   it("réécrit le texte tel quel", () => {
@@ -67,7 +67,7 @@ describe("portées et parties", () => {
     expect(s.parts).toEqual([{ name: "Chant", staves: 1 }, { name: "Piano", staves: 2 }]);
     expect(s.notes.map((n) => `${n.staff}:${n.midi}`)).toEqual(["0:72", "1:64", "2:48"]);
     expect(s.lyrics).toEqual([{ staff: 0, verse: 1, t: 0, text: "Ah" }]);
-    expect(s.pedals).toEqual([{ staff: 2, start: 0, end: 4 * T }]);
+    expect(s.pedals).toEqual([{ staff: 2, start: 0, end: 4 * TICKS_PER_BEAT }]);
     expect(parsePrisma(writePrisma(s)).parts).toEqual(s.parts);
   });
 });

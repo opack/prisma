@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { TICKS_PER_BEAT as T, beatGrids, layout, parsePrisma } from "../index.ts";
+import { TICKS_PER_BEAT, beatGrids, layout, parsePrisma } from "../index.ts";
 import { isWrittenCase } from "../locate.ts";
 
 const piece = (body: string[], division = 2) => ["---", "format: 1", ...(division === 3 ? ["division: 3"] : []), "---", "", ...body].join("\n");
 
 // un temps tenu, un temps en deux, un triolet, un temps en quatre
 const binary = piece(["m1 |1  |2  *  |3  *  *  |4  .  *  .  ||", "───┼───┼──────┼─────────┼────────────┼┼", "0  |1  |-  3  |5  6  8  |10 -  -  12 ||"]);
-const labels = (text: string, detail?: "written" | "division" | "subdivision") => beatGrids(parsePrisma(text), detail).map((g) => g.labels.join(" "));
+const labels = (text: string, detail?: "written" | "division" | "subdivision") => beatGrids(parsePrisma(text), detail).map((beatGrid) => beatGrid.labels.join(" "));
 
 describe("la règle détaillée", () => {
   it("telle qu'écrite : les seules cases du texte", () => {
@@ -37,10 +37,10 @@ describe("la règle détaillée", () => {
 
   it("une case ajoutée n'est pas dans le texte : rien ne s'y retouche", () => {
     expect(isWrittenCase(binary, 0)).toBe(true);
-    expect(isWrittenCase(binary, T / 2)).toBe(false);
-    expect(isWrittenCase(binary, T + T / 2)).toBe(true);
-    expect(isWrittenCase(binary, 2 * T + T / 3)).toBe(true);
-    expect(isWrittenCase(binary, 2 * T + T / 2)).toBe(false);
-    expect(isWrittenCase(binary, 99 * T)).toBe(false);
+    expect(isWrittenCase(binary, TICKS_PER_BEAT / 2)).toBe(false);
+    expect(isWrittenCase(binary, TICKS_PER_BEAT + TICKS_PER_BEAT / 2)).toBe(true);
+    expect(isWrittenCase(binary, 2 * TICKS_PER_BEAT + TICKS_PER_BEAT / 3)).toBe(true);
+    expect(isWrittenCase(binary, 2 * TICKS_PER_BEAT + TICKS_PER_BEAT / 2)).toBe(false);
+    expect(isWrittenCase(binary, 99 * TICKS_PER_BEAT)).toBe(false);
   });
 });

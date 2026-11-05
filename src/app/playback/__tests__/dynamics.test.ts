@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { velocities } from "../dynamics.ts";
-import { parsePrisma, TICKS_PER_BEAT as T } from "../../../core/index.ts";
+import { parsePrisma, TICKS_PER_BEAT } from "../../../core/index.ts";
 import type { Score } from "../../../core/index.ts";
 
 describe("écoute : nuances", () => {
@@ -8,10 +8,10 @@ describe("écoute : nuances", () => {
   const piece = (n: number, more: Partial<Score> = {}, staves = 1): Score => ({
     ...parsePrisma("m1 |1  ||\n0  |1  ||\n"),
     parts: [{ staves }],
-    notes: Array.from({ length: n * staves }, (_, i) => ({ staff: i % staves, midi: 60, start: Math.floor(i / staves) * T, end: (Math.floor(i / staves) + 1) * T })),
+    notes: Array.from({ length: n * staves }, (_, index) => ({ staff: index % staves, midi: 60, start: Math.floor(index / staves) * TICKS_PER_BEAT, end: (Math.floor(index / staves) + 1) * TICKS_PER_BEAT })),
     ...more,
   });
-  const dyn = (t: number, text: string, staff = 0) => ({ staff, t: t * T, text, kind: "dynamic" as const });
+  const dyn = (t: number, text: string, staff = 0) => ({ staff, t: t * TICKS_PER_BEAT, text, kind: "dynamic" as const });
 
   it("joue chaque nuance à son intensité, mf par défaut", () => {
     expect(velocities(piece(3, { expressions: [dyn(1, "p"), dyn(2, "(ff)")] }))).toEqual([70, 42, 100]);
@@ -23,7 +23,7 @@ describe("écoute : nuances", () => {
   });
 
   it("mène un soufflet jusqu'à la nuance qui le suit, ou d'un pas sans elle", () => {
-    const hairpins = [{ staff: 0, kind: "<" as const, start: 0, end: 4 * T }];
+    const hairpins = [{ staff: 0, kind: "<" as const, start: 0, end: 4 * TICKS_PER_BEAT }];
     expect(velocities(piece(5, { expressions: [dyn(0, "p"), dyn(4, "f")], hairpins }))).toEqual([42, 53, 64, 75, 86]);
     expect(velocities(piece(5, { expressions: [dyn(0, "p")], hairpins }))).toEqual([42, 46, 49, 53, 56]);
   });

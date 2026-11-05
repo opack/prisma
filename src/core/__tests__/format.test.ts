@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { FORMAT_VERSION, importMusicXml, layout, parsePrisma, TICKS_PER_BEAT as T, writePrisma } from "../index.ts";
-import { C4, musicXml, q } from "../../../tests/support/musicxml.ts";
+import { FORMAT_VERSION, importMusicXml, layout, parsePrisma, TICKS_PER_BEAT, writePrisma } from "../index.ts";
+import { C4, musicXml, QUARTER } from "../../../tests/support/musicxml.ts";
 import { beatsKey, notesKey, roundTrip } from "../../../tests/support/round-trip.ts";
 import type { Score } from "../index.ts";
 
@@ -8,21 +8,21 @@ describe("règles du format", () => {
   it("rappelle la note tenue en début de système avec « -N »", () => {
     // une ronde de do sur deux mesures liées, à 24 caractères par ligne : une mesure par système
     const xml = musicXml([
-      { notes: [[{ midi: [C4], dur: 4 * q, tie: ["start"] }]] },
-      { notes: [[{ midi: [C4], dur: 4 * q, tie: ["stop"] }]] },
+      { notes: [[{ midi: [C4], duration: 4 * QUARTER, tie: ["start"] }]] },
+      { notes: [[{ midi: [C4], duration: 4 * QUARTER, tie: ["stop"] }]] },
     ]);
     const score = importMusicXml(xml);
     expect(score.notes).toHaveLength(1);
     const { text } = roundTrip(score, 24);
-    const rows = text.split("\n").filter((l) => l.startsWith("0 "));
+    const rows = text.split("\n").filter((line) => line.startsWith("0 "));
     expect(rows[0]).toMatch(/^0\s+\|1 /);
     expect(rows[1]).toMatch(/^0\s+\|-1 /);
   });
 
   it("commence une anacrouse au bon temps", () => {
     const xml = musicXml([
-      { time: [3, 4], implicit: true, notes: [[{ midi: [67], dur: q }]] },
-      { notes: [[{ midi: [C4], dur: 3 * q }]] },
+      { time: [3, 4], implicit: true, notes: [[{ midi: [67], duration: QUARTER }]] },
+      { notes: [[{ midi: [C4], duration: 3 * QUARTER }]] },
     ]);
     const score = importMusicXml(xml);
     expect(beatsKey(score)).toBe("0.3 1.1 1.2 1.3");
@@ -34,8 +34,8 @@ describe("règles du format", () => {
   it("numérote 1 une anacrouse que le fichier compte comme mesure 1", () => {
     const score = importMusicXml(
       musicXml([
-        { time: [3, 4], notes: [[{ midi: [67], dur: q }]] },
-        { notes: [[{ midi: [60], dur: 3 * q }]] },
+        { time: [3, 4], notes: [[{ midi: [67], duration: QUARTER }]] },
+        { notes: [[{ midi: [60], duration: 3 * QUARTER }]] },
       ]),
     );
     expect(beatsKey(score)).toBe("1.3 2.1 2.2 2.3");
@@ -43,29 +43,29 @@ describe("règles du format", () => {
   });
 
   it("compte le 6/8 en deux temps ternaires", () => {
-    const e = q / 2;
+    const e = QUARTER / 2;
     const xml = musicXml([
-      { time: [6, 8], notes: [[...[60, 62, 64, 65, 67, 69].map((m) => ({ midi: [m], dur: e }))]] },
+      { time: [6, 8], notes: [[...[60, 62, 64, 65, 67, 69].map((m) => ({ midi: [m], duration: e }))]] },
     ]);
     const score = importMusicXml(xml);
     expect(score.beats).toHaveLength(2);
-    expect(score.beats.every((b) => b.division === 3)).toBe(true);
+    expect(score.beats.every((beat) => beat.division === 3)).toBe(true);
     const { text } = roundTrip(score);
     expect(text).toContain("|1  *  *  |2  *  *  ||");
     expect(text).toContain("division: 3");
   });
 
   it("nomme les doubles croches du 6/8 avec « . »", () => {
-    const s = q / 4;
-    const xml = musicXml([{ time: [6, 8], notes: [[...Array(12)].map((_, i) => ({ midi: [60 + i], dur: s }))] }]);
+    const s = QUARTER / 4;
+    const xml = musicXml([{ time: [6, 8], notes: [[...Array(12)].map((_, index) => ({ midi: [60 + index], duration: s }))] }]);
     const { text } = roundTrip(importMusicXml(xml));
     expect(text).toContain("|1  .  *  .  *  .  |2  .  *  .  *  .  ||");
   });
 
   it("traite un triolet en 4/4 comme un temps ternaire", () => {
-    const t = q / 3;
+    const t = QUARTER / 3;
     const xml = musicXml([
-      { notes: [[{ midi: [60], dur: q }, { midi: [62], dur: t }, { midi: [64], dur: t }, { midi: [65], dur: t }, { midi: [67], dur: 2 * q }]] },
+      { notes: [[{ midi: [60], duration: QUARTER }, { midi: [62], duration: t }, { midi: [64], duration: t }, { midi: [65], duration: t }, { midi: [67], duration: 2 * QUARTER }]] },
     ]);
     const { text } = roundTrip(importMusicXml(xml));
     expect(text).toContain("|1  |2  *  *  |3  |4  ||");
@@ -75,8 +75,8 @@ describe("règles du format", () => {
     const xml = musicXml([
       {
         notes: [
-          [{ midi: [72], dur: q / 2 }, { midi: [74], dur: q / 2 }, { midi: [76], dur: 3 * q }],
-          [{ midi: [48], dur: q / 3, staff: 2 }, { midi: [52], dur: q / 3, staff: 2 }, { midi: [55], dur: q / 3, staff: 2 }, { midi: [48], dur: 3 * q, staff: 2 }],
+          [{ midi: [72], duration: QUARTER / 2 }, { midi: [74], duration: QUARTER / 2 }, { midi: [76], duration: 3 * QUARTER }],
+          [{ midi: [48], duration: QUARTER / 3, staff: 2 }, { midi: [52], duration: QUARTER / 3, staff: 2 }, { midi: [55], duration: QUARTER / 3, staff: 2 }, { midi: [48], duration: 3 * QUARTER, staff: 2 }],
         ],
       },
     ]);
@@ -84,8 +84,8 @@ describe("règles du format", () => {
   });
 
   it("coupe une mesure trop large sur un temps", () => {
-    const s = q / 4;
-    const xml = musicXml([{ notes: [[...Array(16)].map((_, i) => ({ midi: [60 + (i % 12)], dur: s }))] }]);
+    const s = QUARTER / 4;
+    const xml = musicXml([{ notes: [[...Array(16)].map((_, index) => ({ midi: [60 + (index % 12)], duration: s }))] }]);
     const { text } = roundTrip(importMusicXml(xml), 40);
     expect(text).toMatch(/^m1 \|3 /m); // le second système reprend la mesure 1 au temps 3
   });
@@ -93,15 +93,15 @@ describe("règles du format", () => {
   it("met une note seule sur la ligne du haut de son couloir, même si un accord suit", () => {
     // do5 seul, puis l'accord do5-mi5-sol5 : l'ancien tri par hauteur moyenne
     // plaçait le do5 seul sur la ligne du milieu
-    const xml = musicXml([{ notes: [[{ midi: [72], dur: 4 * q }]] }, { notes: [[{ midi: [72, 76, 79], dur: 4 * q }]] }]);
+    const xml = musicXml([{ notes: [[{ midi: [72], duration: 4 * QUARTER }]] }, { notes: [[{ midi: [72, 76, 79], duration: 4 * QUARTER }]] }]);
     const { text } = roundTrip(importMusicXml(xml));
-    const rows = text.split("\n").filter((l) => /^(\+1| ) *\|/.test(l) && !l.startsWith("m"));
+    const rows = text.split("\n").filter((line) => /^(\+1| ) *\|/.test(line) && !line.startsWith("m"));
     expect(rows[0]).toMatch(/^\+1 \|1 /);
     expect(rows.map((r) => r.slice(-15))).toEqual(["|-  |-  ||8  |-  |-  |-  ||".slice(-15), "|   |   ||5  |-  |-  |-  ||".slice(-15), "|   |   ||1  |-  |-  |-  ||".slice(-15)]);
   });
 
   it("calcule le décalage qui centre un bloc dans son couloir", () => {
-    const xml = musicXml([{ notes: [[{ midi: [72], dur: 4 * q }]] }, { notes: [[{ midi: [72, 76, 79], dur: 4 * q }]] }]);
+    const xml = musicXml([{ notes: [[{ midi: [72], duration: 4 * QUARTER }]] }, { notes: [[{ midi: [72, 76, 79], duration: 4 * QUARTER }]] }]);
     const [sys] = layout(importMusicXml(xml), { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 });
     // couloir de 3 lignes : la note seule (mesure 1) descend d'une ligne, l'accord (mesure 2) ne bouge pas
     expect(sys.staves[0].rows[0].center[0]).toBe(1);
@@ -109,19 +109,19 @@ describe("règles du format", () => {
   });
 
   it("place les accords d'une même octave sur plusieurs lignes", () => {
-    const xml = musicXml([{ notes: [[{ midi: [60, 64, 67], dur: 4 * q }]] }]);
+    const xml = musicXml([{ notes: [[{ midi: [60, 64, 67], duration: 4 * QUARTER }]] }]);
     const { text } = roundTrip(importMusicXml(xml));
-    const rows = text.split("\n").filter((l) => /^[ 0]\s*\|[^─]/.test(l) && !l.startsWith("m"));
+    const rows = text.split("\n").filter((line) => /^[ 0]\s*\|[^─]/.test(line) && !line.startsWith("m"));
     expect(rows.map((r) => r.slice(0, 7))).toEqual(["0  |8  ", "   |5  ", "   |1  "]);
   });
 });
 
 describe("cases de largeur libre", () => {
-  const expr = (s: Score) => s.expressions.map((e) => `${e.staff}:${e.kind}:${e.text}@${e.t / T}`).join(" ");
+  const expr = (score: Score) => score.expressions.map((expression) => `${expression.staff}:${expression.kind}:${expression.text}@${expression.t / TICKS_PER_BEAT}`).join(" ");
 
   it("lit une case élargie : une case va d'une étiquette à la suivante", () => {
     const s = parsePrisma("m1 |1      *  |2  ||\n0  |1      3  |5  ||\n---\n");
-    expect(notesKey(s)).toBe(`0:60@0-${T / 2} 0:62@${T / 2}-${T} 0:64@${T}-${2 * T}`);
+    expect(notesKey(s)).toBe(`0:60@0-${TICKS_PER_BEAT / 2} 0:62@${TICKS_PER_BEAT / 2}-${TICKS_PER_BEAT} 0:64@${TICKS_PER_BEAT}-${2 * TICKS_PER_BEAT}`);
   });
 
   it("nomme « , » les cases plus fines que « . »", () => {
@@ -132,9 +132,9 @@ describe("cases de largeur libre", () => {
 
   it("élargit la case d'une indication trop longue, plutôt que d'empiler les lignes @", () => {
     const s = parsePrisma("m1 |1  *  |2  *  ||\n0  |1  3  |5  7  ||\n@   (mp)\n---\n");
-    s.expressions.push({ staff: 0, t: T / 2, text: "dolce", kind: "text" }, { staff: 0, t: T, text: "cresc.", kind: "text" });
+    s.expressions.push({ staff: 0, t: TICKS_PER_BEAT / 2, text: "dolce", kind: "text" }, { staff: 0, t: TICKS_PER_BEAT, text: "cresc.", kind: "text" });
     const text = writePrisma(s);
-    expect(text.split("\n").filter((l) => l.startsWith("@")).length).toBe(1);
+    expect(text.split("\n").filter((line) => line.startsWith("@")).length).toBe(1);
     expect(text).toMatch(/^@ +\(mp\) +dolce +cresc\.$/m);
     expect(expr(parsePrisma(text))).toBe("0:dynamic:(mp)@0 0:text:dolce@0.5 0:text:cresc.@1");
   });
@@ -142,39 +142,39 @@ describe("cases de largeur libre", () => {
   it("réunit une nuance et ses parenthèses écrites à part dans le MusicXML", () => {
     const dyn = (inner: string) => `<direction><direction-type><dynamics>${inner}</dynamics></direction-type><staff>1</staff></direction>`;
     const before = dyn("<other-dynamics>(</other-dynamics>") + dyn("<mp/>") + dyn("<other-dynamics>)</other-dynamics>");
-    const s = importMusicXml(musicXml([{ notes: [[{ midi: [C4], dur: 4 * q, before }]] }]));
+    const s = importMusicXml(musicXml([{ notes: [[{ midi: [C4], duration: 4 * QUARTER, before }]] }]));
     expect(expr(s)).toBe("0:dynamic:(mp)@0");
   });
 
   it("garde « Ped. simile » comme un seul texte", () => {
     const s = parsePrisma("m1 |1  |2  ||\n0  |1  |   ||\n---\n-1 |1  |   ||\n@   Ped. simile\n");
-    expect(s.pedalTexts.map((e) => e.text)).toEqual(["Ped. simile"]);
+    expect(s.pedalTexts.map((pedalText) => pedalText.text)).toEqual(["Ped. simile"]);
     expect(s.pedals).toEqual([]);
     expect(parsePrisma(writePrisma(s)).pedalTexts.map((e) => e.text)).toEqual(["Ped. simile"]);
   });
 
   it("cale un septolet sur 8 cases plutôt que sur 48", () => {
     // 7 notes dans une noire : impossibles à écrire exactement
-    const notes = Array.from({ length: 7 }, (_, k) => ({ midi: [C4 + k], dur: 12 }));
+    const notes = Array.from({ length: 7 }, (_, index) => ({ midi: [C4 + index], duration: 12 }));
     const s = importMusicXml(musicXml([{ time: [1, 4], notes: [notes] }], 84));
-    expect(s.notes.map((n) => n.start / (T / 8))).toEqual([0, 1, 2, 3, 5, 6, 7]);
+    expect(s.notes.map((note) => note.start / (TICKS_PER_BEAT / 8))).toEqual([0, 1, 2, 3, 5, 6, 7]);
     const { text } = roundTrip(s);
     expect(text).toContain("|1  ,  .  ,  *  ,  .  ,  ||");
   });
 
   it("ignore les petites notes de réplique et les notes cachées, sans décaler le temps", () => {
     // 2e voix : un sol caché, puis un la qui doit rester au 3e temps
-    const xml = musicXml([{ notes: [[{ midi: [C4], dur: 4 * q }], [{ midi: [67], dur: 2 * q }, { midi: [69], dur: 2 * q }]] }])
+    const xml = musicXml([{ notes: [[{ midi: [C4], duration: 4 * QUARTER }], [{ midi: [67], duration: 2 * QUARTER }, { midi: [69], duration: 2 * QUARTER }]] }])
       .replace(/<note>(<pitch><step>G<\/step>)/, '<note print-object="no">$1');
     const s = importMusicXml(xml);
-    expect(s.notes.map((n) => `${n.midi}@${n.start / T}`)).toEqual(["60@0", "69@2"]);
+    expect(s.notes.map((note) => `${note.midi}@${note.start / TICKS_PER_BEAT}`)).toEqual(["60@0", "69@2"]);
   });
 
   it("écrit un soufflet juste après la nuance de la même case", () => {
     const s = parsePrisma("m1 |1  |2  |3  ||\n0  |1  |3  |5  ||\n@   p <-------\n---\n");
-    expect(s.hairpins).toEqual([{ staff: 0, kind: "<", start: 0, end: 3 * T }]);
+    expect(s.hairpins).toEqual([{ staff: 0, kind: "<", start: 0, end: 3 * TICKS_PER_BEAT }]);
     const text = writePrisma(s);
-    expect(text.split("\n").filter((l) => l.startsWith("@")).length).toBe(1);
+    expect(text.split("\n").filter((line) => line.startsWith("@")).length).toBe(1);
     expect(text).toMatch(/^@ +p <-+$/m);
     expect(parsePrisma(text).hairpins).toEqual(s.hairpins);
   });
@@ -204,9 +204,9 @@ describe("version du format", () => {
 describe("bpm", () => {
   const body = "m1 |1  ||\n0  |1  ||\n---\n-1 |   ||\n";
   it("se lit en temps par minute, et se réécrit tel quel", () => {
-    const s = parsePrisma(`---\nbpm: 78\n---\n${body}`);
-    expect(s.meta.bpm).toBe(78);
-    expect(writePrisma(s)).toMatch(/^bpm: 78$/m);
+    const score = parsePrisma(`---\nbpm: 78\n---\n${body}`);
+    expect(score.meta.bpm).toBe(78);
+    expect(writePrisma(score)).toMatch(/^bpm: 78$/m);
   });
 
   it("refuse un tempo en mots", () => {
@@ -215,21 +215,21 @@ describe("bpm", () => {
 
   it("importe le tempo du MusicXML, converti en temps de la règle (noire pointée en 6/8)", () => {
     const sound = `<direction><direction-type><words>Allegro</words></direction-type><sound tempo="120"/></direction>`;
-    const four = musicXml([{ notes: [[{ midi: [C4], dur: 4 * q, before: sound }]] }]);
+    const four = musicXml([{ notes: [[{ midi: [C4], duration: 4 * QUARTER, before: sound }]] }]);
     expect(importMusicXml(four).meta.bpm).toBe(120);
-    const six = musicXml([{ time: [6, 8], notes: [[{ midi: [C4], dur: 6 * (q / 2), before: sound }]] }]);
+    const six = musicXml([{ time: [6, 8], notes: [[{ midi: [C4], duration: 6 * (QUARTER / 2), before: sound }]] }]);
     expect(importMusicXml(six).meta.bpm).toBe(80);
   });
 });
 
 describe("sous-titre", () => {
-  const one = [{ notes: [[{ midi: [C4], dur: 4 * q }]] }];
+  const one = [{ notes: [[{ midi: [C4], duration: 4 * QUARTER }]] }];
   const withHead = (head: string) => musicXml(one).replace("<part-list>", head + "<part-list>");
 
   it("lit et écrit le sous-titre du frontmatter, juste après le titre", () => {
-    const s = parsePrisma("---\ncomposer: Chopin\nsubtitle: Op. 9 n° 2\ntitle: Nocturne\n---\nm1 |1  ||\n0  |1  ||\n---\n");
-    expect(s.meta.subtitle).toBe("Op. 9 n° 2");
-    expect(writePrisma(s).split("\n").slice(0, 6)).toEqual(["---", "format: 1", "title: Nocturne", "subtitle: Op. 9 n° 2", "composer: Chopin", "---"]);
+    const score = parsePrisma("---\ncomposer: Chopin\nsubtitle: Op. 9 n° 2\ntitle: Nocturne\n---\nm1 |1  ||\n0  |1  ||\n---\n");
+    expect(score.meta.subtitle).toBe("Op. 9 n° 2");
+    expect(writePrisma(score).split("\n").slice(0, 6)).toEqual(["---", "format: 1", "title: Nocturne", "subtitle: Op. 9 n° 2", "composer: Chopin", "---"]);
   });
 
   it("garde les notes du frontmatter, après la source, sans les graver", () => {
@@ -257,11 +257,11 @@ describe("sous-titre", () => {
 
 describe("écriture : textes qui débordent", () => {
   it("laisse un texte long déborder sur les cases suivantes, sans élargir sa case", () => {
-    const s = parsePrisma("m1 |1  |2  |3  |4  ||\n0  |1  |3  |5  |8  ||\n---\n");
-    s.expressions.push({ staff: 0, t: 0, text: "sempre pianissimo", kind: "text" });
-    const text = writePrisma(s);
+    const score = parsePrisma("m1 |1  |2  |3  |4  ||\n0  |1  |3  |5  |8  ||\n---\n");
+    score.expressions.push({ staff: 0, t: 0, text: "sempre pianissimo", kind: "text" });
+    const text = writePrisma(score);
     expect(text).toMatch(/^m1 \|1  \|2  \|3  \|4  \|\|$/m);
     expect(text).toMatch(/^@   sempre pianissimo$/m);
-    expect(parsePrisma(text).expressions).toEqual(s.expressions);
+    expect(parsePrisma(text).expressions).toEqual(score.expressions);
   });
 });

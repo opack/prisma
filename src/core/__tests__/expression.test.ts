@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { importMusicXml, layout, parsePrisma, TICKS_PER_BEAT as T, writePrisma } from "../index.ts";
-import { C4, musicXml, q } from "../../../tests/support/musicxml.ts";
+import { importMusicXml, layout, parsePrisma, TICKS_PER_BEAT, writePrisma } from "../index.ts";
+import { C4, musicXml, QUARTER } from "../../../tests/support/musicxml.ts";
 import { roundTrip } from "../../../tests/support/round-trip.ts";
 import type { Score } from "../index.ts";
 
 describe("nuances et soufflets", () => {
-  const expr = (s: Score) => s.expressions.map((e) => `${e.staff}:${e.kind}:${e.text}@${e.t / T}`).join(" ");
-  const pins = (s: Score) => s.hairpins.map((h) => `${h.staff}:${h.kind}${h.start / T}-${h.end / T}`).join(" ");
+  const expr = (score: Score) => score.expressions.map((expression) => `${expression.staff}:${expression.kind}:${expression.text}@${expression.t / TICKS_PER_BEAT}`).join(" ");
+  const pins = (s: Score) => s.hairpins.map((hairpin) => `${hairpin.staff}:${hairpin.kind}${hairpin.start / TICKS_PER_BEAT}-${hairpin.end / TICKS_PER_BEAT}`).join(" ");
   const piece = [
     "m1 |1  |2  |3  |4  ||",
     "0  |1  |3  |5  |-  ||",
@@ -28,7 +28,7 @@ describe("nuances et soufflets", () => {
     const s = parsePrisma(piece);
     const text = writePrisma(s);
     const lines = text.split("\n");
-    const sep = lines.findIndex((l, i) => i > 2 && /^─/.test(l) && lines[i - 1].startsWith("@"));
+    const sep = lines.findIndex((line, index) => index > 2 && /^─/.test(line) && lines[index - 1].startsWith("@"));
     expect(lines[sep - 1]).toMatch(/^@ +p +<-+$/);
     expect(lines.filter((l) => l.startsWith("@")).pop()).toMatch(/^@ +mf +>-+$/);
     const back = parsePrisma(text);
@@ -40,9 +40,9 @@ describe("nuances et soufflets", () => {
     const bars = Array.from({ length: 8 }, () => "1  |2  |3  ||").join("");
     const notes = Array.from({ length: 8 }, () => "1  |   |   ||").join("");
     const s = parsePrisma(`m1 |${bars}\n0  |${notes}\n@   <\n---\n`);
-    s.hairpins[0].end = 20 * T; // de la mesure 1 au milieu de la mesure 7
+    s.hairpins[0].end = 20 * TICKS_PER_BEAT; // de la mesure 1 au milieu de la mesure 7
     const text = writePrisma(s, { width: 40 });
-    expect(text.split("\n").filter((l) => /^@ +<-*$/.test(l)).length).toBeGreaterThan(1);
+    expect(text.split("\n").filter((line) => /^@ +<-*$/.test(line)).length).toBeGreaterThan(1);
     const back = parsePrisma(text);
     expect(pins(back)).toBe("0:<0-20");
     // un soufflet coupé reste ouvert au point de coupure
@@ -71,12 +71,12 @@ describe("nuances et soufflets", () => {
       {
         notes: [
           [
-            { midi: [C4], dur: q, before: dir(1, "<dynamics><p/></dynamics>") + dir(1, "<words>rit.</words>") },
-            { midi: [C4 + 2], dur: q, before: dir(1, '<wedge type="crescendo"/>') },
-            { midi: [C4 + 4], dur: q },
-            { midi: [C4 + 5], dur: q, before: dir(1, '<wedge type="stop"/>') + dir(1, "<dynamics><f/></dynamics>") },
+            { midi: [C4], duration: QUARTER, before: dir(1, "<dynamics><p/></dynamics>") + dir(1, "<words>rit.</words>") },
+            { midi: [C4 + 2], duration: QUARTER, before: dir(1, '<wedge type="crescendo"/>') },
+            { midi: [C4 + 4], duration: QUARTER },
+            { midi: [C4 + 5], duration: QUARTER, before: dir(1, '<wedge type="stop"/>') + dir(1, "<dynamics><f/></dynamics>") },
           ],
-          [{ midi: [48], dur: 4 * q, staff: 2, before: dir(2, "<words>dolce</words>") }],
+          [{ midi: [48], duration: 4 * QUARTER, staff: 2, before: dir(2, "<words>dolce</words>") }],
         ],
       },
     ]);
@@ -90,7 +90,7 @@ describe("nuances et soufflets", () => {
 });
 
 describe("liaisons d'expression", () => {
-  const sk = (s: Score) => s.slurs.map((x) => `${x.staff}:${x.start / T}-${x.end / T}`).join(" ");
+  const sk = (score: Score) => score.slurs.map((x) => `${x.staff}:${x.start / TICKS_PER_BEAT}-${x.end / TICKS_PER_BEAT}`).join(" ");
   const ruler = "m1 |1  |2  |3  |4  ||1  |2  |3  |4  ||";
   const rh = "0  |5  |7  |8  |10 ||8  |7  |5  |3  ||";
   const piece = (slurLine: string) => [ruler, rh, slurLine, "---", ""].join("\n");
@@ -123,20 +123,20 @@ describe("liaisons d'expression", () => {
   });
 
   it("importe les liaisons du MusicXML par numéro, même d'une voix à l'autre, sans les prolongations", () => {
-    const slur = (type: string, n = "1") => `<slur type="${type}" number="${n}"/>`;
+    const slur = (type: string, number = "1") => `<slur type="${type}" number="${number}"/>`;
     const xml = musicXml([
       {
         notes: [
           [
-            { midi: [C4], dur: q, notations: slur("start") },
-            { midi: [C4 + 2], dur: q, notations: slur("start", "2") },
-            { midi: [C4 + 4], dur: q, notations: slur("stop", "2"), tie: ["start"] },
-            { midi: [C4 + 4], dur: q, tie: ["stop"] },
+            { midi: [C4], duration: QUARTER, notations: slur("start") },
+            { midi: [C4 + 2], duration: QUARTER, notations: slur("start", "2") },
+            { midi: [C4 + 4], duration: QUARTER, notations: slur("stop", "2"), tie: ["start"] },
+            { midi: [C4 + 4], duration: QUARTER, tie: ["stop"] },
           ],
-          [{ dur: 3 * q, voice: 2 }, { midi: [55], dur: q, voice: 2, notations: slur("stop") }],
+          [{ duration: 3 * QUARTER, voice: 2 }, { midi: [55], duration: QUARTER, voice: 2, notations: slur("stop") }],
         ],
       },
-      { notes: [[{ midi: [C4 + 5], dur: 4 * q }]] },
+      { notes: [[{ midi: [C4 + 5], duration: 4 * QUARTER }]] },
     ]);
     const s = importMusicXml(xml);
     // la liaison 1 part de la voix 1 et se termine sur la voix 2 : elle reste à la main où elle commence
@@ -150,18 +150,18 @@ describe("articulations", () => {
   it("lit staccato, accent et marcato sur la ligne @ de la portée", () => {
     expect(parsePrisma(piece).articulations).toEqual([
       { staff: 0, t: 0, kind: "staccato" },
-      { staff: 0, t: T, kind: "staccato" },
-      { staff: 0, t: 2 * T, kind: "accent" },
-      { staff: 0, t: 3 * T, kind: "marcato" },
+      { staff: 0, t: TICKS_PER_BEAT, kind: "staccato" },
+      { staff: 0, t: 2 * TICKS_PER_BEAT, kind: "accent" },
+      { staff: 0, t: 3 * TICKS_PER_BEAT, kind: "marcato" },
     ]);
   });
 
   it("les réécrit telles quelles, et garde deux articulations d'une même case", () => {
     expect(writePrisma(parsePrisma(piece))).toContain("@   .   .   !   !!");
     const two = piece.replace("@   .   .   !   !!", "@   . !");
-    const s = parsePrisma(two);
-    expect(s.articulations.map((x) => x.kind)).toEqual(["staccato", "accent"]);
-    expect(parsePrisma(writePrisma(s)).articulations).toEqual(s.articulations);
+    const score = parsePrisma(two);
+    expect(score.articulations.map((x) => x.kind)).toEqual(["staccato", "accent"]);
+    expect(parsePrisma(writePrisma(score)).articulations).toEqual(score.articulations);
   });
 
   it("refuse une articulation au-dessus de la règle, ou deux fois la même", () => {
@@ -175,27 +175,27 @@ describe("articulations", () => {
       {
         notes: [
           [
-            { midi: [C4, C4 + 4], dur: q, notations: art("<staccato/>") },
-            { midi: [C4], dur: q, notations: art("<accent/>") },
-            { midi: [C4], dur: q, notations: art("<strong-accent/>") },
-            { midi: [C4], dur: q, notations: art("<tenuto/>") },
+            { midi: [C4, C4 + 4], duration: QUARTER, notations: art("<staccato/>") },
+            { midi: [C4], duration: QUARTER, notations: art("<accent/>") },
+            { midi: [C4], duration: QUARTER, notations: art("<strong-accent/>") },
+            { midi: [C4], duration: QUARTER, notations: art("<tenuto/>") },
           ],
         ],
       },
     ]);
     expect(importMusicXml(xml).articulations).toEqual([
       { staff: 0, t: 0, kind: "staccato" },
-      { staff: 0, t: T, kind: "accent" },
-      { staff: 0, t: 2 * T, kind: "marcato" },
+      { staff: 0, t: TICKS_PER_BEAT, kind: "accent" },
+      { staff: 0, t: 2 * TICKS_PER_BEAT, kind: "marcato" },
     ]);
   });
 });
 
 describe("point d'orgue", () => {
   it("lit « ^ » sur la ligne @ du haut, sans le coller à un texte voisin", () => {
-    const s = parsePrisma("@   dolce ^\nm1 |1    |2    |3    |4    ||\n0  |1    |     |     |5    ||\n---\n");
-    expect(s.fermatas).toEqual([T]);
-    expect(s.texts).toEqual([{ t: 0, text: "dolce" }]);
+    const score = parsePrisma("@   dolce ^\nm1 |1    |2    |3    |4    ||\n0  |1    |     |     |5    ||\n---\n");
+    expect(score.fermatas).toEqual([TICKS_PER_BEAT]);
+    expect(score.texts).toEqual([{ t: 0, text: "dolce" }]);
   });
 
   it("importe le point d'orgue d'une note et d'un silence, une seule fois par instant", () => {
@@ -204,15 +204,15 @@ describe("point d'orgue", () => {
       {
         notes: [
           [
-            { midi: [C4], dur: 2 * q, notations: f },
-            { dur: 2 * q, notations: f },
+            { midi: [C4], duration: 2 * QUARTER, notations: f },
+            { duration: 2 * QUARTER, notations: f },
           ],
-          [{ midi: [48], dur: 2 * q, staff: 2, notations: f }, { midi: [43], dur: 2 * q, staff: 2 }],
+          [{ midi: [48], duration: 2 * QUARTER, staff: 2, notations: f }, { midi: [43], duration: 2 * QUARTER, staff: 2 }],
         ],
       },
     ]);
     const s = importMusicXml(xml);
-    expect(s.fermatas).toEqual([0, 2 * T]);
+    expect(s.fermatas).toEqual([0, 2 * TICKS_PER_BEAT]);
     const { text, back } = roundTrip(s);
     expect(text).toMatch(/^@ +\^ +\^$/m);
     expect(back.fermatas).toEqual(s.fermatas);
@@ -224,24 +224,24 @@ describe("point d'orgue", () => {
       {
         notes: [
           [
-            { midi: [C4], dur: 2 * q, before: dir("<words>(sol 8vb)</words>") + dir("<words>dolce</words>") },
-            { midi: [C4], dur: 2 * q, before: dir("<words>loco</words>") + dir("<words>8va</words>") },
+            { midi: [C4], duration: 2 * QUARTER, before: dir("<words>(sol 8vb)</words>") + dir("<words>dolce</words>") },
+            { midi: [C4], duration: 2 * QUARTER, before: dir("<words>loco</words>") + dir("<words>8va</words>") },
           ],
         ],
       },
     ]);
-    expect(importMusicXml(xml).expressions.map((e) => e.text)).toEqual(["dolce"]);
+    expect(importMusicXml(xml).expressions.map((expression) => expression.text)).toEqual(["dolce"]);
   });
 });
 
 describe("doigtés", () => {
-  const fk = (s: Score) => s.notes.filter((n) => n.finger).map((n) => `${n.midi}_${n.finger}`).join(" ");
+  const fk = (score: Score) => score.notes.filter((note) => note.finger).map((n) => `${n.midi}_${n.finger}`).join(" ");
   const ruler = "m1 |1      |2      |3  |4  ||";
 
   it("lit un doigté « 5_3 », seul ou avec une trille, et le garde à l'aller-retour", () => {
     const s = parsePrisma([ruler, "0  |5_1    |7~9_3  |8  |   ||", "   |1_5    |       |   |   ||", "---", ""].join("\n"));
     expect(fk(s)).toBe("64_1 60_5 66_3");
-    expect(s.notes.find((n) => n.midi === 66)!.trill).toBe(68);
+    expect(s.notes.find((note) => note.midi === 66)!.trill).toBe(68);
     const { text, back } = roundTrip(s);
     expect(fk(back)).toBe(fk(s));
     expect(text).toContain("7~9_3");
@@ -254,7 +254,7 @@ describe("doigtés", () => {
 
   it("importe les doigtés du MusicXML, le premier doigt d'une substitution", () => {
     const fing = (f: string) => `<technical><fingering>${f}</fingering></technical>`;
-    const xml = musicXml([{ notes: [[{ midi: [C4], dur: 2 * q, notations: fing("1") }, { midi: [C4 + 4], dur: 2 * q, notations: fing("4-3") }]] }]);
+    const xml = musicXml([{ notes: [[{ midi: [C4], duration: 2 * QUARTER, notations: fing("1") }, { midi: [C4 + 4], duration: 2 * QUARTER, notations: fing("4-3") }]] }]);
     expect(fk(importMusicXml(xml))).toBe("60_1 64_4");
   });
 });

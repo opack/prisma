@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { importMusicXml, layout, parsePrisma, writePrisma } from "../index.ts";
-import { musicXml, q } from "../../../tests/support/musicxml.ts";
+import { musicXml, QUARTER } from "../../../tests/support/musicxml.ts";
 import { roundTrip } from "../../../tests/support/round-trip.ts";
 
 describe("reprises", () => {
-  const n = (p: number) => ({ notes: [[{ midi: [p], dur: 4 * q }]] });
+  const n = (p: number) => ({ notes: [[{ midi: [p], duration: 4 * QUARTER }]] });
 
   it("écrit ||: :|| et :||: sur la règle et sur chaque ligne de notes", () => {
     const xml = musicXml([
@@ -20,7 +20,7 @@ describe("reprises", () => {
     ]);
     expect(score.markers).toEqual([]); // reprises simples : pas de section
     const { text } = roundTrip(score);
-    const ruler = text.split("\n").find((l) => l.startsWith("m1"))!;
+    const ruler = text.split("\n").find((line) => line.startsWith("m1"))!;
     expect(ruler).toMatch(/\|\|:1 .*:\|\|:1 .*:\|\|1 /);
     const row = text.split("\n").find((l) => l.startsWith("0 "))!;
     expect(row.replace(/[^|:]/g, "")).toBe(ruler.replace(/[^|:]/g, ""));
@@ -48,13 +48,13 @@ describe("reprises", () => {
   it("marque la dernière barre du morceau comme barre de fin", () => {
     const s = parsePrisma("m1 |1  ||1  ||1  ||1  ||\n0  |1  ||1  ||1  ||1  ||\n---\n");
     const sys = layout(s, { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 })[0];
-    const bars = sys.columns.filter((c) => c.kind === "barSep");
+    const bars = sys.columns.filter((column) => column.kind === "barSep");
     expect(bars.map((c) => !!(c as { final?: boolean }).final)).toEqual([false, false, false, true]);
   });
 
   it("garde les textes de la ligne @", () => {
     const s = parsePrisma("@   rit.     a tempo\nm1 |1  |2  ||1  ||\n0  |1  |   ||1  ||\n---\n");
-    expect(s.texts.map((t) => t.text)).toEqual(["rit.", "a tempo"]);
+    expect(s.texts.map((textMark) => textMark.text)).toEqual(["rit.", "a tempo"]);
     expect(writePrisma(s)).toMatch(/^@ +rit\. +a tempo$/m);
   });
 
@@ -69,20 +69,20 @@ describe("reprises", () => {
 
 describe("sections", () => {
   const ruler = "m1 |1  ||1  ||1  ||1  ||";
-  const bar = [...ruler.matchAll(/\|\|/g)].map((m) => m.index!);
+  const bar = [...ruler.matchAll(/\|\|/g)].map((match) => match.index!);
   const at = (...signs: [number, string][]) => {
-    let l = "@";
-    for (const [col, text] of signs) l = l.padEnd(col) + text;
-    return l;
+    let line = "@";
+    for (const [col, text] of signs) line = line.padEnd(col) + text;
+    return line;
   };
   const piece = (order: string, top: string, r = ruler, notes = "0  |1  ||1  ||1  ||1  ||") =>
     `${order ? `---\norder: ${order}\n---\n` : ""}${top}\n${r}\n${notes}\n---\n`;
 
   it("lit les sections et l'ordre de jeu", () => {
-    const s = parsePrisma(piece("A B A", at([3, "[A]"], [bar[1] + 1, "[B]"])));
-    expect(s.markers).toEqual([{ label: "A", barIndex: 0 }, { label: "B", barIndex: 2 }]);
-    expect(s.order).toEqual(["A", "B", "A"]);
-    expect(s.meta.order).toBeUndefined();
+    const score = parsePrisma(piece("A B A", at([3, "[A]"], [bar[1] + 1, "[B]"])));
+    expect(score.markers).toEqual([{ label: "A", barIndex: 0 }, { label: "B", barIndex: 2 }]);
+    expect(score.order).toEqual(["A", "B", "A"]);
+    expect(score.meta.order).toBeUndefined();
   });
 
   it("commence chaque section sur un nouveau système, et ferme la précédente d'une double barre", () => {
@@ -90,7 +90,7 @@ describe("sections", () => {
     const systems = layout(s, { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 });
     expect(systems.map((x) => x.section)).toEqual(["A", "B"]);
     expect(systems.map((x) => x.endsSection)).toEqual([true, false]);
-    const bars = systems[0].columns.filter((c) => c.kind === "barSep") as { section?: boolean }[];
+    const bars = systems[0].columns.filter((column) => column.kind === "barSep") as { section?: boolean }[];
     expect(bars.map((c) => !!c.section)).toEqual([false, true]);
     // à l'écriture aussi : la section B ouvre le second système
     expect(writePrisma(s)).toMatch(/\n\n@  \[B\]\nm3 \|/);
@@ -106,7 +106,7 @@ describe("sections", () => {
     expect(bars.map((c) => [!!c.section, !!c.spaced])).toEqual([[false, false], [true, true], [false, false], [false, false]]);
     // la lettre de B contre la barre qui l'ouvre ; 4 de plus que la ligne ordinaire
     const opening = one.columns.findIndex((c) => c.kind === "barSep" && c.spaced);
-    expect(one.marks.filter((m) => m.kind === "marker").map((m) => [m.label, m.column])).toEqual([["A", -1], ["B", opening]]);
+    expect(one.marks.filter((mark) => mark.kind === "marker").map((m) => [m.label, m.column])).toEqual([["A", -1], ["B", opening]]);
     const plain = layout(parsePrisma(piece("", "", ruler)), metrics)[0];
     expect(one.width - plain.width).toBe(4);
   });
@@ -126,7 +126,7 @@ describe("sections", () => {
 
   it("refuse une reprise à cheval sur deux sections", () => {
     const r = "m1 ||:1  ||1  ||1  :||1  ||";
-    const b = [...r.matchAll(/\|\|/g)].map((m) => m.index!);
+    const b = [...r.matchAll(/\|\|/g)].map((match) => match.index!);
     const notes = "0  ||:1  ||1  ||1  :||1  ||";
     expect(() => parsePrisma(piece("A B", at([4, "[A]"], [b[1] + 1, "[B]"]), r, notes))).toThrow(/reprise passe le début de la section « \[B\] »/);
   });

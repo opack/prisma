@@ -4,7 +4,7 @@ import type { Align } from "../index.ts";
 
 describe("notes alignées", () => {
   const metrics = { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 };
-  const rows = (text: string, align?: Align) => layout(parsePrisma(text), { ...metrics, align })[0].staves[0].rows.map((r) => r.cells);
+  const rows = (text: string, align?: Align) => layout(parsePrisma(text), { ...metrics, align })[0].staves[0].rows.map((systemRow) => systemRow.cells);
   const piece = ["m1 |1  |2  |3  |4  ||", "0  |8  |   |8  |10 ||", "   |5  |5  |5  |5  ||", "   |1  |1  |   |   ||", "---", "-1 |1  |-  |-  |-  ||", ""].join("\n");
 
   it("range par défaut chaque accord depuis le haut du couloir", () => {

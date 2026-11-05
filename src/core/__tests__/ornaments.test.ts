@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { importMusicXml, parsePrisma, TICKS_PER_BEAT as T } from "../index.ts";
-import { C4, musicXml, q } from "../../../tests/support/musicxml.ts";
+import { importMusicXml, parsePrisma, TICKS_PER_BEAT } from "../index.ts";
+import { C4, musicXml, QUARTER } from "../../../tests/support/musicxml.ts";
 import { notesKey, roundTrip } from "../../../tests/support/round-trip.ts";
 import type { Score } from "../index.ts";
 
 describe("petites notes", () => {
-  const gk = (s: Score) => s.graces.map((g) => `${g.staff}:${g.midi}@${g.t / T}#${g.slot}`).join(" ");
+  const gk = (score: Score) => score.graces.map((grace) => `${grace.staff}:${grace.midi}@${grace.t / TICKS_PER_BEAT}#${grace.slot}`).join(" ");
   const piece = [
     "m1 |1        |2  |3        |4  ||",
     "+1 |3'       |   |         |   ||",
@@ -44,13 +44,13 @@ describe("petites notes", () => {
       {
         notes: [
           [
-            { midi: [C4 + 2], dur: 0, grace: "slash" },
-            { midi: [C4 + 4], dur: 0, grace: true },
-            { midi: [C4], dur: 2 * q },
-            { midi: [C4 + 7, C4 + 11], dur: 0, grace: true },
-            { midi: [C4 + 12], dur: 2 * q },
+            { midi: [C4 + 2], duration: 0, grace: "slash" },
+            { midi: [C4 + 4], duration: 0, grace: true },
+            { midi: [C4], duration: 2 * QUARTER },
+            { midi: [C4 + 7, C4 + 11], duration: 0, grace: true },
+            { midi: [C4 + 12], duration: 2 * QUARTER },
           ],
-          [{ midi: [48], dur: 4 * q, staff: 2 }],
+          [{ midi: [48], duration: 4 * QUARTER, staff: 2 }],
         ],
       },
     ]);
@@ -62,14 +62,14 @@ describe("petites notes", () => {
 });
 
 describe("ornements", () => {
-  const gk = (s: Score) => s.graces.map((g) => `${g.staff}:${g.midi}@${g.t / T}#${g.slot}`).join(" ");
-  const tk = (s: Score) => s.notes.filter((n) => n.trill !== undefined).map((n) => `${n.midi}~${n.trill}`).join(" ");
+  const gk = (score: Score) => score.graces.map((grace) => `${grace.staff}:${grace.midi}@${grace.t / TICKS_PER_BEAT}#${grace.slot}`).join(" ");
+  const tk = (s: Score) => s.notes.filter((note) => note.trill !== undefined).map((n) => `${n.midi}~${n.trill}`).join(" ");
   const ruler = "m1 |1    |2    |3    |4    ||";
 
   it("lit une trille « 5~7 » : la note et sa voisine la plus proche", () => {
     const s = parsePrisma([ruler, "0  |5~7  |-    |12~1 |-    ||", "---", ""].join("\n"));
     expect(tk(s)).toBe("64~66 71~72");
-    expect(notesKey(s)).toBe(`0:64@0-${2 * T} 0:71@${2 * T}-${4 * T}`);
+    expect(notesKey(s)).toBe(`0:64@0-${2 * TICKS_PER_BEAT} 0:71@${2 * TICKS_PER_BEAT}-${4 * TICKS_PER_BEAT}`);
     const { text, back } = roundTrip(s);
     expect(tk(back)).toBe(tk(s));
     expect(text).toContain("|5~7 ");
@@ -84,7 +84,7 @@ describe("ornements", () => {
     const s = parsePrisma(
       ["@         \\", ruler, "0  |5    |5    |     |     ||", "   |1    |1    |     |     ||", "@   /", "---", "-1 |1    |1    |     |     ||", ""].join("\n"),
     );
-    expect(s.arpeggios).toEqual([{ t: 0, staff: 0 }, { t: T, down: true }]);
+    expect(s.arpeggios).toEqual([{ t: 0, staff: 0 }, { t: TICKS_PER_BEAT, down: true }]);
     expect(s.expressions).toEqual([]);
     const { back } = roundTrip(s);
     expect(back.arpeggios).toEqual(s.arpeggios);
@@ -101,10 +101,10 @@ describe("ornements", () => {
         key: -3, // mi bémol majeur : si, mi et la bémols
         notes: [
           [
-            { midi: [65], dur: q, notations: orn("<trill-mark/>") }, // fa : trille avec sol
-            { midi: [62], dur: q, notations: orn("<inverted-mordent/>") }, // ré : note, mi bémol (armure), note
-            { midi: [72], dur: q, notations: orn('<turn/><accidental-mark placement="above">natural</accidental-mark>') }, // do : ré, do, si bémol
-            { midi: [67], dur: q, notations: orn("<mordent/>") }, // sol : note, fa, note
+            { midi: [65], duration: QUARTER, notations: orn("<trill-mark/>") }, // fa : trille avec sol
+            { midi: [62], duration: QUARTER, notations: orn("<inverted-mordent/>") }, // ré : note, mi bémol (armure), note
+            { midi: [72], duration: QUARTER, notations: orn('<turn/><accidental-mark placement="above">natural</accidental-mark>') }, // do : ré, do, si bémol
+            { midi: [67], duration: QUARTER, notations: orn("<mordent/>") }, // sol : note, fa, note
           ],
         ],
       },
@@ -117,20 +117,20 @@ describe("ornements", () => {
 
   it("joue un gruppetto placé après la note juste avant la note suivante", () => {
     const orn = `<ornaments><delayed-turn/></ornaments>`;
-    const s = importMusicXml(musicXml([{ notes: [[{ midi: [64], dur: 2 * q, notations: orn }, { midi: [65], dur: 2 * q }]] }]));
+    const s = importMusicXml(musicXml([{ notes: [[{ midi: [64], duration: 2 * QUARTER, notations: orn }, { midi: [65], duration: 2 * QUARTER }]] }]));
     expect(gk(s)).toBe("0:65@2#0 0:64@2#1 0:62@2#2 0:64@2#3");
   });
 
   it("importe les arpèges : par portée, ou d'un seul geste quand les deux portées partagent leur numéro", () => {
-    const arp = (n: string) => `<arpeggiate number="${n}"/>`;
+    const arp = (number: string) => `<arpeggiate number="${number}"/>`;
     const xml = musicXml([
       {
         notes: [
-          [{ midi: [64, 67], dur: 2 * q, notations: arp("1") }, { midi: [64, 67], dur: 2 * q, notations: arp("2") }],
-          [{ midi: [48, 55], dur: 2 * q, staff: 2, notations: arp("1") }, { midi: [48, 55], dur: 2 * q, staff: 2, notations: arp("3") }],
+          [{ midi: [64, 67], duration: 2 * QUARTER, notations: arp("1") }, { midi: [64, 67], duration: 2 * QUARTER, notations: arp("2") }],
+          [{ midi: [48, 55], duration: 2 * QUARTER, staff: 2, notations: arp("1") }, { midi: [48, 55], duration: 2 * QUARTER, staff: 2, notations: arp("3") }],
         ],
       },
     ]);
-    expect(importMusicXml(xml).arpeggios).toEqual([{ t: 0 }, { t: 2 * T, staff: 0 }, { t: 2 * T, staff: 1 }]);
+    expect(importMusicXml(xml).arpeggios).toEqual([{ t: 0 }, { t: 2 * TICKS_PER_BEAT, staff: 0 }, { t: 2 * TICKS_PER_BEAT, staff: 1 }]);
   });
 });

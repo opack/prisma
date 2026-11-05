@@ -39,10 +39,10 @@ describe("instruments", () => {
     ["---", `parts: ${parts}`, "---", "m1 |1  |2  ||", "───┼─ Chœur de droite ─┼┼", "0  |8  |   ||", "═══╪═ Piano ═╪═══╪╪", "0  |1  |   ||", ""].join("\n");
 
   it("s'écrivent entre parenthèses après le nom de la partie, et se relisent", () => {
-    const s = parsePrisma(choir("Chœur de droite (flute), Piano"));
-    expect(s.parts).toEqual([{ name: "Chœur de droite", staves: 1, instrument: "flute" }, { name: "Piano", staves: 1 }]);
-    expect(writePrisma(s)).toContain("parts: Chœur de droite (flute), Piano");
-    expect(parsePrisma(writePrisma(s)).parts).toEqual(s.parts);
+    const score = parsePrisma(choir("Chœur de droite (flute), Piano"));
+    expect(score.parts).toEqual([{ name: "Chœur de droite", staves: 1, instrument: "flute" }, { name: "Piano", staves: 1 }]);
+    expect(writePrisma(score)).toContain("parts: Chœur de droite (flute), Piano");
+    expect(parsePrisma(writePrisma(score)).parts).toEqual(score.parts);
   });
 
   it("refusent un instrument inconnu, en donnant la liste", () => {

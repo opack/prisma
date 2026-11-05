@@ -3,7 +3,7 @@ import { engrave } from "../../app/score/engrave.ts";
 import { chordNotes, chordShape, exportMusicXml, importMusicXml, parsePrisma, parseShape, shapeNotes, shapeText, stringsOf, writePrisma } from "../index.ts";
 
 const guitar = stringsOf("guitar", "standard", 0)!;
-const shape = (chord: string, s = guitar) => shapeText(chordShape(chordNotes(chord)!, s)!);
+const shape = (chord: string, strings = guitar) => shapeText(chordShape(chordNotes(chord)!, strings)!);
 
 /** Un morceau d'une partie de guitare, et sa ligne d'accords au-dessus de la règle. */
 const piece = (chords: string, parts = "Guitare") => `---
@@ -52,9 +52,9 @@ describe("grilles d'accords", () => {
   });
 
   it("s'accolent au nom de l'accord, et se relisent telles qu'écrites", () => {
-    const s = parsePrisma(piece("10:m=x02210  8=320033"));
-    expect(s.chords.map((c) => c.text)).toEqual(["10:m=x02210", "8=320033"]);
-    expect(writePrisma(s)).toContain("@c  10:m=x02210  8=320033");
+    const score = parsePrisma(piece("10:m=x02210  8=320033"));
+    expect(score.chords.map((textMark) => textMark.text)).toEqual(["10:m=x02210", "8=320033"]);
+    expect(writePrisma(score)).toContain("@c  10:m=x02210  8=320033");
   });
 
   it("refusent une grille mal écrite, d'un autre nombre de cordes, ou qui joue une note hors de l'accord", () => {
@@ -62,8 +62,8 @@ describe("grilles d'accords", () => {
       try {
         parsePrisma(piece(chords, parts));
         return "";
-      } catch (e) {
-        return (e as Error).message;
+      } catch (error) {
+        return (error as Error).message;
       }
     };
     expect(err("10:m=x0z210")).toContain("une case par corde");
@@ -80,7 +80,7 @@ describe("grilles d'accords", () => {
     expect(xml).toContain("<frame><frame-strings>6</frame-strings><frame-frets>4</frame-frets><frame-note><string>5</string><fret>0</fret></frame-note>");
     expect(xml).toContain("<first-fret>3</first-fret>");
     const back = importMusicXml(xml);
-    expect(back.chords.map((c) => c.text)).toEqual(["10:m=x02210", "8=355433"]);
+    expect(back.chords.map((textMark) => textMark.text)).toEqual(["10:m=x02210", "8=355433"]);
   });
 
   it("se récapitulent en tête de partition, chaque accord une fois, dans l'ordre où il vient", () => {
@@ -95,8 +95,8 @@ m1 |1           |2           ||1           |2           ||
 `;
     const [first, ...rest] = engrave(parsePrisma(text), { chords: "name", chordNames: "english", chart: true });
     // la même grille revient une fois ; une autre grille écrite pour le même accord compte à part
-    expect(first.chart!.map((c) => [c.name, shapeText(c.shape)])).toEqual([["Am", "x02210"], ["G", "320003"], ["G", "355433"]]);
-    expect(rest.every((p) => !p.chart)).toBe(true);
+    expect(first.chart!.map((chartItem) => [chartItem.name, shapeText(chartItem.shape)])).toEqual([["Am", "x02210"], ["G", "320003"], ["G", "355433"]]);
+    expect(rest.every((page) => !page.chart)).toBe(true);
     expect(engrave(parsePrisma(text), { chords: "name" })[0].chart).toBeUndefined();
   });
 });

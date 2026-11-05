@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * sert, comme la vraie (listfolder, stat, getfilelink, uploadfile, deletefile), jeton compris.
  */
 function fakePcloud(initial: Record<string, string>) {
-  const files = new Map(Object.entries(initial).map(([p, t], i) => [p, { text: t, id: i + 1, modified: Date.UTC(2026, 9, 1 + i) }]));
+  const files = new Map(Object.entries(initial).map(([p, t], index) => [p, { text: t, id: index + 1, modified: Date.UTC(2026, 9, 1 + index) }]));
   let nextId = 100;
   const calls: string[] = [];
   const meta = (path: string, f: { id: number; modified: number }) => ({ name: path.split("/").pop(), isfolder: false, fileid: f.id, modified: new Date(f.modified).toUTCString() });
@@ -69,7 +69,7 @@ beforeEach(() => {
   // des modules neufs : les textes gardés par un essai ne servent pas au suivant
   vi.resetModules();
   store.clear();
-  vi.stubGlobal("localStorage", { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v), removeItem: (k: string) => store.delete(k) });
+  vi.stubGlobal("localStorage", { getItem: (key: string) => store.get(key) ?? null, setItem: (k: string, v: string) => store.set(k, v), removeItem: (k: string) => store.delete(k) });
   store.set("prisma:pcloud", JSON.stringify({ token: "jeton", host: "eapi.pcloud.com" }));
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -88,13 +88,13 @@ describe("la bibliothèque sur pCloud", () => {
     const { pcloudLibrary } = await import("../pcloudLibrary.ts");
     const { scan } = await import("../library.ts");
     const entries = await scan(pcloudLibrary());
-    expect(entries.map((e) => [e.path, e.folder, e.kind, e.title])).toEqual([
+    expect(entries.map((libraryEntry) => [libraryEntry.path, libraryEntry.folder, libraryEntry.kind, libraryEntry.title])).toEqual([
       ["Au clair.prisma", "", "prisma", "Au clair de la lune"],
       ["Satie/Gymnopedie.musicxml", "Satie", "musicxml", "Gymnopédie"],
     ]);
     expect(entries[0].own).toEqual({ fingerings: false });
     // une liste, puis un lien de téléchargement par fichier lu (les deux morceaux, les réglages)
-    expect(cloud.calls.filter((c) => c === "listfolder")).toHaveLength(1);
+    expect(cloud.calls.filter((cell) => cell === "listfolder")).toHaveLength(1);
     expect(cloud.calls).not.toContain("stat");
   });
 

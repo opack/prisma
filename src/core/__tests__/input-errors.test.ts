@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parsePrisma, TICKS_PER_BEAT as T, writePrisma } from "../index.ts";
+import { parsePrisma, TICKS_PER_BEAT, writePrisma } from "../index.ts";
 import { notesKey } from "../../../tests/support/round-trip.ts";
 
 describe("erreurs de saisie", () => {
@@ -7,16 +7,16 @@ describe("erreurs de saisie", () => {
   const err = (txt: string) => {
     try {
       parsePrisma(txt);
-    } catch (e) {
-      return (e as Error).message;
+    } catch (error) {
+      return (error as Error).message;
     }
     return "aucune erreur";
   };
 
   it("accepte une seule portée, sans aucun trait", () => {
-    const s = parsePrisma("m1 |1  |2  ||\n0  |1  |-  ||\n");
-    expect(s.parts).toEqual([{ staves: 1 }]);
-    expect(s.notes).toEqual([{ staff: 0, midi: 60, start: 0, end: 2 * T }]);
+    const score = parsePrisma("m1 |1  |2  ||\n0  |1  |-  ||\n");
+    expect(score.parts).toEqual([{ staves: 1 }]);
+    expect(score.notes).toEqual([{ staff: 0, midi: 60, start: 0, end: 2 * TICKS_PER_BEAT }]);
   });
   it("signale une étiquette de case inconnue", () => {
     expect(err("m1 |1  x  |2  ||\n───\n0  |1     |-  ||\n───")).toMatch(/ligne 1, col\. 8 : étiquette de case « x » inconnue/);
@@ -32,7 +32,7 @@ describe("erreurs de saisie", () => {
   });
   it("lit les octaves relatives au do central", () => {
     const s = parsePrisma("m1 |1  ||\n+1 |1  ||\n0  |1  ||\n---\n-1 |1  ||\n-2 |1  ||\n");
-    expect(s.notes.map((n) => n.midi)).toEqual([72, 60, 48, 36]);
+    expect(s.notes.map((note) => note.midi)).toEqual([72, 60, 48, 36]);
   });
   it("écrit les octaves relatives au do central", () => {
     const text = writePrisma(parsePrisma("m1 |1  ||\n+1 |1  ||\n---\n-1 |1  ||\n"));
@@ -54,6 +54,6 @@ describe("erreurs de saisie", () => {
   });
   it("accepte une saisie minimale à la main", () => {
     const s = parsePrisma("m1 |1  |2  ||\n0  |5  |-  ||\n---\n-1 |1  |   ||\n");
-    expect(notesKey(s)).toBe(`0:64@0-${2 * T} 1:48@0-${T}`);
+    expect(notesKey(s)).toBe(`0:64@0-${2 * TICKS_PER_BEAT} 1:48@0-${TICKS_PER_BEAT}`);
   });
 });
