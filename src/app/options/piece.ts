@@ -12,7 +12,7 @@ import type { StoredFolder } from "../files/stored.ts";
 import { isInstrument } from "../playback/instruments.ts";
 
 /** Les options qu'une partition peut définir pour elle-même : tout ce qui fait son rendu. */
-export const PIECE_KEYS = ["chords", "chordNames", "chordChart", "namesEverySystem", "sections", "simile", "octavePosition", "octaveStyle", "octaveColors", "density", "notePosition", "holdReminders", "fingerings"] as const;
+export const PIECE_KEYS = ["chords", "chordNames", "chordChart", "namesEverySystem", "sections", "simile", "octavePosition", "octaveStyle", "octaveColors", "density", "rulerDetail", "notePosition", "holdReminders", "fingerings"] as const;
 export type PieceKey = (typeof PIECE_KEYS)[number];
 export const isPieceKey = (k: string): k is PieceKey => (PIECE_KEYS as readonly string[]).includes(k);
 

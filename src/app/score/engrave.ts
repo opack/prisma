@@ -3,7 +3,7 @@
  * Toutes les dimensions sont en millimètres.
  */
 import { ARTICULATION_SIGNS, FINGER_MARK, firstStaves, staffCount, TRILL_MARK, chordName, chordNotes, chordOf, chordPrismaName, chordShape, chordWriting, graceDigits, gridStrings, layout, noteText, parseShape, splitShape, stringCell } from "../../core/index.ts";
-import type { Align, Part, Score, Shape, System, Voice } from "../../core/index.ts";
+import type { Align, Part, RulerDetail, Score, Shape, System, Voice } from "../../core/index.ts";
 
 export const PAGE = { w: 210, h: 297, marginX: 15, marginTop: 14, marginBottom: 16 };
 export const CONTENT_W = PAGE.w - 2 * PAGE.marginX;
@@ -374,9 +374,10 @@ export function chordChart(score: Score, names: ChordNames, top: number) {
  * compact : cases plus étroites, donc plus de mesures par ligne ; chords : affichage des
  * accords ; align : notes alignées, une note rejouée gardant sa ligne, ou une ligne par note (voir layout) ; reminders : rappel, en début
  * de système, de la note tenue depuis le système précédent ; inlineSections : une nouvelle section
- * suit sur la même ligne, séparée par un blanc, au lieu de commencer une ligne.
+ * suit sur la même ligne, séparée par un blanc, au lieu de commencer une ligne ; detail : règle
+ * détaillée, chaque temps découpé jusqu'à ce niveau même sans attaque (voir beatGrids).
  */
-export function engrave(score: Score, { compact = false, chords = "both" as ChordStyle, chordNames = "prisma" as ChordNames, chart = false, align = undefined as Align | undefined, reminders = true, inlineSections = false } = {}): Page[] {
+export function engrave(score: Score, { compact = false, chords = "both" as ChordStyle, chordNames = "prisma" as ChordNames, chart = false, align = undefined as Align | undefined, reminders = true, inlineSections = false, detail = "written" as RulerDetail } = {}): Page[] {
   const cellW = compact ? G.compactCell : G.cell;
   const rowH = compact ? G.compactRowH : G.rowH;
   const systems = layout(score, {
@@ -397,6 +398,7 @@ export function engrave(score: Score, { compact = false, chords = "both" as Chor
     allStrings: true,
     align,
     sectionSep: inlineSections ? G.sectionSep : undefined,
+    detail,
   });
   const pages: Page[] = [];
   const order = score.order;

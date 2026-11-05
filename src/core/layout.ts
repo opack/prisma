@@ -41,7 +41,16 @@ export type Metrics = {
   sectionSep?: number;
   /** Instruments à cordes : toutes les cordes, même celles qui ne jouent rien dans le système (gravure). */
   allStrings?: boolean;
+  /** Règle détaillée (gravure) : chaque temps découpé au moins jusqu'à ce niveau, même sans attaque (voir beatGrids). */
+  detail?: RulerDetail;
 };
+
+/**
+ * Règle détaillée : written, les seules cases écrites ; division, chaque temps découpé au moins une
+ * fois (« * » : en 2, en 3 dans un temps ternaire) ; subdivision, recoupé une fois de plus (« . » :
+ * en 4, en 6).
+ */
+export type RulerDetail = "written" | "division" | "subdivision";
 
 export type Align = "replayed" | "pitch";
 
@@ -222,8 +231,15 @@ export function anchorLabel(k: number, n: number, base: Division, beatLabel: num
 /** Les cases d'un temps : leur nombre, et le nom de chacune (chiffre du temps, « * », « . », « , »). */
 export type BeatGrid = { n: number; labels: string[] };
 
-/** Les cases écrites de chaque temps, telles que les montrent le texte et la gravure. */
-export function beatGrids(score: Score): BeatGrid[] {
+const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
+const lcm = (a: number, b: number) => (a / gcd(a, b)) * b;
+
+/**
+ * Les cases de chaque temps, telles que les montrent le texte et la gravure : les cases écrites, ou
+ * avec une règle détaillée (detail), au moins celles de son niveau. Le découpage ajouté suit celui
+ * du temps : un triolet reste en 3 (puis 6), sans mélange de demis et de tiers.
+ */
+export function beatGrids(score: Score, detail: RulerDetail = "written"): BeatGrid[] {
   const T = TICKS_PER_BEAT;
   const offsets: number[][] = score.beats.map(() => []);
   const attacks: number[][] = score.beats.map(() => []);
@@ -262,8 +278,10 @@ export function beatGrids(score: Score): BeatGrid[] {
     add(p.end, false);
   }
   return score.beats.map((b, i) => {
-    const n = resolution(offsets[i]);
-    const base = baseDivision(n, b.division, attacks[i]);
+    const written = resolution(offsets[i]);
+    const own = baseDivision(written, b.division, attacks[i]);
+    const n = detail === "written" ? written : lcm(written, detail === "division" ? own : own * 2);
+    const base = baseDivision(n, own, attacks[i]);
     return { n, labels: Array.from({ length: n }, (_, k) => anchorLabel(k, n, base, b.label)) };
   });
 }
@@ -500,7 +518,7 @@ function cell(lane: Lane, t: number, t0: number, parts: Part[]): string {
 }
 
 export function layout(score: Score, m: Metrics): System[] {
-  const grids = beatGrids(score);
+  const grids = beatGrids(score, m.detail);
   const T = TICKS_PER_BEAT;
   return breakSystems(score, grids, m).map((beatIdx) => {
     const t0 = beatStart(beatIdx[0]);

@@ -221,6 +221,8 @@ Chaque temps commence par son numéro, puis se coupe en **cases** de même duré
 
 En 4/4 : `1  *` pour des croches, `1  .  *  .` pour des doubles croches. En 6/8 : `1  *  *` pour des croches, `1  .  *  .  *  .` pour des doubles croches.
 
+Le texte n'écrit que les cases dont il a besoin : un temps tenu garde une seule case. Pour voir tout le découpage en lisant, l'application peut détailler la règle de la partition (Options › Partition › Règle) : chaque temps coupé au moins jusqu'au `*`, ou jusqu'au `.`, même sans attaque. Une note tenue y montre son trait case par case. Le texte, lui, ne change pas.
+
 ### Ce qui disparaît
 
 - **Les figures de note** (ronde, blanche, croche…) et **les points** : une note dure jusqu'à la fin de son trait `-`. Une croche pointée suivie d'une double croche, c'est une note sur trois cases et une sur la quatrième :

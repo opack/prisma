@@ -10,7 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ComponentProps, MutableRefObject, RefObject } from "react";
 import { stringsOfStaff } from "../../core/index.ts";
 import type { Score } from "../../core/index.ts";
-import { STRING_LANE, locate } from "../../core/locate.ts";
+import { STRING_LANE, isWrittenCase, locate } from "../../core/locate.ts";
 import type { ScorePlace } from "../../core/locate.ts";
 import type { EditorHandle } from "../editor/SourceEditor.tsx";
 import type { NameDisplay } from "../options/options.ts";
@@ -60,7 +60,8 @@ export function useRetouch({ current, rewrite, editor, linked, score, names }: D
     () =>
       pick.subscribe((at, where, kind) => {
         if (playing()) return;
-        if (kind === "edit") return setOpen(describe(current.current, at, where));
+        // une case que la règle détaillée ajoute n'est pas dans le texte : rien à y retoucher
+        if (kind === "edit") return setOpen(isWrittenCase(current.current, at.t) ? describe(current.current, at, where) : null);
         if (!linked) return;
         const p = locate(current.current, at);
         if (p) editor.current?.goTo(p.line, p.column, false);

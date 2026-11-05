@@ -144,6 +144,12 @@ test("app lecture", async ({ page }) => {
   await expect(page).toHaveScreenshot("app-lecture.png");
 });
 
+// la règle détaillée : chaque temps découpé, même sans attaque ; les tenues se lisent case par case
+test("app règle détaillée", async ({ page }) => {
+  await openApp(page, { source: GYMNOPEDIE, editing: false, options: { rulerDetail: "subdivision" } });
+  await expect(page).toHaveScreenshot("app-regle-detaillee.png");
+});
+
 test("app options", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS });
   await menu(page, "Partition", "Options");
