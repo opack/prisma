@@ -87,6 +87,21 @@ describe("nuances et soufflets", () => {
     roundTrip(s);
     expect(expr(parsePrisma(writePrisma(s)))).toBe("0:dynamic:p@0 1:text:dolce@0 0:dynamic:f@3");
   });
+
+  it("lit les lettres de nuance de la police musicale, et sépare une nuance en tête de texte", () => {
+    const words = (word: string) => `<direction><direction-type><words>${word}</words></direction-type><staff>1</staff></direction>`;
+    const xml = musicXml([{ notes: [[{ midi: [C4], duration: 2 * QUARTER, before: words("\ue520\ue520 con sordina") }, { midi: [C4], duration: 2 * QUARTER, before: words("mf dolce") }]] }]);
+    expect(importMusicXml(xml).expressions.map((expression) => `${expression.kind}:${expression.text}`)).toEqual(["dynamic:pp", "text:con sordina", "dynamic:mf", "text:dolce"]);
+  });
+
+  it("donne son signe à une nuance écrite en toutes lettres, et garde le texte", () => {
+    const dir = `<direction><direction-type><words>sempre pianissimo e senza sordini</words></direction-type><staff>1</staff></direction>`;
+    const s = importMusicXml(musicXml([{ notes: [[{ midi: [C4], duration: 4 * QUARTER, before: dir }]] }]));
+    expect(s.expressions).toEqual([
+      { staff: 0, t: 0, text: "pp", kind: "dynamic" },
+      { staff: 0, t: 0, text: "sempre pianissimo e senza sordini", kind: "text" },
+    ]);
+  });
 });
 
 describe("liaisons d'expression", () => {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parsePrisma, TICKS_PER_BEAT, writePrisma } from "../index.ts";
 import { notesKey } from "../../../tests/support/round-trip.ts";
 
-describe("erreurs de saisie", () => {
+describe("saisie à la main", () => {
   const base = (body: string) => `m1 |1  |2  ||\n───┼───┼───┼┼\n${body}`;
   const err = (txt: string) => {
     try {

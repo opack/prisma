@@ -82,15 +82,6 @@ describe("consignes de pédale", () => {
     expect(() => parsePrisma(piece("@   Ped. simile", ""))).toThrow(/sous la dernière portée de sa partie/);
   });
 
-  it("donne son signe à une nuance écrite en toutes lettres, et garde le texte", () => {
-    const dir = `<direction><direction-type><words>sempre pianissimo e senza sordini</words></direction-type><staff>1</staff></direction>`;
-    const s = importMusicXml(musicXml([{ notes: [[{ midi: [C4], duration: 4 * QUARTER, before: dir }]] }]));
-    expect(s.expressions).toEqual([
-      { staff: 0, t: 0, text: "pp", kind: "dynamic" },
-      { staff: 0, t: 0, text: "sempre pianissimo e senza sordini", kind: "text" },
-    ]);
-  });
-
   it("importe « Ped. simile » du MusicXML sur la ligne de pédale, même écrit sur la portée du haut", () => {
     const dir = `<direction><direction-type><words>Ped. simile</words></direction-type><staff>1</staff></direction>`;
     const s = importMusicXml(musicXml([{ notes: [[{ midi: [C4], duration: 4 * QUARTER, before: dir }]] }]));
