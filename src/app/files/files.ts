@@ -20,6 +20,16 @@ export const canWriteInPlace = typeof w.showOpenFilePicker === "function" && typ
 const PRISMA: PickerType = { description: "Partition Prisma", accept: { "text/plain": [".prisma"] } };
 const XML: PickerType = { description: "MusicXML", accept: { "application/xml": [".musicxml", ".xml"] } };
 
+/**
+ * Le type annoncé d'un fichier à créer. Android met l'extension d'accord avec le type : pour
+ * « text/plain », « morceau.prisma » deviendrait « morceau.prisma.txt », que la bibliothèque ne
+ * reconnaît plus. « application/octet-stream » est le seul type pour lequel il garde le nom donné ;
+ * ailleurs, le sélecteur s'en tient aux extensions.
+ */
+const AS_IS = "application/octet-stream";
+const SAVE_PRISMA: PickerType = { description: PRISMA.description, accept: { [AS_IS]: [".prisma"] } };
+const SAVE_XML: PickerType = { description: XML.description, accept: { [AS_IS]: [".musicxml"] } };
+
 const isAbort = (e: unknown) => (e as Error)?.name === "AbortError";
 
 /** Ouvre un fichier .prisma ou .musicxml. Renvoie null si l'utilisateur annule. */
@@ -36,7 +46,7 @@ export async function pickFile(): Promise<StoredFile | null> {
 /** Demande où enregistrer un nouveau fichier .prisma. Renvoie null si l'utilisateur annule. */
 export async function pickSaveTarget(suggestedName: string): Promise<StoredFile | null> {
   try {
-    return diskFile(await w.showSaveFilePicker!({ suggestedName, types: [PRISMA] }));
+    return diskFile(await w.showSaveFilePicker!({ suggestedName, types: [SAVE_PRISMA] }));
   } catch (e) {
     if (isAbort(e)) return null;
     throw e;
@@ -46,7 +56,7 @@ export async function pickSaveTarget(suggestedName: string): Promise<StoredFile 
 /** Demande où enregistrer un MusicXML exporté. Renvoie null si l'utilisateur annule. */
 export async function pickExportTarget(suggestedName: string): Promise<StoredFile | null> {
   try {
-    return diskFile(await w.showSaveFilePicker!({ suggestedName, types: [XML] }));
+    return diskFile(await w.showSaveFilePicker!({ suggestedName, types: [SAVE_XML] }));
   } catch (e) {
     if (isAbort(e)) return null;
     throw e;
@@ -83,8 +93,9 @@ export async function targetIn(dir: StoredFolder, name: string): Promise<StoredF
   return window.confirm(`${name} existe déjà dans ce dossier. Le remplacer ?`) ? existing : null;
 }
 
+/** Télécharge un fichier sous ce nom, tel quel (voir AS_IS). */
 export function download(name: string, text: string) {
-  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const blob = new Blob([text], { type: AS_IS });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = name;
