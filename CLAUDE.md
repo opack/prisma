@@ -12,7 +12,7 @@ Le projet est décrit dans [README.md](README.md) (architecture, choix technique
 
 ## La version
 
-- La version suit semver, dans `package.json` (et `package-lock.json`) : un changement que l'utilisateur voit la monte dans sa PR, le dernier nombre pour une correction, celui du milieu pour une nouveauté.
+- La version suit semver, dans `package.json` : un changement que l'utilisateur voit la monte dans sa PR, le dernier nombre pour une correction, celui du milieu pour une nouveauté.
 - Il ajoute ses lignes en tête de `CHANGELOG.md`, sous `## <version> — <date en toutes lettres>` : ce qui change pour le musicien, en une ligne chacun, vouvoyé, sans jargon de code. Un test vérifie que la première version du fichier est celle de `package.json`.
 
 ## Le format
@@ -47,7 +47,7 @@ Le projet est décrit dans [README.md](README.md) (architecture, choix technique
 
 ## Vérifier avant de dire que c'est fait
 
-- `npm run typecheck`, `npm test` et `npm run build` passent.
-- Le banc de captures (`npm run visual`) passe. Un changement voulu de l'apparence se vérifie sur les écarts, puis met à jour les références (`--update-snapshots`, pour les seules scènes concernées) ; jamais pour faire taire un écart qu'on ne comprend pas.
+- `pnpm typecheck`, `pnpm test` et `pnpm build` passent.
+- Le banc de captures (`pnpm visual`) passe. Un changement voulu de l'apparence se vérifie sur les écarts, puis met à jour les références (`--update-snapshots`, pour les seules scènes concernées) ; jamais pour faire taire un écart qu'on ne comprend pas.
 - Un écran, un panneau ou un état nouveau a sa scène dans le banc (`tests/visual/visual.pw.ts`), et une logique nouvelle ses tests (`tests/`).
 - Un chantier fini passe dans « Fait » de la ROADMAP ; le README suit l'architecture.
