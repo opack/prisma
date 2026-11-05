@@ -8,7 +8,7 @@ Le projet est décrit dans [README.md](README.md) (architecture, choix technique
 - Les textes de l'application et du site vouvoient.
 - Dans un texte, les noms de notes sont en italique (*do*, *fa dièse*) ; l'écriture Prisma est en code (`7`, `10:m`).
 - Les messages de commit sont en anglais, au format conventionnel (`feat(editor): …`, `fix(app): …`, `refactor: …`), avec si besoin une liste de tirets ; sans mention de co-auteur.
-- Les fichiers sont en UTF-8, avec des fins de ligne LF. Pas de Prettier.
+- Les fichiers sont en UTF-8, avec des fins de ligne LF. Prettier les met en forme (`pnpm format`), sauf le Markdown, écrit à la main.
 
 ## La version
 

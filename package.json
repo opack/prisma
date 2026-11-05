@@ -13,7 +13,9 @@
     "visual": "playwright test --project=visual",
     "visual:reference": "playwright test --project=visual --update-snapshots",
     "lint": "eslint .",
-    "e2e": "playwright test --project=e2e"
+    "e2e": "playwright test --project=e2e",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",

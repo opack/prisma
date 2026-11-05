@@ -19,6 +19,7 @@ pnpm dev        # le site sur http://localhost:5173/, l'application sur /app/
 pnpm test       # les tests (Vitest)
 pnpm typecheck  # la vérification des types (tsc)
 pnpm lint       # les règles du code (ESLint)
+pnpm format     # la mise en forme (Prettier)
 pnpm build      # tsc, puis le site et l'application dans dist/
 pnpm preview    # sert dist/ pour l'essayer
 pnpm e2e        # les tests de comportement dans le navigateur (Playwright)
