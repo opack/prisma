@@ -13,7 +13,7 @@ import { textMark } from "./textMark.ts";
 import { mainOf, rowLane } from "../../core/locate.ts";
 import { keyName, parseKey, prismaKey } from "../../core/key.ts";
 import type { Key, NoteNames } from "../../core/index.ts";
-import { glide, timed } from "./glide.ts";
+import { glide } from "./glide.ts";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 
 const INK = "#1b1d1f";
@@ -235,8 +235,6 @@ function articulationSigns(signs: string[], cx: number, cy: number) {
 
 function Row({ ps, row, y, centered, articulations, reminders, techTop }: { ps: PlacedSystem; row: SystemRow; y: number; centered: boolean; articulations?: Map<number, string[]>; reminders: boolean; techTop: number }) {
   const { sys, xs, ws } = ps;
-  const x0 = PAGE.marginX;
-  const right = xs[xs.length - 1] + ws[ws.length - 1];
   const base = y + ps.rowH * 0.74;
   // petites notes : en petit, en exposant et en gris foncé, en tête de case, rang par rang
   const graces = row.graces.flatMap((list, a) => {
@@ -848,7 +846,6 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
   const left = x0 + G.prefix;
   const right = xs[xs.length - 1] + ws[ws.length - 1];
   const rulerBase = y + G.rulerH * 0.72;
-  const rowsOf = (k: number) => sys.staves[k].rows;
   // sections à la suite : le blanc entre la fin d'une section et la suivante coupe les couloirs
   const gaps = sys.columns.flatMap((c, ci) => (c.kind === "barSep" && c.spaced ? [spacedWidths(c, xs[ci], ws[ci]).gap] : []));
   const spans = (a: number, b: number) => {
@@ -1251,7 +1248,9 @@ function extent(area: SVGRectElement) {
 export function barsIn(ps: PlacedSystem): number[][] {
   const bars: number[][] = [[]];
   ps.sys.columns.forEach((c, i) => {
-    if (c.kind === "barSep") bars[bars.length - 1].length && bars.push([]);
+    if (c.kind === "barSep") {
+      if (bars[bars.length - 1].length) bars.push([]);
+    }
     else if (c.kind === "anchor") bars[bars.length - 1].push(i);
   });
   return bars.filter((bar) => bar.length);
@@ -1286,7 +1285,10 @@ export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
     let best = sys.anchors[0], dist = Infinity;
     for (const ci of sys.anchors) {
       const d = x < ps.xs[ci] ? ps.xs[ci] - x : x > ps.xs[ci] + ps.ws[ci] ? x - ps.xs[ci] - ps.ws[ci] : 0;
-      if (d < dist) (best = ci), (dist = d);
+      if (d < dist) {
+        best = ci;
+        dist = d;
+      }
     }
     const t = (sys.columns[best] as { t: number }).t;
     // la ligne sous le clic (les places des portées se comptent depuis le haut du système)

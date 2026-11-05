@@ -48,6 +48,8 @@ function lyricsOf(raw: (RawLyric & { t: number })[], voiceNotes: (RawVoiceNote &
   return sortLyrics(out.map(({ voice, melisma, ...l }) => l));
 }
 
+// l'arbre que rend fast-xml-parser : sa forme est celle du fichier lu, inconnue d'avance
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type XNode = Record<string, any>;
 const parser = new XMLParser({ preserveOrder: true, ignoreAttributes: false, attributeNamePrefix: "" });
 
@@ -690,7 +692,7 @@ export function sectionsOf(seq: number[], n: number): { repeats: Repeat[]; marke
     if (seq[k] + 1 < n) starts.add(seq[k] + 1);
   }
   type Section = { from: number; to: number; times: number };
-  let sections: Section[] = [...starts].sort((a, b) => a - b).map((from, i, all) => ({ from, to: (all[i + 1] ?? n) - 1, times: 1 }));
+  const sections: Section[] = [...starts].sort((a, b) => a - b).map((from, i, all) => ({ from, to: (all[i + 1] ?? n) - 1, times: 1 }));
   // ordre : une entrée à chaque début de section
   let order: Section[] = seq.filter((b) => starts.has(b)).map((b) => sections.find((s) => s.from === b)!);
 

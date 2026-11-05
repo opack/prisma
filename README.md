@@ -18,6 +18,7 @@ pnpm install
 pnpm dev        # le site sur http://localhost:5173/, l'application sur /app/
 pnpm test       # les tests (Vitest)
 pnpm typecheck  # la vérification des types (tsc)
+pnpm lint       # les règles du code (ESLint)
 pnpm build      # tsc, puis le site et l'application dans dist/
 pnpm preview    # sert dist/ pour l'essayer
 pnpm visual     # le banc de captures (Playwright), voir Tests
@@ -144,7 +145,7 @@ Sous PowerShell : `$env:VISUAL_ROOT = "../prisma-reference"; pnpm visual:referen
 
 ## Contribuer
 
-- Lancez `pnpm typecheck` et `pnpm test` avant de proposer un changement.
+- Lancez `pnpm typecheck`, `pnpm lint` et `pnpm test` avant de proposer un changement.
 - Un changement du format se reporte dans [FORMAT.md](FORMAT.md) (la grammaire exacte) et dans [REFERENCE.md](REFERENCE.md) (pour le musicien), avec un exemple quand c'est utile : le test de la référence le vérifiera.
 - Le code, ses commentaires et la documentation sont en français ; les clés de l'en-tête et les noms d'instruments sont en anglais, comme les noms d'accords.
 - Les messages de commit sont en anglais, au format conventionnel : `feat(editor): …`, `fix(app): …`, avec si besoin une liste de tirets.

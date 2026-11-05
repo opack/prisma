@@ -41,7 +41,7 @@ export function parseRule(line: string, lineNo: number): Rule | undefined {
   }
   if (t.length < 3 || !HORIZONTAL.test(body)) return undefined;
   const double = /[═=╪]/.test(body);
-  if (double && /[─━\-]/.test(body)) throw new PrismaError("trait mélangé : simple (─) entre deux portées d'une partie, double (═) entre deux parties", lineNo, 1);
+  if (double && /[─━-]/.test(body)) throw new PrismaError("trait mélangé : simple (─) entre deux portées d'une partie, double (═) entre deux parties", lineNo, 1);
   return { double, ...(name ? { name } : {}) };
 }
 export const isRuler = (line: string) => /^m[^|\s]*\s*\|/.test(line);

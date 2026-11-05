@@ -85,7 +85,9 @@ export function velocityAt(score: Score): (staff: Staff, t: number, accent?: boo
     const shared: Mark[] = [];
     for (const m of others) {
       const key = `${family(m)}:${m.t}`;
-      if (!taken.has(key)) (taken.add(key), shared.push(m));
+      if (taken.has(key)) continue;
+      taken.add(key);
+      shared.push(m);
     }
     // à un même instant, la nuance d'abord, puis le changement qui part d'elle
     used.set(p, [...mine, ...shared].sort((a, b) => a.t - b.t || (family(a) === "ramp" ? 1 : 0) - (family(b) === "ramp" ? 1 : 0)));

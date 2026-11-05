@@ -18,7 +18,7 @@ const MAX = 50;
 
 export function parseErrors(text: string): PrismaError[] {
   const lines = text.replace(/\t/g, "    ").split(/\r?\n/);
-  let body = 0;
+  let body: number;
   try {
     body = parseFrontmatter(lines).bodyStartLine;
   } catch (e) {

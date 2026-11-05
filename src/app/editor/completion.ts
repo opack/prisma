@@ -26,7 +26,7 @@ import { autocompletion } from "@codemirror/autocomplete";
 import type { EditorView } from "@codemirror/view";
 import { FRONTMATTER, INSTRUMENTS, DEFAULT_CELL, SHAPE_SEPARATOR, chordName, chordNotes, chordPrismaName, chordPrismaText, chordShape, gridStrings, parseShape, partExtras, shapeNotes, shapeText, splitPartEntry, splitParts, guessKey, inspect, keyName, midiOf, noteName, parsePrisma, prismaKey } from "../../core/index.ts";
 import { pitchClass, stringsOf } from "../../core/index.ts";
-import { ARPEGGIO_DOWN, ARTICULATION_SIGNS, EFFECT_SIGNS, FERMATA, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, isHairpin, markMeaning, BEND_MARK, DEAD_MARK, HARMONICS, MAX_BEND, MAX_CAPO, MAX_FRET, RELEASE_MARK, guessInstrument, isStringInstrument, slideText, soundingOf, tuningsOf } from "../../core/index.ts";
+import { ARPEGGIO_DOWN, ARTICULATION_SIGNS, EFFECT_SIGNS, FERMATA, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, isHairpin, markMeaning, BEND_MARK, DEAD_MARK, HARMONICS, MAX_BEND, MAX_FRET, RELEASE_MARK, guessInstrument, isStringInstrument, slideText, soundingOf, tuningsOf } from "../../core/index.ts";
 import type { Direction, InstrumentName, NoteNames, Strings } from "../../core/index.ts";
 import { CHORD_LINE, isRuler, markTokens, parseRule } from "../../core/prisma-parse.ts";
 import { instrumentLabel } from "../playback/instruments.ts";

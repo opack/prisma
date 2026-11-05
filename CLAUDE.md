@@ -47,7 +47,7 @@ Le projet est décrit dans [README.md](README.md) (architecture, choix technique
 
 ## Vérifier avant de dire que c'est fait
 
-- `pnpm typecheck`, `pnpm test` et `pnpm build` passent.
+- `pnpm typecheck`, `pnpm lint`, `pnpm test` et `pnpm build` passent.
 - Le banc de captures (`pnpm visual`) passe. Un changement voulu de l'apparence se vérifie sur les écarts, puis met à jour les références (`--update-snapshots`, pour les seules scènes concernées) ; jamais pour faire taire un écart qu'on ne comprend pas.
 - Un écran, un panneau ou un état nouveau a sa scène dans le banc (`tests/visual/visual.pw.ts`), et une logique nouvelle ses tests (`tests/`).
 - Un chantier fini passe dans « Fait » de la ROADMAP ; le README suit l'architecture.
