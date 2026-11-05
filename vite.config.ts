@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import type { Connect } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { pcloudFile } from "./src/server/pcloudFile.ts";
 
 /** Le relais de lecture pCloud (une fonction Netlify en ligne), servi aussi par `npm run dev` et `npm run preview`. */
@@ -14,6 +16,19 @@ const relay: Connect.NextHandleFunction = async (req, res) => {
   r.headers.forEach((v, k) => res.setHeader(k, v));
   res.end(Buffer.from(await r.arrayBuffer()));
 };
+
+/** La version de l'application : celle de package.json. */
+const version: string = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version;
+
+/** Le commit construit, en court : donné par Netlify (COMMIT_REF), sinon lu dans git ; rien hors d'un dépôt. */
+function commit() {
+  if (process.env.COMMIT_REF) return process.env.COMMIT_REF.slice(0, 7);
+  try {
+    return execSync("git rev-parse --short=7 HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+  } catch {
+    return "";
+  }
+}
 
 export default defineConfig({
   plugins: [
@@ -59,8 +74,9 @@ export default defineConfig({
       },
     }),
   ],
-  // l'heure de la construction (ou du lancement du serveur) : les aperçus faits par une autre version se refont
-  define: { __BUILD__: JSON.stringify(new Date().toISOString()) },
+  // l'heure de la construction (ou du lancement du serveur) : les aperçus faits par une autre version se refont ;
+  // la version (semver, celle de package.json et de CHANGELOG.md) et le commit, montrés dans Aide › À propos
+  define: { __BUILD__: JSON.stringify(new Date().toISOString()), __VERSION__: JSON.stringify(version), __COMMIT__: JSON.stringify(commit()) },
   build: {
     // le site qui présente Prisma, à la racine, et l'application dans app/
     rollupOptions: { input: { index: "index.html", comparaison: "comparaison.html", apprendre: "apprendre.html", reference: "reference.html", guitare: "guitare.html", app: "app/index.html" } },

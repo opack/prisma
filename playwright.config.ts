@@ -23,6 +23,7 @@ export default defineConfig({
   outputDir: "test-results/visual",
   use: { baseURL: `http://localhost:${port}`, reducedMotion: "reduce", deviceScaleFactor: 1 },
   expect: { toHaveScreenshot: { animations: "disabled", caret: "hide", maxDiffPixels: 0 } },
-  // un identifiant pCloud de banc : la bibliothèque propose pCloud, dont les appels sont simulés (page.route)
-  webServer: { command: `npx vite --port ${port} --strictPort`, cwd: root, url: `http://localhost:${port}/app/`, reuseExistingServer: false, timeout: 60_000, env: { VITE_PCLOUD_CLIENT_ID: "banc" } },
+  // un identifiant pCloud de banc : la bibliothèque propose pCloud, dont les appels sont simulés (page.route) ;
+  // un commit fixe, pour la fenêtre À propos
+  webServer: { command: `npx vite --port ${port} --strictPort`, cwd: root, url: `http://localhost:${port}/app/`, reuseExistingServer: false, timeout: 60_000, env: { VITE_PCLOUD_CLIENT_ID: "banc", COMMIT_REF: "0000000" } },
 });

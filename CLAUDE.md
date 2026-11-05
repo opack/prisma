@@ -10,6 +10,11 @@ Le projet est décrit dans [README.md](README.md) (architecture, choix technique
 - Les messages de commit sont en anglais, au format conventionnel (`feat(editor): …`, `fix(app): …`, `refactor: …`), avec si besoin une liste de tirets ; sans mention de co-auteur.
 - Les fichiers sont en UTF-8, avec des fins de ligne LF. Pas de Prettier.
 
+## La version
+
+- La version suit semver, dans `package.json` (et `package-lock.json`) : un changement que l'utilisateur voit la monte dans sa PR, le dernier nombre pour une correction, celui du milieu pour une nouveauté.
+- Il ajoute ses lignes en tête de `CHANGELOG.md`, sous `## <version> — <date en toutes lettres>` : ce qui change pour le musicien, en une ligne chacun, vouvoyé, sans jargon de code. Un test vérifie que la première version du fichier est celle de `package.json`.
+
 ## Le format
 
 - Un signe, un sens : un signe ne veut dire qu'une chose.
