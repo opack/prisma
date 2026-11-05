@@ -104,6 +104,12 @@ const NOTE_POSITIONS: Option<RenderOptions["notePosition"]>[] = [
   { value: "pitch", label: "Une ligne par note", hint: "alignées, et deux notes d'une même mesure sur deux lignes, l'aiguë au-dessus : le dessin des arpèges et de la mélodie" },
 ];
 
+const RULER_DETAILS: Option<RenderOptions["rulerDetail"]>[] = [
+  { value: "written", label: "Telle qu'écrite", hint: "les cases écrites dans le texte, sans plus" },
+  { value: "division", label: "Premier découpage", hint: "chaque temps coupé au moins en 2 (en 3 s'il est ternaire), même sans attaque : 1 * 2 *" },
+  { value: "subdivision", label: "Second découpage", hint: "chaque temps coupé au moins en 4 (en 6 s'il est ternaire), même sans attaque : 1 . * . 2 . * . ; la partition s'allonge" },
+];
+
 const DENSITIES: Option<RenderOptions["density"]>[] = [
   { value: "normal", label: "Normal", hint: "des cases larges, plus lisibles" },
   { value: "compact", label: "Compact", hint: "des cases serrées, pour les partitions chargées" },
@@ -207,6 +213,7 @@ const DESCRIBE: Record<string, (o: RenderOptions) => string> = {
   octaveStyle: (o) => labelOf(OCTAVE_SYMBOLS, o.octaveStyle),
   octaveColors: (o) => labelOf(COLORS, o.octaveColors),
   density: (o) => labelOf(DENSITIES, o.density),
+  rulerDetail: (o) => labelOf(RULER_DETAILS, o.rulerDetail),
   notePosition: (o) => labelOf(NOTE_POSITIONS, o.notePosition),
   holdReminders: (o) => (o.holdReminders ? "rappelée" : "trait seul"),
   fingerings: (o) => (o.fingerings ? "affichés" : "masqués"),
@@ -411,6 +418,7 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
               hint={options.namesEverySystem ? "le nom de chaque partie en tête de chaque système" : "les noms au premier système seulement, comme sur une partition"}
               scope={scope(["namesEverySystem"], "namesEverySystem")}
             />
+            <Choice id="ruler-detail" label="Règle" value={options.rulerDetail} options={RULER_DETAILS} onChange={(rulerDetail) => setOptions({ rulerDetail })} scope={scope(["rulerDetail"], "rulerDetail")} />
             <Choice id="sections" label="Sections" value={options.sections} options={SECTIONS} onChange={(sections) => setOptions({ sections })} scope={scope(["sections"], "sections")} />
             <Choice id="simile" label="Ped. simile" value={options.simile} options={SIMILE} onChange={(simile) => setOptions({ simile })} scope={scope(["simile"], "simile")} />
           </>

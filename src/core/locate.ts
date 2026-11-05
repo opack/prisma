@@ -118,6 +118,17 @@ export function findRow(text: string, at: ScorePlace): { line: number; column: n
 }
 
 /**
+ * Vrai si une case du texte commence à l'instant t. Faux pour une case que la règle détaillée
+ * ajoute à la gravure : le texte ne l'a pas, rien ne peut s'y écrire.
+ */
+export function isWrittenCase(text: string, t: number): boolean {
+  const s = systems(split(text)).find((x) => t >= x.beat0 * TICKS_PER_BEAT && t < (x.beat0 + x.beats.length) * TICKS_PER_BEAT);
+  if (!s) return false;
+  const n = s.beats[Math.floor(t / TICKS_PER_BEAT) - s.beat0].length;
+  return ((t % TICKS_PER_BEAT) * n) % TICKS_PER_BEAT === 0;
+}
+
+/**
  * Le chemin inverse : ce que désigne, sur la partition, la ligne L et la colonne C (à partir de 1)
  * du texte. Sur une ligne de notes : l'instant de sa case, sa portée, son octave, son contenu ; sur
  * une ligne @ ou un trait d'une portée : l'instant et la portée ; sur la règle ou au-dessus d'elle :

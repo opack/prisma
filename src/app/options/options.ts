@@ -6,7 +6,7 @@ import type { SimileDisplay } from "../playback/pedal.ts";
 import { CLICK_SOUNDS, DEFAULT_CLICK_SOUNDS } from "../playback/metronome.ts";
 import type { ClickSounds } from "../playback/metronome.ts";
 import type { ClickGrid } from "../playback/performance.ts";
-import type { Align, NoteNames } from "../../core/index.ts";
+import type { Align, NoteNames, RulerDetail } from "../../core/index.ts";
 
 /** Comment nommer une note : par son nom (do ré mi, ou C D E), sur un petit clavier, ou pas du tout (le numéro suffit). */
 export type NameDisplay = NoteNames | "keyboard";
@@ -33,6 +33,8 @@ export type RenderOptions = {
   notePosition: NotePosition;
   /** Espacement des cases : normal, ou compact pour gagner de la place sur les partitions chargées. */
   density: Density;
+  /** La règle : les cases écrites, ou chaque temps découpé jusqu'au premier ou au second découpage, même sans attaque. */
+  rulerDetail: RulerDetail;
   /** Graver les doigtés : les masquer allège la page sans toucher au fichier. */
   fingerings: boolean;
   /** Noms des parties : au premier système seulement (comme une partition), ou à chaque système. */
@@ -71,7 +73,7 @@ export type RenderOptions = {
   clickVolume: number;
 };
 
-export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal", fingerings: true, namesEverySystem: false, holdReminders: true, octaveColors: "rainbow", chords: "both", chordNames: "prisma", chordChart: false, sections: "newLine", noteNames: "latin", sourceColors: "octaves", scoreToText: true, simile: "pedals", lookAhead: true, metronome: false, clickSounds: DEFAULT_CLICK_SOUNDS, clickGrid: "cells", countIn: false, clickVolume: 1 };
+export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal", rulerDetail: "written", fingerings: true, namesEverySystem: false, holdReminders: true, octaveColors: "rainbow", chords: "both", chordNames: "prisma", chordChart: false, sections: "newLine", noteNames: "latin", sourceColors: "octaves", scoreToText: true, simile: "pedals", lookAhead: true, metronome: false, clickSounds: DEFAULT_CLICK_SOUNDS, clickGrid: "cells", countIn: false, clickVolume: 1 };
 
 export const OCTAVE_STYLES: { value: OctaveStyle; label: string; sample: string }[] = [
   { value: "arrow", label: "Flèches", sample: "↑1  0  ↓1" },
@@ -109,6 +111,8 @@ export const CHORD_STYLES: { value: ChordStyle; label: string; sample: string }[
   { value: "grid", label: "Nom et grille", sample: "10:m + x02210" },
 ];
 
+export const RULER_DETAILS: RulerDetail[] = ["written", "division", "subdivision"];
+
 export type SectionLayout = "newLine" | "inline";
 export const SECTION_LAYOUTS: { value: SectionLayout; label: string }[] = [
   { value: "newLine", label: "À la ligne" },
@@ -145,6 +149,7 @@ export function loadOptions(stored?: string | null): RenderOptions {
     const autoEngrave = typeof raw.autoEngrave === "boolean" ? raw.autoEngrave : DEFAULT_OPTIONS.autoEngrave;
     const notePosition = NOTE_POSITIONS.some((p) => p.value === raw.notePosition) ? raw.notePosition : DEFAULT_OPTIONS.notePosition;
     const density = DENSITIES.some((d) => d.value === raw.density) ? raw.density : DEFAULT_OPTIONS.density;
+    const rulerDetail = RULER_DETAILS.includes(raw.rulerDetail) ? raw.rulerDetail : DEFAULT_OPTIONS.rulerDetail;
     const fingerings = typeof raw.fingerings === "boolean" ? raw.fingerings : DEFAULT_OPTIONS.fingerings;
     const namesEverySystem = typeof raw.namesEverySystem === "boolean" ? raw.namesEverySystem : DEFAULT_OPTIONS.namesEverySystem;
     const holdReminders = typeof raw.holdReminders === "boolean" ? raw.holdReminders : DEFAULT_OPTIONS.holdReminders;
@@ -166,7 +171,7 @@ export function loadOptions(stored?: string | null): RenderOptions {
     const clickSounds = Object.fromEntries(
       Object.entries(DEFAULT_CLICK_SOUNDS).map(([level, d]) => [level, CLICK_SOUNDS.some((c) => c.value === sounds[level]) ? sounds[level] : d]),
     ) as ClickSounds;
-    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density, fingerings, namesEverySystem, holdReminders, octaveColors, chords, chordNames, chordChart, sections, noteNames, sourceColors, scoreToText, simile, lookAhead, metronome, clickSounds, clickGrid, countIn, clickVolume };
+    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density, rulerDetail, fingerings, namesEverySystem, holdReminders, octaveColors, chords, chordNames, chordChart, sections, noteNames, sourceColors, scoreToText, simile, lookAhead, metronome, clickSounds, clickGrid, countIn, clickVolume };
   } catch {
     return DEFAULT_OPTIONS;
   }
