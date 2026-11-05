@@ -17,6 +17,8 @@ type Ctx = {
   autoEngrave: { on: boolean; toggle: () => void };
   options: { shown: boolean; toggle: () => void };
   convert: () => void;
+  /** La fenêtre À propos : la version, les nouveautés. */
+  about: () => void;
   /** Rien à imprimer : pas de pages, ou la référence, la bibliothèque à la place. */
   canPrint: boolean;
   editor: { on: boolean; toggle: () => void };
@@ -81,6 +83,6 @@ export function appMenus(c: Ctx): MenuDef[] {
         { label: "Lecture focalisée : deux systèmes", onSelect: () => c.setView({ fit: "focus", zoom: 1 }), checked: view.fit === "focus" },
       ],
     },
-    { label: "Aide", items: [{ label: "Référence", onSelect: c.guide.toggle, checked: c.guide.shown }] },
+    { label: "Aide", items: [{ label: "Référence", onSelect: c.guide.toggle, checked: c.guide.shown }, "separator", { label: "À propos…", onSelect: c.about }] },
   ];
 }

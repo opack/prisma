@@ -1,0 +1,15 @@
+/**
+ * La fenêtre « À propos » : ouverte depuis Aide, ou d'elle-même une fois quand l'application vient
+ * d'être mise à jour vers une version plus récente, pour en montrer les nouveautés. La dernière
+ * version vue est gardée dans le navigateur.
+ */
+import { useEffect, useState } from "react";
+import { updatedSince } from "./changelog.ts";
+
+const SEEN = "prisma:version";
+
+export function useAbout() {
+  const [shown, setShown] = useState(() => updatedSince(localStorage.getItem(SEEN), __VERSION__));
+  useEffect(() => localStorage.setItem(SEEN, __VERSION__), []);
+  return { shown, open: () => setShown(true), close: () => setShown(false) };
+}
