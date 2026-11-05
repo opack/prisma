@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { clampTempo, stepTempo } from "../src/app/playback/tempo.ts";
-import { MAX_TEMPO, MIN_TEMPO } from "../src/app/options/piece.ts";
+import { clampTempo, stepTempo } from "../tempo.ts";
+import { MAX_TEMPO, MIN_TEMPO } from "../../options/piece.ts";
 
 describe("le tempo de l'écoute", () => {
   it("avance et recule d'un pas, sans sortir des bornes", () => {

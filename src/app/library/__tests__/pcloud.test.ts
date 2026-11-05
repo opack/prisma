@@ -27,7 +27,7 @@ function fakePcloud(initial: Record<string, string>) {
     // le relais du site : il fait ce que fera la fonction (src/server/pcloudFile.ts), sur ce faux pCloud
     if (input.startsWith("/api/pcloud-file")) {
       calls.push("relais");
-      const { pcloudFile } = await import("../src/server/pcloudFile.ts");
+      const { pcloudFile } = await import("../../../server/pcloudFile.ts");
       vi.stubGlobal("fetch", fetch);
       return pcloudFile(new Request(`https://prisma.test${input}`, { headers: init?.headers }));
     }
@@ -85,8 +85,8 @@ describe("la bibliothèque sur pCloud", () => {
       "/notes.txt": "pas une partition",
     });
     vi.stubGlobal("fetch", cloud.fetch);
-    const { pcloudLibrary } = await import("../src/app/library/pcloudLibrary.ts");
-    const { scan } = await import("../src/app/library/library.ts");
+    const { pcloudLibrary } = await import("../pcloudLibrary.ts");
+    const { scan } = await import("../library.ts");
     const entries = await scan(pcloudLibrary());
     expect(entries.map((e) => [e.path, e.folder, e.kind, e.title])).toEqual([
       ["Au clair.prisma", "", "prisma", "Au clair de la lune"],
@@ -101,7 +101,7 @@ describe("la bibliothèque sur pCloud", () => {
   it("réécrit un morceau en place, et ne le retélécharge pas pour le relire", async () => {
     const cloud = fakePcloud({ "/Satie/Gnossienne.prisma": CLAIR });
     vi.stubGlobal("fetch", cloud.fetch);
-    const { pcloudLibrary } = await import("../src/app/library/pcloudLibrary.ts");
+    const { pcloudLibrary } = await import("../pcloudLibrary.ts");
     const [f] = await pcloudLibrary().files();
     await f.file.write(CLAIR + "\n");
     expect(cloud.files.get("/Satie/Gnossienne.prisma")!.text).toBe(CLAIR + "\n");
@@ -113,7 +113,7 @@ describe("la bibliothèque sur pCloud", () => {
   it("à la racine : un fichier absent n'existe pas, puis s'y crée, et s'y retire", async () => {
     const cloud = fakePcloud({});
     vi.stubGlobal("fetch", cloud.fetch);
-    const { pcloudLibrary } = await import("../src/app/library/pcloudLibrary.ts");
+    const { pcloudLibrary } = await import("../pcloudLibrary.ts");
     const { root } = pcloudLibrary();
     expect(await root.file("Reçu.prisma")).toBeNull();
     await (await root.create("Reçu.prisma")).write(CLAIR);
@@ -127,14 +127,14 @@ describe("la bibliothèque sur pCloud", () => {
   it("la lecture d'un fichier passe par le relais du site, qui la demande à pCloud", async () => {
     const cloud = fakePcloud({ "/Au clair.prisma": CLAIR });
     vi.stubGlobal("fetch", cloud.fetch);
-    const { pcloudLibrary } = await import("../src/app/library/pcloudLibrary.ts");
+    const { pcloudLibrary } = await import("../pcloudLibrary.ts");
     const [f] = await pcloudLibrary().files();
     expect(await f.file.text()).toBe(CLAIR);
     expect(cloud.calls).toEqual(["listfolder", "relais", "getfilelink"]);
   });
 
   it("le relais ne joint que pCloud, et rend ses erreurs telles quelles", async () => {
-    const { pcloudFile } = await import("../src/server/pcloudFile.ts");
+    const { pcloudFile } = await import("../../../server/pcloudFile.ts");
     const asked = (q: string, token = "jeton") => pcloudFile(new Request(`https://prisma.test/api/pcloud-file?${q}`, { headers: { "x-pcloud-token": token } }));
     expect((await asked("host=evil.example&fileid=1")).status).toBe(400);
     expect((await asked("host=eapi.pcloud.com&fileid=../1")).status).toBe(400);
@@ -147,8 +147,8 @@ describe("la bibliothèque sur pCloud", () => {
   it("une connexion qui ne vaut plus le dit, et s'oublie", async () => {
     vi.stubGlobal("fetch", fakePcloud({}).fetch);
     store.set("prisma:pcloud", JSON.stringify({ token: "périmé", host: "eapi.pcloud.com" }));
-    const { pcloudLibrary } = await import("../src/app/library/pcloudLibrary.ts");
-    const { PcloudAuthError } = await import("../src/app/library/pcloud.ts");
+    const { pcloudLibrary } = await import("../pcloudLibrary.ts");
+    const { PcloudAuthError } = await import("../pcloud.ts");
     const source = pcloudLibrary();
     expect(await source.access()).toBe(true);
     await expect(source.files()).rejects.toBeInstanceOf(PcloudAuthError);
@@ -161,7 +161,7 @@ describe("la bibliothèque sur pCloud", () => {
     const replaced: string[] = [];
     vi.stubGlobal("location", { hash: "#access_token=abc&token_type=bearer&locationid=2&hostname=eapi.pcloud.com", pathname: "/app/", search: "" });
     vi.stubGlobal("history", { replaceState: (_: unknown, __: string, url: string) => replaced.push(url) });
-    const { pcloudReturned, session } = await import("../src/app/library/pcloud.ts");
+    const { pcloudReturned, session } = await import("../pcloud.ts");
     expect(pcloudReturned()).toBe(true);
     expect(session()).toEqual({ token: "abc", host: "eapi.pcloud.com" });
     expect(replaced).toEqual(["/app/"]);

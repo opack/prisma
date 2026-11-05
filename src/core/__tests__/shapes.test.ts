@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { engrave } from "../src/app/score/engrave.ts";
-import { chordNotes, chordShape, exportMusicXml, importMusicXml, parsePrisma, parseShape, shapeNotes, shapeText, stringsOf, writePrisma } from "../src/core/index.ts";
+import { engrave } from "../../app/score/engrave.ts";
+import { chordNotes, chordShape, exportMusicXml, importMusicXml, parsePrisma, parseShape, shapeNotes, shapeText, stringsOf, writePrisma } from "../index.ts";
 
 const guitar = stringsOf("guitar", "standard", 0)!;
 const shape = (chord: string, s = guitar) => shapeText(chordShape(chordNotes(chord)!, s)!);

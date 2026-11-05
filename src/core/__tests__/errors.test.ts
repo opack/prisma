@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseErrors } from "../src/core/index.ts";
+import { parseErrors } from "../index.ts";
 
 const sys = (bar: number, notes: string) => [`m${bar} |1  |2  ||`, "───┼───┼───┼┼", `0  |${notes}||`, "───┼───┼───┼┼", "-1 |1  |   ||"].join("\n");
 const text = (...systems: string[]) => ["---", "format: 1", "---", "", systems.join("\n\n"), ""].join("\n");

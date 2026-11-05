@@ -63,3 +63,6 @@ export function musicXml(measures: XMeasure[], divisions = 12): string {
 }
 
 export const q = 12; // noire avec divisions = 12
+
+/** Le do du milieu du clavier, en numéro MIDI. */
+export const C4 = 60;

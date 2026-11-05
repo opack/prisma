@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { caseAt, extendRuler, noteLine, octaveRoom, rulerSuffixes, soundingAt, systemOf, writeCase, writeChord } from "../src/app/editor/complete.ts";
-import { parsePrisma } from "../src/core/index.ts";
+import { caseAt, extendRuler, noteLine, octaveRoom, rulerSuffixes, soundingAt, systemOf, writeCase, writeChord } from "../complete.ts";
+import { parsePrisma } from "../../../core/index.ts";
 
 const sys = [
   "@   p      <---",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { TICKS_PER_BEAT as T, beatGrids, layout, parsePrisma } from "../src/core/index.ts";
-import { isWrittenCase } from "../src/core/locate.ts";
+import { TICKS_PER_BEAT as T, beatGrids, layout, parsePrisma } from "../index.ts";
+import { isWrittenCase } from "../locate.ts";
 
 const piece = (body: string[], division = 2) => ["---", "format: 1", ...(division === 3 ? ["division: 3"] : []), "---", "", ...body].join("\n");
 

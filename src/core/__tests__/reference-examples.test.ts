@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { parsePrisma, writePrisma } from "../src/core/index.ts";
-import { REFERENCE_PARTS } from "../src/site/pages/referenceLinks.ts";
+import { parsePrisma, writePrisma } from "../index.ts";
+import { REFERENCE_PARTS } from "../../site/pages/referenceLinks.ts";
 
 /** Exemples ```prisma de la référence (éventuellement dans une liste, donc indentés). */
 function examples(markdown: string): string[] {
@@ -22,7 +22,7 @@ const canonical = (text: string) =>
     .trimEnd() + "\n";
 
 describe("référence", () => {
-  const reference = readFileSync(new URL("../REFERENCE.md", import.meta.url), "utf8");
+  const reference = readFileSync(new URL("../../../REFERENCE.md", import.meta.url), "utf8");
   const list = examples(reference);
 
   it("contient des exemples", () => {

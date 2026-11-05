@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { LONG_LINK, decodeShare, encodeShare, shareLink, shareName, sharedIn, sharedInLink } from "../src/app/files/share.ts";
-import { CLAIR_SECTIONS, GREENSLEEVES_CHORDS } from "../src/site/examples/pieces.ts";
+import { LONG_LINK, decodeShare, encodeShare, shareLink, shareName, sharedIn, sharedInLink } from "../share.ts";
+import { CLAIR_SECTIONS, GREENSLEEVES_CHORDS } from "../../../site/examples/pieces.ts";
 
 describe("partage par un lien", () => {
   it("le morceau, son nom et ses réglages reviennent tels qu'ils sont partis", async () => {
@@ -42,7 +42,7 @@ describe("partage par un lien", () => {
 
   it("le nom reçu reste un nom de fichier .prisma, sans dossier", async () => {
     const back = async (name: string) => (await decodeShare(await encodeShare({ name, text: "", settings: {} })))!.name;
-    expect(await back("../../secret/Gymnopédie.prisma")).toBe("Gymnopédie.prisma");
+    expect(await back("../../../../../secret/Gymnopédie.prisma")).toBe("Gymnopédie.prisma");
     expect(await back("Nocturne.musicxml")).toBe("Nocturne.prisma");
     expect(await back("")).toBe("morceau.prisma");
     expect(await back('Air: "doux"?')).toBe("Air doux.prisma");

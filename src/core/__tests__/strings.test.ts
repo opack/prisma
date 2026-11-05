@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { convertToStrings, exportMusicXml, importMusicXml, inspect, parsePrisma, writePrisma } from "../src/core/index.ts";
-import type { Note } from "../src/core/index.ts";
+import { convertToStrings, exportMusicXml, importMusicXml, inspect, parsePrisma, writePrisma } from "../index.ts";
+import type { Note } from "../index.ts";
 
 /** Un morceau d'une partie de guitare (ou d'une autre partie déclarée), ses lignes sous la règle. */
 const piece = (parts: string, lines: string[], ruler = "m1 |1  *  |2  *  |3  *  |4  *  ||") => {

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { exportMusicXml, importMusicXml, parsePrisma, writePrisma } from "../src/core/index.ts";
-import type { Score } from "../src/core/index.ts";
+import { exportMusicXml, importMusicXml, parsePrisma, writePrisma } from "../index.ts";
+import type { Score } from "../index.ts";
 
 const notes = (ns: { staff: number; midi: number; start: number; end: number }[]) =>
   ns.map((n) => `${n.staff}:${n.midi}@${n.start}-${n.end}`).sort().join(" ");
@@ -17,14 +17,14 @@ function examples(markdown: string): string[] {
 
 describe("export MusicXML", () => {
   it("redonne la Gymnopédie n° 1 à l'import, note pour note", () => {
-    const score = parsePrisma(writePrisma(importMusicXml(readFileSync(new URL("./fixtures/gymnopedie1.musicxml", import.meta.url), "utf8"))));
+    const score = parsePrisma(writePrisma(importMusicXml(readFileSync(new URL("../../../tests/fixtures/gymnopedie1.musicxml", import.meta.url), "utf8"))));
     const back = again(score);
     expect(notes(back.notes)).toBe(notes(score.notes));
     expect(back.beats.length).toBe(score.beats.length);
     expect(back.meta.key).toBe(score.meta.key);
   });
 
-  it.each(examples(readFileSync(new URL("../REFERENCE.md", import.meta.url), "utf8")).map((t, i) => [i + 1, t]))(
+  it.each(examples(readFileSync(new URL("../../../REFERENCE.md", import.meta.url), "utf8")).map((t, i) => [i + 1, t]))(
     "redonne l'exemple %i de la référence à l'import, indications comprises",
     (_, text) => {
       const score = parsePrisma(text as string);

@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { compareVersions, releases, updatedSince } from "../src/app/about/changelog.ts";
+import { compareVersions, releases, updatedSince } from "../changelog.ts";
 
 describe("nouveautés", () => {
-  const list = releases(readFileSync(new URL("../CHANGELOG.md", import.meta.url), "utf8"));
-  const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+  const list = releases(readFileSync(new URL("../../../../CHANGELOG.md", import.meta.url), "utf8"));
+  const pkg = JSON.parse(readFileSync(new URL("../../../../package.json", import.meta.url), "utf8"));
 
   it("commencent par la version de l'application", () => {
     expect(list[0].version).toBe(pkg.version);

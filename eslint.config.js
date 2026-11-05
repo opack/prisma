@@ -31,7 +31,7 @@ export default tseslint.config(
   {
     // le texte .prisma s'aligne en colonnes : dans les tests, les espaces d'une expression régulière
     // se lisent mieux tels qu'ils sont écrits dans le fichier que comptés ({2})
-    files: ["tests/**"],
+    files: ["**/*.test.ts", "tests/**"],
     rules: { "no-regex-spaces": "off" },
   },
   prettier,

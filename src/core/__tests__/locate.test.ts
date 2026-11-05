@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { TICKS_PER_BEAT as T, octaveOf, parsePrisma } from "../src/core/index.ts";
-import { locate, textPlace } from "../src/core/locate.ts";
+import { TICKS_PER_BEAT as T, octaveOf, parsePrisma } from "../index.ts";
+import { locate, textPlace } from "../locate.ts";
 
 const text = [
   "---",

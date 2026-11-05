@@ -1,0 +1,100 @@
+import { describe, expect, it } from "vitest";
+import { importMusicXml, parsePrisma, TICKS_PER_BEAT as T, writePrisma } from "../index.ts";
+import { C4, musicXml, q } from "../../../tests/support/musicxml.ts";
+import type { Score } from "../index.ts";
+
+describe("pédale", () => {
+  const pk = (s: Score) => s.pedals.map((p) => `${p.start / T}-${p.end / T}`).join(" ");
+  /** Ligne @ avec chaque signe à sa colonne : évite de compter les espaces à la main. */
+  const at = (...signs: [number, string][]) => {
+    let l = "@";
+    for (const [col, text] of signs) l = l.padEnd(col) + text;
+    return l;
+  };
+  const ruler = "m1 |1  |2  |3  ||1  |2  |3  ||";
+  const body = (pedal: string) => [ruler, "0  |1  |   |   ||3  |   |   ||", "---", "-1 |1  |-  |-  ||8  |-  |-  ||", pedal, ""].join("\n");
+
+  it("lit Ped., *Ped. et * sous la main gauche", () => {
+    const s = parsePrisma(body(at([4, "Ped."], [17, "*Ped."], [25, "*"])));
+    expect(pk(s)).toBe("0-3 3-5");
+  });
+
+  it("écrit la pédale sur sa propre ligne, tout en bas, et la relit à l'identique", () => {
+    const s = parsePrisma(body(at([4, "Ped."], [17, "*Ped."], [25, "*"])));
+    const text = writePrisma(s);
+    expect(text.trimEnd().split("\n").pop()).toMatch(/^@ +Ped\. +\*Ped\. +\*$/);
+    expect(pk(parsePrisma(text))).toBe(pk(s));
+  });
+
+  it("tient la pédale d'un système au suivant sans la réécrire", () => {
+    const bars = Array.from({ length: 8 }, () => "1  |2  |3  ||").join("");
+    const notes = Array.from({ length: 8 }, () => "1  |   |   ||").join("");
+    const s = parsePrisma(`m1 |${bars}\n---\n-1 |${notes}\n${at([4, "Ped."])}\n`);
+    expect(pk(s)).toBe("0-24"); // jamais relâchée : jusqu'à la fin du morceau
+    const text = writePrisma(s, { width: 40 });
+    expect(text.match(/Ped\./g)?.length).toBe(1);
+    expect(pk(parsePrisma(text))).toBe("0-24");
+  });
+
+  it("refuse les signes de pédale incohérents", () => {
+    expect(() => parsePrisma(body(at([4, "*"])))).toThrow(/sans pédale enfoncée/);
+    expect(() => parsePrisma(body(at([4, "Ped."], [12, "Ped."])))).toThrow(/déjà enfoncée/);
+    const rh = [ruler, "0  |1  |   |   ||3  |   |   ||", at([4, "Ped."]), "---", "-1 |1  |   |   ||8  |   |   ||", ""].join("\n");
+    expect(() => parsePrisma(rh)).toThrow(/sous la dernière portée de sa partie/);
+  });
+
+  it("importe la pédale du MusicXML", () => {
+    const ped = (type: string) => `<direction><direction-type><pedal type="${type}" line="yes"/></direction-type><staff>2</staff></direction>`;
+    const xml = musicXml([
+      {
+        time: [3, 4],
+        notes: [
+          [{ midi: [C4], dur: 3 * q }],
+          [
+            { midi: [48], dur: q, staff: 2, before: ped("start") },
+            { midi: [52], dur: q, staff: 2 },
+            { midi: [55], dur: q, staff: 2, before: ped("change") },
+          ],
+        ],
+      },
+      { notes: [[{ midi: [C4], dur: 3 * q }], [{ midi: [48], dur: 3 * q, staff: 2, before: ped("stop") }]] },
+    ]);
+    const s = importMusicXml(xml);
+    expect(pk(s)).toBe("0-2 2-3");
+    expect(pk(parsePrisma(writePrisma(s)))).toBe("0-2 2-3");
+  });
+});
+
+describe("consignes de pédale", () => {
+  const ruler = "m1 |1  |2  |3  ||1  |2  |3  ||";
+  const piece = (rh: string, lh: string) => [ruler, "0  |1  |   |   ||3  |   |   ||", rh, "---", "-1 |1  |-  |-  ||8  |-  |-  ||", lh, ""].join("\n");
+
+  it("lit « Ped. simile » comme une consigne de pédale, et l'écrit sur la ligne de pédale", () => {
+    const s = parsePrisma(piece("", "@   Ped.         *   Ped. simile").replace("\n\n---", "\n---"));
+    expect(s.pedalTexts).toEqual([{ staff: 1, t: 4 * T, text: "Ped. simile" }]);
+    expect(s.expressions).toEqual([]);
+    const text = writePrisma(s);
+    expect(text.trimEnd().split("\n").pop()).toMatch(/^@ +Ped\. +\* +Ped\. simile$/);
+    expect(parsePrisma(text).pedalTexts).toEqual(s.pedalTexts);
+  });
+
+  it("refuse une consigne de pédale sous la main droite", () => {
+    expect(() => parsePrisma(piece("@   Ped. simile", ""))).toThrow(/sous la dernière portée de sa partie/);
+  });
+
+  it("donne son signe à une nuance écrite en toutes lettres, et garde le texte", () => {
+    const dir = `<direction><direction-type><words>sempre pianissimo e senza sordini</words></direction-type><staff>1</staff></direction>`;
+    const s = importMusicXml(musicXml([{ notes: [[{ midi: [C4], dur: 4 * q, before: dir }]] }]));
+    expect(s.expressions).toEqual([
+      { staff: 0, t: 0, text: "pp", kind: "dynamic" },
+      { staff: 0, t: 0, text: "sempre pianissimo e senza sordini", kind: "text" },
+    ]);
+  });
+
+  it("importe « Ped. simile » du MusicXML sur la ligne de pédale, même écrit sur la portée du haut", () => {
+    const dir = `<direction><direction-type><words>Ped. simile</words></direction-type><staff>1</staff></direction>`;
+    const s = importMusicXml(musicXml([{ notes: [[{ midi: [C4], dur: 4 * q, before: dir }]] }]));
+    expect(s.pedalTexts).toEqual([{ staff: 1, t: 0, text: "Ped. simile" }]);
+    expect(s.expressions).toEqual([]);
+  });
+});
