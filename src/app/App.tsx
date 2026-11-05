@@ -10,6 +10,8 @@
  * grave pas s'ouvrent en édition, un .prisma en lecture ; le mode se retrouve d'une visite à l'autre.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AboutDialog } from "./about/AboutDialog.tsx";
+import { useAbout } from "./about/useAbout.ts";
 import { ConvertDialog } from "./editor/ConvertDialog.tsx";
 import { EditorTab } from "./editor/EditorTab.tsx";
 import { ErrorBar } from "./editor/ErrorBar.tsx";
@@ -102,6 +104,7 @@ export function App() {
   });
   useSettingsAutosave(piece, settings.pieceDir, doc.handle, settings.changed, notify);
   const appUpdate = useAppUpdate(notify);
+  const about = useAbout();
   const sharing = useShare({ source: doc.source, fileName: doc.fileName, piece, notify, openShared: doc.openShared });
   const { score, problem: engravedProblem } = doc.engraved;
   const engraving = JSON.stringify(engraveOptions(options));
@@ -143,6 +146,7 @@ export function App() {
     autoEngrave: { on: options.autoEngrave, toggle: () => setOptions({ autoEngrave: !options.autoEngrave }) },
     options: { shown: showOptions, toggle: () => setShowOptions((v) => !v) },
     convert: conversion.start,
+    about: about.open,
     canPrint: pages.length > 0 && !panel,
     editor: { on: editing, toggle: () => setEditing(!editing) },
     view,
@@ -227,6 +231,7 @@ export function App() {
         {doc.choosingNew && <NewDialog onCreate={doc.newFile} onClose={() => doc.setChoosingNew(false)} />}
         {sharing.importing && <ImportLinkDialog onImport={sharing.importLink} onClose={() => sharing.setImporting(false)} />}
         {sharing.received && <ReceivedDialog shared={sharing.received} library={sharing.library?.label} onOpen={sharing.accept} onClose={sharing.close} />}
+        {about.shown && <AboutDialog onClose={about.close} />}
         {conversion.parts && <ConvertDialog parts={conversion.parts} noteNames={options.noteNames === "english" ? "english" : "latin"} onConvert={conversion.convert} onClose={conversion.cancel} />}
         <main
           ref={split}

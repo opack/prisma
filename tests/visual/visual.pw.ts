@@ -526,6 +526,37 @@ test("app dialogue conversion", async ({ page }) => {
   await expect(page).toHaveScreenshot("app-dialogue-conversion.png");
 });
 
+// les nouveautés changent à chaque version : la fenêtre se compare sans elles (cachées : un masque
+// passerait sous la fenêtre, au premier plan) ; leur cadre reste
+for (const [name, size] of [["bureau", DESKTOP], ["telephone", PHONE]] as const)
+  test(`app à propos ${name}`, async ({ page }) => {
+    await openApp(page, { source: CLAIR_SECTIONS, size });
+    if (size === PHONE) {
+      await page.getByRole("button", { name: "Menu", exact: true }).click();
+      await page.getByRole("menuitem", { name: /Aide/ }).click();
+      await page.getByRole("menuitem", { name: "À propos…" }).click();
+      await settle(page);
+    } else await menu(page, "Aide", "À propos…");
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toContainText("Version");
+    await dialog.getByLabel("Nouveautés").evaluate((list) => [...list.children].forEach((r) => ((r as HTMLElement).style.visibility = "hidden")));
+    await expect(page).toHaveScreenshot(`app-a-propos-${name}.png`);
+  });
+
+test("app à propos après une mise à jour", async ({ page }) => {
+  await openApp(page, { source: CLAIR_SECTIONS });
+  // première visite : rien ne s'ouvre ; une version plus ancienne vue : les nouveautés, une fois
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.evaluate(() => localStorage.setItem("prisma:version", "0.0.1"));
+  await page.reload();
+  await settle(page);
+  await expect(page.getByRole("dialog")).toContainText("À propos de Prisma");
+  await page.getByRole("button", { name: "Fermer" }).click();
+  await page.reload();
+  await settle(page);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
 test("app complétion", async ({ page }) => {
   await openApp(page, { source: TECHNIQUES });
   await page.locator(".cm-line").nth(8).click();

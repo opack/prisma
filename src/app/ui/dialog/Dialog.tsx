@@ -1,6 +1,7 @@
 /**
  * Une fenêtre de dialogue (Nouveau, l'export, la conversion, un morceau reçu) : au centre, son
- * titre, son contenu, puis Annuler, d'autres actions s'il y en a, et le bouton qui valide. Elle
+ * titre, son contenu, puis Annuler (sauf cancel={null} : une fenêtre qui ne fait que montrer), d'autres
+ * actions s'il y en a, et le bouton qui valide. Elle
  * s'ouvre en modale ; Échap ou Annuler la ferme. Ouverte au clavier, le premier champ a le focus (ou
  * le bouton qui valide, pour une fenêtre sans champ : focusSubmit) ; à la souris ou au doigt, la
  * fenêtre seule, sans contour, sauf pour un champ à remplir aussitôt (focusField : un lien à coller).
@@ -10,7 +11,7 @@ import type { ReactNode } from "react";
 import { useFocusVisible } from "react-aria";
 import { Button } from "../button/Button.tsx";
 
-export function Dialog({ title, intro, submit, onSubmit, onClose, actions, cancel = "Annuler", focusSubmit = false, focusField = false, children }: { title: string; intro?: ReactNode; submit: string; onSubmit: () => void; onClose: () => void; actions?: ReactNode; cancel?: string; focusSubmit?: boolean; focusField?: boolean; children: ReactNode }) {
+export function Dialog({ title, intro, submit, onSubmit, onClose, actions, cancel = "Annuler", focusSubmit = false, focusField = false, children }: { title: string; intro?: ReactNode; submit: string; onSubmit: () => void; onClose: () => void; actions?: ReactNode; cancel?: string | null; focusSubmit?: boolean; focusField?: boolean; children: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
   const { isFocusVisible: keyboard } = useFocusVisible();
@@ -39,7 +40,7 @@ export function Dialog({ title, intro, submit, onSubmit, onClose, actions, cance
         {intro && <p className="-mt-1.5 mb-0 text-muted leading-[1.4]">{intro}</p>}
         {children}
         <div className="flex flex-wrap justify-end gap-2">
-          <Button onClick={onClose}>{cancel}</Button>
+          {cancel !== null && <Button onClick={onClose}>{cancel}</Button>}
           {actions}
           <Button type="submit" kind="primary">
             {submit}
