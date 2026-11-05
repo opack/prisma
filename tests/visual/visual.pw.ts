@@ -4,49 +4,9 @@
  * plusieurs réglages et à l'impression. Chaque scène part d'un état connu : le texte, les options
  * et la vue sont posés avant le chargement.
  */
-import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
-import { importMusicXml, writePrisma } from "../../src/core/index.ts";
-import { CLAIR_SECTIONS, GREENSLEEVES_CHORDS, SCALE, TECHNIQUES } from "../../src/site/examples/pieces.ts";
-
-const GYMNOPEDIE = writePrisma(importMusicXml(readFileSync(new URL("../fixtures/gymnopedie1.musicxml", import.meta.url), "utf8")));
-const DESKTOP = { width: 1300, height: 850 };
-const PHONE = { width: 390, height: 844 };
-const TABLET = { width: 820, height: 1180 };
-
-type State = { source: string; editing?: boolean; options?: Record<string, unknown>; view?: Record<string, unknown>; size?: { width: number; height: number } };
-
-/** L'application, dans un état connu : son texte, l'éditeur ouvert ou non, ses options, sa vue, la taille de l'écran. */
-async function openApp(page: Page, { source, editing = true, options, view, size = DESKTOP }: State) {
-  await page.setViewportSize(size);
-  await page.addInitScript(
-    ([s, e, o, v]) => {
-      if (sessionStorage.getItem("visual")) return;
-      sessionStorage.setItem("visual", "1");
-      localStorage.clear();
-      localStorage.setItem("prisma:source", s);
-      localStorage.setItem("prisma:editing", e);
-      if (o) localStorage.setItem("prisma:options", o);
-      if (v) localStorage.setItem("prisma:view", v);
-    },
-    [source, String(editing), options ? JSON.stringify(options) : "", view ? JSON.stringify(view) : ""] as const,
-  );
-  await page.goto("/app/");
-  await settle(page);
-}
-
-/** Les polices chargées, la gravure faite, plus rien ne bouge. */
-async function settle(page: Page) {
-  await page.evaluate(() => document.fonts.ready);
-  await page.waitForTimeout(800);
-}
-
-const menu = async (page: Page, name: string, item: string) => {
-  await page.getByRole("button", { name, exact: true }).click();
-  await page.getByText(item, { exact: true }).click();
-  await settle(page);
-};
+import { CLAIR_SECTIONS, DESKTOP, GREENSLEEVES_CHORDS, GYMNOPEDIE, GYMNOPEDIE_XML, PHONE, SCALE, TABLET, TECHNIQUES, chooseMenu, connectPcloud, fakePcloud, openApp, provideFolder, retouchAt, settle } from "../support/app.ts";
 
 // le site : chaque page, entière, au bureau et sur un téléphone
 for (const [name, size] of [["bureau", DESKTOP], ["telephone", PHONE]] as const)
@@ -152,13 +112,13 @@ test("app règle détaillée", async ({ page }) => {
 
 test("app options", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS });
-  await menu(page, "Partition", "Options");
+  await chooseMenu(page, "Partition", "Options");
   await expect(page).toHaveScreenshot("app-options.png");
 });
 
 test("app options de la partition", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS });
-  await menu(page, "Partition", "Options");
+  await chooseMenu(page, "Partition", "Options");
   await page.getByRole("radio", { name: /^Partition/ }).click();
   await page.getByRole("button", { name: "Définir pour la partition" }).first().click();
   await settle(page);
@@ -167,7 +127,7 @@ test("app options de la partition", async ({ page }) => {
 
 test("app options métronome", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS });
-  await menu(page, "Partition", "Options");
+  await chooseMenu(page, "Partition", "Options");
   await page.getByRole("tab", { name: "Métronome" }).click();
   await settle(page);
   await expect(page).toHaveScreenshot("app-options-metronome.png");
@@ -267,7 +227,7 @@ test("app importer un lien", async ({ page }) => {
     const { encodeShare, shareLink } = await import(/* @vite-ignore */ module);
     return shareLink(await encodeShare({ name: "Au clair de la lune.prisma", text: t, settings: {} }), location.href);
   }, CLAIR_SECTIONS);
-  await menu(page, "Fichier", "Importer un lien…");
+  await chooseMenu(page, "Fichier", "Importer un lien…");
   // le champ a le focus : on colle aussitôt
   await page.keyboard.type(link.slice(0, link.length - 12));
   await page.getByRole("button", { name: "Importer", exact: true }).click();
@@ -286,7 +246,7 @@ test("app partition reçue, avec une bibliothèque", async ({ page }) => {
     (window as unknown as { showDirectoryPicker: () => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker = async () => (await navigator.storage.getDirectory()).getDirectoryHandle("recus", { create: true });
   });
   await openApp(page, { source: "", editing: false });
-  await menu(page, "Fichier", "Bibliothèque");
+  await chooseMenu(page, "Fichier", "Bibliothèque");
   await page.getByRole("button", { name: "Choisir un dossier" }).click();
   await page.evaluate(async (t) => {
     const module = "/src/app/files/share.ts";
@@ -310,56 +270,6 @@ test("app partition reçue, avec une bibliothèque", async ({ page }) => {
 });
 
 // suivre la lecture : la partition défile jusqu'au curseur, placé à la fin du morceau puis au début
-test("app suivi de la lecture", async ({ page }) => {
-  const head = CLAIR_SECTIONS.slice(0, CLAIR_SECTIONS.indexOf("\n---\n", 4) + 5).replace(/^order:.*\n/m, "");
-  const section = CLAIR_SECTIONS.split("\n\n").find((s) => s.includes("[A]"))!.replace("[A]", "");
-  await openApp(page, { source: head + Array(12).fill(section).join("\n\n"), editing: false, view: { fit: "width", zoom: 1, progress: true } });
-  const pane = page.locator("section[data-fit]");
-  expect(await pane.evaluate((e) => e.scrollTop)).toBe(0);
-  await page.getByRole("slider", { name: "Position dans le morceau" }).focus();
-  await page.keyboard.press("End");
-  await expect.poll(() => pane.evaluate((e) => e.scrollTop)).toBeGreaterThan(500);
-  await page.keyboard.press("Home");
-  await expect.poll(() => pane.evaluate((e) => e.scrollTop)).toBeLessThan(300);
-});
-
-// la lecture focalisée, revenue au début de plus loin : la place du bas montre la suite, pas une
-// seconde fois le premier système, même quand une reprise s'ouvre dans celui-ci (« ||: » à sa
-// dernière mesure) ou qu'il se rejoue aussitôt (« A A B… »)
-const REPEAT_OPENS = (() => {
-  // n mesures à quatre temps ; « ||: » devant la dernière si open
-  const line = (m: number, n: number, open = false) => {
-    const sep = (k: number) => (open && k === n - 1 ? "||:" : k ? "||" : "|");
-    const row = (cells: string) => Array.from({ length: n }, (_, k) => sep(k) + cells).join("") + "||";
-    return `${`m${m}`.padEnd(3)}${row("1  |2  |3  |4  ")}\n0  ${row("1  |3  |5  |6  ")}`;
-  };
-  return `---\nformat: 1\n---\n\n${[line(1, 4, true), ...[5, 9, 13, 17].map((m) => line(m, 4))].join("\n\n")}\n\nm21|1  |2  |3  |4  :||\n0  |8  |-  |-  |-  :||\n`;
-})();
-for (const [name, source] of [
-  ["reprise ouverte", REPEAT_OPENS],
-  ["section rejouée", (() => {
-    const [head, a, b] = CLAIR_SECTIONS.replace(/^order:.*$/m, "order: A A B C D E").split("\n\n");
-    return [head, a, ...["B", "C", "D", "E"].map((l) => b.replace("[B]", `[${l}]`))].join("\n\n");
-  })()],
-] as const)
-  test(`app lecture focalisée retour au début, ${name}`, async ({ page }) => {
-    await openApp(page, { source, editing: false, view: { fit: "focus", zoom: 1, progress: true } });
-    const places = () => page.locator("div.animate-focus-in > svg").evaluateAll((svgs) => svgs.map((s) => s.textContent));
-    const [first, second] = await places();
-    expect(first).not.toBe(second);
-    const slider = page.getByRole("slider", { name: "Position dans le morceau" });
-    await slider.focus();
-    await page.keyboard.press("End");
-    await expect.poll(async () => (await places()).includes(first)).toBe(false);
-    await page.keyboard.press("Home");
-    await expect.poll(places).toEqual([first, second]);
-    // de même avec le bouton
-    await page.keyboard.press("End");
-    await expect.poll(async () => (await places()).includes(first)).toBe(false);
-    await page.getByRole("button", { name: "Revenir au début" }).click();
-    await expect.poll(places).toEqual([first, second]);
-  });
-
 // les notes du morceau (notes:), jamais imprimées : sous un bouton, à côté de son nom
 test("app notes du morceau", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS.replace("bpm: 100", "bpm: 100\nnotes: À jouer lentement, la main droite seule d'abord"), editing: false });
@@ -388,13 +298,6 @@ test("app retouche d'une note", async ({ page }) => {
   await settle(page);
   await expect(page).toHaveScreenshot("app-retouche.png");
 });
-
-/** Double-clique sur la première case qui porte ce chiffre (le chiffre ne reçoit pas le clic : la case, dessous, le reçoit). */
-async function retouchAt(page: Page, digit: RegExp) {
-  const box = (await page.locator(".page text", { hasText: digit }).first().boundingBox())!;
-  await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
-  await settle(page);
-}
 
 test("app retouche sur une corde", async ({ page }) => {
   await openApp(page, { source: TECHNIQUES, editing: false });
@@ -516,13 +419,13 @@ test("app réglages de la mise en page", async ({ page }) => {
 for (const [item, file] of [["Nouveau…", "nouveau"], ["Exporter en MusicXML…", "export"]] as const)
   test(`app dialogue ${file}`, async ({ page }) => {
     await openApp(page, { source: CLAIR_SECTIONS });
-    await menu(page, "Fichier", item);
+    await chooseMenu(page, "Fichier", item);
     await expect(page).toHaveScreenshot(`app-dialogue-${file}.png`);
   });
 
 test("app dialogue conversion", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS });
-  await menu(page, "Partition", "Convertir pour la guitare ou la basse…");
+  await chooseMenu(page, "Partition", "Convertir pour la guitare ou la basse…");
   await expect(page).toHaveScreenshot("app-dialogue-conversion.png");
 });
 
@@ -536,26 +439,12 @@ for (const [name, size] of [["bureau", DESKTOP], ["telephone", PHONE]] as const)
       await page.getByRole("menuitem", { name: /Aide/ }).click();
       await page.getByRole("menuitem", { name: "À propos…" }).click();
       await settle(page);
-    } else await menu(page, "Aide", "À propos…");
+    } else await chooseMenu(page, "Aide", "À propos…");
     const dialog = page.getByRole("dialog");
     await expect(dialog).toContainText("Version");
     await dialog.getByLabel("Nouveautés").evaluate((list) => [...list.children].forEach((r) => ((r as HTMLElement).style.visibility = "hidden")));
     await expect(page).toHaveScreenshot(`app-a-propos-${name}.png`);
   });
-
-test("app à propos après une mise à jour", async ({ page }) => {
-  await openApp(page, { source: CLAIR_SECTIONS });
-  // première visite : rien ne s'ouvre ; une version plus ancienne vue : les nouveautés, une fois
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  await page.evaluate(() => localStorage.setItem("prisma:version", "0.0.1"));
-  await page.reload();
-  await settle(page);
-  await expect(page.getByRole("dialog")).toContainText("À propos de Prisma");
-  await page.getByRole("button", { name: "Fermer" }).click();
-  await page.reload();
-  await settle(page);
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-});
 
 test("app complétion", async ({ page }) => {
   await openApp(page, { source: TECHNIQUES });
@@ -569,7 +458,7 @@ test("app complétion", async ({ page }) => {
 
 test("app bibliothèque", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS });
-  await menu(page, "Fichier", "Bibliothèque");
+  await chooseMenu(page, "Fichier", "Bibliothèque");
   await expect(page).toHaveScreenshot("app-bibliotheque.png");
 });
 
@@ -578,31 +467,14 @@ test("app bibliothèque", async ({ page }) => {
  * de quelques morceaux, dont un dans un sous-dossier et un MusicXML. Les dates (celles du jour) sont masquées.
  */
 async function openLibrary(page: Page, view: "list" | "thumbs") {
-  const files: [string, string][] = [
+  await provideFolder(page, "bibliotheque", [
     ["Au clair de la lune.prisma", CLAIR_SECTIONS],
     ["Techniques.prisma", TECHNIQUES],
     ["Guitare/Greensleeves.prisma", GREENSLEEVES_CHORDS],
-    ["Satie/Gymnopedie 1.musicxml", readFileSync(new URL("../fixtures/gymnopedie1.musicxml", import.meta.url), "utf8")],
-  ];
-  await page.addInitScript(
-    ([list]) => {
-      (window as unknown as { showDirectoryPicker: () => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker = async () => {
-        const root = await (await navigator.storage.getDirectory()).getDirectoryHandle("bibliotheque", { create: true });
-        for (const [path, text] of list) {
-          const parts = path.split("/");
-          let dir = root;
-          for (const p of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(p, { create: true });
-          const w = await (await dir.getFileHandle(parts.at(-1)!, { create: true })).createWritable();
-          await w.write(text);
-          await w.close();
-        }
-        return root;
-      };
-    },
-    [files] as const,
-  );
+    ["Satie/Gymnopedie 1.musicxml", GYMNOPEDIE_XML],
+  ]);
   await openApp(page, { source: CLAIR_SECTIONS });
-  await menu(page, "Fichier", "Bibliothèque");
+  await chooseMenu(page, "Fichier", "Bibliothèque");
   await page.getByRole("button", { name: "Choisir un dossier" }).click();
   await page.waitForTimeout(1500);
   await page.getByRole("button", { name: view === "list" ? "En liste" : /^En vignettes/ }).click();
@@ -614,27 +486,10 @@ async function openLibrary(page: Page, view: "list" | "thumbs") {
  * de l'app, comme la vraie (une liste, des liens de téléchargement).
  */
 async function openPcloud(page: Page, files: Record<string, string>, { refused = false } = {}) {
-  const entries = Object.entries(files);
-  await page.route("https://eapi.pcloud.com/**", async (route) => {
-    const url = new URL(route.request().url());
-    const method = url.pathname.slice(1);
-    const json = (o: unknown) => route.fulfill({ contentType: "application/json", body: JSON.stringify(o) });
-    if (refused) return json({ result: 2094, error: "Invalid 'access_token' provided." });
-    if (method === "listfolder")
-      return json({ result: 0, metadata: { name: "Prisma", isfolder: true, contents: entries.map(([name], i) => ({ name, isfolder: false, fileid: i + 1, modified: "Wed, 28 Oct 2026 10:00:00 +0000" })) } });
-    if (method === "getfilelink") return json({ result: 0, hosts: ["eapi.pcloud.com"], path: `/fichier/${url.searchParams.get("fileid")}` });
-    if (method.startsWith("fichier/")) return route.fulfill({ body: entries[Number(method.split("/")[1]) - 1][1] });
-    return json({ result: 2009, error: "File not found." });
-  });
-  // le relais du site, qui lit un fichier pour la page
-  await page.route("**/api/pcloud-file**", (route) => route.fulfill({ contentType: "text/plain; charset=utf-8", body: entries[Number(new URL(route.request().url()).searchParams.get("fileid")) - 1][1] }));
+  await fakePcloud(page, files, { refused });
   await openApp(page, { source: CLAIR_SECTIONS });
-  // connecté à pCloud, qui est la bibliothèque choisie (après l'ouverture : elle vide le stockage)
-  await page.evaluate(() => {
-    localStorage.setItem("prisma:pcloud", JSON.stringify({ token: "banc", host: "eapi.pcloud.com" }));
-    localStorage.setItem("prisma:library-source", "pcloud");
-  });
-  await menu(page, "Fichier", "Bibliothèque");
+  await connectPcloud(page);
+  await chooseMenu(page, "Fichier", "Bibliothèque");
   await page.waitForTimeout(800);
 }
 
@@ -660,11 +515,6 @@ test("app bibliothèque pcloud", async ({ page }) => {
   await expect(page.locator("[data-library]")).toContainText("Au clair de la lune");
   await settle(page);
   await expect(page).toHaveScreenshot("app-bibliotheque-pcloud.png");
-  // un morceau s'ouvre de pCloud (le morceau en cours, jamais enregistré : on confirme de le remplacer)
-  page.once("dialog", (d) => d.accept());
-  await page.locator("[data-library] button", { hasText: "Techniques" }).click();
-  await settle(page);
-  await expect(page.locator(".page").first()).toContainText("Guitare");
 });
 
 for (const view of ["list", "thumbs"] as const)
@@ -677,7 +527,7 @@ for (const view of ["list", "thumbs"] as const)
 
 test("app référence", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS });
-  await menu(page, "Aide", "Référence");
+  await chooseMenu(page, "Aide", "Référence");
   await expect(page).toHaveScreenshot("app-reference.png");
 });
 
@@ -725,13 +575,13 @@ test("app sans piste de lecture", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS, editing: false });
   const track = page.getByRole("slider", { name: "Position dans le morceau" });
   await expect(track).toBeVisible();
-  await menu(page, "Affichage", "Piste de lecture");
+  await chooseMenu(page, "Affichage", "Piste de lecture");
   await expect(track).toHaveCount(0);
   await page.reload();
   await settle(page);
   await expect(track).toHaveCount(0);
   await expect(page).toHaveScreenshot("app-sans-piste.png");
-  await menu(page, "Affichage", "Piste de lecture");
+  await chooseMenu(page, "Affichage", "Piste de lecture");
   await expect(track).toBeVisible();
 });
 

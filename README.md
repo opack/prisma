@@ -21,6 +21,7 @@ pnpm typecheck  # la vérification des types (tsc)
 pnpm lint       # les règles du code (ESLint)
 pnpm build      # tsc, puis le site et l'application dans dist/
 pnpm preview    # sert dist/ pour l'essayer
+pnpm e2e        # les tests de comportement dans le navigateur (Playwright)
 pnpm visual     # le banc de captures (Playwright), voir Tests
 ```
 
@@ -128,17 +129,19 @@ Cinq pages à la racine (`index.html`, `apprendre.html`, `reference.html`, `guit
 
 ## Tests
 
-`pnpm test` lance Vitest. Chaque test vit à côté de ce qu'il vérifie, dans le dossier `__tests__` du domaine, un fichier par sujet. Dans `core/__tests__/` : les règles du format (`format`), les reprises et les sections, l'import et l'export MusicXML (avec la Gymnopédie n° 1 de Satie en exemple ; l'export fait l'aller-retour de la Gymnopédie et de chaque exemple de la référence), l'expression (nuances, soufflets, liaisons, articulations, point d'orgue, doigtés), les ornements, la pédale, les accords, les paroles, les portées et parties, les instruments, la tonalité, les cordes (`strings`), leurs techniques et leurs grilles (`shapes`), les erreurs, ce que montre le curseur (`inspect`, `locate`), et les exemples de la référence. Dans `app/*/__tests__/` : l'écoute (déroulé, intensités, pédale, métronome, tempo), la complétion, la retouche, la bibliothèque et pCloud, le partage, les réglages d'un morceau, les nouveautés. `tests/` ne garde que ce qui sert à tous : les fichiers d'exemple (`fixtures/`), les aides (`support/` : un petit générateur de MusicXML, l'aller-retour par le texte) et le banc de captures (`visual/`).
+`pnpm test` lance Vitest. Chaque test vit à côté de ce qu'il vérifie, dans le dossier `__tests__` du domaine, un fichier par sujet. Dans `core/__tests__/` : les règles du format (`format`), les reprises et les sections, l'import et l'export MusicXML (avec la Gymnopédie n° 1 de Satie en exemple ; l'export fait l'aller-retour de la Gymnopédie et de chaque exemple de la référence), l'expression (nuances, soufflets, liaisons, articulations, point d'orgue, doigtés), les ornements, la pédale, les accords, les paroles, les portées et parties, les instruments, la tonalité, les cordes (`strings`), leurs techniques et leurs grilles (`shapes`), les erreurs, ce que montre le curseur (`inspect`, `locate`), et les exemples de la référence. Dans `app/*/__tests__/` : l'écoute (déroulé, intensités, pédale, métronome, tempo), la complétion, la retouche, la bibliothèque et pCloud, le partage, les réglages d'un morceau, les nouveautés. `tests/` ne garde que ce qui sert à tous : les fichiers d'exemple (`fixtures/`), les aides (`support/` : un petit générateur de MusicXML, l'aller-retour par le texte, l'application ouverte dans un état connu), les tests de comportement (`e2e/`) et le banc de captures (`visual/`).
 
 `reference.test.ts` vérifie chaque exemple de la référence : il doit se lire sans erreur et être écrit exactement comme l'application l'écrirait. La documentation ne peut donc pas montrer un exemple faux ou mal mis en forme.
+
+Les tests de comportement (`pnpm e2e`, Playwright, `tests/e2e/`) ouvrent l'application et le site dans Chromium et vérifient ce qu'ils font par ce qu'ils montrent : les éléments s'y trouvent par leur rôle et leur nom (`getByRole("button", { name: "Options" })`), comme les trouverait un lecteur d'écran, jamais par une classe CSS. Un fichier par domaine (`layout`, `menus`, `files`, `library`, `options`, `playback`, `retouch`, `editor`, `about`, `site`) ; ils ne dépendent pas du framework, et vérifient le même comportement avant et après une refonte.
 
 Le banc de captures (`pnpm visual`, Playwright, `tests/visual/`) photographie chaque page du site (au bureau et sur un téléphone), les écrans et panneaux de l'application (au bureau, et quelques-uns sur une tablette et un téléphone, à la souris et au doigt), et la gravure d'un petit corpus, en impression comprise, et compare chaque capture pixel à pixel à sa référence. Il sert aux refontes qui ne doivent rien changer à l'œil : les références se prennent sur le code de départ, dans un `git worktree` à côté, puis le code modifié s'y compare.
 
 ```sh
-npx playwright install chromium                    # une fois
+pnpm exec playwright install chromium        # une fois
 git worktree add ../prisma-reference HEAD   # le code de départ (pnpm install dedans)
 VISUAL_ROOT=../prisma-reference pnpm visual:reference
-pnpm visual                                 # les écarts : test-results/visual-report
+pnpm visual                                 # les écarts : test-results/report
 ```
 
 Sous PowerShell : `$env:VISUAL_ROOT = "../prisma-reference"; pnpm visual:reference`, puis `Remove-Item Env:VISUAL_ROOT`. Les captures et les écarts restent hors du dépôt.

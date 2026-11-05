@@ -10,9 +10,10 @@
     "prisma": "node src/cli.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "visual": "playwright test",
-    "visual:reference": "playwright test --update-snapshots",
-    "lint": "eslint ."
+    "visual": "playwright test --project=visual",
+    "visual:reference": "playwright test --project=visual --update-snapshots",
+    "lint": "eslint .",
+    "e2e": "playwright test --project=e2e"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",

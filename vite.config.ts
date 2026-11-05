@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -81,4 +82,6 @@ export default defineConfig({
     // le site qui présente Prisma, à la racine, et l'application dans app/
     rollupOptions: { input: { index: "index.html", comparaison: "comparaison.html", apprendre: "apprendre.html", reference: "reference.html", guitare: "guitare.html", app: "app/index.html" } },
   },
+  // Vitest : les tests unitaires seuls (ceux du navigateur, dans tests/e2e et tests/visual, sont à Playwright)
+  test: { include: ["src/**/*.test.ts", "tests/**/*.test.ts"] },
 });
