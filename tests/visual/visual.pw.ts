@@ -701,6 +701,20 @@ for (const [name, source, options] of ENGRAVINGS)
     await expect(page.locator(".page").first()).toHaveScreenshot(`gravure-${name}.png`);
   });
 
+// la gravure de l'application Vue, en construction : au pixel près celle de React, à la même place
+// et à la même taille (celles de la page dans l'application React), comparée à la même référence
+for (const [name, source, options] of ENGRAVINGS)
+  test(`gravure vue ${name}`, async ({ page }) => {
+    await openApp(page, { source, editing: false, ...(options ? { options } : {}) });
+    const box = (await page.locator(".page").first().boundingBox())!;
+    await page.goto("/app-vue/");
+    await page.addStyleTag({
+      content: `.page { position: fixed; left: ${box.x}px; top: ${box.y}px; width: ${box.width}px; height: ${box.height}px; } .page ~ .page { display: none; }`,
+    });
+    await settle(page);
+    await expect(page.locator(".page").first()).toHaveScreenshot(`gravure-${name}.png`);
+  });
+
 test("gravure impression", async ({ page }) => {
   await openApp(page, { source: GYMNOPEDIE, editing: false });
   await page.emulateMedia({ media: "print" });
