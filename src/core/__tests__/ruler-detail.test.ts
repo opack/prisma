@@ -2,11 +2,17 @@ import { describe, expect, it } from "vitest";
 import { TICKS_PER_BEAT, beatGrids, layout, parsePrisma } from "../index.ts";
 import { isWrittenCase } from "../locate.ts";
 
-const piece = (body: string[], division = 2) => ["---", "format: 1", ...(division === 3 ? ["division: 3"] : []), "---", "", ...body].join("\n");
+const piece = (body: string[], division = 2) =>
+  ["---", "format: 1", ...(division === 3 ? ["division: 3"] : []), "---", "", ...body].join("\n");
 
 // un temps tenu, un temps en deux, un triolet, un temps en quatre
-const binary = piece(["m1 |1  |2  *  |3  *  *  |4  .  *  .  ||", "───┼───┼──────┼─────────┼────────────┼┼", "0  |1  |-  3  |5  6  8  |10 -  -  12 ||"]);
-const labels = (text: string, detail?: "written" | "division" | "subdivision") => beatGrids(parsePrisma(text), detail).map((beatGrid) => beatGrid.labels.join(" "));
+const binary = piece([
+  "m1 |1  |2  *  |3  *  *  |4  .  *  .  ||",
+  "───┼───┼──────┼─────────┼────────────┼┼",
+  "0  |1  |-  3  |5  6  8  |10 -  -  12 ||",
+]);
+const labels = (text: string, detail?: "written" | "division" | "subdivision") =>
+  beatGrids(parsePrisma(text), detail).map((beatGrid) => beatGrid.labels.join(" "));
 
 describe("la règle détaillée", () => {
   it("telle qu'écrite : les seules cases du texte", () => {

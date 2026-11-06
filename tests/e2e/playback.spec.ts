@@ -82,8 +82,14 @@ test.describe("l'écoute", () => {
 
   test("la partition suit la piste : Fin la mène en bas, Début la ramène en haut", async ({ page }) => {
     const head = CLAIR_SECTIONS.slice(0, CLAIR_SECTIONS.indexOf("\n---\n", 4) + 5).replace(/^order:.*\n/m, "");
-    const section = CLAIR_SECTIONS.split("\n\n").find((block) => block.includes("[A]"))!.replace("[A]", "");
-    await openApp(page, { source: head + Array(12).fill(section).join("\n\n"), editing: false, view: { fit: "width", zoom: 1, progress: true } });
+    const section = CLAIR_SECTIONS.split("\n\n")
+      .find((block) => block.includes("[A]"))!
+      .replace("[A]", "");
+    await openApp(page, {
+      source: head + Array(12).fill(section).join("\n\n"),
+      editing: false,
+      view: { fit: "width", zoom: 1, progress: true },
+    });
     expect(await scorePane(page).evaluate((pane) => pane.scrollTop)).toBe(0);
     await track(page).focus();
     await page.keyboard.press("End");

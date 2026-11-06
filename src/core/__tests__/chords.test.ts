@@ -49,7 +49,11 @@ describe("accords", () => {
 
   it("lit la ligne @c, en nom Prisma, en nom anglais ou en notes Prisma, et l'écrit au-dessus de la règle", () => {
     const score = parsePrisma(piece("@c       1       Am  10,1,5"));
-    expect(score.chords).toEqual([{ t: 0, text: "1" }, { t: 2 * TICKS_PER_BEAT, text: "Am" }, { t: 3 * TICKS_PER_BEAT, text: "10,1,5" }]);
+    expect(score.chords).toEqual([
+      { t: 0, text: "1" },
+      { t: 2 * TICKS_PER_BEAT, text: "Am" },
+      { t: 3 * TICKS_PER_BEAT, text: "10,1,5" },
+    ]);
     const { text, back } = roundTrip(score);
     expect(back.chords).toEqual(score.chords);
     const lines = text.split("\n");
@@ -77,7 +81,8 @@ describe("accords", () => {
   });
 
   it("importe les accords du MusicXML (<harmony>), basse comprise", () => {
-    const harmony = (step: string, kind: string, extra = "") => `<harmony><root><root-step>${step}</root-step></root><kind>${kind}</kind>${extra}</harmony>`;
+    const harmony = (step: string, kind: string, extra = "") =>
+      `<harmony><root><root-step>${step}</root-step></root><kind>${kind}</kind>${extra}</harmony>`;
     const xml = musicXml([
       {
         notes: [
@@ -88,11 +93,15 @@ describe("accords", () => {
         ],
       },
     ]);
-    expect(importMusicXml(xml).chords).toEqual([{ t: 0, text: "10:m7" }, { t: 2 * TICKS_PER_BEAT, text: "8/12" }]);
+    expect(importMusicXml(xml).chords).toEqual([
+      { t: 0, text: "10:m7" },
+      { t: 2 * TICKS_PER_BEAT, text: "8/12" },
+    ]);
   });
 
   it("importe les accords écrits en simple texte au-dessus de la portée", () => {
-    const words = (word: string) => `<direction placement="above"><direction-type><words>${word}</words></direction-type><staff>1</staff></direction>`;
+    const words = (word: string) =>
+      `<direction placement="above"><direction-type><words>${word}</words></direction-type><staff>1</staff></direction>`;
     const xml = musicXml([
       {
         notes: [
@@ -104,7 +113,10 @@ describe("accords", () => {
       },
     ]);
     const s = importMusicXml(xml);
-    expect(s.chords).toEqual([{ t: 0, text: "10:7" }, { t: 2 * TICKS_PER_BEAT, text: "5:7" }]);
+    expect(s.chords).toEqual([
+      { t: 0, text: "10:7" },
+      { t: 2 * TICKS_PER_BEAT, text: "5:7" },
+    ]);
     expect(s.expressions.map((expression) => expression.text)).toEqual(["dolce"]);
   });
 });

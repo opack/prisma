@@ -22,7 +22,15 @@ function pieces(message: string): { text: string; code: boolean }[] {
 }
 
 export function Message({ text }: { text: string }): ReactNode {
-  return pieces(text).map((p, k) => (p.code ? <code key={k} className={CODE}>{p.text}</code> : p.text));
+  return pieces(text).map((p, k) =>
+    p.code ? (
+      <code key={k} className={CODE}>
+        {p.text}
+      </code>
+    ) : (
+      p.text
+    ),
+  );
 }
 
 /** Le même, en éléments du DOM, pour l'infobulle de l'éditeur. */

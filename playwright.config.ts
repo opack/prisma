@@ -36,5 +36,12 @@ export default defineConfig({
   ],
   // un identifiant pCloud de banc : la bibliothèque propose pCloud, dont les appels sont simulés (page.route) ;
   // un commit fixe, pour la fenêtre À propos
-  webServer: { command: `pnpm exec vite --port ${port} --strictPort`, cwd: root, url: `http://localhost:${port}/app/`, reuseExistingServer: false, timeout: 60_000, env: { VITE_PCLOUD_CLIENT_ID: "banc", COMMIT_REF: "0000000" } },
+  webServer: {
+    command: `pnpm exec vite --port ${port} --strictPort`,
+    cwd: root,
+    url: `http://localhost:${port}/app/`,
+    reuseExistingServer: false,
+    timeout: 60_000,
+    env: { VITE_PCLOUD_CLIENT_ID: "banc", COMMIT_REF: "0000000" },
+  },
 });

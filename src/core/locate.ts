@@ -34,7 +34,7 @@ const isRule = (line: string) => {
 /** Les temps d'une règle : pour chacun, ses cases (colonne de début, de fin). */
 function beatsOf(ruler: string) {
   const seps: { from: number; to: number }[] = [];
-  for (let i = ruler.indexOf("|"); i >= 0 && i < ruler.length; ) {
+  for (let i = ruler.indexOf("|"); i >= 0 && i < ruler.length;) {
     if (ruler[i] === "|" || (ruler[i] === ":" && ruler[i + 1] === "|")) {
       let j = i;
       while (j < ruler.length && (ruler[j] === "|" || ruler[j] === ":")) j++;
@@ -44,7 +44,8 @@ function beatsOf(ruler: string) {
   }
   const beats: { start: number; end: number }[][] = [];
   for (let k = 0; k + 1 < seps.length; k++) {
-    const from = seps[k].to, to = seps[k + 1].from;
+    const from = seps[k].to,
+      to = seps[k + 1].from;
     const labels = [...ruler.slice(from, to).matchAll(/\S+/g)].map((m) => from + m.index);
     if (!labels.length) continue;
     labels[0] = from;
@@ -136,10 +137,13 @@ export function isWrittenCase(text: string, t: number): boolean {
  */
 export function textPlace(text: string, L: number, C: number): ScorePlace | undefined {
   const lines = split(text);
-  const k = L - 1, c = C - 1;
+  const k = L - 1,
+    c = C - 1;
   const s = systems(lines).find((x) => k >= x.first && k <= x.last);
   if (!s) return undefined;
-  const cases = s.beats.flatMap((b, bi) => b.map((x, ci) => ({ ...x, t: (s.beat0 + bi) * TICKS_PER_BEAT + (ci * TICKS_PER_BEAT) / b.length })));
+  const cases = s.beats.flatMap((b, bi) =>
+    b.map((x, ci) => ({ ...x, t: (s.beat0 + bi) * TICKS_PER_BEAT + (ci * TICKS_PER_BEAT) / b.length })),
+  );
   if (!cases.length) return undefined;
   const at = cases.find((x) => c >= x.start && c < x.end) ?? (c < cases[0].start ? cases[0] : cases[cases.length - 1]);
   if (k <= s.R) return { t: at.t, staff: -1 };
@@ -165,7 +169,14 @@ export function textPlace(text: string, L: number, C: number): ScorePlace | unde
 }
 
 /** Dans le système de règle R, la ligne du signe, et la colonne de son contenu dans la case c. */
-function place(lines: string[], R: number, end: number, c: { start: number; end: number }, all: { start: number; end: number }[], at: ScorePlace) {
+function place(
+  lines: string[],
+  R: number,
+  end: number,
+  c: { start: number; end: number },
+  all: { start: number; end: number }[],
+  at: ScorePlace,
+) {
   const rows: { line: number; content: string; sign: string; octave?: number }[] = [];
   // la note qu'une tenue prolonge sur sa ligne : la dernière attaque avant elle (« -7 » la nomme)
   const held = (line: string) => {

@@ -27,7 +27,11 @@ describe("reprises", () => {
   });
 
   it("met « ||: » en tête du système suivant quand la reprise commence après un saut de ligne", () => {
-    const xml = musicXml([n(60), n(62), { ...n(64), barlineLeft: `<repeat direction="forward"/>`, barline: `<repeat direction="backward"/>` }]);
+    const xml = musicXml([
+      n(60),
+      n(62),
+      { ...n(64), barlineLeft: `<repeat direction="forward"/>`, barline: `<repeat direction="backward"/>` },
+    ]);
     const { text } = roundTrip(importMusicXml(xml), 30);
     expect(text).toMatch(/^m3 \|\|:1 /m);
   });
@@ -80,7 +84,10 @@ describe("sections", () => {
 
   it("lit les sections et l'ordre de jeu", () => {
     const score = parsePrisma(piece("A B A", at([3, "[A]"], [bar[1] + 1, "[B]"])));
-    expect(score.markers).toEqual([{ label: "A", barIndex: 0 }, { label: "B", barIndex: 2 }]);
+    expect(score.markers).toEqual([
+      { label: "A", barIndex: 0 },
+      { label: "B", barIndex: 2 },
+    ]);
     expect(score.order).toEqual(["A", "B", "A"]);
     expect(score.meta.order).toBeUndefined();
   });
@@ -103,10 +110,18 @@ describe("sections", () => {
     expect(rest).toEqual([]);
     expect(one.section).toBe("A");
     const bars = one.columns.filter((c) => c.kind === "barSep") as { section?: boolean; spaced?: boolean }[];
-    expect(bars.map((c) => [!!c.section, !!c.spaced])).toEqual([[false, false], [true, true], [false, false], [false, false]]);
+    expect(bars.map((c) => [!!c.section, !!c.spaced])).toEqual([
+      [false, false],
+      [true, true],
+      [false, false],
+      [false, false],
+    ]);
     // la lettre de B contre la barre qui l'ouvre ; 4 de plus que la ligne ordinaire
     const opening = one.columns.findIndex((c) => c.kind === "barSep" && c.spaced);
-    expect(one.marks.filter((mark) => mark.kind === "marker").map((m) => [m.label, m.column])).toEqual([["A", -1], ["B", opening]]);
+    expect(one.marks.filter((mark) => mark.kind === "marker").map((m) => [m.label, m.column])).toEqual([
+      ["A", -1],
+      ["B", opening],
+    ]);
     const plain = layout(parsePrisma(piece("", "", ruler)), metrics)[0];
     expect(one.width - plain.width).toBe(4);
   });
@@ -128,6 +143,8 @@ describe("sections", () => {
     const r = "m1 ||:1  ||1  ||1  :||1  ||";
     const b = [...r.matchAll(/\|\|/g)].map((match) => match.index!);
     const notes = "0  ||:1  ||1  ||1  :||1  ||";
-    expect(() => parsePrisma(piece("A B", at([4, "[A]"], [b[1] + 1, "[B]"]), r, notes))).toThrow(/reprise passe le début de la section « \[B\] »/);
+    expect(() => parsePrisma(piece("A B", at([4, "[A]"], [b[1] + 1, "[B]"]), r, notes))).toThrow(
+      /reprise passe le début de la section « \[B\] »/,
+    );
   });
 });

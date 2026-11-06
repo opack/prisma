@@ -12,7 +12,25 @@
 import { PIANO, boostOf, instrumentLabel, soundOf } from "./instruments.ts";
 import { TICKS_PER_BEAT } from "../../core/index.ts";
 import type { Score } from "../../core/index.ts";
-import { clicks, countIn, entryAt, entryStart, holds, inFirstBar, nextElsewhere, nextTick, passages, playedBars, playedLength, playedNotes, playedSections, playedTick, scoreTick, stretched, unstretched } from "./performance.ts";
+import {
+  clicks,
+  countIn,
+  entryAt,
+  entryStart,
+  holds,
+  inFirstBar,
+  nextElsewhere,
+  nextTick,
+  passages,
+  playedBars,
+  playedLength,
+  playedNotes,
+  playedSections,
+  playedTick,
+  scoreTick,
+  stretched,
+  unstretched,
+} from "./performance.ts";
 import type { PlayedBar, PlayedSection } from "./performance.ts";
 import type { Click, ClickGrid, Hold, PlayedNote, Passage } from "./performance.ts";
 import { DEFAULT_CLICK_SOUNDS, click, clickVolume, loadClick } from "./metronome.ts";
@@ -64,17 +82,32 @@ export function playNotes(notes: PlayedNote[], bpm: number, from = 0, hs: Hold[]
   const out: PlayNote[] = [];
   for (const n of notes) {
     if (n.grace) {
-      if (n.start >= from) out.push({ time: Math.max(EARLIEST, at(n.start) - n.grace * grace), midi: n.midi, duration: grace, velocity: n.velocity, staff: n.staff });
+      if (n.start >= from)
+        out.push({
+          time: Math.max(EARLIEST, at(n.start) - n.grace * grace),
+          midi: n.midi,
+          duration: grace,
+          velocity: n.velocity,
+          staff: n.staff,
+        });
       continue;
     }
     if (n.end <= from) continue;
     const begin = Math.max(n.start, from);
     // une note d'arpège part un peu après la précédente, et reste tenue (sauf reprise en cours d'accord)
     const rolled = n.roll && n.start >= from ? n.roll.rank * Math.min(ROLL, 60 / bpm / 2 / n.roll.count) : 0;
-    const time = at(begin) + rolled, end = at(n.end);
+    const time = at(begin) + rolled,
+      end = at(n.end);
     const trill = n.trill && n.trill.until > begin ? n.trill : undefined;
     if (!trill) {
-      out.push({ time, midi: n.midi, duration: end - time, velocity: n.velocity, staff: n.staff, ...(n.filter ? { filter: n.filter } : {}) });
+      out.push({
+        time,
+        midi: n.midi,
+        duration: end - time,
+        velocity: n.velocity,
+        staff: n.staff,
+        ...(n.filter ? { filter: n.filter } : {}),
+      });
       continue;
     }
     // un nombre impair de notes égales : la note, la voisine, la note… et la dernière est la note
@@ -83,7 +116,13 @@ export function playNotes(notes: PlayedNote[], bpm: number, from = 0, hs: Hold[]
     const step = span / count;
     for (let k = 0; k < count; k++) {
       const last = k === count - 1;
-      out.push({ time: time + k * step, midi: k % 2 ? trill.midi : n.midi, duration: last ? end - time - k * step : step, velocity: n.velocity, staff: n.staff });
+      out.push({
+        time: time + k * step,
+        midi: k % 2 ? trill.midi : n.midi,
+        duration: last ? end - time - k * step : step,
+        velocity: n.velocity,
+        staff: n.staff,
+      });
     }
   }
   return out.sort((a, b) => a.time - b.time || a.midi - b.midi);
@@ -110,14 +149,31 @@ export type PlayerSnapshot = {
 
 /** Ce que l'on entend : le métronome et ses réglages, et les portées rendues muettes (leurs numéros). */
 /** Ce qu'on entend : le métronome, les portées muettes, le volume de chaque portée (en décibels), les clics. */
-type Sound = { metronome: boolean; muted: number[]; gains: number[]; clickSounds: ClickSounds; clickGrid: ClickGrid; countIn: boolean; clickVolume: number };
+type Sound = {
+  metronome: boolean;
+  muted: number[];
+  gains: number[];
+  clickSounds: ClickSounds;
+  clickGrid: ClickGrid;
+  countIn: boolean;
+  clickVolume: number;
+};
 
 /** Un instrument chargé : il joue une note et rend de quoi l'arrêter. */
 type Voice = { start(n: { note: number; velocity: number; time: number; duration: number; lpfCutoffHz?: number }): () => void };
 
 /** Lecteur unique de l'application : un état, et des abonnés (les boutons, le curseur). */
 class Player {
-  private snapshot: PlayerSnapshot = { state: "idle", tick: null, entry: null, entries: 0, played: null, bars: [], sections: [], holds: [] };
+  private snapshot: PlayerSnapshot = {
+    state: "idle",
+    tick: null,
+    entry: null,
+    entries: 0,
+    played: null,
+    bars: [],
+    sections: [],
+    holds: [],
+  };
   private listeners = new Set<() => void>();
   private context?: AudioContext;
   /** Les instruments chargés, par nom. */
@@ -135,7 +191,15 @@ class Player {
   private clicks: Click[] = [];
   private tick?: AudioBuffer;
   /** Ce que l'on entend : le métronome, les portées (sauf les muettes), le son de chaque niveau du métronome. */
-  private sound: Sound = { metronome: false, muted: [], gains: [], clickSounds: DEFAULT_CLICK_SOUNDS, clickGrid: "cells", countIn: false, clickVolume: 1 };
+  private sound: Sound = {
+    metronome: false,
+    muted: [],
+    gains: [],
+    clickSounds: DEFAULT_CLICK_SOUNDS,
+    clickGrid: "cells",
+    countIn: false,
+    clickVolume: 1,
+  };
   /** Instant joué de la pause (le curseur, lui, montre l'instant du morceau). */
   private pos = 0;
   private bpm = DEFAULT_BPM;
@@ -164,7 +228,12 @@ class Player {
     this.holds = score ? holds(score, this.passages) : [];
     this.clicks = score ? clicks(score, this.passages, this.sound.clickGrid) : [];
     const bars = score ? playedBars(score, this.passages) : [];
-    this.set({ entries: this.passages.length ? this.passages[this.passages.length - 1].entry + 1 : 0, bars, sections: score ? playedSections(score, bars) : [], holds: this.holds });
+    this.set({
+      entries: this.passages.length ? this.passages[this.passages.length - 1].entry + 1 : 0,
+      bars,
+      sections: score ? playedSections(score, bars) : [],
+      holds: this.holds,
+    });
   }
 
   /** Joue le morceau, depuis l'endroit de la pause s'il y en a une, sinon depuis le début. */
@@ -205,10 +274,15 @@ class Player {
         try {
           // un son General MIDI, remonté au niveau du piano : le gain que smplr lui ajoute déjà (5), plus celui de l'instrument
           const extraGain = 5 * 10 ** (boostOf(id) / 20);
-          const voice = id === PIANO ? await SplendidGrandPiano(this.context!).load : await Soundfont(this.context!, { instrument: soundOf(id), extraGain }).load;
+          const voice =
+            id === PIANO
+              ? await SplendidGrandPiano(this.context!).load
+              : await Soundfont(this.context!, { instrument: soundOf(id), extraGain }).load;
           this.voicesBy.set(id, voice as Voice);
         } catch {
-          throw new Error(`Impossible de charger le son ${id === PIANO ? "du piano" : `« ${instrumentLabel(id)} »`} (connexion internet ?)`);
+          throw new Error(
+            `Impossible de charger le son ${id === PIANO ? "du piano" : `« ${instrumentLabel(id)} »`} (connexion internet ?)`,
+          );
         }
       }),
     );
@@ -289,7 +363,12 @@ class Player {
     const state = this.snapshot.state;
     const pos = state === "playing" ? this.now() : state === "paused" ? this.pos : 0;
     const entry = this.snapshot.entry ?? 0;
-    const back = now - this.previousAt < PREVIOUS_AGAIN ? this.previousTo : this.score && inFirstBar(this.score, this.passages, pos) ? entry : entry + 1;
+    const back =
+      now - this.previousAt < PREVIOUS_AGAIN
+        ? this.previousTo
+        : this.score && inFirstBar(this.score, this.passages, pos)
+          ? entry
+          : entry + 1;
     const to = Math.max(0, back - 1);
     this.previousAt = now;
     this.previousTo = to;
@@ -382,7 +461,8 @@ class Player {
     const voiceOf = (staff: number) => this.voicesBy.get(this.instruments[staff] ?? PIANO) ?? fallback;
     // le volume d'une portée joue sur l'intensité des notes (le son va comme son carré), dans les bornes MIDI
     const factor = this.sound.gains.map((db) => 10 ** (db / 40));
-    const velocityOf = (n: PlayNote) => (factor[n.staff] ? Math.max(1, Math.min(127, Math.round(n.velocity * factor[n.staff]))) : n.velocity);
+    const velocityOf = (n: PlayNote) =>
+      factor[n.staff] ? Math.max(1, Math.min(127, Math.round(n.velocity * factor[n.staff]))) : n.velocity;
     const hs = this.holds;
     // une portée muette n'est pas jouée : on la joue soi-même pendant que l'app joue les autres
     const muted = new Set(this.sound.muted);
@@ -399,7 +479,10 @@ class Player {
     count.forEach((level, k) => {
       const chosen = this.sound.clickSounds[level];
       const at = context.currentTime + LEAD_IN + k * beatSec;
-      this.voices.push({ end: at + 0.1, stop: click(context, this.tick!, at, level, chosen === "none" ? (level === "downbeat" ? "high" : "wood") : chosen) });
+      this.voices.push({
+        end: at + 0.1,
+        stop: click(context, this.tick!, at, level, chosen === "none" ? (level === "downbeat" ? "high" : "wood") : chosen),
+      });
     });
     this.now = () => played(context.currentTime - start);
     const sounds = this.sound.clickSounds;
@@ -409,7 +492,8 @@ class Player {
           return c.at >= from && sound !== "none" ? [{ time: (stretched(hs, c.at) - zero) * sec, level: c.level, sound }] : [];
         })
       : [];
-    let next = 0, nextBeat = 0;
+    let next = 0,
+      nextBeat = 0;
     // programmation par tranches : interrompre coupe aussi ce qui n'a pas encore été programmé
     const schedule = () => {
       const now = context.currentTime;
@@ -418,7 +502,13 @@ class Player {
         const n = notes[next];
         const voice = voiceOf(n.staff);
         if (!voice) continue;
-        const stop = voice.start({ note: n.midi, velocity: velocityOf(n), time: start + n.time, duration: n.duration, ...(n.filter ? { lpfCutoffHz: n.filter } : {}) });
+        const stop = voice.start({
+          note: n.midi,
+          velocity: velocityOf(n),
+          time: start + n.time,
+          duration: n.duration,
+          ...(n.filter ? { lpfCutoffHz: n.filter } : {}),
+        });
         this.voices.push({ end: start + n.time + n.duration + RELEASE, stop });
       }
       for (; nextBeat < beats.length && beats[nextBeat].time < now - start + LOOKAHEAD; nextBeat++) {

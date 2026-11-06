@@ -73,7 +73,32 @@ export type RenderOptions = {
   clickVolume: number;
 };
 
-export const DEFAULT_OPTIONS: RenderOptions = { octaveStyle: "triangle", octavePosition: "top", autoEngrave: false, notePosition: "top", density: "normal", rulerDetail: "written", fingerings: true, namesEverySystem: false, holdReminders: true, octaveColors: "rainbow", chords: "both", chordNames: "prisma", chordChart: false, sections: "newLine", noteNames: "latin", sourceColors: "octaves", scoreToText: true, simile: "pedals", lookAhead: true, metronome: false, clickSounds: DEFAULT_CLICK_SOUNDS, clickGrid: "cells", countIn: false, clickVolume: 1 };
+export const DEFAULT_OPTIONS: RenderOptions = {
+  octaveStyle: "triangle",
+  octavePosition: "top",
+  autoEngrave: false,
+  notePosition: "top",
+  density: "normal",
+  rulerDetail: "written",
+  fingerings: true,
+  namesEverySystem: false,
+  holdReminders: true,
+  octaveColors: "rainbow",
+  chords: "both",
+  chordNames: "prisma",
+  chordChart: false,
+  sections: "newLine",
+  noteNames: "latin",
+  sourceColors: "octaves",
+  scoreToText: true,
+  simile: "pedals",
+  lookAhead: true,
+  metronome: false,
+  clickSounds: DEFAULT_CLICK_SOUNDS,
+  clickGrid: "cells",
+  countIn: false,
+  clickVolume: 1,
+};
 
 export const OCTAVE_STYLES: { value: OctaveStyle; label: string; sample: string }[] = [
   { value: "arrow", label: "Flèches", sample: "↑1  0  ↓1" },
@@ -165,13 +190,43 @@ export function loadOptions(stored?: string | null): RenderOptions {
     const lookAhead = typeof raw.lookAhead === "boolean" ? raw.lookAhead : DEFAULT_OPTIONS.lookAhead;
     const metronome = typeof raw.metronome === "boolean" ? raw.metronome : DEFAULT_OPTIONS.metronome;
     const countIn = typeof raw.countIn === "boolean" ? raw.countIn : DEFAULT_OPTIONS.countIn;
-    const clickVolume = typeof raw.clickVolume === "number" && raw.clickVolume >= 0 && raw.clickVolume <= 2 ? raw.clickVolume : DEFAULT_OPTIONS.clickVolume;
+    const clickVolume =
+      typeof raw.clickVolume === "number" && raw.clickVolume >= 0 && raw.clickVolume <= 2 ? raw.clickVolume : DEFAULT_OPTIONS.clickVolume;
     const clickGrid = CLICK_GRIDS.some((g) => g.value === raw.clickGrid) ? raw.clickGrid : DEFAULT_OPTIONS.clickGrid;
     const sounds = raw.clickSounds ?? {};
     const clickSounds = Object.fromEntries(
-      Object.entries(DEFAULT_CLICK_SOUNDS).map(([level, d]) => [level, CLICK_SOUNDS.some((c) => c.value === sounds[level]) ? sounds[level] : d]),
+      Object.entries(DEFAULT_CLICK_SOUNDS).map(([level, d]) => [
+        level,
+        CLICK_SOUNDS.some((c) => c.value === sounds[level]) ? sounds[level] : d,
+      ]),
     ) as ClickSounds;
-    return { ...DEFAULT_OPTIONS, octaveStyle, octavePosition, autoEngrave, notePosition, density, rulerDetail, fingerings, namesEverySystem, holdReminders, octaveColors, chords, chordNames, chordChart, sections, noteNames, sourceColors, scoreToText, simile, lookAhead, metronome, clickSounds, clickGrid, countIn, clickVolume };
+    return {
+      ...DEFAULT_OPTIONS,
+      octaveStyle,
+      octavePosition,
+      autoEngrave,
+      notePosition,
+      density,
+      rulerDetail,
+      fingerings,
+      namesEverySystem,
+      holdReminders,
+      octaveColors,
+      chords,
+      chordNames,
+      chordChart,
+      sections,
+      noteNames,
+      sourceColors,
+      scoreToText,
+      simile,
+      lookAhead,
+      metronome,
+      clickSounds,
+      clickGrid,
+      countIn,
+      clickVolume,
+    };
   } catch {
     return DEFAULT_OPTIONS;
   }

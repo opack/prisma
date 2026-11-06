@@ -52,6 +52,7 @@ export function firstCell(text: string): { line: number; column: number } | unde
   const lines = text.split("\n");
   const ruler = lines.findIndex((l) => /^m\d/.test(l));
   if (ruler < 0) return undefined;
-  for (let k = ruler + 1; k < lines.length; k++) if (/^[-+]?\d+\s*\|/.test(lines[k])) return { line: k + 1, column: lines[k].indexOf("|") + 2 };
+  for (let k = ruler + 1; k < lines.length; k++)
+    if (/^[-+]?\d+\s*\|/.test(lines[k])) return { line: k + 1, column: lines[k].indexOf("|") + 2 };
   return undefined;
 }

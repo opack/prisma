@@ -10,7 +10,15 @@ import { releases } from "./changelog.ts";
 export function AboutDialog({ onClose }: { onClose: () => void }) {
   const list = useMemo(() => releases(changelog), []);
   return (
-    <Dialog title="À propos de Prisma" intro="Lire, écrire et jouer la musique en Prisma, une notation chromatique." submit="Fermer" cancel={null} focusSubmit onSubmit={onClose} onClose={onClose}>
+    <Dialog
+      title="À propos de Prisma"
+      intro="Lire, écrire et jouer la musique en Prisma, une notation chromatique."
+      submit="Fermer"
+      cancel={null}
+      focusSubmit
+      onSubmit={onClose}
+      onClose={onClose}
+    >
       <p className="m-0 flex items-baseline gap-2">
         <span className="font-semibold">Version {__VERSION__}</span>
         {__COMMIT__ && (
@@ -19,7 +27,10 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
           </span>
         )}
       </p>
-      <section className="grid gap-3 max-h-[min(50vh,420px)] overflow-auto px-3 py-2.5 bg-white border border-line rounded" aria-label="Nouveautés">
+      <section
+        className="grid gap-3 max-h-[min(50vh,420px)] overflow-auto px-3 py-2.5 bg-white border border-line rounded"
+        aria-label="Nouveautés"
+      >
         {list.map((r) => (
           <article key={r.version} className="text-[14px] leading-[1.4]">
             <h3 className="m-0 text-[14px]">

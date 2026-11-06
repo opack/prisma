@@ -62,7 +62,10 @@ test.describe("le site", () => {
     await page.goto("/reference.html");
     await settle(page);
     await page.getByRole("button", { name: /^Sommaire/ }).click();
-    await page.getByRole("menuitem", { name: /le temps/i }).first().click();
+    await page
+      .getByRole("menuitem", { name: /le temps/i })
+      .first()
+      .click();
     await settle(page);
     await expect(page.locator('[id="3-le-temps"]')).toBeInViewport();
   });

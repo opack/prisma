@@ -5,7 +5,8 @@ import { notesKey, roundTrip } from "../../../tests/support/round-trip.ts";
 import type { Score } from "../index.ts";
 
 describe("petites notes", () => {
-  const gk = (score: Score) => score.graces.map((grace) => `${grace.staff}:${grace.midi}@${grace.t / TICKS_PER_BEAT}#${grace.slot}`).join(" ");
+  const gk = (score: Score) =>
+    score.graces.map((grace) => `${grace.staff}:${grace.midi}@${grace.t / TICKS_PER_BEAT}#${grace.slot}`).join(" ");
   const piece = [
     "m1 |1        |2  |3        |4  ||",
     "+1 |3'       |   |         |   ||",
@@ -62,8 +63,13 @@ describe("petites notes", () => {
 });
 
 describe("ornements", () => {
-  const gk = (score: Score) => score.graces.map((grace) => `${grace.staff}:${grace.midi}@${grace.t / TICKS_PER_BEAT}#${grace.slot}`).join(" ");
-  const tk = (s: Score) => s.notes.filter((note) => note.trill !== undefined).map((n) => `${n.midi}~${n.trill}`).join(" ");
+  const gk = (score: Score) =>
+    score.graces.map((grace) => `${grace.staff}:${grace.midi}@${grace.t / TICKS_PER_BEAT}#${grace.slot}`).join(" ");
+  const tk = (s: Score) =>
+    s.notes
+      .filter((note) => note.trill !== undefined)
+      .map((n) => `${n.midi}~${n.trill}`)
+      .join(" ");
   const ruler = "m1 |1    |2    |3    |4    ||";
 
   it("lit une trille « 5~7 » : la note et sa voisine la plus proche", () => {
@@ -82,9 +88,21 @@ describe("ornements", () => {
 
   it("lit les arpèges : d'une portée sur sa ligne @, de toutes sur celle du haut", () => {
     const s = parsePrisma(
-      ["@         \\", ruler, "0  |5    |5    |     |     ||", "   |1    |1    |     |     ||", "@   /", "---", "-1 |1    |1    |     |     ||", ""].join("\n"),
+      [
+        "@         \\",
+        ruler,
+        "0  |5    |5    |     |     ||",
+        "   |1    |1    |     |     ||",
+        "@   /",
+        "---",
+        "-1 |1    |1    |     |     ||",
+        "",
+      ].join("\n"),
     );
-    expect(s.arpeggios).toEqual([{ t: 0, staff: 0 }, { t: TICKS_PER_BEAT, down: true }]);
+    expect(s.arpeggios).toEqual([
+      { t: 0, staff: 0 },
+      { t: TICKS_PER_BEAT, down: true },
+    ]);
     expect(s.expressions).toEqual([]);
     const { back } = roundTrip(s);
     expect(back.arpeggios).toEqual(s.arpeggios);
@@ -117,7 +135,18 @@ describe("ornements", () => {
 
   it("joue un gruppetto placé après la note juste avant la note suivante", () => {
     const orn = `<ornaments><delayed-turn/></ornaments>`;
-    const s = importMusicXml(musicXml([{ notes: [[{ midi: [64], duration: 2 * QUARTER, notations: orn }, { midi: [65], duration: 2 * QUARTER }]] }]));
+    const s = importMusicXml(
+      musicXml([
+        {
+          notes: [
+            [
+              { midi: [64], duration: 2 * QUARTER, notations: orn },
+              { midi: [65], duration: 2 * QUARTER },
+            ],
+          ],
+        },
+      ]),
+    );
     expect(gk(s)).toBe("0:65@2#0 0:64@2#1 0:62@2#2 0:64@2#3");
   });
 
@@ -126,8 +155,14 @@ describe("ornements", () => {
     const xml = musicXml([
       {
         notes: [
-          [{ midi: [64, 67], duration: 2 * QUARTER, notations: arp("1") }, { midi: [64, 67], duration: 2 * QUARTER, notations: arp("2") }],
-          [{ midi: [48, 55], duration: 2 * QUARTER, staff: 2, notations: arp("1") }, { midi: [48, 55], duration: 2 * QUARTER, staff: 2, notations: arp("3") }],
+          [
+            { midi: [64, 67], duration: 2 * QUARTER, notations: arp("1") },
+            { midi: [64, 67], duration: 2 * QUARTER, notations: arp("2") },
+          ],
+          [
+            { midi: [48, 55], duration: 2 * QUARTER, staff: 2, notations: arp("1") },
+            { midi: [48, 55], duration: 2 * QUARTER, staff: 2, notations: arp("3") },
+          ],
         ],
       },
     ]);

@@ -7,7 +7,10 @@ import { kindOf, tx } from "./library.ts";
 import type { LibrarySource, SourceFile } from "./library.ts";
 
 type DirPicker = { showDirectoryPicker?: (o?: { id?: string; mode?: "read" | "readwrite" }) => Promise<FileSystemDirectoryHandle> };
-type Permissions = { queryPermission(o: { mode: "readwrite" }): Promise<PermissionState>; requestPermission(o: { mode: "readwrite" }): Promise<PermissionState> };
+type Permissions = {
+  queryPermission(o: { mode: "readwrite" }): Promise<PermissionState>;
+  requestPermission(o: { mode: "readwrite" }): Promise<PermissionState>;
+};
 type Iterable = { values(): AsyncIterable<FileSystemHandle> };
 
 const w = (typeof window !== "undefined" ? window : {}) as DirPicker;
@@ -42,7 +45,15 @@ export function diskLibrary(root: FileSystemDirectoryHandle): LibrarySource {
           if (!kindOf(h.name)) continue;
           const handle = h as FileSystemFileHandle;
           const file = await handle.getFile();
-          out.push({ path: folder ? `${folder}/${h.name}` : h.name, folder, name: h.name, modified: file.lastModified, file: diskFile(handle), dir, head: () => file.slice(0, 32_000).text() });
+          out.push({
+            path: folder ? `${folder}/${h.name}` : h.name,
+            folder,
+            name: h.name,
+            modified: file.lastModified,
+            file: diskFile(handle),
+            dir,
+            head: () => file.slice(0, 32_000).text(),
+          });
         }
       };
       await walk(root, "");

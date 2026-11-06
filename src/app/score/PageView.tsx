@@ -1,6 +1,24 @@
 import { FINGER_MARK, TRILL_MARK, barreOf, numberOf, octaveOffset, pitchClass, stringsOfStaff } from "../../core/index.ts";
 import type { Direction, Meta, PedalLine, Shape, SystemRow, Voice } from "../../core/index.ts";
-import { FINGER, G, PAGE, SLIDE_W, bendLabel, bendStart, chordGrid, isPickSign, slurH, splitChord, techniqueOf, graceExtra, graceSlotW, headerHeight, leadExtra, lyricTextW, splitNote } from "./engrave.ts";
+import {
+  FINGER,
+  G,
+  PAGE,
+  SLIDE_W,
+  bendLabel,
+  bendStart,
+  chordGrid,
+  isPickSign,
+  slurH,
+  splitChord,
+  techniqueOf,
+  graceExtra,
+  graceSlotW,
+  headerHeight,
+  leadExtra,
+  lyricTextW,
+  splitNote,
+} from "./engrave.ts";
 import type { Page, PlacedSystem } from "./engrave.ts";
 import type { OctavePosition, OctaveStyle, RenderOptions } from "../options/options.ts";
 import { writtenNames } from "../options/options.ts";
@@ -98,8 +116,25 @@ function OctaveMark({ cx, cy, offset, style }: { cx: number; cy: number; offset:
 }
 
 /** Onglet vertical pâle couvrant les lignes d'un groupe d'octave ; numéro en haut ou au centre selon les options. */
-function OctaveTabs({ rows, top, style, position, tabFill, rowH, stringName }: { rows: SystemRow[]; top: number; style: OctaveStyle; position: OctavePosition; tabFill: (row: SystemRow) => string; rowH: number; stringName: (string: number) => string }) {
-  if (rows.some((r) => r.string !== undefined)) return <StringTabs rows={rows} top={top} tabFill={tabFill} rowH={rowH} stringName={stringName} />;
+function OctaveTabs({
+  rows,
+  top,
+  style,
+  position,
+  tabFill,
+  rowH,
+  stringName,
+}: {
+  rows: SystemRow[];
+  top: number;
+  style: OctaveStyle;
+  position: OctavePosition;
+  tabFill: (row: SystemRow) => string;
+  rowH: number;
+  stringName: (string: number) => string;
+}) {
+  if (rows.some((r) => r.string !== undefined))
+    return <StringTabs rows={rows} top={top} tabFill={tabFill} rowH={rowH} stringName={stringName} />;
   const groups: { row: SystemRow; first: number; count: number }[] = [];
   rows.forEach((r, i) => {
     if (r.showOctave || !groups.length) groups.push({ row: r, first: i, count: 1 });
@@ -129,7 +164,19 @@ function OctaveTabs({ rows, top, style, position, tabFill, rowH, stringName }: {
 }
 
 /** Onglets d'un instrument à cordes : un par corde, son numéro, puis le nom de la note à vide. */
-function StringTabs({ rows, top, tabFill, rowH, stringName }: { rows: SystemRow[]; top: number; tabFill: (row: SystemRow) => string; rowH: number; stringName: (string: number) => string }) {
+function StringTabs({
+  rows,
+  top,
+  tabFill,
+  rowH,
+  stringName,
+}: {
+  rows: SystemRow[];
+  top: number;
+  tabFill: (row: SystemRow) => string;
+  rowH: number;
+  stringName: (string: number) => string;
+}) {
   const x = PAGE.marginX + 0.6;
   const w = G.prefix - 1.4;
   return (
@@ -167,7 +214,10 @@ function StringTabs({ rows, top, tabFill, rowH, stringName }: { rows: SystemRow[
  * vide. Une forme haute commence à sa première case, numérotée à droite ; sinon le sillet, épais.
  */
 function ChordGrid({ shape, x, y }: { shape: Shape; x: number; y: number }) {
-  const n = shape.length, s = G.gridString, f = G.gridFret, rows = G.gridFrets;
+  const n = shape.length,
+    s = G.gridString,
+    f = G.gridFret,
+    rows = G.gridFrets;
   const pressed = shape.filter((v): v is number => !!v);
   const high = pressed.length ? Math.max(...pressed) : 0;
   const start = high <= rows ? 1 : Math.min(...pressed);
@@ -183,7 +233,15 @@ function ChordGrid({ shape, x, y }: { shape: Shape; x: number; y: number }) {
         <line key={"s" + k} x1={at(k)} x2={at(k)} y1={top} y2={bottom} stroke={INK} strokeWidth={0.15} />
       ))}
       {Array.from({ length: rows + 1 }, (_, r) => (
-        <line key={"f" + r} x1={x} x2={right} y1={top + r * f} y2={top + r * f} stroke={INK} strokeWidth={r === 0 && start === 1 ? 0.6 : 0.15} />
+        <line
+          key={"f" + r}
+          x1={x}
+          x2={right}
+          y1={top + r * f}
+          y2={top + r * f}
+          stroke={INK}
+          strokeWidth={r === 0 && start === 1 ? 0.6 : 0.15}
+        />
       ))}
       {start > 1 && (
         <text x={right + 0.7} y={mid(start) + 0.75} fontSize={2.1} fill={INK}>
@@ -201,7 +259,16 @@ function ChordGrid({ shape, x, y }: { shape: Shape; x: number; y: number }) {
           <circle key={"d" + k} cx={at(k)} cy={mid(v)} r={0.52} fill={INK} />
         ),
       )}
-      {barre && <rect x={at(barre.from) - 0.52} y={mid(barre.fret) - 0.52} width={at(barre.to) - at(barre.from) + 1.04} height={1.04} rx={0.52} fill={INK} />}
+      {barre && (
+        <rect
+          x={at(barre.from) - 0.52}
+          y={mid(barre.fret) - 0.52}
+          width={at(barre.to) - at(barre.from) + 1.04}
+          height={1.04}
+          rx={0.52}
+          fill={INK}
+        />
+      )}
     </g>
   );
 }
@@ -233,7 +300,23 @@ function articulationSigns(signs: string[], cx: number, cy: number) {
   });
 }
 
-function Row({ ps, row, y, centered, articulations, reminders, techTop }: { ps: PlacedSystem; row: SystemRow; y: number; centered: boolean; articulations?: Map<number, string[]>; reminders: boolean; techTop: number }) {
+function Row({
+  ps,
+  row,
+  y,
+  centered,
+  articulations,
+  reminders,
+  techTop,
+}: {
+  ps: PlacedSystem;
+  row: SystemRow;
+  y: number;
+  centered: boolean;
+  articulations?: Map<number, string[]>;
+  reminders: boolean;
+  techTop: number;
+}) {
   const { sys, xs, ws } = ps;
   const base = y + ps.rowH * 0.74;
   // petites notes : en petit, en exposant et en gris foncé, en tête de case, rang par rang
@@ -277,7 +360,19 @@ function Row({ ps, row, y, centered, articulations, reminders, techTop }: { ps: 
           // quand il vient de rien ou y va, plein quand il va vers la note suivante de la corde
           const slideLine = (key: string, from: number, d: Direction, toNothing: boolean) => {
             const [ya, yb] = d === "up" ? [base + dy - 0.2, top + 1.1] : [top + 1.1, base + dy - 0.2];
-            marks.push(<line key={key} x1={from + 0.3} x2={from + 2.4} y1={ya} y2={yb} stroke={INK} strokeWidth={0.4} strokeLinecap="round" {...(toNothing ? { strokeDasharray: "0.6 0.45" } : {})} />);
+            marks.push(
+              <line
+                key={key}
+                x1={from + 0.3}
+                x2={from + 2.4}
+                y1={ya}
+                y2={yb}
+                stroke={INK}
+                strokeWidth={0.4}
+                strokeLinecap="round"
+                {...(toNothing ? { strokeDasharray: "0.6 0.45" } : {})}
+              />,
+            );
           };
           if (tech.slideIn) slideLine("in", x + 0.1, tech.slideIn, true);
           const lx = x + 0.5 + (tech.slideIn ? SLIDE_W : 0);
@@ -292,10 +387,14 @@ function Row({ ps, row, y, centered, articulations, reminders, techTop }: { ps: 
             // le bend, comme en tablature : une flèche qui part de la case et monte au-dessus des cordes,
             // l'écart au-dessus de sa pointe ; relâché, une flèche qui redescend jusqu'à la corde
             // elle part après la case la plus large de la colonne : elle ne coupe aucun chiffre
-            const x1 = x + bendStart(sys.staves[row.staff].rows, a), x2 = x1 + 2.2, tip = techTop + 3.2, x3 = x2 + 2.6;
+            const x1 = x + bendStart(sys.staves[row.staff].rows, a),
+              x2 = x1 + 2.2,
+              tip = techTop + 3.2,
+              x3 = x2 + 2.6;
             const up = `M ${Math.min(end + 0.2, x1)} ${mid} L ${x1} ${mid} Q ${x2} ${mid} ${x2} ${tip + 0.9}`;
             const down = `M ${x2 + 0.3} ${tip + 0.4} Q ${x3} ${tip + 0.4} ${x3} ${mid - 1.1}`;
-            const head = (px: number, py: number, dir: 1 | -1) => `M ${px - 0.6} ${py + dir * 1} L ${px} ${py} L ${px + 0.6} ${py + dir * 1} Z`;
+            const head = (px: number, py: number, dir: 1 | -1) =>
+              `M ${px - 0.6} ${py + dir * 1} L ${px} ${py} L ${px + 0.6} ${py + dir * 1} Z`;
             marks.push(
               <g key="b">
                 {/* un liseré blanc : la flèche reste lisible là où elle croise une corde */}
@@ -381,13 +480,24 @@ function Row({ ps, row, y, centered, articulations, reminders, techTop }: { ps: 
         }
         // sans rappel (option), une note commencée au système précédent n'est qu'un trait de tenue
         if (c === "-" || (c.startsWith("-") && !reminders)) {
-          return <line key={a} x1={x + w * 0.22} x2={x + w * 0.62} y1={y + dy + ps.rowH / 2} y2={y + dy + ps.rowH / 2} stroke={INK} strokeWidth={0.32} />;
+          return (
+            <line
+              key={a}
+              x1={x + w * 0.22}
+              x2={x + w * 0.62}
+              y1={y + dy + ps.rowH / 2}
+              y2={y + dy + ps.rowH / 2}
+              stroke={INK}
+              strokeWidth={0.32}
+            />
+          );
         }
         if (c.startsWith("-")) {
           // note commencée au système précédent : le trait de tenue habituel, puis en petit et en
           // gris le rappel de la note tenue (« — 8 »), pour ne pas le lire comme un nombre négatif
           const y1 = y + dy + ps.rowH / 2;
-          const x1 = x + 0.5, x2 = x1 + G.holdW;
+          const x1 = x + 0.5,
+            x2 = x1 + G.holdW;
           return (
             <g key={a}>
               <line x1={x1} x2={x2} y1={y1} y2={y1} stroke={INK} strokeWidth={0.32} />
@@ -409,7 +519,8 @@ function Row({ ps, row, y, centered, articulations, reminders, techTop }: { ps: 
 
 /** Trait ondulé horizontal (trille) de x1 à x2, centré sur y. */
 function wave(x1: number, x2: number, y: number): string {
-  const p = 1.3, amp = 0.35;
+  const p = 1.3,
+    amp = 0.35;
   let d = `M ${x1} ${y}`;
   for (let x = x1, k = 0; x < x2 - 0.01; x += p / 2, k++) {
     const nx = Math.min(x + p / 2, x2);
@@ -420,7 +531,8 @@ function wave(x1: number, x2: number, y: number): string {
 
 /** Vaguelette verticale (arpège) de y1 à y2, centrée sur x ; down : flèche vers le bas. */
 function vwave(x: number, y1: number, y2: number, down: boolean): string {
-  const p = 1.3, amp = 0.35;
+  const p = 1.3,
+    amp = 0.35;
   let d = `M ${x} ${y1}`;
   for (let y = y1, k = 0; y < y2 - 0.01; y += p / 2, k++) {
     const ny = Math.min(y + p / 2, y2);
@@ -492,7 +604,23 @@ function spacedWidths(col: BarCol, x: number, w: number) {
  * Barre de mesure, avec ses signes de reprise : « :|| » (points, trait fin, trait épais),
  * « ||: » (trait épais, trait fin, points). Les points sont placés au milieu de chaque portée.
  */
-function BarLine({ x, w, col, top, bottom, sections, end }: { x: number; w: number; col: BarCol; top: number; bottom: number; sections: number[][]; end: boolean }) {
+function BarLine({
+  x,
+  w,
+  col,
+  top,
+  bottom,
+  sections,
+  end,
+}: {
+  x: number;
+  w: number;
+  col: BarCol;
+  top: number;
+  bottom: number;
+  sections: number[][];
+  end: boolean;
+}) {
   const thin = (lx: number, k: string) => <line key={k} x1={lx} x2={lx} y1={top} y2={bottom} stroke={INK} strokeWidth={0.22} />;
   const thick = (lx: number, k: string) => <line key={k} x1={lx} x2={lx} y1={top} y2={bottom} stroke={INK} strokeWidth={0.6} />;
   const dots = (dx: number, k: string) =>
@@ -518,27 +646,65 @@ function BarLine({ x, w, col, top, bottom, sections, end }: { x: number; w: numb
       </g>
     );
   }
-  if (col.lead) return <g>{thin(x + 0.55, "t")}{dots(x + w - d, "d")}</g>;
+  if (col.lead)
+    return (
+      <g>
+        {thin(x + 0.55, "t")}
+        {dots(x + w - d, "d")}
+      </g>
+    );
   if (!col.endRepeat && !col.startRepeat) {
     // fin du morceau : double barre, trait fin puis trait épais
-    if (col.final) return <g>{thin(x + w - 1.1, "t")}{thick(x + w - 0.3, "T")}</g>;
+    if (col.final)
+      return (
+        <g>
+          {thin(x + w - 1.1, "t")}
+          {thick(x + w - 0.3, "T")}
+        </g>
+      );
     // en fin de système, la barre ferme les couloirs : elle s'aligne sur leur bord droit
     // début de section : double barre
     if (col.section) {
       // aussi marquée qu'une barre de mesure : deux traits de même épaisseur
       const bar = (lx: number, k: string) => <line key={k} x1={lx} x2={lx} y1={top} y2={bottom} stroke={INK} strokeWidth={0.4} />;
       const m = end ? x + w - 0.65 : x + w / 2;
-      return <g>{bar(m - 0.45, "t1")}{bar(m + 0.45, "t2")}</g>;
+      return (
+        <g>
+          {bar(m - 0.45, "t1")}
+          {bar(m + 0.45, "t2")}
+        </g>
+      );
     }
     const lx = end ? x + w - 0.225 : x + w / 2;
     return <line x1={lx} x2={lx} y1={top} y2={bottom} stroke={INK} strokeWidth={0.45} />;
   }
   if (col.endRepeat && col.startRepeat) {
     const m = x + w / 2;
-    return <g>{dots(x + d, "a")}{thin(m - 0.75, "t1")}{thick(m, "T")}{thin(m + 0.75, "t2")}{dots(x + w - d, "b")}</g>;
+    return (
+      <g>
+        {dots(x + d, "a")}
+        {thin(m - 0.75, "t1")}
+        {thick(m, "T")}
+        {thin(m + 0.75, "t2")}
+        {dots(x + w - d, "b")}
+      </g>
+    );
   }
-  if (col.endRepeat) return <g>{dots(x + d, "a")}{thin(x + w - 1.1, "t")}{thick(x + w - 0.3, "T")}</g>;
-  return <g>{thick(x + 0.45, "T")}{thin(x + 1.25, "t")}{dots(x + w - d, "b")}</g>;
+  if (col.endRepeat)
+    return (
+      <g>
+        {dots(x + d, "a")}
+        {thin(x + w - 1.1, "t")}
+        {thick(x + w - 0.3, "T")}
+      </g>
+    );
+  return (
+    <g>
+      {thick(x + 0.45, "T")}
+      {thin(x + 1.25, "t")}
+      {dots(x + w - d, "b")}
+    </g>
+  );
 }
 
 /** Lettre de section, en blanc sur fond noir : sur la partition et dans l'ordre de jeu. */
@@ -620,7 +786,16 @@ export function OrderLine({ order, y, cx = PAGE.w / 2, live = false }: { order: 
       {live && (
         <g className="seek">
           {order.map((label, i) => (
-            <rect key={i} x={x0 + i * step - 0.8} y={y - 0.8} width={step} height={4.9} fill="transparent" className="cursor-pointer" onClick={() => player.seekEntry(i)}>
+            <rect
+              key={i}
+              x={x0 + i * step - 0.8}
+              y={y - 0.8}
+              width={step}
+              height={4.9}
+              fill="transparent"
+              className="cursor-pointer"
+              onClick={() => player.seekEntry(i)}
+            >
               <title>{`Écouter à partir de cette section ${label}`}</title>
             </rect>
           ))}
@@ -678,7 +853,9 @@ function LyricBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: nu
               const syl = e.opens ? line.syllables.find((x) => x.anchor === e.fromAnchor) : undefined;
               const x1 = syl ? sx(e.fromAnchor) + lyricTextW(syl.text) + 0.3 : left;
               const x2 = e.closes ? aEnd(e.toAnchor) - 0.8 : right;
-              return x2 > x1 ? <line key={"e" + i} x1={x1} x2={x2} y1={base + 0.35} y2={base + 0.35} stroke={INK} strokeWidth={0.25} /> : null;
+              return x2 > x1 ? (
+                <line key={"e" + i} x1={x1} x2={x2} y1={base + 0.35} y2={base + 0.35} stroke={INK} strokeWidth={0.25} />
+              ) : null;
             })}
           </g>
         );
@@ -726,7 +903,8 @@ function VoiceBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: nu
         const x1 = ax(h.fromAnchor) + (h.from === 0 ? 0.5 : 0);
         const x2 = aEnd(h.toAnchor) - (h.to === 1 ? 0.6 : 0);
         const size = (f: number) => (h.kind === "<" ? f : 1 - f) * open;
-        const a = size(h.from), b = size(h.to);
+        const a = size(h.from),
+          b = size(h.to);
         return (
           <path
             key={"h" + i}
@@ -745,7 +923,17 @@ function VoiceBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: nu
         const before = voice.marks.slice(0, i).filter((x) => x.anchor === m.anchor && x.kind !== "arpeggio" && x.kind !== "articulation");
         const x = ax(m.anchor) + before.reduce((w, b) => w + markW(b.text, b.kind) + 1, 0);
         return m.kind === "dynamic" ? (
-          <text key={"m" + i} x={x + 0.9} y={base} fontFamily={DYNAMIC_FONT} fontSize={3.6} fontWeight={700} fontStyle="italic" fill={INK} {...halo}>
+          <text
+            key={"m" + i}
+            x={x + 0.9}
+            y={base}
+            fontFamily={DYNAMIC_FONT}
+            fontSize={3.6}
+            fontWeight={700}
+            fontStyle="italic"
+            fill={INK}
+            {...halo}
+          >
             {m.text}
           </text>
         ) : (
@@ -771,7 +959,8 @@ function PedalBand({ ps, pedal, top }: { ps: PlacedSystem; pedal: PedalLine; top
   const hook = 1.5; // hauteur des crochets et des pointes
   const notch = 0.8; // demi-largeur d'une pointe de changement
   const px = (a: number) => xs[sys.anchors[a]] + 0.3;
-  const written: string[] = [], implied: string[] = [];
+  const written: string[] = [],
+    implied: string[] = [];
   for (const s of pedal.spans) {
     const staves = s.implied ? implied : written;
     let x1 = s.fromAnchor >= 0 ? px(s.fromAnchor) : left;
@@ -809,7 +998,8 @@ function PedalBand({ ps, pedal, top }: { ps: PlacedSystem; pedal: PedalLine; top
  * Une accolade classique : deux courbes qui se rejoignent en pointe au milieu.
  */
 function Brace({ x, top, bottom }: { x: number; top: number; bottom: number }) {
-  const mid = (top + bottom) / 2, w = 1.3;
+  const mid = (top + bottom) / 2,
+    w = 1.3;
   const d = [
     `M ${x} ${top}`,
     `C ${x - w} ${top + 1}, ${x} ${mid - 1.5}, ${x - w} ${mid}`,
@@ -919,17 +1109,15 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
         if (col.label === ".") return <circle key={a} cx={x} cy={cy} r={0.3} fill={LIGHT_TEXT} />;
         if (col.label === ",") {
           return (
-            <path
-              key={a}
-              d={`M ${x - 0.22} ${cy} a 0.22 0.22 0 1 1 0.44 0 q 0 0.55 -0.4 0.8 q 0.2 -0.35 0.1 -0.62 z`}
-              fill={LIGHT_TEXT}
-            />
+            <path key={a} d={`M ${x - 0.22} ${cy} a 0.22 0.22 0 1 1 0.44 0 q 0 0.55 -0.4 0.8 q 0.2 -0.35 0.1 -0.62 z`} fill={LIGHT_TEXT} />
           );
         }
         // astérisque à trois branches, plus fin que le trait du « . »
         const r = 0.8;
         const arms = [90, 30, -30].map((deg) => {
-          const t = (deg * Math.PI) / 180, dx = r * Math.cos(t), dy = r * Math.sin(t);
+          const t = (deg * Math.PI) / 180,
+            dx = r * Math.cos(t),
+            dy = r * Math.sin(t);
           return `M ${x - dx} ${cy + dy} L ${x + dx} ${cy - dy}`;
         });
         return <path key={a} d={arms.join(" ")} stroke={LIGHT_TEXT} strokeWidth={0.28} strokeLinecap="round" />;
@@ -965,7 +1153,8 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
       {/* instruments : une accolade pour plusieurs parties, le nom au premier système */}
       {ps.parts.map((inst, i) => {
         const multi = inst.last > inst.first;
-        const top = ps.staves[inst.first].rowsTop, bottom = ps.staves[inst.last].voiceTop + ps.staves[inst.last].voiceBand;
+        const top = ps.staves[inst.first].rowsTop,
+          bottom = ps.staves[inst.last].voiceTop + ps.staves[inst.last].voiceBand;
         return (
           <g key={"in" + i}>
             {multi && bottom > top && <Brace x={x0 - 0.3} top={top} bottom={bottom} />}
@@ -979,17 +1168,44 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
       })}
 
       {sys.staves.map((p, k) => (
-        <OctaveTabs key={"ot" + k} rows={p.rows} top={ps.staves[k].rowsTop} style={options.octaveStyle} position={options.octavePosition} tabFill={tabFill} rowH={ps.rowH} stringName={stringName(k)} />
+        <OctaveTabs
+          key={"ot" + k}
+          rows={p.rows}
+          top={ps.staves[k].rowsTop}
+          style={options.octaveStyle}
+          position={options.octavePosition}
+          tabFill={tabFill}
+          rowH={ps.rowH}
+          stringName={stringName(k)}
+        />
       ))}
       {/* fonds des couloirs d'abord : les notes, dessinées ensuite, ne sont jamais recouvertes */}
       {sys.staves.map((p, k) => {
         const alt = alternate(p.rows);
         return p.rows.map((r, i) => {
           const fill = bandFill(r, alt[i]);
-          return fill && spans(left, right).map(([a, b], j) => <rect key={`bd${k}-${i}-${j}`} x={a} y={rowY(k, i)} width={b - a} height={ps.rowH} fill={fill} />);
+          return (
+            fill &&
+            spans(left, right).map(([a, b], j) => (
+              <rect key={`bd${k}-${i}-${j}`} x={a} y={rowY(k, i)} width={b - a} height={ps.rowH} fill={fill} />
+            ))
+          );
         });
       })}
-      {sys.staves.map((p, k) => p.rows.map((r, i) => <Row key={`r${k}-${i}`} ps={ps} row={r} y={rowY(k, i)} centered={centered} articulations={articulationsOf(k, i)} reminders={options.holdReminders} techTop={ps.staves[k].techTop} />))}
+      {sys.staves.map((p, k) =>
+        p.rows.map((r, i) => (
+          <Row
+            key={`r${k}-${i}`}
+            ps={ps}
+            row={r}
+            y={rowY(k, i)}
+            centered={centered}
+            articulations={articulationsOf(k, i)}
+            reminders={options.holdReminders}
+            techTop={ps.staves[k].techTop}
+          />
+        )),
+      )}
       {/* au-dessus des cordes, le sens du médiator, en grand : ⊓ vers le bas, V vers le haut */}
       {sys.staves.map((p, k) =>
         p.voice.marks
@@ -1000,7 +1216,11 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
             return (
               <path
                 key={`pk${k}-${i}`}
-                d={m.text === "d" ? `M ${cx - 0.9} ${cy + 1} L ${cx - 0.9} ${cy - 0.9} L ${cx + 0.9} ${cy - 0.9} L ${cx + 0.9} ${cy + 1}` : `M ${cx - 0.85} ${cy - 1} L ${cx} ${cy + 1} L ${cx + 0.85} ${cy - 1}`}
+                d={
+                  m.text === "d"
+                    ? `M ${cx - 0.9} ${cy + 1} L ${cx - 0.9} ${cy - 0.9} L ${cx + 0.9} ${cy - 0.9} L ${cx + 0.9} ${cy + 1}`
+                    : `M ${cx - 0.85} ${cy - 1} L ${cx} ${cy + 1} L ${cx + 0.85} ${cy - 1}`
+                }
                 fill="none"
                 stroke={INK}
                 strokeWidth={m.text === "d" ? 0.42 : 0.36}
@@ -1013,12 +1233,16 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
       {ps.staves.map(
         (pp, k) =>
           pp.separator !== undefined &&
-          spans(left, right).map(([a, b], j) => <line key={`sep${k}-${j}`} x1={a} x2={b} y1={pp.separator} y2={pp.separator} stroke={INK} strokeWidth={0.5} />),
+          spans(left, right).map(([a, b], j) => (
+            <line key={`sep${k}-${j}`} x1={a} x2={b} y1={pp.separator} y2={pp.separator} stroke={INK} strokeWidth={0.5} />
+          )),
       )}
       {/* arpèges : une vaguelette devant l'accord, de sa note la plus grave à la plus aiguë */}
       {sys.arpeggios.map((arp, i) => {
         const attack = (r: SystemRow) => !!r.cells[arp.anchor] && !r.cells[arp.anchor].startsWith("-");
-        const ys = sys.staves.flatMap((p, k) => (arp.staff === undefined || arp.staff === k ? p.rows.flatMap((r, j) => (attack(r) ? [rowY(k, j)] : [])) : []));
+        const ys = sys.staves.flatMap((p, k) =>
+          arp.staff === undefined || arp.staff === k ? p.rows.flatMap((r, j) => (attack(r) ? [rowY(k, j)] : [])) : [],
+        );
         if (!ys.length) return null;
         const x = xs[sys.anchors[arp.anchor]] + graceExtra(sys, arp.anchor) + G.arpeggioW / 2 + 0.2;
         return <path key={"arp" + i} d={vwave(x, Math.min(...ys) + 0.5, Math.max(...ys) + ps.rowH - 0.5, arp.down)} {...WAVE} />;
@@ -1041,7 +1265,18 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
                 const x = xs[ci] + ws[ci] / 2;
                 return <line key={ci} x1={x} x2={x} y1={top} y2={bottom} stroke={LIGHT} strokeWidth={0.22} />;
               }
-              return <BarLine key={ci} x={xs[ci]} w={ws[ci]} col={c} top={top} bottom={bottom} sections={sections} end={ci === sys.columns.length - 1} />;
+              return (
+                <BarLine
+                  key={ci}
+                  x={xs[ci]}
+                  w={ws[ci]}
+                  col={c}
+                  top={top}
+                  bottom={bottom}
+                  sections={sections}
+                  end={ci === sys.columns.length - 1}
+                />
+              );
             })}
           </g>
         );
@@ -1080,7 +1315,8 @@ export function Excerpt({ pages, options, scale = 1 }: { pages: Page[]; options:
   // un extrait tient sur une page ; s'il en déborde, les pages suivantes sont décalées à la suite
   let offset = 0;
   const placed = pages.flatMap((p, i) => {
-    if (i) offset += Math.max(...pages[i - 1].systems.map((ps) => ps.y + ps.height)) - Math.min(...p.systems.map((ps) => ps.y)) + G.systemGap;
+    if (i)
+      offset += Math.max(...pages[i - 1].systems.map((ps) => ps.y + ps.height)) - Math.min(...p.systems.map((ps) => ps.y)) + G.systemGap;
     return p.systems.map((ps) => ({ ...ps, y: ps.y + offset }));
   });
   const order = pages[0].order;
@@ -1121,7 +1357,8 @@ function PlayCursor({ page, lookAhead }: { page: Page; lookAhead: boolean }) {
   const ahead = useRef("");
   // la partition suit le curseur et montre d'avance la mesure suivante, quand l'écran le permet
   useEffect(() => {
-    const el = ref.current, pane = el?.closest<HTMLElement>("[data-fit]");
+    const el = ref.current,
+      pane = el?.closest<HTMLElement>("[data-fit]");
     if (!following) ahead.current = "";
     if (!el || !pane || !following) return;
     const g = glide(pane);
@@ -1133,7 +1370,10 @@ function PlayCursor({ page, lookAhead }: { page: Page; lookAhead: boolean }) {
     const m = 16; // la marge gardée au bord de l'écran
     const ps = page.systems[k];
     const bars = barsIn(ps);
-    const b = Math.max(0, bars.findIndex((bar) => bar.includes(ci)));
+    const b = Math.max(
+      0,
+      bars.findIndex((bar) => bar.includes(ci)),
+    );
     const left = (bar: number[]) => pageBox.left + ps.xs[bar[0]] * u;
     const right = (bar: number[]) => pageBox.left + (ps.xs[bar[bar.length - 1]] + ps.ws[bar[bar.length - 1]]) * u;
     // en coordonnées du contenu, qui ne bougent pas pendant un défilement en cours
@@ -1147,7 +1387,8 @@ function PlayCursor({ page, lookAhead }: { page: Page; lookAhead: boolean }) {
     const pad = parseFloat(getComputedStyle(pane).scrollPaddingLeft || "0");
     if (pane.dataset.fit === "height" && pageBox.width <= view.width - pad) g.to("left", x(pageBox.left) - pad);
     else {
-      const start = left(bars[b]), end = right(bars[Math.min(b + 1, bars.length - 1)]);
+      const start = left(bars[b]),
+        end = right(bars[Math.min(b + 1, bars.length - 1)]);
       if (box.left < view.left || end > view.right - m) {
         if (end - start <= view.width - 2 * m) g.to("left", x(start) - m);
         else if (box.left < view.left || box.right > view.right - view.width * 0.15) g.to("left", x(box.left) - view.width / 4);
@@ -1163,16 +1404,28 @@ function PlayCursor({ page, lookAhead }: { page: Page; lookAhead: boolean }) {
     else if (lookAhead && b === bars.length - 1 && ahead.current !== key) {
       ahead.current = key;
       const then = player.upcoming(ps.sys.end);
-      const area = then === null ? undefined : [...pane.querySelectorAll<SVGRectElement>("rect.system-area")].find((r) => then >= Number(r.dataset.start) && then < Number(r.dataset.end));
+      const area =
+        then === null
+          ? undefined
+          : [...pane.querySelectorAll<SVGRectElement>("rect.system-area")].find(
+              (r) => then >= Number(r.dataset.start) && then < Number(r.dataset.end),
+            );
       const next = area && extent(area);
       const here = extent(svg.querySelectorAll<SVGRectElement>("rect.system-area")[k]);
       if (next && next.left < pageBox.right && next.right > pageBox.left) {
-        const below = next.top >= here.bottom - 1, above = next.bottom <= here.top + 1;
-        const goal = below ? Math.min(y(next.bottom) - (view.height - m), y(here.top) - m) : above ? Math.max(y(next.top) - m, y(here.bottom) - (view.height - m)) : pane.scrollTop;
+        const below = next.top >= here.bottom - 1,
+          above = next.bottom <= here.top + 1;
+        const goal = below
+          ? Math.min(y(next.bottom) - (view.height - m), y(here.top) - m)
+          : above
+            ? Math.max(y(next.top) - m, y(here.bottom) - (view.height - m))
+            : pane.scrollTop;
         if ((below && goal > pane.scrollTop + 1) || (above && goal < pane.scrollTop - 1)) {
           // d'ici au milieu de la mesure, en durée de musique (le tempo, les points d'orgue compris)
-          const from = player.position() ?? tick!, mid = (from + ps.sys.end) / 2;
-          const bar0 = (ps.sys.columns[bars[b][0]] as { t: number }).t, half = (bar0 + ps.sys.end) / 2;
+          const from = player.position() ?? tick!,
+            mid = (from + ps.sys.end) / 2;
+          const bar0 = (ps.sys.columns[bars[b][0]] as { t: number }).t,
+            half = (bar0 + ps.sys.end) / 2;
           const until = Math.max(mid, half);
           g.to("top", goal, () => {
             const now = player.position();
@@ -1197,7 +1450,18 @@ export function columnAt(ps: PlacedSystem, tick: number): number {
 /** La case jouée, surlignée sur toute la hauteur de son système. */
 export function CursorRect({ ps, ci, rectRef }: { ps: PlacedSystem; ci: number; rectRef?: React.Ref<SVGRectElement> }) {
   const { top, bottom } = band(ps);
-  return <rect ref={rectRef} x={ps.xs[ci]} y={top} width={ps.ws[ci]} height={bottom - top} rx={0.6} fill="rgba(255, 190, 40, 0.3)" style={{ pointerEvents: "none" }} />;
+  return (
+    <rect
+      ref={rectRef}
+      x={ps.xs[ci]}
+      y={top}
+      width={ps.ws[ci]}
+      height={bottom - top}
+      rx={0.6}
+      fill="rgba(255, 190, 40, 0.3)"
+      style={{ pointerEvents: "none" }}
+    />
+  );
 }
 
 /**
@@ -1231,7 +1495,21 @@ export function TextMarks({ systems }: { systems: PlacedSystem[] }) {
     top = ps.y + staff.rowsTop + (hit ? hit.i : 0) * ps.rowH;
     bottom = hit ? top + ps.rowH : ps.y + staff.bottom;
   }
-  return <rect ref={ref} className="text-mark print:hidden" x={ps.xs[ci] - 0.3} y={top} width={ps.ws[ci] + 0.6} height={bottom - top} rx={0.8} fill="rgba(43, 93, 110, 0.12)" stroke="#2b5d6e" strokeWidth={0.35} style={{ pointerEvents: "none" }} />;
+  return (
+    <rect
+      ref={ref}
+      className="text-mark print:hidden"
+      x={ps.xs[ci] - 0.3}
+      y={top}
+      width={ps.ws[ci] + 0.6}
+      height={bottom - top}
+      rx={0.8}
+      fill="rgba(43, 93, 110, 0.12)"
+      stroke="#2b5d6e"
+      strokeWidth={0.35}
+      style={{ pointerEvents: "none" }}
+    />
+  );
 }
 
 /**
@@ -1239,7 +1517,9 @@ export function TextMarks({ systems }: { systems: PlacedSystem[] }) {
  * non sa seule bande jouée : d'après la zone de clic du système, qui la porte.
  */
 function extent(area: SVGRectElement) {
-  const svg = area.ownerSVGElement!, page = svg.getBoundingClientRect(), u = page.width / svg.viewBox.baseVal.width;
+  const svg = area.ownerSVGElement!,
+    page = svg.getBoundingClientRect(),
+    u = page.width / svg.viewBox.baseVal.width;
   const r = area.getBoundingClientRect();
   return { left: r.left, right: r.right, top: page.top + Number(area.dataset.top) * u, bottom: page.top + Number(area.dataset.bottom) * u };
 }
@@ -1250,8 +1530,7 @@ export function barsIn(ps: PlacedSystem): number[][] {
   ps.sys.columns.forEach((c, i) => {
     if (c.kind === "barSep") {
       if (bars[bars.length - 1].length) bars.push([]);
-    }
-    else if (c.kind === "anchor") bars[bars.length - 1].push(i);
+    } else if (c.kind === "anchor") bars[bars.length - 1].push(i);
   });
   return bars.filter((bar) => bar.length);
 }
@@ -1282,7 +1561,8 @@ export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
     const { x, y } = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
     const { sys } = ps;
     // la colonne sous le clic, ou la plus proche quand on clique entre deux
-    let best = sys.anchors[0], dist = Infinity;
+    let best = sys.anchors[0],
+      dist = Infinity;
     for (const ci of sys.anchors) {
       const d = x < ps.xs[ci] ? ps.xs[ci] - x : x > ps.xs[ci] + ps.ws[ci] ? x - ps.xs[ci] - ps.ws[ci] : 0;
       if (d < dist) {
@@ -1294,7 +1574,13 @@ export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
     // la ligne sous le clic (les places des portées se comptent depuis le haut du système)
     const dy = y - ps.y;
     const k = ps.staves.findIndex((p, i) => dy >= p.rowsTop && dy < p.rowsTop + sys.staves[i].rows.length * ps.rowH);
-    const k0 = k >= 0 ? k : Math.max(0, ps.staves.findIndex((p) => dy < p.bottom));
+    const k0 =
+      k >= 0
+        ? k
+        : Math.max(
+            0,
+            ps.staves.findIndex((p) => dy < p.bottom),
+          );
     const rows = sys.staves[k0]?.rows ?? [];
     const row = k >= 0 ? rows[Math.floor((dy - ps.staves[k].rowsTop) / ps.rowH)] : undefined;
     const a = sys.anchors.indexOf(best);
@@ -1317,7 +1603,8 @@ export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
   const seek = (ps: PlacedSystem, e: React.MouseEvent<SVGRectElement>) => {
     const t = tap.current;
     if (t.touch) {
-      const now = performance.now(), near = Math.hypot(e.clientX - t.x, e.clientY - t.y) <= TAP_SLOP;
+      const now = performance.now(),
+        near = Math.hypot(e.clientX - t.x, e.clientY - t.y) <= TAP_SLOP;
       const twice = now - t.at <= TAP_DELAY && near;
       Object.assign(t, { at: twice ? 0 : now, x: e.clientX, y: e.clientY });
       if (twice) {
@@ -1340,8 +1627,26 @@ export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
     <g className="seek">
       {systems.map((ps, k) => {
         const { top, bottom } = band(ps);
-        const left = ps.xs[ps.sys.anchors[0]], last = ps.sys.anchors[ps.sys.anchors.length - 1];
-        return <rect key={k} x={left} y={top} width={ps.xs[last] + ps.ws[last] - left} height={bottom - top} className="system-area cursor-pointer" fill="transparent" data-start={ps.sys.start} data-end={ps.sys.end} data-top={ps.y} data-bottom={ps.y + ps.height} onPointerDown={(e) => (tap.current.touch = e.pointerType === "touch")} onClick={(e) => seek(ps, e)} onDoubleClick={(e) => edit(ps, e)} />;
+        const left = ps.xs[ps.sys.anchors[0]],
+          last = ps.sys.anchors[ps.sys.anchors.length - 1];
+        return (
+          <rect
+            key={k}
+            x={left}
+            y={top}
+            width={ps.xs[last] + ps.ws[last] - left}
+            height={bottom - top}
+            className="system-area cursor-pointer"
+            fill="transparent"
+            data-start={ps.sys.start}
+            data-end={ps.sys.end}
+            data-top={ps.y}
+            data-bottom={ps.y + ps.height}
+            onPointerDown={(e) => (tap.current.touch = e.pointerType === "touch")}
+            onClick={(e) => seek(ps, e)}
+            onDoubleClick={(e) => edit(ps, e)}
+          />
+        );
       })}
     </g>
   );
@@ -1393,7 +1698,19 @@ function HeaderMarks({ y, marks }: { y: number; marks: { icon: React.ReactNode; 
 const keyText = (k: Key, names: NoteNames) => keyName(k, names) || prismaKey(k);
 
 /** still : une page immobile (aperçu de la bibliothèque), sans curseur ni clic pour l'écoute. */
-export function PageView({ page, total, meta, options, still = false }: { page: Page; total: number; meta: Meta; options: RenderOptions; still?: boolean }) {
+export function PageView({
+  page,
+  total,
+  meta,
+  options,
+  still = false,
+}: {
+  page: Page;
+  total: number;
+  meta: Meta;
+  options: RenderOptions;
+  still?: boolean;
+}) {
   const key = meta.key ? parseKey(meta.key) : undefined;
   return (
     <svg
@@ -1418,7 +1735,13 @@ export function PageView({ page, total, meta, options, still = false }: { page: 
             </text>
           )}
           {meta.composer && (
-            <text x={PAGE.w - PAGE.marginX} y={PAGE.marginTop + 12 + (meta.subtitle ? G.subtitleH : 0)} fontSize={3.4} textAnchor="end" fill={INK}>
+            <text
+              x={PAGE.w - PAGE.marginX}
+              y={PAGE.marginTop + 12 + (meta.subtitle ? G.subtitleH : 0)}
+              fontSize={3.4}
+              textAnchor="end"
+              fill={INK}
+            >
               {meta.composer}
             </text>
           )}
@@ -1440,7 +1763,9 @@ export function PageView({ page, total, meta, options, still = false }: { page: 
           <ChordGrid shape={c.shape} x={c.x + 0.3} y={c.y + G.chordNameH} />
         </g>
       ))}
-      {page.order.length > 0 && <OrderLine order={page.order} y={page.header ? PAGE.marginTop + headerHeight(meta) - 1 : PAGE.marginTop - 2} live={!still} />}
+      {page.order.length > 0 && (
+        <OrderLine order={page.order} y={page.header ? PAGE.marginTop + headerHeight(meta) - 1 : PAGE.marginTop - 2} live={!still} />
+      )}
       {/* noms des instruments : au premier système du morceau, comme sur une partition, ou à chaque système (option) */}
       {page.systems.map((ps, i) => (
         <SystemView key={i} ps={ps} options={options} names={(page.index === 0 && i === 0) || options.namesEverySystem} />

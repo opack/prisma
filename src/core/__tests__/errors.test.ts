@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { parseErrors } from "../index.ts";
 
-const sys = (bar: number, notes: string) => [`m${bar} |1  |2  ||`, "───┼───┼───┼┼", `0  |${notes}||`, "───┼───┼───┼┼", "-1 |1  |   ||"].join("\n");
+const sys = (bar: number, notes: string) =>
+  [`m${bar} |1  |2  ||`, "───┼───┼───┼┼", `0  |${notes}||`, "───┼───┼───┼┼", "-1 |1  |   ||"].join("\n");
 const text = (...systems: string[]) => ["---", "format: 1", "---", "", systems.join("\n\n"), ""].join("\n");
 const at = (errs: ReturnType<typeof parseErrors>) => errs.map((prismaError) => `${prismaError.line}:${prismaError.reason.slice(0, 20)}`);
 

@@ -15,7 +15,12 @@ const CHORDS = [
 
 export function StaffChords() {
   return (
-    <svg className="block w-[300px] max-w-full h-auto p-3 border border-line rounded-[10px] bg-white box-content" viewBox="0 0 220 132" role="img" aria-label="Sur une portée en clé de sol, do mi sol et mi sol si : trois notes sur trois lignes voisines, la même forme.">
+    <svg
+      className="block w-[300px] max-w-full h-auto p-3 border border-line rounded-[10px] bg-white box-content"
+      viewBox="0 0 220 132"
+      role="img"
+      aria-label="Sur une portée en clé de sol, do mi sol et mi sol si : trois notes sur trois lignes voisines, la même forme."
+    >
       {[0, 1, 2, 3, 4].map((i) => (
         <line key={i} x1={6} x2={214} y1={BOTTOM - i * GAP} y2={BOTTOM - i * GAP} stroke="#1b1d1f" strokeWidth={1} />
       ))}

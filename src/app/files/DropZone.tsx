@@ -7,7 +7,15 @@ import type { DragEvent, ReactNode } from "react";
 import { droppedFile } from "./files.ts";
 import type { StoredFile } from "./stored.ts";
 
-export function DropZone({ onFile, className = "", children }: { onFile: (dropped: { file: File; handle: StoredFile | null }) => void; className?: string; children: ReactNode }) {
+export function DropZone({
+  onFile,
+  className = "",
+  children,
+}: {
+  onFile: (dropped: { file: File; handle: StoredFile | null }) => void;
+  className?: string;
+  children: ReactNode;
+}) {
   const [over, setOver] = useState(false);
   const depth = useRef(0);
   const hasFile = (e: DragEvent) => [...e.dataTransfer.types].includes("Files");
@@ -42,7 +50,10 @@ export function DropZone({ onFile, className = "", children }: { onFile: (droppe
       }}
     >
       {over && (
-        <div className="absolute inset-0 z-20 grid place-content-center text-center gap-1 bg-[rgba(43,93,110,.12)] border-3 border-dashed border-accent pointer-events-none" aria-hidden>
+        <div
+          className="absolute inset-0 z-20 grid place-content-center text-center gap-1 bg-[rgba(43,93,110,.12)] border-3 border-dashed border-accent pointer-events-none"
+          aria-hidden
+        >
           <p className="text-[22px] font-bold text-accent">Déposer pour ouvrir</p>
           <span className="text-muted">.prisma ou .musicxml</span>
         </div>

@@ -4,8 +4,17 @@ import type { Align } from "../index.ts";
 
 describe("notes alignées", () => {
   const metrics = { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 };
-  const rows = (text: string, align?: Align) => layout(parsePrisma(text), { ...metrics, align })[0].staves[0].rows.map((systemRow) => systemRow.cells);
-  const piece = ["m1 |1  |2  |3  |4  ||", "0  |8  |   |8  |10 ||", "   |5  |5  |5  |5  ||", "   |1  |1  |   |   ||", "---", "-1 |1  |-  |-  |-  ||", ""].join("\n");
+  const rows = (text: string, align?: Align) =>
+    layout(parsePrisma(text), { ...metrics, align })[0].staves[0].rows.map((systemRow) => systemRow.cells);
+  const piece = [
+    "m1 |1  |2  |3  |4  ||",
+    "0  |8  |   |8  |10 ||",
+    "   |5  |5  |5  |5  ||",
+    "   |1  |1  |   |   ||",
+    "---",
+    "-1 |1  |-  |-  |-  ||",
+    "",
+  ].join("\n");
 
   it("range par défaut chaque accord depuis le haut du couloir", () => {
     expect(rows(piece)).toEqual([
@@ -39,7 +48,9 @@ describe("notes alignées", () => {
 
   it("une ligne par note : deux notes d'une même mesure sur deux lignes, l'aiguë au-dessus", () => {
     // un arpège 1 5 8 5 puis 3 5 8 5 : dans une même mesure, le 3 et le 1 ont chacun leur ligne
-    const arp = ["m1 |1  .  .  .  |2  .  .  .  ||", "0  |1  5  8  5  |3  5  8  5  ||", "---", "-1 |            |            ||", ""].join("\n");
+    const arp = ["m1 |1  .  .  .  |2  .  .  .  ||", "0  |1  5  8  5  |3  5  8  5  ||", "---", "-1 |            |            ||", ""].join(
+      "\n",
+    );
     expect(rows(arp, "replayed")).toEqual([["1", "5", "8", "5", "3", "5", "8", "5"]]);
     expect(rows(arp, "pitch")).toEqual([
       ["", "", "8", "", "", "", "8", ""],
@@ -48,7 +59,13 @@ describe("notes alignées", () => {
       ["1", "", "", "", "", "", "", ""],
     ]);
     // d'une mesure à l'autre, le 1 et le 3 peuvent partager la ligne du bas
-    const bars = ["m1 |1  .  .  .  ||1  .  .  .  ||", "0  |1  5  8  5  ||3  5  8  5  ||", "---", "-1 |            ||            ||", ""].join("\n");
+    const bars = [
+      "m1 |1  .  .  .  ||1  .  .  .  ||",
+      "0  |1  5  8  5  ||3  5  8  5  ||",
+      "---",
+      "-1 |            ||            ||",
+      "",
+    ].join("\n");
     expect(rows(bars, "pitch")).toEqual([
       ["", "", "8", "", "", "", "8", ""],
       ["", "5", "", "5", "", "5", "", "5"],

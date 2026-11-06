@@ -43,11 +43,15 @@ function save(view: View) {
 }
 
 /** Le cran de zoom voisin, plus grand ou plus petit. */
-const step = (zoom: number, dir: 1 | -1) => (dir > 0 ? (ZOOMS.find((z) => z > zoom + 1e-6) ?? zoom) : ([...ZOOMS].reverse().find((z) => z < zoom - 1e-6) ?? zoom));
+const step = (zoom: number, dir: 1 | -1) =>
+  dir > 0 ? (ZOOMS.find((z) => z > zoom + 1e-6) ?? zoom) : ([...ZOOMS].reverse().find((z) => z < zoom - 1e-6) ?? zoom);
 
 export function useView() {
   const [view, setState] = useState(load);
   const setView = useCallback((patch: Partial<View>) => setState((cur) => save({ ...cur, ...patch })), []);
-  const zoomBy = useCallback((dir: 1 | -1) => setState((cur) => (cur.fit === "focus" ? cur : save({ ...cur, zoom: step(cur.zoom, dir) }))), []);
+  const zoomBy = useCallback(
+    (dir: 1 | -1) => setState((cur) => (cur.fit === "focus" ? cur : save({ ...cur, zoom: step(cur.zoom, dir) }))),
+    [],
+  );
   return { view, setView, zoomBy };
 }

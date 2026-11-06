@@ -44,7 +44,13 @@ try {
   const src = readFileSync(file, "utf8");
   if (cmd === "import") emit(writePrisma(importMusicXml(src, basename(file)), { width }));
   else if (cmd === "format") emit(writePrisma(parsePrisma(src), { width }));
-  else if (cmd === "export") emit(exportMusicXml(parsePrisma(src), { repeats: rest.includes("--reprises") ? "traditional" : "sections", letters: !rest.includes("--sans-lettres") }));
+  else if (cmd === "export")
+    emit(
+      exportMusicXml(parsePrisma(src), {
+        repeats: rest.includes("--reprises") ? "traditional" : "sections",
+        letters: !rest.includes("--sans-lettres"),
+      }),
+    );
   else if (cmd === "check") {
     const s = parsePrisma(src);
     const bars = new Set(s.beats.map((b) => b.barIndex)).size;

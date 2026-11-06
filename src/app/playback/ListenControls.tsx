@@ -75,7 +75,23 @@ type Props = {
   place: "bar" | "more";
 };
 
-export function ListenControls({ score, disabled, metronome, onMetronome, clickGrid, onClickGrid, muted, onMuted, instruments, onInstrument, volumes, onVolume, tempo, onTempo, place }: Props) {
+export function ListenControls({
+  score,
+  disabled,
+  metronome,
+  onMetronome,
+  clickGrid,
+  onClickGrid,
+  muted,
+  onMuted,
+  instruments,
+  onInstrument,
+  volumes,
+  onVolume,
+  tempo,
+  onTempo,
+  place,
+}: Props) {
   const { state, error, entry: playing, entries } = useSyncExternalStore(player.subscribe, player.getSnapshot);
   const following = useSyncExternalStore(follow.subscribe, follow.enabled);
   const entry = playing ?? 0;
@@ -110,39 +126,85 @@ export function ListenControls({ score, disabled, metronome, onMetronome, clickG
         </span>
       )}
       {bar && <span className="flex-1" />}
-      <TempoControl className={setting} bpm={bpm} written={written} chosen={chosen !== null} onTempo={(n) => setChosen(n === written ? null : n)} />
+      <TempoControl
+        className={setting}
+        bpm={bpm}
+        written={written}
+        chosen={chosen !== null}
+        onTempo={(n) => setChosen(n === written ? null : n)}
+      />
       {bar && (
-      <ButtonGroup label="Lecture">
-        <Button size="icon" onClick={go(() => player.rewind())} disabled={disabled} title="Revenir au début du morceau" aria-label="Revenir au début">
-          <Icon d="M2 3h2v10H2zM9 3v10L4 8zM14 3v10L9 8z" />
-        </Button>
-        <Button size="icon" onClick={go(() => player.previous())} disabled={disabled} title="Début de la section (deux clics : section précédente)" aria-label="Section précédente">
-          <Icon d="M3 3h2v10H3zM13 3v10L5 8z" />
-        </Button>
-        <Button size="icon" onClick={toggle} disabled={disabled} title={labels[state]} aria-label={labels[state]}>
-          {state === "loading" ? <span className="leading-[14px]">…</span> : <Icon d={state === "playing" ? "M4 3h3v10H4zM9 3h3v10H9z" : "M4 2.5v11L13 8z"} />}
-        </Button>
-        <Button size="icon" onClick={go(() => player.next())} disabled={disabled || entry + 1 >= entries} title="Section suivante" aria-label="Section suivante">
-          <Icon d="M11 3h2v10h-2zM3 3v10l8-5z" />
-        </Button>
-        <Button size="icon" onClick={() => player.stop()} disabled={state === "idle"} title="Arrêter et revenir au début" aria-label="Arrêter">
-          <Icon d="M3.5 3.5h9v9h-9z" />
-        </Button>
-      </ButtonGroup>
+        <ButtonGroup label="Lecture">
+          <Button
+            size="icon"
+            onClick={go(() => player.rewind())}
+            disabled={disabled}
+            title="Revenir au début du morceau"
+            aria-label="Revenir au début"
+          >
+            <Icon d="M2 3h2v10H2zM9 3v10L4 8zM14 3v10L9 8z" />
+          </Button>
+          <Button
+            size="icon"
+            onClick={go(() => player.previous())}
+            disabled={disabled}
+            title="Début de la section (deux clics : section précédente)"
+            aria-label="Section précédente"
+          >
+            <Icon d="M3 3h2v10H3zM13 3v10L5 8z" />
+          </Button>
+          <Button size="icon" onClick={toggle} disabled={disabled} title={labels[state]} aria-label={labels[state]}>
+            {state === "loading" ? (
+              <span className="leading-[14px]">…</span>
+            ) : (
+              <Icon d={state === "playing" ? "M4 3h3v10H4zM9 3h3v10H9z" : "M4 2.5v11L13 8z"} />
+            )}
+          </Button>
+          <Button
+            size="icon"
+            onClick={go(() => player.next())}
+            disabled={disabled || entry + 1 >= entries}
+            title="Section suivante"
+            aria-label="Section suivante"
+          >
+            <Icon d="M11 3h2v10h-2zM3 3v10l8-5z" />
+          </Button>
+          <Button
+            size="icon"
+            onClick={() => player.stop()}
+            disabled={state === "idle"}
+            title="Arrêter et revenir au début"
+            aria-label="Arrêter"
+          >
+            <Icon d="M3.5 3.5h9v9h-9z" />
+          </Button>
+        </ButtonGroup>
       )}
       <Button
         size="icon"
         className={setting}
         pressed={following}
         onClick={() => follow.set(!following)}
-        title={following ? "Suivre la lecture : la partition suit le curseur, et y revient une seconde après qu'on l'a fait défiler à la main" : "Suivre la lecture : arrêté"}
+        title={
+          following
+            ? "Suivre la lecture : la partition suit le curseur, et y revient une seconde après qu'on l'a fait défiler à la main"
+            : "Suivre la lecture : arrêté"
+        }
         aria-label="Suivre la lecture"
       >
         <Icon d="M8 2.5a5.5 5.5 0 1 0 0 11a5.5 5.5 0 1 0 0-11zM8 4a4 4 0 1 1 0 8a4 4 0 1 1 0-8zM8 6.3a1.7 1.7 0 1 1 0 3.4a1.7 1.7 0 1 1 0-3.4zM7.25 .5h1.5v2h-1.5zM7.25 13.5h1.5v2h-1.5zM.5 7.25h2v1.5h-2zM13.5 7.25h2v1.5h-2z" />
       </Button>
       <span className={`${setting} flex`}>
         <MetronomeMenu metronome={metronome} onMetronome={onMetronome} clickGrid={clickGrid} onClickGrid={onClickGrid} />
-        <PartsMenu score={score} muted={muted} onMuted={onMuted} instruments={instruments} onInstrument={onInstrument} volumes={volumes} onVolume={onVolume} />
+        <PartsMenu
+          score={score}
+          muted={muted}
+          onMuted={onMuted}
+          instruments={instruments}
+          onInstrument={onInstrument}
+          volumes={volumes}
+          onVolume={onVolume}
+        />
       </span>
     </>
   );
@@ -152,12 +214,23 @@ export function ListenControls({ score, disabled, metronome, onMetronome, clickG
  * Le métronome : un bouton qui l'allume ou le coupe, et sa flèche, qui ouvre le choix de ce qu'il
  * bat (l'option « Battre », la même que dans les options).
  */
-type MetronomeProps = { metronome: boolean; onMetronome: (on: boolean) => void; clickGrid: ClickGrid; onClickGrid: (grid: ClickGrid) => void };
+type MetronomeProps = {
+  metronome: boolean;
+  onMetronome: (on: boolean) => void;
+  clickGrid: ClickGrid;
+  onClickGrid: (grid: ClickGrid) => void;
+};
 
 function MetronomeMenu({ metronome, onMetronome, clickGrid, onClickGrid }: MetronomeProps) {
   return (
     <ButtonGroup>
-      <Button size="icon" pressed={metronome} onClick={() => onMetronome(!metronome)} title={metronome ? "Métronome : marque les temps" : "Métronome : coupé"} aria-label="Métronome">
+      <Button
+        size="icon"
+        pressed={metronome}
+        onClick={() => onMetronome(!metronome)}
+        title={metronome ? "Métronome : marque les temps" : "Métronome : coupé"}
+        aria-label="Métronome"
+      >
         <Icon d="M6.2 1.5h3.6L13 14.5H3zM7 4.5l-.9 8h3.8l-.9-8zM8 11.8 12.6 3.6l.9.5-4.4 8z" />
       </Button>
       <DialogTrigger>
@@ -180,7 +253,15 @@ function MetronomeMenu({ metronome, onMetronome, clickGrid, onClickGrid }: Metro
  * chacune à cocher pour l'entendre ou la rendre muette (pour la jouer soi-même). La musique
  * rendue retrouve les portées choisies avant.
  */
-type PartsProps = { score?: Score; muted: number[]; onMuted: (staves: number[]) => void; instruments: string[]; onInstrument: (part: number, instrument: string) => void; volumes: number[]; onVolume: (part: number, db: number) => void };
+type PartsProps = {
+  score?: Score;
+  muted: number[];
+  onMuted: (staves: number[]) => void;
+  instruments: string[];
+  onInstrument: (part: number, instrument: string) => void;
+  volumes: number[];
+  onVolume: (part: number, db: number) => void;
+};
 
 function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, onVolume }: PartsProps) {
   // le dernier choix où une portée au moins jouait : la musique rendue le retrouve
@@ -199,7 +280,11 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, 
   }
   const all = names.map((_, k) => k);
   const silent = names.length > 0 && muted.length >= names.length;
-  const title = !muted.length ? "Musique : toutes les portées jouées" : silent ? "Musique : coupée (le métronome seul)" : `Musique : ${muted.length} portée${muted.length > 1 ? "s" : ""} muette${muted.length > 1 ? "s" : ""} sur ${names.length}`;
+  const title = !muted.length
+    ? "Musique : toutes les portées jouées"
+    : silent
+      ? "Musique : coupée (le métronome seul)"
+      : `Musique : ${muted.length} portée${muted.length > 1 ? "s" : ""} muette${muted.length > 1 ? "s" : ""} sur ${names.length}`;
   const toggle = (k: number) => onMuted(muted.includes(k) ? muted.filter((x) => x !== k) : [...muted, k].sort((a, b) => a - b));
   if (!silent) before.current = muted;
   const music = () => onMuted(silent ? before.current : all);
@@ -210,7 +295,12 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, 
       </Button>
       <DialogTrigger>
         <Pressable>
-          <Button size="caret" disabled={!names.length} title="Portées jouées et instruments des parties" aria-label="Parties et instruments">
+          <Button
+            size="caret"
+            disabled={!names.length}
+            title="Portées jouées et instruments des parties"
+            aria-label="Parties et instruments"
+          >
             <More />
           </Button>
         </Pressable>
@@ -221,7 +311,17 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, 
             const chosen = (instruments[i] ?? PIANO) !== fromScore;
             const instrument = (
               <span className="inline-flex items-center gap-1">
-                <select className="max-w-[11em] px-1 py-0.5 bg-white border border-line rounded" value={instruments[i] ?? PIANO} onChange={(e) => onInstrument(i, e.target.value)} aria-label={`Instrument${g.name ? ` : ${g.name}` : ""}`} title={chosen ? `Choisi pour ce morceau ; la partition donne : ${instrumentLabel(fromScore)}` : "L'instrument de la partie, à l'écoute, tel que la partition le donne"}>
+                <select
+                  className="max-w-[11em] px-1 py-0.5 bg-white border border-line rounded"
+                  value={instruments[i] ?? PIANO}
+                  onChange={(e) => onInstrument(i, e.target.value)}
+                  aria-label={`Instrument${g.name ? ` : ${g.name}` : ""}`}
+                  title={
+                    chosen
+                      ? `Choisi pour ce morceau ; la partition donne : ${instrumentLabel(fromScore)}`
+                      : "L'instrument de la partie, à l'écoute, tel que la partition le donne"
+                  }
+                >
                   {INSTRUMENTS.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.label}
@@ -229,7 +329,12 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, 
                   ))}
                 </select>
                 {chosen && (
-                  <Button size="small" onClick={() => onInstrument(i, fromScore)} title={`Reprendre l'instrument de la partition (${instrumentLabel(fromScore)})`} aria-label="Reprendre l'instrument de la partition">
+                  <Button
+                    size="small"
+                    onClick={() => onInstrument(i, fromScore)}
+                    title={`Reprendre l'instrument de la partition (${instrumentLabel(fromScore)})`}
+                    aria-label="Reprendre l'instrument de la partition"
+                  >
                     ↺
                   </Button>
                 )}
@@ -238,8 +343,21 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, 
             // le volume de la partie : un réglage fin, pour équilibrer les parties (un double-clic le remet à 0)
             const db = volumes[i] ?? 0;
             const volume = (
-              <label className="inline-flex items-center gap-1 text-muted text-[12px] cursor-pointer whitespace-nowrap" title="Le volume de la partie à l'écoute, pour ce morceau (double-clic : tel quel)">
-                <input className="w-[72px] accent-accent" type="range" min={MIN_VOLUME} max={MAX_VOLUME} step={1} value={db} onChange={(e) => onVolume(i, Number(e.target.value))} onDoubleClick={() => onVolume(i, 0)} aria-label={`Volume${g.name ? ` : ${g.name}` : ""}`} />
+              <label
+                className="inline-flex items-center gap-1 text-muted text-[12px] cursor-pointer whitespace-nowrap"
+                title="Le volume de la partie à l'écoute, pour ce morceau (double-clic : tel quel)"
+              >
+                <input
+                  className="w-[72px] accent-accent"
+                  type="range"
+                  min={MIN_VOLUME}
+                  max={MAX_VOLUME}
+                  step={1}
+                  value={db}
+                  onChange={(e) => onVolume(i, Number(e.target.value))}
+                  onDoubleClick={() => onVolume(i, 0)}
+                  aria-label={`Volume${g.name ? ` : ${g.name}` : ""}`}
+                />
                 <output className="min-w-[3.6em] text-right tabular-nums">{db > 0 ? `+${db}` : db < 0 ? `−${-db}` : "0"} dB</output>
               </label>
             );
@@ -277,7 +395,10 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, 
               Aucune
             </Button>
           </ButtonGroup>
-          <PopoverHint>Une portée muette n'est pas jouée : à vous de la jouer, avec le métronome au besoin. L'instrument d'une partie est celui que la partition écrit après son nom, ou que son nom fait deviner ; un autre choix, comme le volume, vaut pour ce morceau.</PopoverHint>
+          <PopoverHint>
+            Une portée muette n'est pas jouée : à vous de la jouer, avec le métronome au besoin. L'instrument d'une partie est celui que la
+            partition écrit après son nom, ou que son nom fait deviner ; un autre choix, comme le volume, vaut pour ce morceau.
+          </PopoverHint>
         </Popover>
       </DialogTrigger>
     </ButtonGroup>
@@ -342,7 +463,10 @@ function TempoControl({ bpm, written, chosen, onTempo, className = "" }: TempoPr
       <Button size="icon" {...slower} disabled={bpm <= MIN_BPM} title={`Plus lent, de 1 bpm (${hold})`} aria-label="Plus lent">
         <Icon d="M3 7.25h10v1.5H3z" />
       </Button>
-      <span className="flex items-center h-[2.1em] touch:h-11 pr-1.5 bg-white border border-line focus-within:relative focus-within:z-1 focus-within:border-muted" title={`Tempo de l'écoute, en temps par minute (${MIN_BPM} à ${MAX_BPM})`}>
+      <span
+        className="flex items-center h-[2.1em] touch:h-11 pr-1.5 bg-white border border-line focus-within:relative focus-within:z-1 focus-within:border-muted"
+        title={`Tempo de l'écoute, en temps par minute (${MIN_BPM} à ${MAX_BPM})`}
+      >
         <input
           type="number"
           min={MIN_BPM}
@@ -354,7 +478,12 @@ function TempoControl({ bpm, written, chosen, onTempo, className = "" }: TempoPr
           aria-label="Tempo de l'écoute"
         />
         {chosen && (
-          <button className="m-0 px-1 py-0 text-[1em] leading-none text-muted bg-none border-0 cursor-pointer hover:text-ink" onClick={() => (onTempo(written), setDraft(null))} title={`Revenir au tempo de la partition (${written} bpm)`} aria-label="Revenir au tempo de la partition">
+          <button
+            className="m-0 px-1 py-0 text-[1em] leading-none text-muted bg-none border-0 cursor-pointer hover:text-ink"
+            onClick={() => (onTempo(written), setDraft(null))}
+            title={`Revenir au tempo de la partition (${written} bpm)`}
+            aria-label="Revenir au tempo de la partition"
+          >
             ↺
           </button>
         )}

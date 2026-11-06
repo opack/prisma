@@ -124,7 +124,11 @@ export function describe(head: string, kind: LibraryEntry["kind"]): { title?: st
   };
 }
 
-const decode = (s: string) => s.replace(/&(amp|lt|gt|quot|apos|#\d+);/g, (_, e: string) => ({ amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" })[e] ?? String.fromCharCode(Number(e.slice(1))));
+const decode = (s: string) =>
+  s.replace(
+    /&(amp|lt|gt|quot|apos|#\d+);/g,
+    (_, e: string) => ({ amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" })[e] ?? String.fromCharCode(Number(e.slice(1))),
+  );
 
 /** Dernière ouverture de chaque morceau, par chemin : pour les ranger du plus récent au plus ancien. */
 const RECENT_KEY = "prisma:recent";

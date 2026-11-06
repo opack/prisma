@@ -64,14 +64,21 @@ describe("ordre de jeu du MusicXML", () => {
     // mesures 1 et 2 répétées au milieu d'un morceau joué d'un bout à l'autre
     const s = sectionsOf([0, 1, 2, 1, 2, 3], 4);
     expect(s.markers).toEqual([]);
-    expect(s.repeats).toEqual([{ barIndex: 1, start: true }, { barIndex: 2, end: true }]);
+    expect(s.repeats).toEqual([
+      { barIndex: 1, start: true },
+      { barIndex: 2, end: true },
+    ]);
   });
 
   it("garde chaque reprise à sa place quand des reprises qui se suivent forment une seule section", () => {
     // ||: 0 1 :||: 2 :|| 3, comme le début de la Marche turque
     const s = sectionsOf([0, 1, 0, 1, 2, 2, 3], 4);
     expect(s.markers).toEqual([]);
-    expect(s.repeats).toEqual([{ barIndex: 0, start: true }, { barIndex: 1, end: true }, { barIndex: 2, start: true, end: true }]);
+    expect(s.repeats).toEqual([
+      { barIndex: 0, start: true },
+      { barIndex: 1, end: true },
+      { barIndex: 2, start: true, end: true },
+    ]);
   });
 
   it("ne fait pas une reprise d'une section rejouée seule après un D.C.", () => {
@@ -82,7 +89,15 @@ describe("ordre de jeu du MusicXML", () => {
 
   it("importe une structure avec reprises, cases et D.C. al Fine", () => {
     const words = (word: string) => `<direction><direction-type><words>${word}</words></direction-type><staff>1</staff></direction>`;
-    const bar = (extra: object = {}, end?: string) => ({ notes: [[{ midi: [C4], duration: 2 * QUARTER }, { midi: [C4], duration: 2 * QUARTER, before: end }]], ...extra });
+    const bar = (extra: object = {}, end?: string) => ({
+      notes: [
+        [
+          { midi: [C4], duration: 2 * QUARTER },
+          { midi: [C4], duration: 2 * QUARTER, before: end },
+        ],
+      ],
+      ...extra,
+    });
     const xml = musicXml([
       bar(),
       bar({ barline: `<repeat direction="backward"/>` }, words("Fine")),

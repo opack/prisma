@@ -13,8 +13,16 @@ const KEY = "prisma:export";
 type Repeats = NonNullable<ExportOptions["repeats"]>;
 
 const REPEATS: { value: Repeats; label: string; hint: string }[] = [
-  { value: "sections", label: "Les sections de Prisma, dans l'ordre de jeu", hint: "Chaque section s'écrit à la suite, comme Prisma l'affiche : on joue d'un bout à l'autre." },
-  { value: "traditional", label: "Des reprises et des cases, comme une partition classique", hint: "Quand l'ordre de jeu s'y prête (une reprise, des cases 1 et 2) ; le reste s'écrit à la suite." },
+  {
+    value: "sections",
+    label: "Les sections de Prisma, dans l'ordre de jeu",
+    hint: "Chaque section s'écrit à la suite, comme Prisma l'affiche : on joue d'un bout à l'autre.",
+  },
+  {
+    value: "traditional",
+    label: "Des reprises et des cases, comme une partition classique",
+    hint: "Quand l'ordre de jeu s'y prête (une reprise, des cases 1 et 2) ; le reste s'écrit à la suite.",
+  },
 ];
 
 export const loadExportOptions = (): ExportOptions => {
@@ -38,7 +46,13 @@ export function ExportDialog({ onExport, onClose }: { onExport: (options: Export
   };
   return (
     <Dialog title="Exporter en MusicXML" submit="Exporter" onSubmit={submit} onClose={onClose}>
-      <Choices legend="L'ordre de jeu" name="repeats" options={REPEATS} value={options.repeats!} onChange={(repeats) => setOptions({ ...options, repeats })}>
+      <Choices
+        legend="L'ordre de jeu"
+        name="repeats"
+        options={REPEATS}
+        value={options.repeats!}
+        onChange={(repeats) => setOptions({ ...options, repeats })}
+      >
         {options.repeats === "traditional" && (
           <Check checked={options.letters !== false} onChange={(letters) => setOptions({ ...options, letters })}>
             Écrire aussi la lettre de chaque section (A, B…)

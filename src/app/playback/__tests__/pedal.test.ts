@@ -6,11 +6,20 @@ import type { Score } from "../../../core/index.ts";
 describe("écoute : pédale", () => {
   const base = parsePrisma("m1 |1  ||\n0  |1  ||\n");
   const score = (notes: Score["notes"], pedals: Score["pedals"], staves = 1): Score => ({ ...base, parts: [{ staves }], notes, pedals });
-  const n = (start: number, end: number, midi = 60, staff = 0) => ({ staff, midi, start: start * TICKS_PER_BEAT, end: end * TICKS_PER_BEAT });
+  const n = (start: number, end: number, midi = 60, staff = 0) => ({
+    staff,
+    midi,
+    start: start * TICKS_PER_BEAT,
+    end: end * TICKS_PER_BEAT,
+  });
   const ped = (start: number, end: number, staff = 0) => ({ staff, start: start * TICKS_PER_BEAT, end: end * TICKS_PER_BEAT });
 
   it("tient une note relâchée jusqu'à ce que la pédale remonte", () => {
-    expect(soundingEnds(score([n(0, 1), n(1, 2, 64), n(3, 4)], [ped(0, 3)]))).toEqual([3 * TICKS_PER_BEAT, 3 * TICKS_PER_BEAT, 4 * TICKS_PER_BEAT]);
+    expect(soundingEnds(score([n(0, 1), n(1, 2, 64), n(3, 4)], [ped(0, 3)]))).toEqual([
+      3 * TICKS_PER_BEAT,
+      3 * TICKS_PER_BEAT,
+      4 * TICKS_PER_BEAT,
+    ]);
   });
 
   it("efface à un changement de pédale l'harmonie relâchée avant, et garde la nouvelle", () => {
@@ -31,7 +40,11 @@ describe("écoute : Ped. simile", () => {
   /** Un morceau de n mesures de 2 temps, sur une portée. */
   const piece = (n: number, more: Partial<Score>): Score => ({
     ...parsePrisma("m1 |1  ||\n0  |1  ||\n"),
-    beats: Array.from({ length: 2 * n }, (_, index) => ({ bar: String((index >> 1) + 1), barIndex: index >> 1, label: (index % 2) + 1, division: 2 }) as Score["beats"][number]),
+    beats: Array.from(
+      { length: 2 * n },
+      (_, index) =>
+        ({ bar: String((index >> 1) + 1), barIndex: index >> 1, label: (index % 2) + 1, division: 2 }) as Score["beats"][number],
+    ),
     notes: [],
     ...more,
   });
@@ -47,14 +60,24 @@ describe("écoute : Ped. simile", () => {
   it("s'arrête au prochain signe de pédale écrit, ou à la section suivante", () => {
     const s = piece(4, { pedals: [ped(0, 2), ped(6, 7)], pedalTexts: [sim(0)] });
     expect(playedPedals(s).slice(2)).toEqual([ped(2, 4), ped(4, 6)]);
-    const t = piece(4, { pedals: [ped(0, 2)], pedalTexts: [sim(0)], markers: [{ label: "A", barIndex: 0 }, { label: "B", barIndex: 2 }] });
+    const t = piece(4, {
+      pedals: [ped(0, 2)],
+      pedalTexts: [sim(0)],
+      markers: [
+        { label: "A", barIndex: 0 },
+        { label: "B", barIndex: 2 },
+      ],
+    });
     expect(playedPedals(t).slice(1)).toEqual([ped(2, 4)]);
   });
 
   it("grave les pédales du simile comme les autres, atténuées, ou laisse la mention seule", () => {
     const s = piece(2, { pedals: [{ staff: 0, start: 0, end: 2 * TICKS_PER_BEAT }], pedalTexts: [sim(0)] });
     const plain = withSimile(s, "pedals");
-    expect(plain.pedals).toEqual([{ staff: 0, start: 0, end: 2 * TICKS_PER_BEAT }, { staff: 0, start: 2 * TICKS_PER_BEAT, end: 4 * TICKS_PER_BEAT }]);
+    expect(plain.pedals).toEqual([
+      { staff: 0, start: 0, end: 2 * TICKS_PER_BEAT },
+      { staff: 0, start: 2 * TICKS_PER_BEAT, end: 4 * TICKS_PER_BEAT },
+    ]);
     expect(plain.pedalTexts).toEqual([]);
     expect(withSimile(s, "faded").pedals[1]).toEqual(ped(2, 4));
     expect(withSimile(s, "text")).toBe(s);

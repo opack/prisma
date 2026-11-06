@@ -76,13 +76,33 @@ export function appMenus(c: Ctx): MenuDef[] {
         "separator",
         { label: "Zoom avant", onSelect: () => c.zoomBy(1), shortcut: "Ctrl++", disabled: view.zoom >= ZOOMS[ZOOMS.length - 1] || focused },
         { label: "Zoom arrière", onSelect: () => c.zoomBy(-1), shortcut: "Ctrl+−", disabled: view.zoom <= ZOOMS[0] || focused },
-        { label: `Taille normale${view.zoom !== 1 ? ` (zoom ${Math.round(view.zoom * 100)} %)` : ""}`, onSelect: () => c.setView({ zoom: 1 }), shortcut: "Ctrl+0", disabled: view.zoom === 1 || focused },
+        {
+          label: `Taille normale${view.zoom !== 1 ? ` (zoom ${Math.round(view.zoom * 100)} %)` : ""}`,
+          onSelect: () => c.setView({ zoom: 1 }),
+          shortcut: "Ctrl+0",
+          disabled: view.zoom === 1 || focused,
+        },
         "separator",
-        { label: "Ajuster à la hauteur", onSelect: () => c.setView({ fit: "height", zoom: 1 }), checked: view.fit === "height" && view.zoom === 1 },
-        { label: "Ajuster à la largeur", onSelect: () => c.setView({ fit: "width", zoom: 1 }), checked: view.fit === "width" && view.zoom === 1 },
+        {
+          label: "Ajuster à la hauteur",
+          onSelect: () => c.setView({ fit: "height", zoom: 1 }),
+          checked: view.fit === "height" && view.zoom === 1,
+        },
+        {
+          label: "Ajuster à la largeur",
+          onSelect: () => c.setView({ fit: "width", zoom: 1 }),
+          checked: view.fit === "width" && view.zoom === 1,
+        },
         { label: "Lecture focalisée : deux systèmes", onSelect: () => c.setView({ fit: "focus", zoom: 1 }), checked: view.fit === "focus" },
       ],
     },
-    { label: "Aide", items: [{ label: "Référence", onSelect: c.guide.toggle, checked: c.guide.shown }, "separator", { label: "À propos…", onSelect: c.about }] },
+    {
+      label: "Aide",
+      items: [
+        { label: "Référence", onSelect: c.guide.toggle, checked: c.guide.shown },
+        "separator",
+        { label: "À propos…", onSelect: c.about },
+      ],
+    },
   ];
 }

@@ -12,7 +12,22 @@ import type { StoredFolder } from "../files/stored.ts";
 import { isInstrument } from "../playback/instruments.ts";
 
 /** Les options qu'une partition peut définir pour elle-même : tout ce qui fait son rendu. */
-export const PIECE_KEYS = ["chords", "chordNames", "chordChart", "namesEverySystem", "sections", "simile", "octavePosition", "octaveStyle", "octaveColors", "density", "rulerDetail", "notePosition", "holdReminders", "fingerings"] as const;
+export const PIECE_KEYS = [
+  "chords",
+  "chordNames",
+  "chordChart",
+  "namesEverySystem",
+  "sections",
+  "simile",
+  "octavePosition",
+  "octaveStyle",
+  "octaveColors",
+  "density",
+  "rulerDetail",
+  "notePosition",
+  "holdReminders",
+  "fingerings",
+] as const;
 export type PieceKey = (typeof PIECE_KEYS)[number];
 export const isPieceKey = (k: string): k is PieceKey => (PIECE_KEYS as readonly string[]).includes(k);
 
@@ -40,7 +55,12 @@ export const MAX_VOLUME = 6;
 export const settingsName = (pieceName: string) => `${pieceName}.json`;
 
 /** Rien à retenir ? */
-export const isEmpty = (s: PieceSettings) => s.tempo === undefined && !s.muted?.length && !s.instruments?.some((t) => t !== null) && !s.volumes?.some((v) => v !== 0) && !Object.keys(s.options ?? {}).length;
+export const isEmpty = (s: PieceSettings) =>
+  s.tempo === undefined &&
+  !s.muted?.length &&
+  !s.instruments?.some((t) => t !== null) &&
+  !s.volumes?.some((v) => v !== 0) &&
+  !Object.keys(s.options ?? {}).length;
 
 /**
  * Lit des réglages : ce qui n'est pas compris est laissé de côté (une option inconnue, une valeur

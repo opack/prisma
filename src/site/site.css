@@ -5,11 +5,32 @@
    et ses titres (l'écriture Prisma : le composant Prisma ; la police et les couleurs de la page : les
    classes de <body>, dans chaque page HTML ; sa largeur et ses sections : Page et Section) */
 @layer base {
-  p { margin: 0 0 14px; }
-  a { color: var(--color-accent); text-decoration: underline; text-underline-offset: 3px; }
-  a:focus-visible { outline: 3px solid var(--color-accent-40); outline-offset: 2px; }
-  ul { list-style: disc; }
-  h1, h2 { line-height: 1.15; letter-spacing: -0.01em; }
-  h1 { font-size: clamp(2.6rem, 6vw, 4.6rem); margin: 0 0 20px; }
-  h2 { font-size: clamp(1.5rem, 2.6vw, 2rem); margin: 0 0 14px; }
+  p {
+    margin: 0 0 14px;
+  }
+  a {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  a:focus-visible {
+    outline: 3px solid var(--color-accent-40);
+    outline-offset: 2px;
+  }
+  ul {
+    list-style: disc;
+  }
+  h1,
+  h2 {
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+  }
+  h1 {
+    font-size: clamp(2.6rem, 6vw, 4.6rem);
+    margin: 0 0 20px;
+  }
+  h2 {
+    font-size: clamp(1.5rem, 2.6vw, 2rem);
+    margin: 0 0 14px;
+  }
 }

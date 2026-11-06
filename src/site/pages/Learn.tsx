@@ -33,7 +33,8 @@ const STEPS: Step[] = [
     body: (
       <>
         <p>
-          L'octave compte douze notes, de demi-ton en demi-ton, du <i>do</i> au <i>si</i>. Chacune porte un nombre, de <Prisma>1</Prisma> à <Prisma>12</Prisma>, et c'est tout ce qu'il faut pour la nommer.
+          L'octave compte douze notes, de demi-ton en demi-ton, du <i>do</i> au <i>si</i>. Chacune porte un nombre, de <Prisma>1</Prisma> à{" "}
+          <Prisma>12</Prisma>, et c'est tout ce qu'il faut pour la nommer.
         </p>
         <table className="block max-w-full overflow-x-auto mt-1 mb-4 text-[0.88rem]" aria-label="Le nombre de chaque note">
           <tbody>
@@ -59,11 +60,13 @@ const STEPS: Step[] = [
           </tbody>
         </table>
         <p>
-          Pour dire dans quelle octave jouer, chaque octave a son <b>couloir</b> : une bande de la partition, avec son numéro à gauche et toujours la même couleur. Le couloir{" "}
-          <Prisma>0</Prisma> est celui de l'octave qui contient le <i>la</i> du diapason (c'est aussi l'octave du <i>do</i> central) ; <Prisma>+1</Prisma> est au-dessus,{" "}
-          <Prisma>-1</Prisma> au-dessous. Le nombre dit la note, le couloir dit l'octave.
+          Pour dire dans quelle octave jouer, chaque octave a son <b>couloir</b> : une bande de la partition, avec son numéro à gauche et
+          toujours la même couleur. Le couloir <Prisma>0</Prisma> est celui de l'octave qui contient le <i>la</i> du diapason (c'est aussi
+          l'octave du <i>do</i> central) ; <Prisma>+1</Prisma> est au-dessus, <Prisma>-1</Prisma> au-dessous. Le nombre dit la note, le
+          couloir dit l'octave.
         </p>
-        <p>Ici, les douze notes à la suite, dans le couloir <Prisma>0</Prisma>.
+        <p>
+          Ici, les douze notes à la suite, dans le couloir <Prisma>0</Prisma>.
         </p>
       </>
     ),
@@ -77,11 +80,14 @@ const STEPS: Step[] = [
     body: (
       <>
         <p>
-          Tout en haut, la règle de comptage donne le temps : <Prisma>m1</Prisma>, le numéro de la mesure, puis ses temps, <Prisma>1 2 3 4</Prisma>, chacun dans sa case. Les cases sont
-          séparées par <Prisma>|</Prisma>, et <Prisma>||</Prisma> ferme la mesure. Elle se lit de gauche à droite, comme on compte en jouant.
+          Tout en haut, la règle de comptage donne le temps : <Prisma>m1</Prisma>, le numéro de la mesure, puis ses temps,{" "}
+          <Prisma>1 2 3 4</Prisma>, chacun dans sa case. Les cases sont séparées par <Prisma>|</Prisma>, et <Prisma>||</Prisma> ferme la
+          mesure. Elle se lit de gauche à droite, comme on compte en jouant.
         </p>
         <p>
-          Dessous, une ligne de notes, avec à gauche le numéro de son couloir, <Prisma>0</Prisma>. Puis une note par case, jouée sur son temps. Ici <i>do</i>, <i>ré</i>, <i>mi</i>, <i>fa</i> : <Prisma>1</Prisma>, <Prisma>3</Prisma>, <Prisma>5</Prisma>, <Prisma>6</Prisma>.
+          Dessous, une ligne de notes, avec à gauche le numéro de son couloir, <Prisma>0</Prisma>. Puis une note par case, jouée sur son
+          temps. Ici <i>do</i>, <i>ré</i>, <i>mi</i>, <i>fa</i> : <Prisma>1</Prisma>, <Prisma>3</Prisma>, <Prisma>5</Prisma>,{" "}
+          <Prisma>6</Prisma>.
         </p>
       </>
     ),
@@ -95,14 +101,16 @@ const STEPS: Step[] = [
     body: (
       <>
         <p>
-          Une note se joue sur le temps de sa case, et dure tant qu'un trait <Prisma>-</Prisma> la prolonge : quand le trait s'arrête, elle s'arrête. Une case vide est un
-          silence.
+          Une note se joue sur le temps de sa case, et dure tant qu'un trait <Prisma>-</Prisma> la prolonge : quand le trait s'arrête, elle
+          s'arrête. Une case vide est un silence.
         </p>
         <p>
-          Il n'y a donc pas de durée à calculer. Comptez les temps comme le fait tout musicien, « 1, 2, 3, 4 », au fil de la règle : la note commence sur son temps et tient
-          jusqu'au bout de son trait.
+          Il n'y a donc pas de durée à calculer. Comptez les temps comme le fait tout musicien, « 1, 2, 3, 4 », au fil de la règle : la note
+          commence sur son temps et tient jusqu'au bout de son trait.
         </p>
-        <p>Ici, un <i>do</i> de deux temps, un <i>mi</i> d'un temps, un silence, puis un <i>sol</i> qui tient toute la mesure.</p>
+        <p>
+          Ici, un <i>do</i> de deux temps, un <i>mi</i> d'un temps, un silence, puis un <i>sol</i> qui tient toute la mesure.
+        </p>
       </>
     ),
     text: `m1 |1  |2  |3  |4  ||1  |2  |3  |4  ||
@@ -115,10 +123,12 @@ const STEPS: Step[] = [
     body: (
       <>
         <p>
-          Une note plus aiguë ou plus grave va dans le couloir de son octave : une ligne <Prisma>+1</Prisma> au-dessus de <Prisma>0</Prisma>, une ligne <Prisma>-1</Prisma> au-dessous. Les
-          couloirs se rangent de l'aigu, en haut, au grave, en bas, comme sur la partition.
+          Une note plus aiguë ou plus grave va dans le couloir de son octave : une ligne <Prisma>+1</Prisma> au-dessus de <Prisma>0</Prisma>
+          , une ligne <Prisma>-1</Prisma> au-dessous. Les couloirs se rangent de l'aigu, en haut, au grave, en bas, comme sur la partition.
         </p>
-        <p>Le nombre ne change pas d'une octave à l'autre : le <Prisma>1</Prisma> est toujours un <i>do</i>.</p>
+        <p>
+          Le nombre ne change pas d'une octave à l'autre : le <Prisma>1</Prisma> est toujours un <i>do</i>.
+        </p>
       </>
     ),
     text: `m1 |1  |2  |3  |4  ||
@@ -133,8 +143,8 @@ const STEPS: Step[] = [
     body: (
       <>
         <p>
-          Pour jouer deux notes dans un temps, coupez-le en deux cases : <Prisma>1  *</Prisma> sur la règle. Pour trois notes, en trois : <Prisma>1  *  *</Prisma>. Chaque case reçoit sa
-          note, toujours alignée sous sa marque.
+          Pour jouer deux notes dans un temps, coupez-le en deux cases : <Prisma>{"1  *"}</Prisma> sur la règle. Pour trois notes, en trois
+          : <Prisma>{"1  *  *"}</Prisma>. Chaque case reçoit sa note, toujours alignée sous sa marque.
         </p>
         <p>Ici, deux temps coupés en deux, un temps coupé en trois, puis un temps entier.</p>
       </>
@@ -149,10 +159,12 @@ const STEPS: Step[] = [
     body: (
       <>
         <p>
-          Une ligne ne porte qu'une note à la fois. Pour un accord, écrivez une ligne par note, l'une sous l'autre. Les lignes suivantes d'une même octave n'ont pas de numéro : elles
-          appartiennent à celle du dessus.
+          Une ligne ne porte qu'une note à la fois. Pour un accord, écrivez une ligne par note, l'une sous l'autre. Les lignes suivantes
+          d'une même octave n'ont pas de numéro : elles appartiennent à celle du dessus.
         </p>
-        <p>Ici, <i>do mi sol</i> (<Prisma>1 5 8</Prisma>), puis <i>do fa la</i> (<Prisma>1 6 10</Prisma>), chacun tenu deux temps.</p>
+        <p>
+          Ici, <i>do mi sol</i> (<Prisma>1 5 8</Prisma>), puis <i>do fa la</i> (<Prisma>1 6 10</Prisma>), chacun tenu deux temps.
+        </p>
       </>
     ),
     text: `m1 |1  |2  |3  |4  ||
@@ -167,8 +179,8 @@ const STEPS: Step[] = [
     body: (
       <>
         <p>
-          Trois tirets <Prisma>---</Prisma> séparent deux portées : au piano, la main droite au-dessus, la main gauche au-dessous ; dans une chanson, la voix et l'accompagnement. Chaque
-          portée a ses propres lignes d'octave, sous la même règle.
+          Trois tirets <Prisma>---</Prisma> séparent deux portées : au piano, la main droite au-dessus, la main gauche au-dessous ; dans une
+          chanson, la voix et l'accompagnement. Chaque portée a ses propres lignes d'octave, sous la même règle.
         </p>
         <p>
           Voici <i>Au clair de la lune</i>. Dans l'application, coupez le son de la portée que vous jouez : elle joue l'autre avec vous.
@@ -183,10 +195,13 @@ const STEPS: Step[] = [
     body: (
       <>
         <p>
-          Un morceau qui revient sur ses pas se découpe en parties. <Prisma>[A]</Prisma>, sur une ligne <Prisma>@</Prisma> au-dessus de la règle, marque le début de la partie A. En tête du
-          texte, entre deux lignes <Prisma>---</Prisma>, <Prisma>order:</Prisma> donne l'ordre dans lequel les jouer.
+          Un morceau qui revient sur ses pas se découpe en parties. <Prisma>[A]</Prisma>, sur une ligne <Prisma>@</Prisma> au-dessus de la
+          règle, marque le début de la partie A. En tête du texte, entre deux lignes <Prisma>---</Prisma>, <Prisma>order:</Prisma> donne
+          l'ordre dans lequel les jouer.
         </p>
-        <p>Chaque partie n'est écrite qu'une fois. On joue les lignes dans l'ordre indiqué, et c'est tout : ni reprise ni renvoi à chercher.</p>
+        <p>
+          Chaque partie n'est écrite qu'une fois. On joue les lignes dans l'ordre indiqué, et c'est tout : ni reprise ni renvoi à chercher.
+        </p>
       </>
     ),
     text: `---
@@ -213,15 +228,20 @@ export function Learn() {
         <Section>
           <h1>Apprendre pas à pas</h1>
           <Lead>
-            Huit étapes, une idée chacune. Ouvrez l'application à côté : copiez chaque exemple, collez-le dans l'éditeur, mettez en page (Ctrl+Entrée) et écoutez. Puis changez un
-            nombre, et voyez ce qui change.
+            Huit étapes, une idée chacune. Ouvrez l'application à côté : copiez chaque exemple, collez-le dans l'éditeur, mettez en page
+            (Ctrl+Entrée) et écoutez. Puis changez un nombre, et voyez ce qui change.
           </Lead>
           <Actions>
             <ButtonLink primary href={APP}>
               Ouvrir l'application
             </ButtonLink>
           </Actions>
-          <OnThisPage parts={[...STEPS.map((s, i) => ({ id: slug(s.title), label: `${i + 1}. ${s.title}` })), { id: "et-ensuite", label: "Et ensuite" }]} />
+          <OnThisPage
+            parts={[
+              ...STEPS.map((s, i) => ({ id: slug(s.title), label: `${i + 1}. ${s.title}` })),
+              { id: "et-ensuite", label: "Et ensuite" },
+            ]}
+          />
         </Section>
 
         {STEPS.map((s, i) => (
@@ -242,14 +262,14 @@ export function Learn() {
         <Section id="et-ensuite">
           <h2>Et ensuite</h2>
           <p>
-            Vous savez lire et écrire un morceau. Le reste s'ajoute à mesure que vous en avez besoin : <a href={referenceLink("ornaments")}>les doigtés</a>,{" "}
-            <a href={referenceLink("expression")}>les nuances et les liaisons</a>, <a href={referenceLink("expression")}>la pédale</a>, <a href={referenceLink("lyrics")}>les paroles</a>,{" "}
-            <a href={referenceLink("chords")}>les accords d'accompagnement</a>, <a href={referenceLink("ornaments")}>les petites notes et les trilles</a>. Tout est dans{" "}
+            Vous savez lire et écrire un morceau. Le reste s'ajoute à mesure que vous en avez besoin :{" "}
+            <a href={referenceLink("ornaments")}>les doigtés</a>, <a href={referenceLink("expression")}>les nuances et les liaisons</a>,{" "}
+            <a href={referenceLink("expression")}>la pédale</a>, <a href={referenceLink("lyrics")}>les paroles</a>,{" "}
+            <a href={referenceLink("chords")}>les accords d'accompagnement</a>,{" "}
+            <a href={referenceLink("ornaments")}>les petites notes et les trilles</a>. Tout est dans{" "}
             <a href="reference.html">la référence</a>, avec un exemple pour chaque signe.
           </p>
-          <p>
-            Et pour un morceau que vous aimez, cherchez d'abord son fichier MusicXML : l'application l'écrit en Prisma pour vous.
-          </p>
+          <p>Et pour un morceau que vous aimez, cherchez d'abord son fichier MusicXML : l'application l'écrit en Prisma pour vous.</p>
         </Section>
       </Page>
       <Footer current="apprendre" />

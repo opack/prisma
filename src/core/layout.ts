@@ -5,7 +5,26 @@
  * Le moteur ne connaît que des « unités » de largeur : des caractères pour le texte,
  * des millimètres pour le rendu graphique. Seules les mesures changent.
  */
-import { ARPEGGIO_DOWN, ARPEGGIO_UP, ARTICULATION_SIGNS, BEND_MARK, DEAD_MARK, FINGER_MARK, RELEASE_MARK, slideText, staffCount, stringsOfStaff, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, TICKS_PER_BEAT, TRILL_MARK, beatStart, graceDigits, repeatOf } from "./model.ts";
+import {
+  ARPEGGIO_DOWN,
+  ARPEGGIO_UP,
+  ARTICULATION_SIGNS,
+  BEND_MARK,
+  DEAD_MARK,
+  FINGER_MARK,
+  RELEASE_MARK,
+  slideText,
+  staffCount,
+  stringsOfStaff,
+  PEDAL_CHANGE,
+  PEDAL_DOWN,
+  PEDAL_UP,
+  TICKS_PER_BEAT,
+  TRILL_MARK,
+  beatStart,
+  graceDigits,
+  repeatOf,
+} from "./model.ts";
 import type { Beat, Division, EffectKind, Hairpin, Part, Note, Staff, Score } from "./model.ts";
 import { CENTRAL_OCTAVE, numberOf, octaveOf } from "./pitch.ts";
 import { fretOf } from "./strings.ts";
@@ -158,7 +177,15 @@ export type PedalLine = {
   /** Consignes de pédale (« Ped. simile »…). */
   texts: { anchor: number; text: string }[];
   /** implied : pédale déduite d'un « Ped. simile », gravée atténuée. */
-  spans: { fromAnchor: number; toAnchor: number; opens: boolean; closes: boolean; changeStart: boolean; changeEnd: boolean; implied?: boolean }[];
+  spans: {
+    fromAnchor: number;
+    toAnchor: number;
+    opens: boolean;
+    closes: boolean;
+    changeStart: boolean;
+    changeEnd: boolean;
+    implied?: boolean;
+  }[];
 };
 
 /**
@@ -208,7 +235,8 @@ function resolution(offsets: number[]): number {
 function baseDivision(n: number, def: Division, attacks: number[]): Division {
   if (n % 6 === 0) {
     // découpages binaire et ternaire possibles : on regarde où tombent les attaques
-    const third = TICKS_PER_BEAT / 3, half = TICKS_PER_BEAT / 2;
+    const third = TICKS_PER_BEAT / 3,
+      half = TICKS_PER_BEAT / 2;
     const onThirds = attacks.some((o) => o > 0 && o % third === 0 && o % half !== 0);
     const onHalf = attacks.includes(half);
     if (onThirds && !onHalf) return 3;
@@ -313,10 +341,14 @@ function breakSystems(score: Score, grids: BeatGrid[], m: Metrics): number[][] {
   const barEndW = (barIndex: number) => {
     const r = repeatOf(score, barIndex);
     const next = repeatOf(score, barIndex + 1);
-    return m.barSep + (r?.end ? m.repeatDots : 0) + (next?.start ? m.repeatDots : 0) + (sectionStarts.has(barIndex + 1) ? (m.sectionSep ?? 0) : 0);
+    return (
+      m.barSep +
+      (r?.end ? m.repeatDots : 0) +
+      (next?.start ? m.repeatDots : 0) +
+      (sectionStarts.has(barIndex + 1) ? (m.sectionSep ?? 0) : 0)
+    );
   };
-  const beatW = (i: number, last: boolean) =>
-    cellsWidth(i, grids[i].n, m) + (last ? barEndW(score.beats[i].barIndex) : m.beatSep);
+  const beatW = (i: number, last: boolean) => cellsWidth(i, grids[i].n, m) + (last ? barEndW(score.beats[i].barIndex) : m.beatSep);
   const barW = (bar: number[]) => bar.reduce((s, i, j) => s + beatW(i, j === bar.length - 1), 0);
   // une reprise en début de système ajoute « |: » après la barre de gauche
   const leadW = (bar: number[]) => (repeatOf(score, score.beats[bar[0]].barIndex)?.start ? m.repeatDots + m.beatSep : 0);
@@ -385,7 +417,13 @@ function groups(notes: Note[], t0: number, align?: Align, barOf?: (t: number) =>
     const used = [...new Set(notes.map((n) => n.string!))].sort((a, b) => a - b);
     return used.map((string) => {
       const list = notes.filter((n) => n.string === string).sort((a, b) => a.start - b.start);
-      return { staff: list[0].staff, octave: CENTRAL_OCTAVE, string, lanes: [{ staff: list[0].staff, octave: CENTRAL_OCTAVE, string, notes: list }], blocks: [] };
+      return {
+        staff: list[0].staff,
+        octave: CENTRAL_OCTAVE,
+        string,
+        lanes: [{ staff: list[0].staff, octave: CENTRAL_OCTAVE, string, notes: list }],
+        blocks: [],
+      };
     });
   }
   const byKey = new Map<string, Note[]>();
@@ -487,7 +525,8 @@ function alignedLanes(list: Note[], t0: number, staff: Staff, octave: number, ba
  * Le nombre d'une hauteur sur sa ligne : son numéro dans l'octave, ou sur une corde (strs
  * donné), sa case.
  */
-const numberOn = (midi: number, strs?: Strings, string?: number) => (strs && string !== undefined ? fretOf(strs, string, midi) : numberOf(midi));
+const numberOn = (midi: number, strs?: Strings, string?: number) =>
+  strs && string !== undefined ? fretOf(strs, string, midi) : numberOf(midi);
 
 /**
  * Texte d'une attaque : le numéro, puis la voisine d'une trille (« 5~7 ») et le doigt (« 5_3 ») ;
@@ -570,11 +609,18 @@ export function layout(score: Score, m: Metrics): System[] {
     const barOf = (t: number) => score.beats[Math.min(score.beats.length - 1, Math.floor(t / T))].barIndex;
     const toRows = (staff: Staff): SystemRow[] => {
       const strs = stringsOfStaff(score.parts, staff);
-      const gs = groups(inSystem.filter((n) => n.staff === staff), t0, m.align, barOf, strs);
+      const gs = groups(
+        inSystem.filter((n) => n.staff === staff),
+        t0,
+        m.align,
+        barOf,
+        strs,
+      );
       // toutes les cordes, à la gravure : une tablature se lit sur une grille fixe
       if (strs && m.allStrings) {
         for (let string = 1; string <= strs.open.length; string++) {
-          if (!gs.some((g) => g.string === string)) gs.push({ staff, octave: CENTRAL_OCTAVE, string, lanes: [{ staff, octave: CENTRAL_OCTAVE, string, notes: [] }], blocks: [] });
+          if (!gs.some((g) => g.string === string))
+            gs.push({ staff, octave: CENTRAL_OCTAVE, string, lanes: [{ staff, octave: CENTRAL_OCTAVE, string, notes: [] }], blocks: [] });
         }
         gs.sort((a, b) => a.string! - b.string!);
       }
@@ -587,7 +633,9 @@ export function layout(score: Score, m: Metrics): System[] {
         // sur une corde : la ligne de sa corde
         let group = strs ? gs.find((x) => x.string === g.string) : gs.find((x) => x.octave === octave);
         if (!group) {
-          group = strs ? { staff, octave, string: g.string, lanes: [{ staff, octave, string: g.string, notes: [] }], blocks: [] } : { staff, octave, lanes: [], blocks: [] };
+          group = strs
+            ? { staff, octave, string: g.string, lanes: [{ staff, octave, string: g.string, notes: [] }], blocks: [] }
+            : { staff, octave, lanes: [], blocks: [] };
           gs.push(group);
           gs.sort((x, y) => (strs ? x.string! - y.string! : y.octave - x.octave));
         }
@@ -598,7 +646,11 @@ export function layout(score: Score, m: Metrics): System[] {
           lane = { staff, octave, notes: [] };
           group.lanes.push(lane);
         }
-        if (!placed.has(lane)) placed.set(lane, anchorT.map(() => []));
+        if (!placed.has(lane))
+          placed.set(
+            lane,
+            anchorT.map(() => []),
+          );
         const cellGraces = placed.get(lane)![a];
         while (cellGraces.length < slotsAt[a].length) cellGraces.push("");
         cellGraces[g.slot] = String(numberOn(g.midi, strs, g.string));
@@ -747,7 +799,8 @@ export function layout(score: Score, m: Metrics): System[] {
       hairpins: score.hairpins
         .filter((h) => h.staff === staff && h.start < t1 && h.end > t0 && h.end > h.start)
         .map((h) => {
-          const s = Math.max(h.start, t0), e = Math.min(h.end, t1);
+          const s = Math.max(h.start, t0),
+            e = Math.min(h.end, t1);
           return {
             kind: h.kind,
             fromAnchor: anchorAt(s),
@@ -759,7 +812,13 @@ export function layout(score: Score, m: Metrics): System[] {
         .filter((h) => h.fromAnchor >= 0 && h.toAnchor >= h.fromAnchor),
       effects: score.effects
         .filter((e) => e.staff === staff && e.start < t1 && e.end > t0 && e.end > e.start)
-        .map((e) => ({ kind: e.kind, fromAnchor: anchorAt(Math.max(e.start, t0)), toAnchor: lastAnchorBefore(Math.min(e.end, t1)), opens: e.start >= t0, closes: e.end <= t1 }))
+        .map((e) => ({
+          kind: e.kind,
+          fromAnchor: anchorAt(Math.max(e.start, t0)),
+          toAnchor: lastAnchorBefore(Math.min(e.end, t1)),
+          opens: e.start >= t0,
+          closes: e.end <= t1,
+        }))
         .filter((e) => e.fromAnchor >= 0 && e.toAnchor >= e.fromAnchor),
       slurs: slurSpans(staff),
       lyrics: lyricLines(staff),
@@ -782,7 +841,8 @@ export function layout(score: Score, m: Metrics): System[] {
           if (a >= 0) signs.push({ anchor: a, text: PEDAL_UP });
         }
         if (p.start < t1 && p.end > t0) {
-          const opens = p.start >= t0, closes = p.end <= t1;
+          const opens = p.start >= t0,
+            closes = p.end <= t1;
           spans.push({
             fromAnchor: opens ? anchorAt(p.start) : -1,
             toAnchor: p.end < t1 ? anchorAt(p.end) : -1,
@@ -795,7 +855,10 @@ export function layout(score: Score, m: Metrics): System[] {
         }
       }
       signs.sort((a, b) => a.anchor - b.anchor);
-      const texts = score.pedalTexts.filter((p) => p.staff === staff).map((p) => ({ anchor: anchorAt(p.t), text: p.text })).filter((p) => p.anchor >= 0);
+      const texts = score.pedalTexts
+        .filter((p) => p.staff === staff)
+        .map((p) => ({ anchor: anchorAt(p.t), text: p.text }))
+        .filter((p) => p.anchor >= 0);
       return { signs, spans, texts };
     };
 

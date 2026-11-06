@@ -95,7 +95,8 @@ function placements(midis: number[], strs: Strings): Placement[] {
     if (i === midis.length) {
       const frets = chosen.map((s, k) => fretOf(strs, s, midis[k]));
       const pressed = frets.filter((f) => f > 0);
-      const lo = Math.min(...pressed), hi = Math.max(...pressed);
+      const lo = Math.min(...pressed),
+        hi = Math.max(...pressed);
       const span = pressed.length ? hi - lo : 0;
       if (span > MAX_SPAN) return;
       const opens = frets.length - pressed.length;
@@ -130,12 +131,18 @@ export function fingerStrings(notes: Note[], strs: Strings): { dropped: Note[]; 
   const onsets = [...new Set(notes.map((n) => n.start))].sort((a, b) => a - b);
   const chords = onsets.map((t) => notes.filter((n) => n.start === t).sort((a, b) => b.midi - a.midi));
   const options = chords.map((chord) => {
-    let list = placements(chord.map((n) => n.midi), strs);
+    let list = placements(
+      chord.map((n) => n.midi),
+      strs,
+    );
     while (!list.length && chord.length > 1) {
       // garder l'aigu et la basse : retirer la note intérieure la plus proche du milieu
       const inner = chord.length > 2 ? Math.floor(chord.length / 2) : chord.length - 1;
       dropped.push(...chord.splice(inner, 1));
-      list = placements(chord.map((n) => n.midi), strs);
+      list = placements(
+        chord.map((n) => n.midi),
+        strs,
+      );
     }
     if (!list.length) dropped.push(...chord.splice(0));
     return list;
@@ -176,7 +183,10 @@ export function fingerStrings(notes: Note[], strs: Strings): { dropped: Note[]; 
     chords[i].forEach((n, j) => (n.string = options[i][k].strings[j]));
     k = from[i][k];
   }
-  assignStrings(notes.filter((n) => !dropped.includes(n)), strs);
+  assignStrings(
+    notes.filter((n) => !dropped.includes(n)),
+    strs,
+  );
   for (const n of notes) if (n.end <= n.start && !dropped.includes(n)) dropped.push(n);
   return { dropped, cost };
 }
@@ -188,7 +198,8 @@ export function fingerStrings(notes: Note[], strs: Strings): { dropped: Note[]; 
 export function tuningOf(open: number[], capo: number): { instrument: InstrumentName; strings: Strings } | undefined {
   for (const [instrument, tunings] of Object.entries(TUNINGS) as [InstrumentName, Record<string, number[]>][]) {
     for (const [tuning, notes] of Object.entries(tunings)) {
-      if (notes.length === open.length && notes.every((m, k) => m === open[k])) return { instrument, strings: { tuning, open: notes, capo } };
+      if (notes.length === open.length && notes.every((m, k) => m === open[k]))
+        return { instrument, strings: { tuning, open: notes, capo } };
     }
   }
   return undefined;
@@ -213,7 +224,8 @@ export function stringParts(parts: Part[], notes: Note[], graces: Grace[]): Note
     const tab = !!part.strings;
     if (!tab && (!isStringInstrument(instrument) || part.staves !== 1)) continue;
     const strs = part.strings ?? defaultStrings(instrument);
-    const plays = (k: number, midi: number) => k >= 1 && k <= strs.open.length && fretOf(strs, k, midi) >= 0 && fretOf(strs, k, midi) <= MAX_FRET;
+    const plays = (k: number, midi: number) =>
+      k >= 1 && k <= strs.open.length && fretOf(strs, k, midi) >= 0 && fretOf(strs, k, midi) <= MAX_FRET;
     const mine = notes.filter((n) => n.staff === staff);
     if (!tab && !mine.every((n) => strs.open.some((_, k) => plays(k + 1, n.midi)))) continue;
     const trial = mine.map((n) => ({ ...n, ...(n.string !== undefined && !plays(n.string, n.midi) ? { string: undefined } : {}) }));
@@ -248,8 +260,11 @@ export function settleSlides(notes: Note[]): Note[] {
     const { slide, slideIn, slideOut, ...rest } = n;
     if (n.string === undefined) return slide || slideIn || slideOut ? rest : n;
     if (!slide) return n;
-    const next = notes.filter((m) => m.staff === n.staff && m.string === n.string && m.start > n.start).sort((a, b) => a.start - b.start)[0];
-    if (next && next.start === n.end && next.midi !== n.midi) return { ...rest, ...(slideIn ? { slideIn } : {}), slide: next.midi > n.midi ? "up" : "down" };
+    const next = notes
+      .filter((m) => m.staff === n.staff && m.string === n.string && m.start > n.start)
+      .sort((a, b) => a.start - b.start)[0];
+    if (next && next.start === n.end && next.midi !== n.midi)
+      return { ...rest, ...(slideIn ? { slideIn } : {}), slide: next.midi > n.midi ? "up" : "down" };
     return { ...rest, ...(slideIn ? { slideIn } : {}), slideOut: slide };
   });
 }

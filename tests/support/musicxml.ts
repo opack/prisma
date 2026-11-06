@@ -41,7 +41,8 @@ export function musicXml(measures: XMeasure[], divisions = 12): string {
       for (const n of voice) {
         if (n.before) body += n.before;
         const staff =
-          `<staff>${n.staff ?? 1}</staff><voice>${n.voice ?? vi + 1}</voice>` + (n.notations ? `<notations>${n.notations}</notations>` : "");
+          `<staff>${n.staff ?? 1}</staff><voice>${n.voice ?? vi + 1}</voice>` +
+          (n.notations ? `<notations>${n.notations}</notations>` : "");
         if (!n.midi?.length) {
           body += `<note><rest/><duration>${n.duration}</duration>${staff}</note>`;
           continue;

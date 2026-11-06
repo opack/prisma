@@ -27,7 +27,11 @@ describe("paroles", () => {
 
   it("réécrit les paroles telles quelles", () => {
     const written = writePrisma(parsePrisma(piece)).split("\n");
-    for (const line of piece.split("\n").slice(0, 7).filter((x) => x !== "---")) expect(written).toContain(line);
+    for (const line of piece
+      .split("\n")
+      .slice(0, 7)
+      .filter((x) => x !== "---"))
+      expect(written).toContain(line);
   });
 
   it("prolonge une syllabe d'un système au suivant", () => {
@@ -36,25 +40,33 @@ describe("paroles", () => {
     expect(text.match(/^@l  A-  men -------$/gm)).toHaveLength(2);
     expect(parsePrisma(text).lyrics).toEqual(s.lyrics);
     // une syllabe tenue jusque dans le système suivant y reprend par « --- » en tête
-    const long = parsePrisma(["m1 |1  |2  ||1  |2  ||", "0  |1  |3  ||5  |-  ||", "@l  oh ------------", "---", "-1 |   |   ||   |   ||", ""].join("\n"));
+    const long = parsePrisma(
+      ["m1 |1  |2  ||1  |2  ||", "0  |1  |3  ||5  |-  ||", "@l  oh ------------", "---", "-1 |   |   ||   |   ||", ""].join("\n"),
+    );
     expect(long.lyrics).toEqual([{ staff: 0, verse: 1, t: 0, text: "oh", extend: 4 * TICKS_PER_BEAT }]);
     const split = writePrisma(long, { width: 14 });
     expect(split).toMatch(/^@l  ---/m);
     expect(parsePrisma(split).lyrics).toEqual(long.lyrics);
     // syllabe sur la dernière case d'un système, prolongée au suivant
-    const late = parsePrisma(["m1 |1  |2  ||1  |2  ||", "0  |1  |3  ||5  |-  ||", "@l      oh --------", "---", "-1 |   |   ||   |   ||", ""].join("\n"));
+    const late = parsePrisma(
+      ["m1 |1  |2  ||1  |2  ||", "0  |1  |3  ||5  |-  ||", "@l      oh --------", "---", "-1 |   |   ||   |   ||", ""].join("\n"),
+    );
     expect(late.lyrics).toEqual([{ staff: 0, verse: 1, t: TICKS_PER_BEAT, text: "oh", extend: 4 * TICKS_PER_BEAT }]);
     expect(parsePrisma(writePrisma(late, { width: 14 })).lyrics).toEqual(late.lyrics);
   });
 
   it("veut les octaves d'une portée de l'aigu au grave, chacune numérotée une fois", () => {
-    expect(() => parsePrisma(["m1 |1  ||", "-1 |1  ||", "+1 |5  ||", ""].join("\n"))).toThrow(/ligne 3, col. 1 : octave « \+1 » sous l'octave « -1 »/);
+    expect(() => parsePrisma(["m1 |1  ||", "-1 |1  ||", "+1 |5  ||", ""].join("\n"))).toThrow(
+      /ligne 3, col. 1 : octave « \+1 » sous l'octave « -1 »/,
+    );
     expect(() => parsePrisma(["m1 |1  ||", "0  |1  ||", "0  |5  ||", ""].join("\n"))).toThrow(/octave « 0 » écrite deux fois/);
     expect(() => parsePrisma(["m1 |1  ||", "+1 |1  ||", "───┼───┼┼", "+1 |5  ||", ""].join("\n"))).not.toThrow();
   });
 
   it("refuse une note écrite après la dernière barre", () => {
-    expect(() => parsePrisma(["m1 |1  |2  ||", "0  |1  |3  ||5", ""].join("\n"))).toThrow(/ligne 2, col. 14 : rien ne s'écrit après la dernière barre/);
+    expect(() => parsePrisma(["m1 |1  |2  ||", "0  |1  |3  ||5", ""].join("\n"))).toThrow(
+      /ligne 2, col. 14 : rien ne s'écrit après la dernière barre/,
+    );
     expect(() => parsePrisma(["m1 |1  |2  ||", "0  |1  |3  ||   ", ""].join("\n"))).not.toThrow();
   });
 
@@ -81,7 +93,14 @@ describe("paroles", () => {
           ],
         ],
       },
-      { notes: [[{ midi: [C4 + 5], duration: QUARTER, tie: ["stop"] }, { midi: [C4], duration: 3 * QUARTER, lyric: ly(1, "single", "oui") }]] },
+      {
+        notes: [
+          [
+            { midi: [C4 + 5], duration: QUARTER, tie: ["stop"] },
+            { midi: [C4], duration: 3 * QUARTER, lyric: ly(1, "single", "oui") },
+          ],
+        ],
+      },
     ]);
     const s = importMusicXml(xml);
     expect(s.lyrics).toEqual([

@@ -27,7 +27,13 @@ export function ReceivedDialog({ shared, library, onOpen, onClose }: Props) {
       focusSubmit
       onSubmit={() => onOpen(false)}
       onClose={onClose}
-      actions={library && <Button onClick={() => onOpen(true)} title={`Enregistrer ${shared.name} dans la bibliothèque (${library}), puis l'ouvrir`}>Enregistrer dans la bibliothèque</Button>}
+      actions={
+        library && (
+          <Button onClick={() => onOpen(true)} title={`Enregistrer ${shared.name} dans la bibliothèque (${library}), puis l'ouvrir`}>
+            Enregistrer dans la bibliothèque
+          </Button>
+        )
+      }
     >
       <div className="grid gap-1">
         <p className="m-0 font-semibold text-[1.05rem]">{title}</p>
@@ -35,7 +41,12 @@ export function ReceivedDialog({ shared, library, onOpen, onClose }: Props) {
         <p className="m-0 text-muted text-[12px]">{shared.name}</p>
       </div>
       {meta.notes && <p className="m-0 px-3 py-2 bg-white border border-line rounded whitespace-pre-line">{meta.notes}</p>}
-      {library && <p className="m-0 text-muted text-[13px] leading-[1.4]">Enregistré dans la bibliothèque ({library}), il s'y retrouve et s'y réécrit ; ouvert tel quel, il s'enregistre où vous le choisirez.</p>}
+      {library && (
+        <p className="m-0 text-muted text-[13px] leading-[1.4]">
+          Enregistré dans la bibliothèque ({library}), il s'y retrouve et s'y réécrit ; ouvert tel quel, il s'enregistre où vous le
+          choisirez.
+        </p>
+      )}
     </Dialog>
   );
 }

@@ -5,10 +5,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * sert, comme la vraie (listfolder, stat, getfilelink, uploadfile, deletefile), jeton compris.
  */
 function fakePcloud(initial: Record<string, string>) {
-  const files = new Map(Object.entries(initial).map(([p, t], index) => [p, { text: t, id: index + 1, modified: Date.UTC(2026, 9, 1 + index) }]));
+  const files = new Map(
+    Object.entries(initial).map(([p, t], index) => [p, { text: t, id: index + 1, modified: Date.UTC(2026, 9, 1 + index) }]),
+  );
   let nextId = 100;
   const calls: string[] = [];
-  const meta = (path: string, f: { id: number; modified: number }) => ({ name: path.split("/").pop(), isfolder: false, fileid: f.id, modified: new Date(f.modified).toUTCString() });
+  const meta = (path: string, f: { id: number; modified: number }) => ({
+    name: path.split("/").pop(),
+    isfolder: false,
+    fileid: f.id,
+    modified: new Date(f.modified).toUTCString(),
+  });
   const folderOf = (path: string): Record<string, unknown> => {
     const prefix = path === "/" ? "/" : `${path}/`;
     const names = new Set<string>();
@@ -69,7 +76,11 @@ beforeEach(() => {
   // des modules neufs : les textes gardés par un essai ne servent pas au suivant
   vi.resetModules();
   store.clear();
-  vi.stubGlobal("localStorage", { getItem: (key: string) => store.get(key) ?? null, setItem: (k: string, v: string) => store.set(k, v), removeItem: (k: string) => store.delete(k) });
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (k: string, v: string) => store.set(k, v),
+    removeItem: (k: string) => store.delete(k),
+  });
   store.set("prisma:pcloud", JSON.stringify({ token: "jeton", host: "eapi.pcloud.com" }));
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -135,7 +146,8 @@ describe("la bibliothèque sur pCloud", () => {
 
   it("le relais ne joint que pCloud, et rend ses erreurs telles quelles", async () => {
     const { pcloudFile } = await import("../../../server/pcloudFile.ts");
-    const asked = (q: string, token = "jeton") => pcloudFile(new Request(`https://prisma.test/api/pcloud-file?${q}`, { headers: { "x-pcloud-token": token } }));
+    const asked = (q: string, token = "jeton") =>
+      pcloudFile(new Request(`https://prisma.test/api/pcloud-file?${q}`, { headers: { "x-pcloud-token": token } }));
     expect((await asked("host=evil.example&fileid=1")).status).toBe(400);
     expect((await asked("host=eapi.pcloud.com&fileid=../1")).status).toBe(400);
     expect((await asked("host=eapi.pcloud.com&fileid=1", "")).status).toBe(400);
@@ -159,7 +171,11 @@ describe("la bibliothèque sur pCloud", () => {
   it("le retour de la connexion : le jeton et le serveur de l'utilisateur gardés, l'adresse nettoyée", async () => {
     store.clear();
     const replaced: string[] = [];
-    vi.stubGlobal("location", { hash: "#access_token=abc&token_type=bearer&locationid=2&hostname=eapi.pcloud.com", pathname: "/app/", search: "" });
+    vi.stubGlobal("location", {
+      hash: "#access_token=abc&token_type=bearer&locationid=2&hostname=eapi.pcloud.com",
+      pathname: "/app/",
+      search: "",
+    });
     vi.stubGlobal("history", { replaceState: (_: unknown, __: string, url: string) => replaced.push(url) });
     const { pcloudReturned, session } = await import("../pcloud.ts");
     expect(pcloudReturned()).toBe(true);

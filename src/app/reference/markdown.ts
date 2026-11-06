@@ -36,7 +36,6 @@ const HEADING: Record<number, string> = {
 /** Un titre de la référence, pour la table des matières : son niveau, son texte, son ancre. */
 export type Heading = { depth: number; text: string; id: string };
 
-
 /**
  * HTML de la référence, avec une place réservée pour chaque exemple gravé, et ses titres. Une page
  * du site (« guitare.html ») se lit depuis site, le dossier du site : dans l'application, elle
@@ -50,7 +49,11 @@ export function render(markdown: string, site: string) {
       // chaque titre reçoit une ancre ; ceux des parties et sous-parties font la table des matières
       heading({ tokens, depth }) {
         const html = this.parser.parseInline(tokens);
-        const text = html.replace(/<[^>]+>/g, "").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/&quot;/g, '"');
+        const text = html
+          .replace(/<[^>]+>/g, "")
+          .replace(/&#39;/g, "'")
+          .replace(/&amp;/g, "&")
+          .replace(/&quot;/g, '"');
         const id = slug(text) || `titre-${headings.length}`;
         if (depth === 2 || depth === 3) headings.push({ depth, text, id });
         return `<h${depth} id="${id}" class="${HEADING[depth] ?? ""}">${html}</h${depth}>`;
@@ -64,7 +67,8 @@ export function render(markdown: string, site: string) {
       link({ href, tokens }) {
         const text = this.parser.parseInline(tokens);
         if (href.endsWith(".md")) return `<strong>${text}</strong>`;
-        if (!/^[a-z]+:/.test(href) && href.endsWith(".html")) return `<a href="${site}${href}"${site ? ' target="_blank" rel="noopener"' : ""}>${text}</a>`;
+        if (!/^[a-z]+:/.test(href) && href.endsWith(".html"))
+          return `<a href="${site}${href}"${site ? ' target="_blank" rel="noopener"' : ""}>${text}</a>`;
         return false;
       },
     },

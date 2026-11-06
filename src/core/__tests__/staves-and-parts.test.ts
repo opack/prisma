@@ -21,7 +21,10 @@ describe("portées et parties", () => {
 
   it("lit les portées de chaque partie, nommées sur leur trait", () => {
     const score = parsePrisma(song);
-    expect(score.parts).toEqual([{ name: "Chant", staves: 1 }, { name: "Piano", staves: 2 }]);
+    expect(score.parts).toEqual([
+      { name: "Chant", staves: 1 },
+      { name: "Piano", staves: 2 },
+    ]);
     expect(score.meta.staves).toBeUndefined();
     expect(score.notes.filter((note) => note.start === 0).map((n) => n.staff)).toEqual([0, 1, 2]);
     expect(score.lyrics.map((lyric) => lyric.staff)).toEqual([0, 0]);
@@ -51,20 +54,26 @@ describe("portées et parties", () => {
   });
 
   it("met la pédale sous la dernière portée d'une partie seulement", () => {
-    expect(() => parsePrisma(swap("0  |5    |   |5  |    ||", "0  |5    |   |5  |    ||\n@   Ped."))).toThrow(/sous la dernière portée de sa partie/);
+    expect(() => parsePrisma(swap("0  |5    |   |5  |    ||", "0  |5    |   |5  |    ||\n@   Ped."))).toThrow(
+      /sous la dernière portée de sa partie/,
+    );
   });
 
   it("importe chaque <part> comme une partie, et chaque portée comme une portée", () => {
     const note = (step: string, octave: number, staff: number, extra = "") =>
       `<note><pitch><step>${step}</step><octave>${octave}</octave></pitch><duration>4</duration><staff>${staff}</staff>${extra}</note>`;
-    const attributes = (staves: number) => `<attributes><divisions>1</divisions><staves>${staves}</staves><time><beats>4</beats><beat-type>4</beat-type></time></attributes>`;
+    const attributes = (staves: number) =>
+      `<attributes><divisions>1</divisions><staves>${staves}</staves><time><beats>4</beats><beat-type>4</beat-type></time></attributes>`;
     const twoStaves = `<?xml version="1.0"?><score-partwise version="3.1"><part-list>
       <score-part id="P1"><part-name>Chant</part-name></score-part><score-part id="P2"><part-name>Piano</part-name></score-part></part-list>
       <part id="P1"><measure number="1">${attributes(1)}${note("C", 5, 1, "<lyric><syllabic>single</syllabic><text>Ah</text></lyric>")}</measure></part>
       <part id="P2"><measure number="1">${attributes(2)}<direction><direction-type><pedal type="start"/></direction-type><staff>1</staff></direction>${note("E", 4, 1)}<backup><duration>4</duration></backup>${note("C", 3, 2)}</measure></part>
       </score-partwise>`;
     const s = importMusicXml(twoStaves);
-    expect(s.parts).toEqual([{ name: "Chant", staves: 1 }, { name: "Piano", staves: 2 }]);
+    expect(s.parts).toEqual([
+      { name: "Chant", staves: 1 },
+      { name: "Piano", staves: 2 },
+    ]);
     expect(s.notes.map((n) => `${n.staff}:${n.midi}`)).toEqual(["0:72", "1:64", "2:48"]);
     expect(s.lyrics).toEqual([{ staff: 0, verse: 1, t: 0, text: "Ah" }]);
     expect(s.pedals).toEqual([{ staff: 2, start: 0, end: 4 * TICKS_PER_BEAT }]);

@@ -160,7 +160,12 @@ export function App() {
   // deux côtés ; en lecture, plus près des bords ; à la hauteur, côte à côte, qu'on fait défiler de
   // côté une page à la fois (zoomée, librement) ; à la largeur, l'une sous l'autre ; focalisée, rien ne
   // défile. Sur un écran étroit, en édition, l'éditeur prend sa place.
-  const snap = view.fit === "height" && view.zoom <= 1 ? (reading ? "snap-x snap-mandatory scroll-pt-3 scroll-pr-3 scroll-pb-3 scroll-pl-8" : "snap-x snap-mandatory scroll-p-6") : "";
+  const snap =
+    view.fit === "height" && view.zoom <= 1
+      ? reading
+        ? "snap-x snap-mandatory scroll-pt-3 scroll-pr-3 scroll-pb-3 scroll-pl-8"
+        : "snap-x snap-mandatory scroll-p-6"
+      : "";
   const previewClass = [
     "flex items-start touch-manipulation narrow:@container group-data-resizing/split:pointer-events-none print:block print:overflow-visible print:p-0",
     reading ? "gap-3 pt-3 pr-3 pb-3 pl-8" : "gap-6 p-6 narrow:hidden",
@@ -230,9 +235,18 @@ export function App() {
         {doc.exporting && <ExportDialog onExport={doc.exportFile} onClose={() => doc.setExporting(false)} />}
         {doc.choosingNew && <NewDialog onCreate={doc.newFile} onClose={() => doc.setChoosingNew(false)} />}
         {sharing.importing && <ImportLinkDialog onImport={sharing.importLink} onClose={() => sharing.setImporting(false)} />}
-        {sharing.received && <ReceivedDialog shared={sharing.received} library={sharing.library?.label} onOpen={sharing.accept} onClose={sharing.close} />}
+        {sharing.received && (
+          <ReceivedDialog shared={sharing.received} library={sharing.library?.label} onOpen={sharing.accept} onClose={sharing.close} />
+        )}
         {about.shown && <AboutDialog onClose={about.close} />}
-        {conversion.parts && <ConvertDialog parts={conversion.parts} noteNames={options.noteNames === "english" ? "english" : "latin"} onConvert={conversion.convert} onClose={conversion.cancel} />}
+        {conversion.parts && (
+          <ConvertDialog
+            parts={conversion.parts}
+            noteNames={options.noteNames === "english" ? "english" : "latin"}
+            onConvert={conversion.convert}
+            onClose={conversion.cancel}
+          />
+        )}
         <main
           ref={split}
           // la largeur de l'éditeur (--editor, réglée par la barre qui le sépare de la partition), en
@@ -243,9 +257,26 @@ export function App() {
         >
           <EditorTab editing={editing} onToggle={() => setEditing(!editing)} />
           {editing && <Splitter host={split} width={view.editorWidth} onWidth={(editorWidth) => setView({ editorWidth })} />}
-          <section className="grid grid-rows-[1fr_auto_auto] grid-cols-[minmax(0,1fr)] min-h-0 bg-white border-r border-line narrow:border-r-0 group-data-resizing/split:pointer-events-none print:hidden" hidden={reading}>
-            <SourceEditor value={doc.source} onChange={doc.setSource} editor={editor} noteNames={options.noteNames} colors={options.sourceColors} palette={options.octaveColors} onCheck={errors.setChecked} onCaret={onCaret}>
-              <EngraveButton dirty={doc.dirty} auto={options.autoEngrave} onEngrave={doc.engraveNow} onAuto={(autoEngrave) => setOptions({ autoEngrave })} />
+          <section
+            className="grid grid-rows-[1fr_auto_auto] grid-cols-[minmax(0,1fr)] min-h-0 bg-white border-r border-line narrow:border-r-0 group-data-resizing/split:pointer-events-none print:hidden"
+            hidden={reading}
+          >
+            <SourceEditor
+              value={doc.source}
+              onChange={doc.setSource}
+              editor={editor}
+              noteNames={options.noteNames}
+              colors={options.sourceColors}
+              palette={options.octaveColors}
+              onCheck={errors.setChecked}
+              onCaret={onCaret}
+            >
+              <EngraveButton
+                dirty={doc.dirty}
+                auto={options.autoEngrave}
+                onEngrave={doc.engraveNow}
+                onAuto={(autoEngrave) => setOptions({ autoEngrave })}
+              />
             </SourceEditor>
             {errors.problem && <ErrorBar problems={errors.problems} shown={errors.shown} onGoTo={errors.goTo} onShow={errors.show} />}
           </section>
@@ -258,12 +289,24 @@ export function App() {
             aria-label={reading ? "Partition" : "Aperçu"}
             // la molette fait défiler de côté les pages côte à côte
             // (ajustées à la hauteur et sans zoom : sinon la molette garde son sens, de haut en bas)
-            onWheel={(e) => view.fit === "height" && view.zoom <= 1 && !e.ctrlKey && Math.abs(e.deltaY) > Math.abs(e.deltaX) && e.currentTarget.scrollBy({ left: e.deltaY })}
+            onWheel={(e) =>
+              view.fit === "height" &&
+              view.zoom <= 1 &&
+              !e.ctrlKey &&
+              Math.abs(e.deltaY) > Math.abs(e.deltaX) &&
+              e.currentTarget.scrollBy({ left: e.deltaY })
+            }
             style={{ "--zoom": view.zoom } as React.CSSProperties}
           >
             {score && !pages.length && <p className="text-muted">Aucune mesure à mettre en page.</p>}
             {retouch.menu && <RetouchMenu {...retouch.menu} />}
-            <EngraveProblem problems={errors.problems} fixed={errors.fixed} autoEngrave={options.autoEngrave} onEngrave={doc.engraveNow} onShow={errors.show} />
+            <EngraveProblem
+              problems={errors.problems}
+              fixed={errors.fixed}
+              autoEngrave={options.autoEngrave}
+              onEngrave={doc.engraveNow}
+              onShow={errors.show}
+            />
             {focused ? (
               <>
                 <FocusView pages={pages} options={options} />
@@ -285,7 +328,11 @@ export function App() {
               label="Retour au début de la partition"
               onClick={() => {
                 follow.hold();
-                preview.current!.scrollTo({ top: 0, left: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+                preview.current!.scrollTo({
+                  top: 0,
+                  left: 0,
+                  behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+                });
               }}
             />
           )}

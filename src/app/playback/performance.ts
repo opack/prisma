@@ -21,7 +21,17 @@ export type Passage = { from: number; to: number; at: number; entry: number };
  * grace : petite note, jouée `grace` crans avant l'instant `start` de sa note principale (start et
  * end sont alors cet instant) ; la durée d'un cran se décide au tempo de l'écoute.
  */
-export type PlayedNote = { staff: number; start: number; end: number; midi: number; velocity: number; grace?: number; trill?: Trill; roll?: Roll; filter?: number };
+export type PlayedNote = {
+  staff: number;
+  start: number;
+  end: number;
+  midi: number;
+  velocity: number;
+  grace?: number;
+  trill?: Trill;
+  roll?: Roll;
+  filter?: number;
+};
 
 /** Note d'un arpège : son rang dans l'accord égrené (0 : sur le temps) et le nombre de notes de l'accord. */
 export type Roll = { rank: number; count: number };
@@ -38,7 +48,8 @@ type Bars = { first: number; last: number };
  */
 export function passages(score: Score): Passage[] {
   // instants du morceau où commence et finit chaque mesure
-  const barFrom: number[] = [], barTo: number[] = [];
+  const barFrom: number[] = [],
+    barTo: number[] = [];
   score.beats.forEach((b, i) => {
     barFrom[b.barIndex] ??= i * TICKS_PER_BEAT;
     barTo[b.barIndex] = (i + 1) * TICKS_PER_BEAT;
@@ -47,7 +58,9 @@ export function passages(score: Score): Passage[] {
   if (lastBar < 0) return [];
 
   const markers = [...score.markers].sort((a, b) => a.barIndex - b.barIndex);
-  const sections = new Map<string, Bars>(markers.map((m, i) => [m.label, { first: m.barIndex, last: (markers[i + 1]?.barIndex ?? lastBar + 1) - 1 }]));
+  const sections = new Map<string, Bars>(
+    markers.map((m, i) => [m.label, { first: m.barIndex, last: (markers[i + 1]?.barIndex ?? lastBar + 1) - 1 }]),
+  );
   const played: Bars[] = !markers.length
     ? [{ first: 0, last: lastBar }]
     : (score.order.length ? score.order : markers.map((m) => m.label)).map((label) => sections.get(label)!);
@@ -60,7 +73,8 @@ export function passages(score: Score): Passage[] {
       at += barTo[b] - barFrom[a];
     };
     // une reprise reste dans sa section : elle revient au dernier « ||: », ou au début de la section
-    let pending = first, again = first;
+    let pending = first,
+      again = first;
     for (let bar = first; bar <= last; bar++) {
       const r = score.repeats.find((x) => x.barIndex === bar);
       if (r?.start) {
@@ -100,7 +114,8 @@ export function clicks(score: Score, ps: Passage[], grid: ClickGrid = "beats"): 
   const out: Click[] = [];
   for (const p of ps)
     for (let t = p.from; t < p.to; t += TICKS_PER_BEAT) {
-      const i = t / TICKS_PER_BEAT, beat = score.beats[i];
+      const i = t / TICKS_PER_BEAT,
+        beat = score.beats[i];
       const at = p.at + t - p.from;
       if (!attacks || attacks.has(t)) out.push({ at, level: beat?.label === 1 ? "downbeat" : "beat" });
       if (grid !== "beats") {
@@ -154,13 +169,20 @@ export function playedNotes(original: Score, ps: Passage[]): PlayedNote[] {
   }
   // articulations : la touche relâchée plus tôt (la pédale peut encore tenir le son), l'attaque plus forte
   const marks = score.notes.map((n) => score.articulations.filter((a) => a.staff === n.staff && a.t === n.start).map((a) => a.kind));
-  const released = score.notes.map((n, i) => ({ ...n, end: n.start + (n.end - n.start) * Math.min(1, ...marks[i].map((k) => SHORTER[k])) }));
-  const velocity = velocities(score).map((v, i) => Math.round(Math.min(127, v + Math.max(0, ...marks[i].map((k) => LOUDER[k]))) * (soft.has(score.notes[i]) ? LEGATO : 1)));
-  const ends = soundingEnds({ ...score, notes: released }), rolls = rollRanks(score);
+  const released = score.notes.map((n, i) => ({
+    ...n,
+    end: n.start + (n.end - n.start) * Math.min(1, ...marks[i].map((k) => SHORTER[k])),
+  }));
+  const velocity = velocities(score).map((v, i) =>
+    Math.round(Math.min(127, v + Math.max(0, ...marks[i].map((k) => LOUDER[k]))) * (soft.has(score.notes[i]) ? LEGATO : 1)),
+  );
+  const ends = soundingEnds({ ...score, notes: released }),
+    rolls = rollRanks(score);
   const out: PlayedNote[] = [];
   for (const p of runs)
     score.notes.forEach((n, i) => {
-      if (n.start >= p.from && n.start < p.to) out.push({
+      if (n.start >= p.from && n.start < p.to)
+        out.push({
           staff: n.staff,
           start: p.at + n.start - p.from,
           end: p.at + Math.min(ends[i], p.to) - p.from,
@@ -179,7 +201,14 @@ export function playedNotes(original: Score, ps: Passage[]): PlayedNote[] {
     for (const g of score.graces)
       if (g.t >= p.from && g.t < p.to) {
         const t = p.at + g.t - p.from;
-        out.push({ staff: g.staff, start: t, end: t, midi: g.midi, velocity: level(g.staff, g.t, false), grace: ranks.get(`${g.staff}:${g.t}`)! - g.slot });
+        out.push({
+          staff: g.staff,
+          start: t,
+          end: t,
+          midi: g.midi,
+          velocity: level(g.staff, g.t, false),
+          grace: ranks.get(`${g.staff}:${g.t}`)! - g.slot,
+        });
       }
   return out.sort((a, b) => a.start - b.start || (b.grace ?? 0) - (a.grace ?? 0) || a.midi - b.midi);
 }
@@ -213,7 +242,15 @@ function stringTechniques(score: Score) {
   // les notes liées après la première, sur une corde : jouées sans attaque
   const legato = new Set<Note>();
   for (const s of score.slurs)
-    for (const n of score.notes) if (n.string !== undefined && n.staff === s.staff && n.start > s.start && n.start <= s.end && score.notes.some((m) => sameString(m, n) && m.start >= s.start && m.start < n.start)) legato.add(n);
+    for (const n of score.notes)
+      if (
+        n.string !== undefined &&
+        n.staff === s.staff &&
+        n.start > s.start &&
+        n.start <= s.end &&
+        score.notes.some((m) => sameString(m, n) && m.start >= s.start && m.start < n.start)
+      )
+        legato.add(n);
   const glided = new Set<Note>();
   for (const n of score.notes) {
     const strs = n.string !== undefined ? stringsOfStaff(score.parts, n.staff) : undefined;
@@ -253,7 +290,8 @@ function stringTechniques(score: Score) {
       continue;
     }
     if (n.bend !== undefined) {
-      const up = base.start + d * 0.25, down = base.start + d * 0.75;
+      const up = base.start + d * 0.25,
+        down = base.start + d * 0.75;
       add({ ...base, end: up }, arrived);
       add({ ...base, start: up, midi: n.bend, end: n.release ? down : base.end }, true);
       if (n.release) add({ ...base, start: down, midi: n.midi }, true);
@@ -263,9 +301,19 @@ function stringTechniques(score: Score) {
     const to = n.slide ? next(n) : undefined;
     const steps = to ? Math.min(12, Math.abs(to.midi - n.midi) - 1) : n.slideOut ? SLIDE_OUT.frets : 0;
     if (steps > 0 || to) {
-      const from = base.start + d * 0.67, dir = to ? Math.sign(to.midi - n.midi) : n.slideOut === "up" ? 1 : -1;
+      const from = base.start + d * 0.67,
+        dir = to ? Math.sign(to.midi - n.midi) : n.slideOut === "up" ? 1 : -1;
       add({ ...base, end: steps ? from : base.end }, arrived);
-      for (let k = 1; k <= steps; k++) add({ ...base, midi: n.midi + k * dir, start: from + ((k - 1) * (base.end - from)) / steps, end: from + (k * (base.end - from)) / steps }, true);
+      for (let k = 1; k <= steps; k++)
+        add(
+          {
+            ...base,
+            midi: n.midi + k * dir,
+            start: from + ((k - 1) * (base.end - from)) / steps,
+            end: from + (k * (base.end - from)) / steps,
+          },
+          true,
+        );
       if (to) glided.add(to);
       continue;
     }
@@ -285,7 +333,9 @@ const LOUDER: Record<ArticulationKind, number> = { staccato: 0, accent: 20, marc
 function rollRanks(score: Score): (Roll | undefined)[] {
   const ranks: (Roll | undefined)[] = score.notes.map(() => undefined);
   for (const a of score.arpeggios) {
-    const chord = score.notes.map((n, i) => ({ n, i })).filter(({ n }) => n.start === a.t && (a.staff === undefined || n.staff === a.staff));
+    const chord = score.notes
+      .map((n, i) => ({ n, i }))
+      .filter(({ n }) => n.start === a.t && (a.staff === undefined || n.staff === a.staff));
     chord.sort((x, y) => (a.down ? y.n.midi - x.n.midi : x.n.midi - y.n.midi));
     chord.forEach(({ i }, k) => (ranks[i] = { rank: k, count: chord.length }));
   }
@@ -385,9 +435,12 @@ export type PlayedBar = { at: number; end: number; entry: number };
 /** Les mesures du morceau, dans l'ordre où elles se jouent : une mesure reprise y est deux fois. */
 export function playedBars(score: Score, ps: Passage[]): PlayedBar[] {
   // les instants du morceau où commence une mesure
-  const starts = new Set(score.beats.flatMap((b, i) => (i === 0 || score.beats[i - 1].barIndex !== b.barIndex ? [i * TICKS_PER_BEAT] : [])));
+  const starts = new Set(
+    score.beats.flatMap((b, i) => (i === 0 || score.beats[i - 1].barIndex !== b.barIndex ? [i * TICKS_PER_BEAT] : [])),
+  );
   const at: { at: number; entry: number }[] = [];
-  for (const p of ps) for (let t = p.from; t < p.to; t += TICKS_PER_BEAT) if (starts.has(t)) at.push({ at: p.at + t - p.from, entry: p.entry });
+  for (const p of ps)
+    for (let t = p.from; t < p.to; t += TICKS_PER_BEAT) if (starts.has(t)) at.push({ at: p.at + t - p.from, entry: p.entry });
   const length = playedLength(ps);
   return at.map((b, i) => ({ ...b, end: at[i + 1]?.at ?? length }));
 }

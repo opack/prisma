@@ -42,7 +42,9 @@ test.describe("les options", () => {
   test("côté partition, une option se définit pour elle seule, puis se retire", async ({ page }) => {
     await openApp(page, { source: CLAIR_SECTIONS });
     await page.getByRole("button", { name: "Options", exact: true }).click();
-    await drawer(page).getByRole("radio", { name: /^Partition/ }).click();
+    await drawer(page)
+      .getByRole("radio", { name: /^Partition/ })
+      .click();
     await expect(drawer(page).getByRole("tab", { name: "Édition" })).toHaveCount(0);
     const define = drawer(page).getByRole("button", { name: "Définir pour la partition", exact: true });
     const remove = drawer(page).getByRole("button", { name: "Retirer", exact: true });
@@ -58,7 +60,9 @@ test.describe("les options", () => {
   test("côté partition, tout se définit puis se retire d'un coup", async ({ page }) => {
     await openApp(page, { source: CLAIR_SECTIONS });
     await page.getByRole("button", { name: "Options", exact: true }).click();
-    await drawer(page).getByRole("radio", { name: /^Partition/ }).click();
+    await drawer(page)
+      .getByRole("radio", { name: /^Partition/ })
+      .click();
     const define = drawer(page).getByRole("button", { name: "Définir pour la partition", exact: true });
     await drawer(page).getByRole("button", { name: "Tout définir pour la partition" }).click();
     await expect(define).toHaveCount(0);

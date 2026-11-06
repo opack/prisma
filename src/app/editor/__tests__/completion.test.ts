@@ -108,4 +108,3 @@ describe("complétion de parts:", () => {
     expect(labels(doc("Piano, "), 2, 14)).not.toContain("Piano");
   });
 });
-

@@ -12,7 +12,13 @@ import type { PieceSettings } from "../options/piece.ts";
 import { instrumentsOf, scoreInstrument, staffInstruments } from "./instruments.ts";
 import { player } from "./player.ts";
 
-export function usePieceSound(score: Score | undefined, piece: PieceSettings, updatePiece: (patch: Partial<PieceSettings>) => void, pieceId: number, options: RenderOptions) {
+export function usePieceSound(
+  score: Score | undefined,
+  piece: PieceSettings,
+  updatePiece: (patch: Partial<PieceSettings>) => void,
+  pieceId: number,
+  options: RenderOptions,
+) {
   useEffect(() => player.load(score), [score]);
   const muted = piece.muted ?? [];
   const setMuted = (staves: number[]) => updatePiece({ muted: staves.length ? staves : undefined });
@@ -42,12 +48,22 @@ export function usePieceSound(score: Score | undefined, piece: PieceSettings, up
     const before = seen.current;
     seen.current = { pieceId, partsKey, written };
     if (before.pieceId !== pieceId) return; // un autre morceau : ses réglages viennent d'être lus
-    if (before.partsKey !== partsKey && (piece.muted || piece.instruments || piece.volumes)) updatePiece({ muted: undefined, instruments: undefined, volumes: undefined });
+    if (before.partsKey !== partsKey && (piece.muted || piece.instruments || piece.volumes))
+      updatePiece({ muted: undefined, instruments: undefined, volumes: undefined });
     if (before.written !== written && piece.tempo !== undefined) updatePiece({ tempo: undefined });
   }, [pieceId, partsKey, written]);
 
   useEffect(
-    () => player.setSound({ metronome: options.metronome, muted, gains, clickSounds: options.clickSounds, clickGrid: options.clickGrid, countIn: options.countIn, clickVolume: options.clickVolume }),
+    () =>
+      player.setSound({
+        metronome: options.metronome,
+        muted,
+        gains,
+        clickSounds: options.clickSounds,
+        clickGrid: options.clickGrid,
+        countIn: options.countIn,
+        clickVolume: options.clickVolume,
+      }),
     [options.metronome, muted, gains, options.clickSounds, options.clickGrid, options.countIn, options.clickVolume],
   );
   return { muted, setMuted, instruments, setInstrument, volumes, setVolume };

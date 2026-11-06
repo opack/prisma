@@ -16,19 +16,33 @@ import { ContentsMenu } from "../ui/ContentsMenu.tsx";
 import { ScrollBackButton } from "../ui/button/ScrollBackButton.tsx";
 import type { RenderOptions } from "../options/options.ts";
 
-
 function Example({ text, options }: { text: string; options: RenderOptions }) {
   const result = useMemo(() => {
     try {
-      return { pages: engrave(parsePrisma(text), { compact: options.density === "compact", chords: options.chords, chordNames: options.chordNames, align: alignOf(options.notePosition), reminders: options.holdReminders, inlineSections: options.sections === "inline" }) };
+      return {
+        pages: engrave(parsePrisma(text), {
+          compact: options.density === "compact",
+          chords: options.chords,
+          chordNames: options.chordNames,
+          align: alignOf(options.notePosition),
+          reminders: options.holdReminders,
+          inlineSections: options.sections === "inline",
+        }),
+      };
     } catch (e) {
       return { error: (e as Error).message };
     }
   }, [text, options.density, options.chords, options.chordNames, options.notePosition, options.holdReminders, options.sections]);
   return (
     <>
-      <pre className="m-0 px-3.5 py-2.5 bg-panel rounded font-mono text-[13px] leading-[1.45] [font-variant-ligatures:none] overflow-x-auto max-w-full">{text}</pre>
-      {result.pages ? <Excerpt pages={result.pages} options={options} scale={1.4} /> : <p className="flex items-center gap-2 min-w-0 px-3 py-2 bg-error-bg text-error">{result.error}</p>}
+      <pre className="m-0 px-3.5 py-2.5 bg-panel rounded font-mono text-[13px] leading-[1.45] [font-variant-ligatures:none] overflow-x-auto max-w-full">
+        {text}
+      </pre>
+      {result.pages ? (
+        <Excerpt pages={result.pages} options={options} scale={1.4} />
+      ) : (
+        <p className="flex items-center gap-2 min-w-0 px-3 py-2 bg-error-bg text-error">{result.error}</p>
+      )}
     </>
   );
 }
@@ -43,7 +57,15 @@ function tocLink(depth: number, current: boolean): string {
   return `block py-1 px-2.5 -ml-px border-l-2 no-underline hover:bg-panel ${depth === 2 ? "mt-1.5 font-semibold" : ""} ${depth === 3 ? "pl-[22px]" : ""} ${tone}`;
 }
 
-export function ReferenceView({ options, example, site = "../.." }: { options: RenderOptions; example?: (text: string) => ReactNode; site?: string }) {
+export function ReferenceView({
+  options,
+  example,
+  site = "../..",
+}: {
+  options: RenderOptions;
+  example?: (text: string) => ReactNode;
+  site?: string;
+}) {
   const { html, examples, headings } = useMemo(() => render(reference, site), [site]);
   const root = useRef<HTMLDivElement>(null);
   const [slots, setSlots] = useState<Element[]>([]);
@@ -100,12 +122,20 @@ export function ReferenceView({ options, example, site = "../.." }: { options: R
 
   return (
     <div className="grid grid-cols-[240px_minmax(0,860px)] justify-center gap-2 [@media(max-width:980px)]:grid-cols-[minmax(0,1fr)]">
-      <nav className="sticky top-[60px] self-start max-h-[calc(100vh-140px)] overflow-auto py-6 pl-4 text-[13.5px] leading-[1.35] [@media(max-width:980px)]:hidden" aria-label="Sommaire de la référence">
+      <nav
+        className="sticky top-[60px] self-start max-h-[calc(100vh-140px)] overflow-auto py-6 pl-4 text-[13.5px] leading-[1.35] [@media(max-width:980px)]:hidden"
+        aria-label="Sommaire de la référence"
+      >
         <p className="mb-2 text-[12px] font-semibold tracking-[0.04em] uppercase text-muted">Sommaire</p>
         <ul className="m-0 p-0 list-none border-l border-line">
           {headings.map((h) => (
             <li key={h.id}>
-              <a className={tocLink(h.depth, h.id === current)} href={`#${h.id}`} onClick={go(h.id)} aria-current={h.id === current ? "location" : undefined}>
+              <a
+                className={tocLink(h.depth, h.id === current)}
+                href={`#${h.id}`}
+                onClick={go(h.id)}
+                aria-current={h.id === current ? "location" : undefined}
+              >
                 {h.text}
               </a>
             </li>
@@ -131,7 +161,9 @@ export function ReferenceView({ options, example, site = "../.." }: { options: R
         <ScrollBackButton
           className="fixed right-6 bottom-6 z-10"
           label="Retour en haut de la référence"
-          onClick={() => scrollPane.current?.scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })}
+          onClick={() =>
+            scrollPane.current?.scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })
+          }
         />
       )}
     </div>

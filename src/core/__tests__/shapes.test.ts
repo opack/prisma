@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { engrave } from "../../app/score/engrave.ts";
-import { chordNotes, chordShape, exportMusicXml, importMusicXml, parsePrisma, parseShape, shapeNotes, shapeText, stringsOf, writePrisma } from "../index.ts";
+import {
+  chordNotes,
+  chordShape,
+  exportMusicXml,
+  importMusicXml,
+  parsePrisma,
+  parseShape,
+  shapeNotes,
+  shapeText,
+  stringsOf,
+  writePrisma,
+} from "../index.ts";
 
 const guitar = stringsOf("guitar", "standard", 0)!;
 const shape = (chord: string, strings = guitar) => shapeText(chordShape(chordNotes(chord)!, strings)!);
@@ -28,7 +39,21 @@ describe("grilles d'accords", () => {
   });
 
   it("choisissent la forme que connaît tout guitariste : accords ouverts, puis barrés", () => {
-    const open = { C: "x32010", D: "xx0232", E: "022100", G: "320003", A: "x02220", Am: "x02210", Dm: "xx0231", Em: "022000", E7: "020100", A7: "x02020", D7: "xx0212", B7: "x21202", Cmaj7: "x32000" };
+    const open = {
+      C: "x32010",
+      D: "xx0232",
+      E: "022100",
+      G: "320003",
+      A: "x02220",
+      Am: "x02210",
+      Dm: "xx0231",
+      Em: "022000",
+      E7: "020100",
+      A7: "x02020",
+      D7: "xx0212",
+      B7: "x21202",
+      Cmaj7: "x32000",
+    };
     for (const [chord, frets] of Object.entries(open)) expect([chord, shape(chord)]).toEqual([chord, frets]);
     expect(shape("F")).toBe("133211");
     expect(shape("B")).toBe("x24442");
@@ -77,7 +102,9 @@ describe("grilles d'accords", () => {
   it("passent par MusicXML, dans le <frame> de l'accord", () => {
     const text = writePrisma(parsePrisma(piece("10:m=x02210  8=3-5-5-4-3-3")));
     const xml = exportMusicXml(parsePrisma(text));
-    expect(xml).toContain("<frame><frame-strings>6</frame-strings><frame-frets>4</frame-frets><frame-note><string>5</string><fret>0</fret></frame-note>");
+    expect(xml).toContain(
+      "<frame><frame-strings>6</frame-strings><frame-frets>4</frame-frets><frame-note><string>5</string><fret>0</fret></frame-note>",
+    );
     expect(xml).toContain("<first-fret>3</first-fret>");
     const back = importMusicXml(xml);
     expect(back.chords.map((textMark) => textMark.text)).toEqual(["10:m=x02210", "8=355433"]);
@@ -95,7 +122,11 @@ m1 |1           |2           ||1           |2           ||
 `;
     const [first, ...rest] = engrave(parsePrisma(text), { chords: "name", chordNames: "english", chart: true });
     // la même grille revient une fois ; une autre grille écrite pour le même accord compte à part
-    expect(first.chart!.map((chartItem) => [chartItem.name, shapeText(chartItem.shape)])).toEqual([["Am", "x02210"], ["G", "320003"], ["G", "355433"]]);
+    expect(first.chart!.map((chartItem) => [chartItem.name, shapeText(chartItem.shape)])).toEqual([
+      ["Am", "x02210"],
+      ["G", "320003"],
+      ["G", "355433"],
+    ]);
     expect(rest.every((page) => !page.chart)).toBe(true);
     expect(engrave(parsePrisma(text), { chords: "name" })[0].chart).toBeUndefined();
   });

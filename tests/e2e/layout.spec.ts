@@ -113,8 +113,13 @@ test.describe("la vue de la partition", () => {
     await expect(page.locator("div.animate-focus-in > svg")).toHaveCount(2);
   });
 
-  for (const [fit, zoom, direction] of [["height", 2, "scrollLeft"], ["width", 1, "scrollTop"]] as const)
-    test(`la première page sortie de l'écran, un bouton ramène au début (${fit === "height" ? "de côté" : "de haut en bas"})`, async ({ page }) => {
+  for (const [fit, zoom, direction] of [
+    ["height", 2, "scrollLeft"],
+    ["width", 1, "scrollTop"],
+  ] as const)
+    test(`la première page sortie de l'écran, un bouton ramène au début (${fit === "height" ? "de côté" : "de haut en bas"})`, async ({
+      page,
+    }) => {
       await openApp(page, { source: GYMNOPEDIE, editing: false, view: { fit, zoom } });
       const back = page.getByRole("button", { name: "Retour au début de la partition" });
       await expect(back).toHaveCount(0);

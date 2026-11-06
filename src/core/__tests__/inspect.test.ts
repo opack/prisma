@@ -34,8 +34,19 @@ describe("ce que montre le curseur", () => {
 
   it("place le curseur dans la musique : section, mesure, temps, case, portée", async () => {
     const inspection = await at(9, 8);
-    expect([inspection.line, inspection.column, inspection.section, inspection.bar, inspection.beat, inspection.cell, inspection.staff]).toEqual([9, 8, "A", "12", 1, { index: 2, count: 2 }, 0]);
-    expect(inspection.parts).toEqual([{ name: "Chant", staves: 1 }, { name: "Piano", staves: 2 }]);
+    expect([
+      inspection.line,
+      inspection.column,
+      inspection.section,
+      inspection.bar,
+      inspection.beat,
+      inspection.cell,
+      inspection.staff,
+    ]).toEqual([9, 8, "A", "12", 1, { index: 2, count: 2 }, 0]);
+    expect(inspection.parts).toEqual([
+      { name: "Chant", staves: 1 },
+      { name: "Piano", staves: 2 },
+    ]);
     expect(inspection.symbol).toEqual({ text: "10", meaning: "la3", keys: [10] });
     // sans noms : le numéro suffit
     expect((await at(9, 8, "none")).symbol?.meaning).toBe("note");

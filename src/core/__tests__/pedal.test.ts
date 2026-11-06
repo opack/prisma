@@ -44,7 +44,8 @@ describe("pédale", () => {
   });
 
   it("importe la pédale du MusicXML", () => {
-    const ped = (type: string) => `<direction><direction-type><pedal type="${type}" line="yes"/></direction-type><staff>2</staff></direction>`;
+    const ped = (type: string) =>
+      `<direction><direction-type><pedal type="${type}" line="yes"/></direction-type><staff>2</staff></direction>`;
     const xml = musicXml([
       {
         time: [3, 4],
@@ -67,7 +68,8 @@ describe("pédale", () => {
 
 describe("consignes de pédale", () => {
   const ruler = "m1 |1  |2  |3  ||1  |2  |3  ||";
-  const piece = (rh: string, lh: string) => [ruler, "0  |1  |   |   ||3  |   |   ||", rh, "---", "-1 |1  |-  |-  ||8  |-  |-  ||", lh, ""].join("\n");
+  const piece = (rh: string, lh: string) =>
+    [ruler, "0  |1  |   |   ||3  |   |   ||", rh, "---", "-1 |1  |-  |-  ||8  |-  |-  ||", lh, ""].join("\n");
 
   it("lit « Ped. simile » comme une consigne de pédale, et l'écrit sur la ligne de pédale", () => {
     const score = parsePrisma(piece("", "@   Ped.         *   Ped. simile").replace("\n\n---", "\n---"));

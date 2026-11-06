@@ -33,10 +33,7 @@ describe("règles du format", () => {
 
   it("numérote 1 une anacrouse que le fichier compte comme mesure 1", () => {
     const score = importMusicXml(
-      musicXml([
-        { time: [3, 4], notes: [[{ midi: [67], duration: QUARTER }]] },
-        { notes: [[{ midi: [60], duration: 3 * QUARTER }]] },
-      ]),
+      musicXml([{ time: [3, 4], notes: [[{ midi: [67], duration: QUARTER }]] }, { notes: [[{ midi: [60], duration: 3 * QUARTER }]] }]),
     );
     expect(beatsKey(score)).toBe("1.3 2.1 2.2 2.3");
     roundTrip(score);
@@ -44,9 +41,7 @@ describe("règles du format", () => {
 
   it("compte le 6/8 en deux temps ternaires", () => {
     const e = QUARTER / 2;
-    const xml = musicXml([
-      { time: [6, 8], notes: [[...[60, 62, 64, 65, 67, 69].map((m) => ({ midi: [m], duration: e }))]] },
-    ]);
+    const xml = musicXml([{ time: [6, 8], notes: [[...[60, 62, 64, 65, 67, 69].map((m) => ({ midi: [m], duration: e }))]] }]);
     const score = importMusicXml(xml);
     expect(score.beats).toHaveLength(2);
     expect(score.beats.every((beat) => beat.division === 3)).toBe(true);
@@ -65,7 +60,17 @@ describe("règles du format", () => {
   it("traite un triolet en 4/4 comme un temps ternaire", () => {
     const t = QUARTER / 3;
     const xml = musicXml([
-      { notes: [[{ midi: [60], duration: QUARTER }, { midi: [62], duration: t }, { midi: [64], duration: t }, { midi: [65], duration: t }, { midi: [67], duration: 2 * QUARTER }]] },
+      {
+        notes: [
+          [
+            { midi: [60], duration: QUARTER },
+            { midi: [62], duration: t },
+            { midi: [64], duration: t },
+            { midi: [65], duration: t },
+            { midi: [67], duration: 2 * QUARTER },
+          ],
+        ],
+      },
     ]);
     const { text } = roundTrip(importMusicXml(xml));
     expect(text).toContain("|1  |2  *  *  |3  |4  ||");
@@ -75,8 +80,17 @@ describe("règles du format", () => {
     const xml = musicXml([
       {
         notes: [
-          [{ midi: [72], duration: QUARTER / 2 }, { midi: [74], duration: QUARTER / 2 }, { midi: [76], duration: 3 * QUARTER }],
-          [{ midi: [48], duration: QUARTER / 3, staff: 2 }, { midi: [52], duration: QUARTER / 3, staff: 2 }, { midi: [55], duration: QUARTER / 3, staff: 2 }, { midi: [48], duration: 3 * QUARTER, staff: 2 }],
+          [
+            { midi: [72], duration: QUARTER / 2 },
+            { midi: [74], duration: QUARTER / 2 },
+            { midi: [76], duration: 3 * QUARTER },
+          ],
+          [
+            { midi: [48], duration: QUARTER / 3, staff: 2 },
+            { midi: [52], duration: QUARTER / 3, staff: 2 },
+            { midi: [55], duration: QUARTER / 3, staff: 2 },
+            { midi: [48], duration: 3 * QUARTER, staff: 2 },
+          ],
         ],
       },
     ]);
@@ -93,15 +107,25 @@ describe("règles du format", () => {
   it("met une note seule sur la ligne du haut de son couloir, même si un accord suit", () => {
     // do5 seul, puis l'accord do5-mi5-sol5 : l'ancien tri par hauteur moyenne
     // plaçait le do5 seul sur la ligne du milieu
-    const xml = musicXml([{ notes: [[{ midi: [72], duration: 4 * QUARTER }]] }, { notes: [[{ midi: [72, 76, 79], duration: 4 * QUARTER }]] }]);
+    const xml = musicXml([
+      { notes: [[{ midi: [72], duration: 4 * QUARTER }]] },
+      { notes: [[{ midi: [72, 76, 79], duration: 4 * QUARTER }]] },
+    ]);
     const { text } = roundTrip(importMusicXml(xml));
     const rows = text.split("\n").filter((line) => /^(\+1| ) *\|/.test(line) && !line.startsWith("m"));
     expect(rows[0]).toMatch(/^\+1 \|1 /);
-    expect(rows.map((r) => r.slice(-15))).toEqual(["|-  |-  ||8  |-  |-  |-  ||".slice(-15), "|   |   ||5  |-  |-  |-  ||".slice(-15), "|   |   ||1  |-  |-  |-  ||".slice(-15)]);
+    expect(rows.map((r) => r.slice(-15))).toEqual([
+      "|-  |-  ||8  |-  |-  |-  ||".slice(-15),
+      "|   |   ||5  |-  |-  |-  ||".slice(-15),
+      "|   |   ||1  |-  |-  |-  ||".slice(-15),
+    ]);
   });
 
   it("calcule le décalage qui centre un bloc dans son couloir", () => {
-    const xml = musicXml([{ notes: [[{ midi: [72], duration: 4 * QUARTER }]] }, { notes: [[{ midi: [72, 76, 79], duration: 4 * QUARTER }]] }]);
+    const xml = musicXml([
+      { notes: [[{ midi: [72], duration: 4 * QUARTER }]] },
+      { notes: [[{ midi: [72, 76, 79], duration: 4 * QUARTER }]] },
+    ]);
     const [sys] = layout(importMusicXml(xml), { width: 200, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 });
     // couloir de 3 lignes : la note seule (mesure 1) descend d'une ligne, l'accord (mesure 2) ne bouge pas
     expect(sys.staves[0].rows[0].center[0]).toBe(1);
@@ -117,11 +141,16 @@ describe("règles du format", () => {
 });
 
 describe("cases de largeur libre", () => {
-  const expr = (score: Score) => score.expressions.map((expression) => `${expression.staff}:${expression.kind}:${expression.text}@${expression.t / TICKS_PER_BEAT}`).join(" ");
+  const expr = (score: Score) =>
+    score.expressions
+      .map((expression) => `${expression.staff}:${expression.kind}:${expression.text}@${expression.t / TICKS_PER_BEAT}`)
+      .join(" ");
 
   it("lit une case élargie : une case va d'une étiquette à la suivante", () => {
     const s = parsePrisma("m1 |1      *  |2  ||\n0  |1      3  |5  ||\n---\n");
-    expect(notesKey(s)).toBe(`0:60@0-${TICKS_PER_BEAT / 2} 0:62@${TICKS_PER_BEAT / 2}-${TICKS_PER_BEAT} 0:64@${TICKS_PER_BEAT}-${2 * TICKS_PER_BEAT}`);
+    expect(notesKey(s)).toBe(
+      `0:60@0-${TICKS_PER_BEAT / 2} 0:62@${TICKS_PER_BEAT / 2}-${TICKS_PER_BEAT} 0:64@${TICKS_PER_BEAT}-${2 * TICKS_PER_BEAT}`,
+    );
   });
 
   it("nomme « , » les cases plus fines que « . »", () => {
@@ -132,7 +161,10 @@ describe("cases de largeur libre", () => {
 
   it("élargit la case d'une indication trop longue, plutôt que d'empiler les lignes @", () => {
     const s = parsePrisma("m1 |1  *  |2  *  ||\n0  |1  3  |5  7  ||\n@   (mp)\n---\n");
-    s.expressions.push({ staff: 0, t: TICKS_PER_BEAT / 2, text: "dolce", kind: "text" }, { staff: 0, t: TICKS_PER_BEAT, text: "cresc.", kind: "text" });
+    s.expressions.push(
+      { staff: 0, t: TICKS_PER_BEAT / 2, text: "dolce", kind: "text" },
+      { staff: 0, t: TICKS_PER_BEAT, text: "cresc.", kind: "text" },
+    );
     const text = writePrisma(s);
     expect(text.split("\n").filter((line) => line.startsWith("@")).length).toBe(1);
     expect(text).toMatch(/^@ +\(mp\) +dolce +cresc\.$/m);
@@ -164,8 +196,17 @@ describe("cases de largeur libre", () => {
 
   it("ignore les petites notes de réplique et les notes cachées, sans décaler le temps", () => {
     // 2e voix : un sol caché, puis un la qui doit rester au 3e temps
-    const xml = musicXml([{ notes: [[{ midi: [C4], duration: 4 * QUARTER }], [{ midi: [67], duration: 2 * QUARTER }, { midi: [69], duration: 2 * QUARTER }]] }])
-      .replace(/<note>(<pitch><step>G<\/step>)/, '<note print-object="no">$1');
+    const xml = musicXml([
+      {
+        notes: [
+          [{ midi: [C4], duration: 4 * QUARTER }],
+          [
+            { midi: [67], duration: 2 * QUARTER },
+            { midi: [69], duration: 2 * QUARTER },
+          ],
+        ],
+      },
+    ]).replace(/<note>(<pitch><step>G<\/step>)/, '<note print-object="no">$1');
     const s = importMusicXml(xml);
     expect(s.notes.map((note) => `${note.midi}@${note.start / TICKS_PER_BEAT}`)).toEqual(["60@0", "69@2"]);
   });
@@ -229,13 +270,29 @@ describe("sous-titre", () => {
   it("lit et écrit le sous-titre du frontmatter, juste après le titre", () => {
     const score = parsePrisma("---\ncomposer: Chopin\nsubtitle: Op. 9 n° 2\ntitle: Nocturne\n---\nm1 |1  ||\n0  |1  ||\n---\n");
     expect(score.meta.subtitle).toBe("Op. 9 n° 2");
-    expect(writePrisma(score).split("\n").slice(0, 6)).toEqual(["---", "format: 1", "title: Nocturne", "subtitle: Op. 9 n° 2", "composer: Chopin", "---"]);
+    expect(writePrisma(score).split("\n").slice(0, 6)).toEqual([
+      "---",
+      "format: 1",
+      "title: Nocturne",
+      "subtitle: Op. 9 n° 2",
+      "composer: Chopin",
+      "---",
+    ]);
   });
 
   it("garde les notes du frontmatter, après la source, sans les graver", () => {
-    const s = parsePrisma("---\nnotes: Doigtés de la main gauche à revoir\ntitle: Nocturne\nsource: nocturne.musicxml\n---\nm1 |1  ||\n0  |1  ||\n");
+    const s = parsePrisma(
+      "---\nnotes: Doigtés de la main gauche à revoir\ntitle: Nocturne\nsource: nocturne.musicxml\n---\nm1 |1  ||\n0  |1  ||\n",
+    );
     expect(s.meta.notes).toBe("Doigtés de la main gauche à revoir");
-    expect(writePrisma(s).split("\n").slice(0, 6)).toEqual(["---", "format: 1", "title: Nocturne", "source: nocturne.musicxml", "notes: Doigtés de la main gauche à revoir", "---"]);
+    expect(writePrisma(s).split("\n").slice(0, 6)).toEqual([
+      "---",
+      "format: 1",
+      "title: Nocturne",
+      "source: nocturne.musicxml",
+      "notes: Doigtés de la main gauche à revoir",
+      "---",
+    ]);
   });
 
   it("importe le sous-titre des textes de page, en recollant ses morceaux", () => {
@@ -244,7 +301,10 @@ describe("sous-titre", () => {
   });
 
   it("prend le titre dans les textes de page quand l'œuvre n'en a pas", () => {
-    const xml = withHead(`<credit page="1"><credit-type>title</credit-type><credit-words>To Zanarkand</credit-words></credit>`).replace(/<work>.*?<\/work>/, "");
+    const xml = withHead(`<credit page="1"><credit-type>title</credit-type><credit-words>To Zanarkand</credit-words></credit>`).replace(
+      /<work>.*?<\/work>/,
+      "",
+    );
     expect(importMusicXml(xml).meta.title).toBe("To Zanarkand");
   });
 

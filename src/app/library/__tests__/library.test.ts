@@ -3,7 +3,10 @@ import { describe as describeFile, kindOf, scan } from "../library.ts";
 
 describe("bibliothèque", () => {
   it("lit le titre et le compositeur : l'en-tête d'un .prisma, les crédits d'un MusicXML", async () => {
-    expect(describeFile('---\nformat: 1\ntitle: "Gymnopédie n°1"\ncomposer: Erik Satie\n---\nm1 |1  ||\n', "prisma")).toEqual({ title: "Gymnopédie n°1", composer: "Erik Satie" });
+    expect(describeFile('---\nformat: 1\ntitle: "Gymnopédie n°1"\ncomposer: Erik Satie\n---\nm1 |1  ||\n', "prisma")).toEqual({
+      title: "Gymnopédie n°1",
+      composer: "Erik Satie",
+    });
     expect(describeFile("m1 |1  ||\n", "prisma")).toEqual({ title: undefined, composer: undefined });
     const xml = `<score-partwise><work><work-title>Clair &amp; net</work-title></work><identification><creator type="composer">Anonyme</creator></identification>`;
     expect(describeFile(xml, "musicxml")).toEqual({ title: "Clair & net", composer: "Anonyme" });
@@ -15,7 +18,8 @@ describe("bibliothèque", () => {
     const stored = (name: string, text: string) => ({ name, where: "en mémoire", text: async () => text, write: async () => {} });
     const folder = (path: string) => ({
       name: path.split("/").at(-1) ?? "",
-      file: async (name: string) => (files[path ? `${path}/${name}` : name] !== undefined ? stored(name, files[path ? `${path}/${name}` : name]) : null),
+      file: async (name: string) =>
+        files[path ? `${path}/${name}` : name] !== undefined ? stored(name, files[path ? `${path}/${name}` : name]) : null,
       create: async (name: string) => stored(name, ""),
       remove: async () => {},
     });
@@ -40,11 +44,13 @@ describe("bibliothèque", () => {
     const source = await memorySource({
       "Au clair.prisma": "---\nformat: 1\ntitle: Au clair de la lune\n---\nm1 |1  ||\n",
       "Au clair.prisma.json": JSON.stringify({ format: 1, options: { fingerings: false } }),
-      "Satie/Gymnopedie.musicxml": "<work-title>Gymnopédie</work-title><creator type=\"composer\">Erik Satie</creator>",
+      "Satie/Gymnopedie.musicxml": '<work-title>Gymnopédie</work-title><creator type="composer">Erik Satie</creator>',
       "notes.txt": "pas une partition",
     });
     const entries = await scan(source);
-    expect(entries.map((libraryEntry) => [libraryEntry.path, libraryEntry.folder, libraryEntry.kind, libraryEntry.title, libraryEntry.composer])).toEqual([
+    expect(
+      entries.map((libraryEntry) => [libraryEntry.path, libraryEntry.folder, libraryEntry.kind, libraryEntry.title, libraryEntry.composer]),
+    ).toEqual([
       ["Au clair.prisma", "", "prisma", "Au clair de la lune", undefined],
       ["Satie/Gymnopedie.musicxml", "Satie", "musicxml", "Gymnopédie", "Erik Satie"],
     ]);

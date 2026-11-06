@@ -53,7 +53,11 @@ export async function settle(page: Page) {
 export async function chooseMenu(page: Page, title: string, action: string) {
   await page.getByRole("button", { name: title, exact: true }).click();
   // une action qui se coche porte « ✓ » devant son nom quand elle est cochée
-  await page.getByRole("menu").locator('[role^="menuitem"]', { hasText: new RegExp(`^(✓\\s*)?${escapeRegExp(action)}`) }).first().click();
+  await page
+    .getByRole("menu")
+    .locator('[role^="menuitem"]', { hasText: new RegExp(`^(✓\\s*)?${escapeRegExp(action)}`) })
+    .first()
+    .click();
   await settle(page);
 }
 
@@ -65,7 +69,10 @@ export async function shareLinkFor(page: Page, text: string, settings: Record<st
     async ([pieceText, pieceSettings]) => {
       const module = "/src/app/files/share.ts";
       const { encodeShare, shareLink } = await import(/* @vite-ignore */ module);
-      return shareLink(await encodeShare({ name: "Au clair de la lune.prisma", text: pieceText, settings: pieceSettings }), location.href) as string;
+      return shareLink(
+        await encodeShare({ name: "Au clair de la lune.prisma", text: pieceText, settings: pieceSettings }),
+        location.href,
+      ) as string;
     },
     [text, settings] as const,
   );
@@ -104,8 +111,12 @@ export async function provideFolder(page: Page, folder: string, files: [string, 
 /** Le choix d'un fichier à enregistrer remplacé par ce dossier privé du navigateur : le fichier y prend le nom proposé. */
 export async function provideSaveTarget(page: Page, folder: string) {
   await page.addInitScript((name) => {
-    (window as unknown as { showSaveFilePicker: (options: { suggestedName: string }) => Promise<FileSystemFileHandle> }).showSaveFilePicker = async ({ suggestedName }) =>
-      (await (await navigator.storage.getDirectory()).getDirectoryHandle(name, { create: true })).getFileHandle(suggestedName, { create: true });
+    (
+      window as unknown as { showSaveFilePicker: (options: { suggestedName: string }) => Promise<FileSystemFileHandle> }
+    ).showSaveFilePicker = async ({ suggestedName }) =>
+      (await (await navigator.storage.getDirectory()).getDirectoryHandle(name, { create: true })).getFileHandle(suggestedName, {
+        create: true,
+      });
   }, folder);
 }
 
@@ -144,15 +155,28 @@ export async function fakePcloud(page: Page, files: Record<string, string>, { re
     if (method === "listfolder")
       return json({
         result: 0,
-        metadata: { name: "Prisma", isfolder: true, contents: entries.map(([name], index) => ({ name, isfolder: false, fileid: index + 1, modified: "Wed, 28 Oct 2026 10:00:00 +0000" })) },
+        metadata: {
+          name: "Prisma",
+          isfolder: true,
+          contents: entries.map(([name], index) => ({
+            name,
+            isfolder: false,
+            fileid: index + 1,
+            modified: "Wed, 28 Oct 2026 10:00:00 +0000",
+          })),
+        },
       });
-    if (method === "getfilelink") return json({ result: 0, hosts: ["eapi.pcloud.com"], path: `/fichier/${url.searchParams.get("fileid")}` });
+    if (method === "getfilelink")
+      return json({ result: 0, hosts: ["eapi.pcloud.com"], path: `/fichier/${url.searchParams.get("fileid")}` });
     if (method.startsWith("fichier/")) return route.fulfill({ body: entries[Number(method.split("/")[1]) - 1][1] });
     return json({ result: 2009, error: "File not found." });
   });
   // le relais du site, qui lit un fichier pour la page
   await page.route("**/api/pcloud-file**", (route) =>
-    route.fulfill({ contentType: "text/plain; charset=utf-8", body: entries[Number(new URL(route.request().url()).searchParams.get("fileid")) - 1][1] }),
+    route.fulfill({
+      contentType: "text/plain; charset=utf-8",
+      body: entries[Number(new URL(route.request().url()).searchParams.get("fileid")) - 1][1],
+    }),
   );
 }
 

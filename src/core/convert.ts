@@ -106,7 +106,9 @@ function convertAt(score: Score, part: number, instrument: InstrumentName, strs:
   const name = score.parts[part].name;
   // la partie prend le nom de l'instrument, sauf si le sien le dit déjà
   const named = name && guessInstrument(name) === instrument ? name : instrument === "guitar" ? "Guitare" : "Basse";
-  const parts = score.parts.map((p, i) => (i === part ? { name: named, staves: 1, ...(guessInstrument(named) !== instrument ? { instrument } : {}), strings: strs } : p));
+  const parts = score.parts.map((p, i) =>
+    i === part ? { name: named, staves: 1, ...(guessInstrument(named) !== instrument ? { instrument } : {}), strings: strs } : p,
+  );
   const converted: Score = {
     ...score,
     parts,

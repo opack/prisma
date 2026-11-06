@@ -3,7 +3,17 @@
  * ou vers la gauche selon le sens où l'on a défilé. Sur le site, il ramène aux parties de la page ;
  * dans l'application, au début de la partition. Sa place (className) dépend de ce qui l'entoure.
  */
-export function ScrollBackButton({ direction = "up", label, onClick, className = "" }: { direction?: "up" | "left"; label: string; onClick: () => void; className?: string }) {
+export function ScrollBackButton({
+  direction = "up",
+  label,
+  onClick,
+  className = "",
+}: {
+  direction?: "up" | "left";
+  label: string;
+  onClick: () => void;
+  className?: string;
+}) {
   return (
     <button
       type="button"
@@ -12,7 +22,17 @@ export function ScrollBackButton({ direction = "up", label, onClick, className =
       title={label}
       aria-label={label}
     >
-      <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <svg
+        viewBox="0 0 16 16"
+        width="18"
+        height="18"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
         <path d={direction === "up" ? "M8 13V3M3.5 7.5 8 3l4.5 4.5" : "M13 8H3M7.5 3.5 3 8l4.5 4.5"} />
       </svg>
     </button>

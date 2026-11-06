@@ -1,6 +1,19 @@
 /** Le morceau ouvert : en commencer un, l'exporter, en recevoir un par un lien, en déposer un. */
 import { expect, test } from "@playwright/test";
-import { CLAIR_SECTIONS, TECHNIQUES, chooseMenu, dropFiles, openApp, provideFolder, listProvided, provideSaveTarget, readProvided, receiveShared, settle, shareLinkFor } from "../support/app.ts";
+import {
+  CLAIR_SECTIONS,
+  TECHNIQUES,
+  chooseMenu,
+  dropFiles,
+  openApp,
+  provideFolder,
+  listProvided,
+  provideSaveTarget,
+  readProvided,
+  receiveShared,
+  settle,
+  shareLinkFor,
+} from "../support/app.ts";
 
 const firstPage = (page: import("@playwright/test").Page) => page.locator(".page").first();
 

@@ -24,19 +24,95 @@
 import type { Completion, CompletionContext, CompletionResult, CompletionSection } from "@codemirror/autocomplete";
 import { autocompletion } from "@codemirror/autocomplete";
 import type { EditorView } from "@codemirror/view";
-import { FRONTMATTER, INSTRUMENTS, DEFAULT_CELL, SHAPE_SEPARATOR, chordName, chordNotes, chordPrismaName, chordPrismaText, chordShape, gridStrings, parseShape, partExtras, shapeNotes, shapeText, splitPartEntry, splitParts, guessKey, inspect, keyName, midiOf, noteName, parsePrisma, prismaKey } from "../../core/index.ts";
+import {
+  FRONTMATTER,
+  INSTRUMENTS,
+  DEFAULT_CELL,
+  SHAPE_SEPARATOR,
+  chordName,
+  chordNotes,
+  chordPrismaName,
+  chordPrismaText,
+  chordShape,
+  gridStrings,
+  parseShape,
+  partExtras,
+  shapeNotes,
+  shapeText,
+  splitPartEntry,
+  splitParts,
+  guessKey,
+  inspect,
+  keyName,
+  midiOf,
+  noteName,
+  parsePrisma,
+  prismaKey,
+} from "../../core/index.ts";
 import { pitchClass, stringsOf } from "../../core/index.ts";
-import { ARPEGGIO_DOWN, ARTICULATION_SIGNS, EFFECT_SIGNS, FERMATA, PEDAL_CHANGE, PEDAL_DOWN, PEDAL_UP, isHairpin, markMeaning, BEND_MARK, DEAD_MARK, HARMONICS, MAX_BEND, MAX_FRET, RELEASE_MARK, guessInstrument, isStringInstrument, slideText, soundingOf, tuningsOf } from "../../core/index.ts";
+import {
+  ARPEGGIO_DOWN,
+  ARTICULATION_SIGNS,
+  EFFECT_SIGNS,
+  FERMATA,
+  PEDAL_CHANGE,
+  PEDAL_DOWN,
+  PEDAL_UP,
+  isHairpin,
+  markMeaning,
+  BEND_MARK,
+  DEAD_MARK,
+  HARMONICS,
+  MAX_BEND,
+  MAX_FRET,
+  RELEASE_MARK,
+  guessInstrument,
+  isStringInstrument,
+  slideText,
+  soundingOf,
+  tuningsOf,
+} from "../../core/index.ts";
 import type { Direction, InstrumentName, NoteNames, Strings } from "../../core/index.ts";
 import { CHORD_LINE, isRuler, markTokens, parseRule } from "../../core/prisma-parse.ts";
 import { instrumentLabel } from "../playback/instruments.ts";
-import { caseAt, cases, writeMark, extendRuler, noteLine, octaveRoom, rulerSuffixes, soundingAt, systemOf, writeCase, writeChord } from "./complete.ts";
+import {
+  caseAt,
+  cases,
+  writeMark,
+  extendRuler,
+  noteLine,
+  octaveRoom,
+  rulerSuffixes,
+  soundingAt,
+  systemOf,
+  writeCase,
+  writeChord,
+} from "./complete.ts";
 import type { Rewrite } from "./complete.ts";
 
 const FINGERS = ["pouce", "index", "majeur", "annulaire", "auriculaire"];
 /** Les groupes de la liste, dans cet ordre. */
 const SECTIONS: Record<string, CompletionSection> = Object.fromEntries(
-  ["Notes", "Cases", "Glissé", "Bend", "Doigté", "Trille", "Petite note", "Ligne @", "Ligne de notes", "Sections", "Nuances", "Soufflets et liaisons", "Articulations", "Cordes", "Pédale", "Arpège", "Tempo", "Caractère"].map((name, rank) => [name, { name, rank }]),
+  [
+    "Notes",
+    "Cases",
+    "Glissé",
+    "Bend",
+    "Doigté",
+    "Trille",
+    "Petite note",
+    "Ligne @",
+    "Ligne de notes",
+    "Sections",
+    "Nuances",
+    "Soufflets et liaisons",
+    "Articulations",
+    "Cordes",
+    "Pédale",
+    "Arpège",
+    "Tempo",
+    "Caractère",
+  ].map((name, rank) => [name, { name, rank }]),
 );
 /** Les doigts de la main gauche, sur le manche. */
 const LEFT_FINGERS = ["index", "majeur", "annulaire", "auriculaire"];
@@ -70,7 +146,6 @@ function rewrite(view: EditorView, r: Rewrite) {
   view.dispatch({ changes, selection: { anchor: Math.min(at, after.length) }, userEvent: "input.complete", scrollIntoView: true });
 }
 
-
 /**
  * Écrit content dans la case du curseur. Ce qui a été tapé depuis l'ouverture de la liste (de
  * origin, la place du curseur alors, à to) a décalé la ligne : il est retiré d'abord, la case est
@@ -101,7 +176,11 @@ function headerKeys(ctx: CompletionContext, line: string, lines: string[], head:
   // la tonalité : celle que les notes font deviner, déjà écrite
   const key = options.find((o) => o.label === "key");
   const guess = key && guessed(lines);
-  if (key && guess) Object.assign(key, { apply: `key: ${prismaKey(guess)}`, detail: `tonalité du morceau ; d'après ses notes, ${prismaKey(guess)} (${keyName(guess, "latin")})` });
+  if (key && guess)
+    Object.assign(key, {
+      apply: `key: ${prismaKey(guess)}`,
+      detail: `tonalité du morceau ; d'après ses notes, ${prismaKey(guess)} (${keyName(guess, "latin")})`,
+    });
   return { from: ctx.pos - m[2].length, options, validFor: /^[\w-]*$/ };
 }
 
@@ -136,13 +215,19 @@ function partNames(ctx: CompletionContext, line: string): CompletionResult | nul
   if (!m) return null;
   const word = m[1].split(",").pop()!.replace(/^\s+/, "");
   if (!ctx.explicit && !word) return null;
-  const written = m[1].split(",").slice(0, -1).map((x) => splitPartEntry(x).name.toLowerCase());
+  const written = m[1]
+    .split(",")
+    .slice(0, -1)
+    .map((x) => splitPartEntry(x).name.toLowerCase());
   const options: Completion[] = READY_PARTS.filter((p) => !written.includes(p.name.toLowerCase())).map((p, k) => ({
     label: p.name,
     type: "enum",
     boost: -k,
     // le son, quand il n'est pas celui du nom (Chant : des voix)
-    detail: [instrumentLabel(guessInstrument(p.name)) !== p.name ? `à l'écoute : ${instrumentLabel(guessInstrument(p.name))}` : "", p.detail].filter(Boolean).join(" ; ") || undefined,
+    detail:
+      [instrumentLabel(guessInstrument(p.name)) !== p.name ? `à l'écoute : ${instrumentLabel(guessInstrument(p.name))}` : "", p.detail]
+        .filter(Boolean)
+        .join(" ; ") || undefined,
   }));
   return { from: ctx.pos - word.length, options, validFor: /^[\p{L} ]*$/u };
 }
@@ -171,22 +256,41 @@ function instruments(ctx: CompletionContext, line: string, names: NoteNames): Co
   const m = before.match(/([^,(]*)\(([^()]*?)([a-z-]*)$/i);
   if (!m || (m[2].trim() && !m[2].trim().endsWith(","))) return null;
   const name = m[1].split(",").pop()!.trim();
-  const written = m[2].split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
+  const written = m[2]
+    .split(",")
+    .map((x) => x.trim().toLowerCase())
+    .filter(Boolean);
   const closed = /^\s*[a-z-]*\s*\)/i.test(line.slice(before.length));
   const end = (x: string) => (closed ? x : x + ")");
   const group = (name: string, rank: number) => ({ name, rank });
-  const options: Completion[] = written.length ? [] : INSTRUMENTS.map((x) => ({ label: x, type: "enum", detail: instrumentLabel(x), section: group("Instruments", 2), apply: end(x) }));
+  const options: Completion[] = written.length
+    ? []
+    : INSTRUMENTS.map((x) => ({ label: x, type: "enum", detail: instrumentLabel(x), section: group("Instruments", 2), apply: end(x) }));
   // un instrument à cordes (écrit, ou deviné du nom) : ses accordages, et le capo
   const played = (written.find((x) => (INSTRUMENTS as readonly string[]).includes(x)) ?? guessInstrument(name)) as InstrumentName;
   if (isStringInstrument(played)) {
     const note = (midi: number) => pitchClass((midi % 12) + 1, names === "english" ? "english" : "latin");
     if (!written.some((x) => tuningsOf(played).includes(x)))
       tuningsOf(played).forEach((t, k) =>
-        options.push({ label: t, type: "constant", detail: [...stringsOf(played, t, 0)!.open].reverse().map(note).join(" "), section: group("Accordages", 0), boost: -k, apply: end(t) }),
+        options.push({
+          label: t,
+          type: "constant",
+          detail: [...stringsOf(played, t, 0)!.open].reverse().map(note).join(" "),
+          section: group("Accordages", 0),
+          boost: -k,
+          apply: end(t),
+        }),
       );
     if (!written.some((x) => x.startsWith("capo")))
       for (const k of USUAL_CAPOS)
-        options.push({ label: `capo ${k}`, type: "constant", detail: `la forme de ${note(60)} sonne ${note(60 + k)}`, section: group("Capo", 1), boost: -k, apply: end(`capo ${k}`) });
+        options.push({
+          label: `capo ${k}`,
+          type: "constant",
+          detail: `la forme de ${note(60)} sonne ${note(60 + k)}`,
+          section: group("Capo", 1),
+          boost: -k,
+          apply: end(`capo ${k}`),
+        });
   }
   return options.length ? { from: ctx.pos - m[3].length, options: ranked(options), validFor: /^[a-z-]*$/i } : null;
 }
@@ -195,7 +299,11 @@ function instruments(ctx: CompletionContext, line: string, names: NoteNames): Co
 function headerParts(lines: string[], head?: [number, number]) {
   const line = head ? lines.slice(head[0] + 1, head[1]).find((l) => /^parts\s*:/.test(l)) : undefined;
   try {
-    return line ? splitParts(line.replace(/^parts\s*:/, "")).map(splitPartEntry).map((e) => partExtras(e.name, e.extras, 0)) : [];
+    return line
+      ? splitParts(line.replace(/^parts\s*:/, ""))
+          .map(splitPartEntry)
+          .map((e) => partExtras(e.name, e.extras, 0))
+      : [];
   } catch {
     return [];
   }
@@ -216,14 +324,35 @@ function stringsAt(lines: string[], sys: { ruler: number }, L: number, head?: [n
 }
 
 /** Le nom de la note d'une corde : « corde de sol ». */
-const openName = (strs: Strings, k: number, names: NoteNames) => (names === "none" ? `corde ${k}` : `corde de ${noteName(soundingOf(strs, k, 0), names).replace(/\d+$/, "")}`);
+const openName = (strs: Strings, k: number, names: NoteNames) =>
+  names === "none" ? `corde ${k}` : `corde de ${noteName(soundingOf(strs, k, 0), names).replace(/\d+$/, "")}`;
 
-function lineStarts(ctx: CompletionContext, lines: string[], L: number, before: string, body: number, head?: [number, number], names: NoteNames = "latin"): CompletionResult | null {
+function lineStarts(
+  ctx: CompletionContext,
+  lines: string[],
+  L: number,
+  before: string,
+  body: number,
+  head?: [number, number],
+  names: NoteNames = "latin",
+): CompletionResult | null {
   if (!/^@?[lc]?$/.test(before) || lines[L].trim() !== before.trim() || (!ctx.explicit && !before)) return null;
   const from = ctx.pos - before.length;
   const options: Completion[] = [
-    { label: "@", type: "keyword", detail: "indications : nuances, soufflets, pédale, sections, signes", apply: "@ ", section: SECTIONS["Ligne @"] },
-    { label: "@l", type: "keyword", detail: "paroles d'un couplet, sous les lignes de sa portée", apply: "@l ", section: SECTIONS["Ligne @"] },
+    {
+      label: "@",
+      type: "keyword",
+      detail: "indications : nuances, soufflets, pédale, sections, signes",
+      apply: "@ ",
+      section: SECTIONS["Ligne @"],
+    },
+    {
+      label: "@l",
+      type: "keyword",
+      detail: "paroles d'un couplet, sous les lignes de sa portée",
+      apply: "@l ",
+      section: SECTIONS["Ligne @"],
+    },
     { label: "@c", type: "keyword", detail: "accords, au-dessus de la règle", apply: "@c ", section: SECTIONS["Ligne @"] },
   ];
   // sous la règle d'un système : une nouvelle ligne de notes, à son octave
@@ -241,7 +370,11 @@ function lineStarts(ctx: CompletionContext, lines: string[], L: number, before: 
         apply: (view) => {
           const l = view.state.doc.lineAt(view.state.selection.main.head);
           const insert = noteLine(ruler, text);
-          view.dispatch({ changes: { from: l.from, to: l.to, insert }, selection: { anchor: l.from + ruler.indexOf("|") + 1 }, userEvent: "input.complete" });
+          view.dispatch({
+            changes: { from: l.from, to: l.to, insert },
+            selection: { anchor: l.from + ruler.indexOf("|") + 1 },
+            userEvent: "input.complete",
+          });
         },
       });
     // sur une portée à cordes, les cordes qui manquent entre celle du dessus et celle du dessous, dans l'ordre
@@ -258,7 +391,14 @@ function lineStarts(ctx: CompletionContext, lines: string[], L: number, before: 
     } else {
       const room = octaveRoom(lines, sys, L);
       if (room.same) add("", "une ligne de plus, dans l'octave de la ligne du dessus", 1);
-      for (const o of room.octaves) add(label(o), o === 0 ? "l'octave du do central" : `${Math.abs(o)} octave${Math.abs(o) > 1 ? "s" : ""} ${o > 0 ? "au-dessus" : "au-dessous"} du do central`, 0);
+      for (const o of room.octaves)
+        add(
+          label(o),
+          o === 0
+            ? "l'octave du do central"
+            : `${Math.abs(o)} octave${Math.abs(o) > 1 ? "s" : ""} ${o > 0 ? "au-dessus" : "au-dessous"} du do central`,
+          0,
+        );
     }
   }
   return { from, options, filter: !!before };
@@ -288,16 +428,37 @@ function rulerEnd(ctx: CompletionContext, lines: string[], L: number, C: number)
  * harmoniques ; sur une case écrite, ses glissés (vers la note suivante d'abord, dans son sens), ses
  * bends et le doigt de la main gauche.
  */
-function stringCells(ctx: CompletionContext, lines: string[], L: number, c: { start: number; end: number }, content: string, lead: number, string: number, strs: Strings, names: NoteNames): CompletionResult {
+function stringCells(
+  ctx: CompletionContext,
+  lines: string[],
+  L: number,
+  c: { start: number; end: number },
+  content: string,
+  lead: number,
+  string: number,
+  strs: Strings,
+  names: NoteNames,
+): CompletionResult {
   const name = (fret: number, midi = soundingOf(strs, string, fret)) => (names === "none" ? "" : noteName(midi, names));
   const options: Completion[] = [];
-  const add = (text: string, detail: string, section: string) => options.push({ label: text, detail, section: SECTIONS[section], boost: -options.length, type: "variable", apply: inCase(text, ctx.pos) });
+  const add = (text: string, detail: string, section: string) =>
+    options.push({
+      label: text,
+      detail,
+      section: SECTIONS[section],
+      boost: -options.length,
+      type: "variable",
+      apply: inCase(text, ctx.pos),
+    });
   const fret = /^\d{1,2}$/.test(content) && Number(content) <= MAX_FRET ? Number(content) : undefined;
   if (fret === undefined) {
     for (let k = 0; k <= MAX_FRET; k++) add(String(k), k ? name(k) : `${name(0)}, à vide`, "Cases");
     add("-", "la note continue", "Cases");
     add(DEAD_MARK, "note étouffée : un son sec, sans hauteur", "Cases");
-    for (const k of Object.keys(HARMONICS).map(Number).sort((a, b) => a - b)) add(`<${k}>`, `harmonique : elle sonne ${name(k, soundingOf(strs, string, 0) + HARMONICS[k]) || `sur la case ${k}`}`, "Cases");
+    for (const k of Object.keys(HARMONICS)
+      .map(Number)
+      .sort((a, b) => a - b))
+      add(`<${k}>`, `harmonique : elle sonne ${name(k, soundingOf(strs, string, 0) + HARMONICS[k]) || `sur la case ${k}`}`, "Cases");
   } else {
     // la note suivante de la corde, si elle vient sans silence : le glissé vers elle, dans son sens
     const all = cases(lines[systemOf(lines, L)!.ruler]);
@@ -313,9 +474,14 @@ function stringCells(ctx: CompletionContext, lines: string[], L: number, c: { st
     const glide = (d: Direction) => (d === "up" ? "vers l'aigu" : "vers le grave");
     if (toward) add(fret + slideText(toward, false), `glisser ${glide(toward)} jusqu'à la case ${next}, sans la rejouer`, "Glissé");
     for (const d of ["down", "up"] as const) add(fret + slideText(d, true), `glisser ${glide(d)} en laissant la note s'éteindre`, "Glissé");
-    for (const d of ["up", "down"] as const) add(slideText(d, true) + fret, `arriver en glissant d'${d === "up" ? "en dessous" : "au-dessus"}`, "Glissé");
+    for (const d of ["up", "down"] as const)
+      add(slideText(d, true) + fret, `arriver en glissant d'${d === "up" ? "en dessous" : "au-dessus"}`, "Glissé");
     for (let up = 1; up <= MAX_BEND && fret + up <= MAX_FRET; up++) {
-      add(`${fret}${BEND_MARK}${fret + up}`, `tirer la corde ${BEND_SIZES[up - 1]}${names === "none" ? "" : `, jusqu'au ${name(fret + up)}`}`, "Bend");
+      add(
+        `${fret}${BEND_MARK}${fret + up}`,
+        `tirer la corde ${BEND_SIZES[up - 1]}${names === "none" ? "" : `, jusqu'au ${name(fret + up)}`}`,
+        "Bend",
+      );
       if (up === 2) add(`${fret}${BEND_MARK}${fret + up}${RELEASE_MARK}`, "tirer d'un ton, puis relâcher", "Bend");
     }
     LEFT_FINGERS.forEach((f, k) => add(`${fret}_${k + 1}`, `doigt ${k + 1} : ${f}`, "Doigté"));
@@ -374,7 +540,14 @@ function marksFor(system: boolean, strings: boolean, nextSection: string | undef
  * portée, les siennes (sur une portée à cordes, le médiator, l'étouffé et le vibrato plutôt que la
  * pédale). Une indication déjà écrite dans la case est remplacée.
  */
-function markLine(ctx: CompletionContext, lines: string[], L: number, C: number, body: number, head?: [number, number]): CompletionResult | null {
+function markLine(
+  ctx: CompletionContext,
+  lines: string[],
+  L: number,
+  C: number,
+  body: number,
+  head?: [number, number],
+): CompletionResult | null {
   const line = lines[L];
   if (!line.startsWith("@") || line.startsWith(CHORD_LINE) || line.startsWith("@l") || C < 1) return null;
   const sys = systemOf(lines, L, body);
@@ -389,7 +562,9 @@ function markLine(ctx: CompletionContext, lines: string[], L: number, C: number,
   if (start >= c.end || C < start - 1) return null;
   const here = tokens.find((t) => t.col >= start && t.col < c.end);
   const system = L < sys.ruler;
-  const used = new Set([...lines.join("\n").matchAll(/^@.*?\[([A-Z])\]/gm)].flatMap((m) => [...m[0].matchAll(/\[([A-Z])\]/g)].map((x) => x[1])));
+  const used = new Set(
+    [...lines.join("\n").matchAll(/^@.*?\[([A-Z])\]/gm)].flatMap((m) => [...m[0].matchAll(/\[([A-Z])\]/g)].map((x) => x[1])),
+  );
   const next = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].find((x) => !used.has(x));
   const strings = !system && !!stringsAt(lines, sys, L, head);
   const origin = ctx.pos;
@@ -425,7 +600,15 @@ function markLine(ctx: CompletionContext, lines: string[], L: number, C: number,
   return { from: filter ? Math.min(from, ctx.pos) : ctx.pos, options: ranked(options), filter };
 }
 
-function notes(ctx: CompletionContext, lines: string[], L: number, C: number, body: number, names: NoteNames, head?: [number, number]): CompletionResult | null {
+function notes(
+  ctx: CompletionContext,
+  lines: string[],
+  L: number,
+  C: number,
+  body: number,
+  names: NoteNames,
+  head?: [number, number],
+): CompletionResult | null {
   const sys = systemOf(lines, L, body);
   if (!sys || L <= sys.ruler) return null;
   const line = lines[L];
@@ -444,7 +627,15 @@ function notes(ctx: CompletionContext, lines: string[], L: number, C: number, bo
   const octave = here.octave;
   const name = (n: number) => (octave === undefined ? "" : noteName(midiOf(octave, n), names));
   const options: Completion[] = [];
-  const note = (text: string, detail: string, section: string) => options.push({ label: text, detail, section: SECTIONS[section], boost: -options.length, type: "variable", apply: inCase(text, ctx.pos) });
+  const note = (text: string, detail: string, section: string) =>
+    options.push({
+      label: text,
+      detail,
+      section: SECTIONS[section],
+      boost: -options.length,
+      type: "variable",
+      apply: inCase(text, ctx.pos),
+    });
   for (let n = 1; n <= 12; n++) note(String(n), name(n), "Notes");
   note("-", "la note continue", "Notes");
   const n = Number(content);
@@ -466,7 +657,14 @@ const gridOf = (lines: string[], head?: [number, number]) => gridStrings(headerP
  * anglais ou ses notes. Sur une grille tapée seule (« x02210 »), l'accord qu'elle joue sur la
  * guitare du morceau, avec elle ; sur un accord tapé sans grille, l'accord et sa grille.
  */
-function chordAt(ctx: CompletionContext, lines: string[], L: number, C: number, body: number, head?: [number, number]): CompletionResult | null {
+function chordAt(
+  ctx: CompletionContext,
+  lines: string[],
+  L: number,
+  C: number,
+  body: number,
+  head?: [number, number],
+): CompletionResult | null {
   if (!/^@c(\s|$)/.test(lines[L])) return null;
   const sys = systemOf(lines, L, body);
   if (!sys || L >= sys.ruler) return null;
@@ -480,7 +678,11 @@ function chordAt(ctx: CompletionContext, lines: string[], L: number, C: number, 
   const c = caseAt(ruler, inWord ? s0 : C);
   if (!c) return null;
   const start = inWord ? s0 : c.start;
-  const word = inWord ? line.slice(s0).match(/^\S*/)![0] : line[c.start - 1] && line[c.start - 1] !== " " ? "" : (line.slice(c.start).match(/^\S*/)?.[0] ?? "");
+  const word = inWord
+    ? line.slice(s0).match(/^\S*/)![0]
+    : line[c.start - 1] && line[c.start - 1] !== " "
+      ? ""
+      : (line.slice(c.start).match(/^\S*/)?.[0] ?? "");
   const strs = gridOf(lines, head);
   // les notes, de la basse vers l'aigu, chacune une fois : celles de la grille tapée, sinon celles qui sonnent ici
   const typed = word && !word.includes(SHAPE_SEPARATOR) ? parseShape(word) : undefined;
@@ -488,13 +690,18 @@ function chordAt(ctx: CompletionContext, lines: string[], L: number, C: number, 
   const notes = shaped ? shapeNotes(shaped, strs) : [...new Set(soundingAt(lines, sys, start).map((m) => (m % 12) + 1))];
   const named = !shaped && word && !word.includes(SHAPE_SEPARATOR) ? chordNotes(word) : undefined;
   let words: { w: string; detail?: string }[];
-  if (shaped) words = [chordPrismaName(notes), chordName(notes), chordPrismaText(notes)].filter((w): w is string => !!w).map((w, i) => ({ w: w + SHAPE_SEPARATOR + word, detail: i === 0 ? "l'accord que joue cette grille" : undefined }));
+  if (shaped)
+    words = [chordPrismaName(notes), chordName(notes), chordPrismaText(notes)]
+      .filter((w): w is string => !!w)
+      .map((w, i) => ({ w: w + SHAPE_SEPARATOR + word, detail: i === 0 ? "l'accord que joue cette grille" : undefined }));
   else if (named) {
     const grid = chordShape(named, strs);
     words = grid ? [{ w: word + SHAPE_SEPARATOR + shapeText(grid), detail: "l'accord, et sa grille pour la guitare" }] : [];
   } else {
     if (notes.length < 2) return null;
-    words = [chordPrismaName(notes), chordName(notes), chordPrismaText(notes)].filter((w): w is string => !!w).map((w, i) => ({ w, detail: i === 0 ? "l'accord des notes qui sonnent ici" : undefined }));
+    words = [chordPrismaName(notes), chordName(notes), chordPrismaText(notes)]
+      .filter((w): w is string => !!w)
+      .map((w, i) => ({ w, detail: i === 0 ? "l'accord des notes qui sonnent ici" : undefined }));
   }
   if (!words.length) return null;
   const from = ctx.state.doc.lineAt(ctx.pos).from + Math.min(start, line.length);
@@ -519,13 +726,19 @@ export function completionSource(names: () => NoteNames) {
     const L = l.number - 1;
     const C = ctx.pos - l.from;
     const line = lines[L];
-    if (head && L > head[0] && L < head[1]) return instruments(ctx, line, names()) ?? partNames(ctx, line) ?? headerKeys(ctx, line, lines, head);
+    if (head && L > head[0] && L < head[1])
+      return instruments(ctx, line, names()) ?? partNames(ctx, line) ?? headerKeys(ctx, line, lines, head);
     if (head && L <= head[1]) return null;
     if (line.startsWith("#")) return null;
     const starts = lineStarts(ctx, lines, L, line.slice(0, C), body, head, names());
     if (starts) return starts;
     if (!ctx.explicit) return null;
-    return chordAt(ctx, lines, L, C, body, head) ?? markLine(ctx, lines, L, C, body, head) ?? rulerEnd(ctx, lines, L, C) ?? notes(ctx, lines, L, C, body, names(), head);
+    return (
+      chordAt(ctx, lines, L, C, body, head) ??
+      markLine(ctx, lines, L, C, body, head) ??
+      rulerEnd(ctx, lines, L, C) ??
+      notes(ctx, lines, L, C, body, names(), head)
+    );
   };
 }
 

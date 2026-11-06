@@ -164,7 +164,7 @@ export const TRILL_MARK = "~";
 
 /** Voisine d'une trille notée par son numéro : la plus proche qui le porte, au-dessus ou au-dessous. */
 export function trillAux(midi: number, number: number): number {
-  const up = ((number - 1 - (midi % 12) + 12) % 12) || 12;
+  const up = (number - 1 - (midi % 12) + 12) % 12 || 12;
   return up <= 6 ? midi + up : midi + up - 12;
 }
 
@@ -195,7 +195,8 @@ export type ArticulationKind = "staccato" | "accent" | "marcato" | "down" | "up"
 export const ARTICULATION_SIGNS: Record<ArticulationKind, string> = { staccato: ".", accent: "!", marcato: "!!", down: "d", up: "u" };
 /** Le sens du médiator (ou de l'archet), propre aux instruments à cordes. */
 export const isPick = (k: ArticulationKind) => k === "down" || k === "up";
-export const articulationOf = (t: string) => (Object.keys(ARTICULATION_SIGNS) as ArticulationKind[]).find((k) => ARTICULATION_SIGNS[k] === t);
+export const articulationOf = (t: string) =>
+  (Object.keys(ARTICULATION_SIGNS) as ArticulationKind[]).find((k) => ARTICULATION_SIGNS[k] === t);
 export const isArticulationSign = (t: string) => articulationOf(t) !== undefined;
 
 /**
@@ -247,7 +248,16 @@ export const DYNAMICS = ["ppp", "pp", "p", "mp", "mf", "f", "ff", "fff", "sf", "
 export const isDynamic = (t: string) => DYNAMICS.includes(t.replace(/^\((.+)\)$/, "$1"));
 
 /** Nuances écrites en toutes lettres dans un texte, et leur signe. */
-const DYNAMIC_WORDS: Record<string, string> = { pianississimo: "ppp", pianissimo: "pp", mezzopiano: "mp", piano: "p", mezzoforte: "mf", forte: "f", fortissimo: "ff", fortississimo: "fff" };
+const DYNAMIC_WORDS: Record<string, string> = {
+  pianississimo: "ppp",
+  pianissimo: "pp",
+  mezzopiano: "mp",
+  piano: "p",
+  mezzoforte: "mf",
+  forte: "f",
+  fortissimo: "ff",
+  fortississimo: "fff",
+};
 
 /** La nuance qu'un texte écrit en toutes lettres (« sempre pianissimo » : pp), s'il y en a une. */
 export function dynamicInWords(text: string): string | undefined {
@@ -275,7 +285,8 @@ export type Effect = { staff: Staff; kind: EffectKind; start: number; end: numbe
 export type EffectKind = "palmMute" | "vibrato";
 /** Le signe d'un jeu qui dure, sur une ligne @ de voix, et sa suite (des traits, ou des vagues). */
 export const EFFECT_SIGNS: Record<EffectKind, string> = { palmMute: "P.M.", vibrato: "~" };
-export const effectOf = (t: string): EffectKind | undefined => (/^P\.M\.[-|]*$/.test(t) ? "palmMute" : /^~+\|?$/.test(t) ? "vibrato" : undefined);
+export const effectOf = (t: string): EffectKind | undefined =>
+  /^P\.M\.[-|]*$/.test(t) ? "palmMute" : /^~+\|?$/.test(t) ? "vibrato" : undefined;
 export const isEffect = (t: string) => effectOf(t) !== undefined;
 
 /**
@@ -327,7 +338,15 @@ export const MARKER_SIGN = /^\[([A-Z])\]$/;
 export const isStructureSign = (t: string) => MARKER_SIGN.test(t);
 
 /** Signe toujours lu à part sur une ligne @ : soufflet, signe de pédale, début de section. */
-export const isSign = (t: string) => isHairpin(t) || isEffect(t) || isSlur(t) || isPedalSign(t) || isStructureSign(t) || t === FERMATA || isArpeggioSign(t) || isArticulationSign(t);
+export const isSign = (t: string) =>
+  isHairpin(t) ||
+  isEffect(t) ||
+  isSlur(t) ||
+  isPedalSign(t) ||
+  isStructureSign(t) ||
+  t === FERMATA ||
+  isArpeggioSign(t) ||
+  isArticulationSign(t);
 
 /**
  * Deux mots d'une ligne @ séparés par une seule espace forment un seul texte (« a tempo »,
@@ -335,7 +354,14 @@ export const isSign = (t: string) => isHairpin(t) || isEffect(t) || isSlur(t) ||
  * soufflet ou un début de section.
  */
 export const joinsText = (prev: string, next: string) =>
-  !isSign(next) && !isHairpin(prev) && !isEffect(prev) && !isSlur(prev) && !isStructureSign(prev) && prev !== FERMATA && !isArpeggioSign(prev) && !isArticulationSign(prev);
+  !isSign(next) &&
+  !isHairpin(prev) &&
+  !isEffect(prev) &&
+  !isSlur(prev) &&
+  !isStructureSign(prev) &&
+  prev !== FERMATA &&
+  !isArpeggioSign(prev) &&
+  !isArticulationSign(prev);
 
 /**
  * Syllabe de paroles, chantée sur la note de sa portée qui commence à t. verse : couplet (1, 2…).
@@ -392,9 +418,7 @@ export const beatStart = (i: number) => i * TICKS_PER_BEAT;
 
 /** Trie les notes de façon stable : par début, portée du haut d'abord, de l'aigu au grave. */
 export function sortNotes(notes: Note[]): Note[] {
-  return [...notes].sort(
-    (a, b) => a.start - b.start || a.staff - b.staff || b.midi - a.midi || a.end - b.end,
-  );
+  return [...notes].sort((a, b) => a.start - b.start || a.staff - b.staff || b.midi - a.midi || a.end - b.end);
 }
 
 /** Trie les petites notes : par instant, portée du haut d'abord, par rang, de l'aigu au grave. */
@@ -410,9 +434,7 @@ export function sortLyrics(lyrics: Lyric[]): Lyric[] {
 }
 
 export function sortGraces(graces: Grace[]): Grace[] {
-  return [...graces].sort(
-    (a, b) => a.t - b.t || a.staff - b.staff || a.slot - b.slot || b.midi - a.midi,
-  );
+  return [...graces].sort((a, b) => a.t - b.t || a.staff - b.staff || a.slot - b.slot || b.midi - a.midi);
 }
 
 /**

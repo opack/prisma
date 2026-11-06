@@ -6,10 +6,30 @@
  */
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
-import { CLAIR_SECTIONS, DESKTOP, GREENSLEEVES_CHORDS, GYMNOPEDIE, GYMNOPEDIE_XML, PHONE, SCALE, TABLET, TECHNIQUES, chooseMenu, connectPcloud, fakePcloud, openApp, provideFolder, retouchAt, settle } from "../support/app.ts";
+import {
+  CLAIR_SECTIONS,
+  DESKTOP,
+  GREENSLEEVES_CHORDS,
+  GYMNOPEDIE,
+  GYMNOPEDIE_XML,
+  PHONE,
+  SCALE,
+  TABLET,
+  TECHNIQUES,
+  chooseMenu,
+  connectPcloud,
+  fakePcloud,
+  openApp,
+  provideFolder,
+  retouchAt,
+  settle,
+} from "../support/app.ts";
 
 // le site : chaque page, entière, au bureau et sur un téléphone
-for (const [name, size] of [["bureau", DESKTOP], ["telephone", PHONE]] as const)
+for (const [name, size] of [
+  ["bureau", DESKTOP],
+  ["telephone", PHONE],
+] as const)
   for (const pagePath of ["index", "apprendre", "reference", "guitare", "comparaison"])
     test(`site ${pagePath} ${name}`, async ({ page }) => {
       await page.setViewportSize(size);
@@ -31,7 +51,10 @@ test("site menu telephone", async ({ page }) => {
 });
 
 // l'accueil, plus bas que son haut : ses parties sous le bouton fixé en haut, et le retour en haut
-for (const [name, size] of [["bureau", DESKTOP], ["telephone", PHONE]] as const)
+for (const [name, size] of [
+  ["bureau", DESKTOP],
+  ["telephone", PHONE],
+] as const)
   test(`site parties ${name}`, async ({ page }) => {
     await page.setViewportSize(size);
     await page.goto("/index.html");
@@ -47,7 +70,7 @@ test("site sommaire telephone", async ({ page }) => {
   await page.setViewportSize(PHONE);
   await page.goto("/reference.html");
   await settle(page);
-  await page.locator("[id=\"3-le-temps\"]").evaluate((h) => h.scrollIntoView({ behavior: "instant" }));
+  await page.locator('[id="3-le-temps"]').evaluate((h) => h.scrollIntoView({ behavior: "instant" }));
   await settle(page);
   await page.getByRole("button", { name: /^Sommaire/ }).click();
   await expect(page).toHaveScreenshot("site-sommaire-telephone.png");
@@ -60,7 +83,11 @@ for (const n of ["2", "5"])
     await page.goto("/index.html");
     await settle(page);
     const keyboard = page.getByRole("img", { name: /Deux octaves du clavier/ });
-    await keyboard.locator("text", { hasText: new RegExp(`^${n}$`) }).first().locator("..").hover();
+    await keyboard
+      .locator("text", { hasText: new RegExp(`^${n}$`) })
+      .first()
+      .locator("..")
+      .hover();
     await expect(keyboard).toHaveScreenshot(`site-clavier-${n}.png`);
   });
 
@@ -135,7 +162,10 @@ test("app options métronome", async ({ page }) => {
 
 // l'application sur un écran étroit : l'éditeur ou la partition, un seul menu ; sur un téléphone,
 // l'écoute sur sa propre ligne
-for (const [name, size] of [["telephone", PHONE], ["tablette", TABLET]] as const)
+for (const [name, size] of [
+  ["telephone", PHONE],
+  ["tablette", TABLET],
+] as const)
   for (const editing of [false, true])
     test(`app ${name} ${editing ? "edition" : "lecture"}`, async ({ page }) => {
       await openApp(page, { source: CLAIR_SECTIONS, editing, size });
@@ -177,7 +207,11 @@ test.describe("au doigt", () => {
   });
   // des boutons assez grands pour le doigt, la barre sur une ligne : le logo seul, un seul menu,
   // puis les réglages de l'écoute sous le bouton ⋯
-  for (const [name, size] of [["telephone", PHONE], ["tablette", TABLET], ["tablette couchee", { width: TABLET.height, height: TABLET.width }]] as const)
+  for (const [name, size] of [
+    ["telephone", PHONE],
+    ["tablette", TABLET],
+    ["tablette couchee", { width: TABLET.height, height: TABLET.width }],
+  ] as const)
     test(`app ${name} au doigt`, async ({ page }) => {
       await openApp(page, { source: CLAIR_SECTIONS, editing: false, size });
       await expect(page).toHaveScreenshot(`app-${name.replace(" ", "-")}-au-doigt.png`);
@@ -243,7 +277,8 @@ test("app importer un lien", async ({ page }) => {
 // reçu avec une bibliothèque choisie : il s'y enregistre, puis s'ouvre, ses réglages à côté de lui
 test("app partition reçue, avec une bibliothèque", async ({ page }) => {
   await page.addInitScript(() => {
-    (window as unknown as { showDirectoryPicker: () => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker = async () => (await navigator.storage.getDirectory()).getDirectoryHandle("recus", { create: true });
+    (window as unknown as { showDirectoryPicker: () => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker = async () =>
+      (await navigator.storage.getDirectory()).getDirectoryHandle("recus", { create: true });
   });
   await openApp(page, { source: "", editing: false });
   await chooseMenu(page, "Fichier", "Bibliothèque");
@@ -272,7 +307,10 @@ test("app partition reçue, avec une bibliothèque", async ({ page }) => {
 // suivre la lecture : la partition défile jusqu'au curseur, placé à la fin du morceau puis au début
 // les notes du morceau (notes:), jamais imprimées : sous un bouton, à côté de son nom
 test("app notes du morceau", async ({ page }) => {
-  await openApp(page, { source: CLAIR_SECTIONS.replace("bpm: 100", "bpm: 100\nnotes: À jouer lentement, la main droite seule d'abord"), editing: false });
+  await openApp(page, {
+    source: CLAIR_SECTIONS.replace("bpm: 100", "bpm: 100\nnotes: À jouer lentement, la main droite seule d'abord"),
+    editing: false,
+  });
   await page.getByRole("button", { name: "Notes du morceau" }).click();
   await settle(page);
   await expect(page).toHaveScreenshot("app-notes.png");
@@ -416,7 +454,10 @@ test("app réglages de la mise en page", async ({ page }) => {
   await expect(page).toHaveScreenshot("app-mise-en-page.png");
 });
 
-for (const [item, file] of [["Nouveau…", "nouveau"], ["Exporter en MusicXML…", "export"]] as const)
+for (const [item, file] of [
+  ["Nouveau…", "nouveau"],
+  ["Exporter en MusicXML…", "export"],
+] as const)
   test(`app dialogue ${file}`, async ({ page }) => {
     await openApp(page, { source: CLAIR_SECTIONS });
     await chooseMenu(page, "Fichier", item);
@@ -431,7 +472,10 @@ test("app dialogue conversion", async ({ page }) => {
 
 // les nouveautés changent à chaque version : la fenêtre se compare sans elles (cachées : un masque
 // passerait sous la fenêtre, au premier plan) ; leur cadre reste
-for (const [name, size] of [["bureau", DESKTOP], ["telephone", PHONE]] as const)
+for (const [name, size] of [
+  ["bureau", DESKTOP],
+  ["telephone", PHONE],
+] as const)
   test(`app à propos ${name}`, async ({ page }) => {
     await openApp(page, { source: CLAIR_SECTIONS, size });
     if (size === PHONE) {
@@ -442,7 +486,9 @@ for (const [name, size] of [["bureau", DESKTOP], ["telephone", PHONE]] as const)
     } else await chooseMenu(page, "Aide", "À propos…");
     const dialog = page.getByRole("dialog");
     await expect(dialog).toContainText("Version");
-    await dialog.getByLabel("Nouveautés").evaluate((list) => [...list.children].forEach((r) => ((r as HTMLElement).style.visibility = "hidden")));
+    await dialog
+      .getByLabel("Nouveautés")
+      .evaluate((list) => [...list.children].forEach((r) => ((r as HTMLElement).style.visibility = "hidden")));
     await expect(page).toHaveScreenshot(`app-a-propos-${name}.png`);
   });
 
@@ -521,7 +567,9 @@ for (const view of ["list", "thumbs"] as const)
   test(`app bibliothèque ${view}`, async ({ page }) => {
     await openLibrary(page, view);
     // les dates (celles des fichiers, qui changent) : effacées, sans toucher à la place qu'elles prennent
-    await page.getByText(/^\d{2}\/\d{2}\/\d{4}$/).evaluateAll((dates) => dates.forEach((d) => ((d as HTMLElement).style.color = "transparent")));
+    await page
+      .getByText(/^\d{2}\/\d{2}\/\d{4}$/)
+      .evaluateAll((dates) => dates.forEach((d) => ((d as HTMLElement).style.color = "transparent")));
     await expect(page).toHaveScreenshot(`app-bibliotheque-${view}.png`);
   });
 
@@ -539,7 +587,10 @@ test("app lecture focalisée", async ({ page }) => {
 // la première page sortie de l'écran, le bouton qui ramène au début : vers la gauche quand les
 // pages défilent de côté (ajustées à la hauteur), vers le haut quand elles défilent de haut en bas
 // (zoomées, pour que les trois pages de la Gymnopédie dépassent de côté)
-for (const [fit, zoom, name] of [["height", 2, "gauche"], ["width", 1, "haut"]] as const)
+for (const [fit, zoom, name] of [
+  ["height", 2, "gauche"],
+  ["width", 1, "haut"],
+] as const)
   test(`app retour au début ${name}`, async ({ page }) => {
     await openApp(page, { source: GYMNOPEDIE, editing: false, view: { fit, zoom } });
     await page.locator("section[data-fit]").evaluate((p) => p.scrollTo({ left: p.scrollWidth, top: p.scrollHeight }));
@@ -591,7 +642,9 @@ test("app erreur", async ({ page }) => {
 });
 
 test("app erreurs", async ({ page }) => {
-  await openApp(page, { source: CLAIR_SECTIONS.replace("|1  |1  |1  |3  ||", "|1  |1  |13 |3  ||").replace("|3  |3  |3  |3  ||", "|3  |3  |33 |3  ||") });
+  await openApp(page, {
+    source: CLAIR_SECTIONS.replace("|1  |1  |1  |3  ||", "|1  |1  |13 |3  ||").replace("|3  |3  |3  |3  ||", "|3  |3  |33 |3  ||"),
+  });
   // le message d'une erreur, au survol de son soulignement
   await page.locator(".cm-lintRange-error").first().hover();
   await settle(page);

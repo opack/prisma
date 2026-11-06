@@ -27,8 +27,14 @@ describe("techniques des cordes", () => {
 
   it("lisent sur la ligne @ le médiator, l'étouffé de la paume et le vibrato", () => {
     const s = parsePrisma(piece(["0", "1", "3", "5"], ["@   d       u       P.M.---", "@                           ~~~~~~~"]));
-    expect(s.articulations.map((articulation) => [articulation.t / T, articulation.kind])).toEqual([[0, "down"], [1, "up"]]);
-    expect(s.effects.map((effect) => [effect.kind, effect.start / T, effect.end / T])).toEqual([["palmMute", 2, 3], ["vibrato", 3, 4]]);
+    expect(s.articulations.map((articulation) => [articulation.t / T, articulation.kind])).toEqual([
+      [0, "down"],
+      [1, "up"],
+    ]);
+    expect(s.effects.map((effect) => [effect.kind, effect.start / T, effect.end / T])).toEqual([
+      ["palmMute", 2, 3],
+      ["vibrato", 3, 4],
+    ]);
   });
 
   it("se réécrivent telles quelles", () => {
@@ -118,17 +124,42 @@ describe("techniques des cordes", () => {
   });
 
   it("rendus justes après un import ou une conversion : le sens de la note suivante, sinon un glissé de sortie", () => {
-    const n = (midi: number, start: number, end: number, slide?: "up" | "down") => ({ staff: 0, string: 1, midi, start, end, ...(slide ? { slide } : {}) });
-    const [a, , c, , e] = settleSlides([n(69, 0, T, "up"), n(67, T, 2 * T), n(67, 2 * T, 3 * T, "up"), n(70, 3.5 * T, 4 * T), n(70, 4 * T, 5 * T, "down")]);
+    const n = (midi: number, start: number, end: number, slide?: "up" | "down") => ({
+      staff: 0,
+      string: 1,
+      midi,
+      start,
+      end,
+      ...(slide ? { slide } : {}),
+    });
+    const [a, , c, , e] = settleSlides([
+      n(69, 0, T, "up"),
+      n(67, T, 2 * T),
+      n(67, 2 * T, 3 * T, "up"),
+      n(70, 3.5 * T, 4 * T),
+      n(70, 4 * T, 5 * T, "down"),
+    ]);
     expect([a.slide, a.slideOut]).toEqual(["down", undefined]);
     expect([c.slide, c.slideOut]).toEqual([undefined, "up"]);
     expect([e.slide, e.slideOut]).toEqual([undefined, "down"]);
   });
 
   it("passent par MusicXML et reviennent telles quelles", () => {
-    const text = writePrisma(parsePrisma(piece(["x", "<12>", "5/", "8"], ["@   d       u       P.M.---------------", "@                   (-------)   ~~~~~~~"])));
+    const text = writePrisma(
+      parsePrisma(piece(["x", "<12>", "5/", "8"], ["@   d       u       P.M.---------------", "@                   (-------)   ~~~~~~~"])),
+    );
     const xml = exportMusicXml(parsePrisma(text));
-    for (const tag of ["<notehead>x</notehead>", "<harmonic><natural/></harmonic>", '<slide type="start"', '<hammer-on type="start" number="1">H</hammer-on>', "<down-bow/>", "<up-bow/>", "<words>P.M.</words>", '<wavy-line type="start"']) expect(xml).toContain(tag);
+    for (const tag of [
+      "<notehead>x</notehead>",
+      "<harmonic><natural/></harmonic>",
+      '<slide type="start"',
+      '<hammer-on type="start" number="1">H</hammer-on>',
+      "<down-bow/>",
+      "<up-bow/>",
+      "<words>P.M.</words>",
+      '<wavy-line type="start"',
+    ])
+      expect(xml).toContain(tag);
     expect(writePrisma(importMusicXml(xml)).replace(/^key: .*\n/m, "")).toBe(text);
   });
 });

@@ -3,7 +3,9 @@ import { expect, test } from "@playwright/test";
 import { CLAIR_SECTIONS, PHONE, TABLET, openApp } from "../support/app.ts";
 
 test.describe("la barre des menus", () => {
-  test("un menu ouvert : le survol d'un autre titre l'ouvre à sa place, les flèches passent au voisin, Tab et un clic ailleurs le ferment", async ({ page }) => {
+  test("un menu ouvert : le survol d'un autre titre l'ouvre à sa place, les flèches passent au voisin, Tab et un clic ailleurs le ferment", async ({
+    page,
+  }) => {
     await openApp(page, { source: CLAIR_SECTIONS });
     const opened = page.getByRole("menu");
     await page.getByRole("button", { name: "Fichier", exact: true }).click();
@@ -19,7 +21,9 @@ test.describe("la barre des menus", () => {
     await expect(opened).toHaveCount(0);
   });
 
-  test("au clavier : Entrée ouvre le menu, les flèches parcourent ses actions, Échap le ferme et rend le focus à son titre", async ({ page }) => {
+  test("au clavier : Entrée ouvre le menu, les flèches parcourent ses actions, Échap le ferme et rend le focus à son titre", async ({
+    page,
+  }) => {
     await openApp(page, { source: CLAIR_SECTIONS });
     const title = page.getByRole("button", { name: "Affichage", exact: true });
     await title.focus();

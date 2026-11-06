@@ -1,7 +1,18 @@
 /** La bibliothèque : un dossier du disque, ou le dossier de l'app sur pCloud. */
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
-import { CLAIR_SECTIONS, GREENSLEEVES_CHORDS, GYMNOPEDIE_XML, TECHNIQUES, chooseMenu, connectPcloud, fakePcloud, openApp, provideFolder, settle } from "../support/app.ts";
+import {
+  CLAIR_SECTIONS,
+  GREENSLEEVES_CHORDS,
+  GYMNOPEDIE_XML,
+  TECHNIQUES,
+  chooseMenu,
+  connectPcloud,
+  fakePcloud,
+  openApp,
+  provideFolder,
+  settle,
+} from "../support/app.ts";
 
 const library = (page: Page) => page.locator("[data-library]");
 
@@ -23,7 +34,8 @@ async function openFolderLibrary(page: Page) {
 test.describe("la bibliothèque d'un dossier", () => {
   test("montre les morceaux qu'elle sait lire, sous-dossiers compris, par leur titre", async ({ page }) => {
     await openFolderLibrary(page);
-    for (const title of ["Au clair de la lune", "Techniques", "Greensleeves", "Gymnopédie"]) await expect(library(page)).toContainText(title);
+    for (const title of ["Au clair de la lune", "Techniques", "Greensleeves", "Gymnopédie"])
+      await expect(library(page)).toContainText(title);
   });
 
   test("filtre par sorte de fichier, et cherche sans tenir compte des accents", async ({ page }) => {
@@ -40,7 +52,9 @@ test.describe("la bibliothèque d'un dossier", () => {
   test("un morceau choisi s'ouvre, et la bibliothèque se referme", async ({ page }) => {
     await openFolderLibrary(page);
     page.once("dialog", (confirm) => confirm.accept());
-    await library(page).getByRole("button", { name: /Techniques/ }).click();
+    await library(page)
+      .getByRole("button", { name: /Techniques/ })
+      .click();
     await settle(page);
     await expect(library(page)).toHaveCount(0);
     await expect(page.getByRole("banner")).toContainText("Techniques.prisma");
@@ -77,7 +91,9 @@ test.describe("la bibliothèque sur pCloud", () => {
     await page.getByRole("button", { name: "En liste" }).click();
     await expect(library(page)).toContainText("Au clair de la lune");
     page.once("dialog", (confirm) => confirm.accept());
-    await library(page).getByRole("button", { name: /Techniques/ }).click();
+    await library(page)
+      .getByRole("button", { name: /Techniques/ })
+      .click();
     await settle(page);
     await expect(page.locator(".page").first()).toContainText("Guitare");
   });

@@ -15,7 +15,8 @@ const BADGE = "inline-block px-1.5 rounded-[8px] bg-accent-14 text-accent text-[
 const LINK = "p-0 text-accent underline bg-transparent border-0 cursor-pointer";
 const SLIDER = "flex-1 min-w-0 accent-accent";
 /** Générales, Partition : le choix de la portée des options. */
-const porteeButton = (on: boolean) => `flex-1 px-2 py-1.5 border-0 rounded-none ${on ? "bg-accent-12 text-accent font-semibold" : "bg-white text-muted"}`;
+const porteeButton = (on: boolean) =>
+  `flex-1 px-2 py-1.5 border-0 rounded-none ${on ? "bg-accent-12 text-accent font-semibold" : "bg-white text-muted"}`;
 import type { PieceKey } from "./piece.ts";
 
 /**
@@ -46,7 +47,11 @@ const CHORDS: Option<RenderOptions["chords"]>[] = [
   { value: "both", label: "Nom et notes", hint: "le nom de l'accord (10:m), avec ses notes Prisma dessous (10 1 5)" },
   { value: "name", label: "Nom", hint: "le nom de l'accord : 10:m, 8/12" },
   { value: "notes", label: "Notes", hint: "les notes Prisma empilées, la basse en bas : 10 1 5" },
-  { value: "grid", label: "Nom et grille", hint: "le nom de l'accord, avec sa grille pour la guitare : celle écrite (10:m=x02210), sinon la plus simple" },
+  {
+    value: "grid",
+    label: "Nom et grille",
+    hint: "le nom de l'accord, avec sa grille pour la guitare : celle écrite (10:m=x02210), sinon la plus simple",
+  },
 ];
 
 const CHORD_NAMES: Option<RenderOptions["chordNames"]>[] = [
@@ -57,19 +62,31 @@ const CHORD_NAMES: Option<RenderOptions["chordNames"]>[] = [
 const NOTE_NAMES: Option<RenderOptions["noteNames"]>[] = [
   { value: "latin", label: "Do ré mi", hint: "dans la barre de statut de l'éditeur ; le do central est do3" },
   { value: "english", label: "C D E", hint: "dans la barre de statut de l'éditeur, en notation anglaise ; le do central est C4" },
-  { value: "keyboard", label: "Clavier", hint: "un petit clavier, la note (ou l'accord) marquée sur ses touches ; le choix de la note d'une case se fait sur un clavier" },
+  {
+    value: "keyboard",
+    label: "Clavier",
+    hint: "un petit clavier, la note (ou l'accord) marquée sur ses touches ; le choix de la note d'une case se fait sur un clavier",
+  },
   { value: "none", label: "Aucun", hint: "le numéro Prisma suffit : ni nom ni clavier" },
 ];
 
 const SOURCE_COLORS: Option<RenderOptions["sourceColors"]>[] = [
-  { value: "octaves", label: "Signes et octaves", hint: "les signes en couleur, et chaque ligne de notes sur le fond de son couloir d'octave, comme sur la partition" },
+  {
+    value: "octaves",
+    label: "Signes et octaves",
+    hint: "les signes en couleur, et chaque ligne de notes sur le fond de son couloir d'octave, comme sur la partition",
+  },
   { value: "signs", label: "Signes", hint: "les barres, les traits, les nuances, les doigtés… en couleur, sur un fond blanc" },
   { value: "none", label: "Aucune", hint: "un texte sobre, d'une seule couleur" },
 ];
 
 const SECTIONS: Option<RenderOptions["sections"]>[] = [
   { value: "newLine", label: "À la ligne", hint: "chaque section commence une nouvelle ligne, comme les couplets d'une chanson" },
-  { value: "inline", label: "À la suite", hint: "une section suit la précédente sur la même ligne, séparée par un blanc : la partition est plus courte" },
+  {
+    value: "inline",
+    label: "À la suite",
+    hint: "une section suit la précédente sur la même ligne, séparée par un blanc : la partition est plus courte",
+  },
 ];
 
 const SIMILE: Option<RenderOptions["simile"]>[] = [
@@ -81,7 +98,11 @@ const SIMILE: Option<RenderOptions["simile"]>[] = [
 const COLORS: Option<OctaveColors>[] = [
   { value: "none", label: "Blanc et gris", hint: "des bandes alternées, sans couleur" },
   { value: "rainbow", label: "Arc-en-ciel", hint: "une couleur fixe par octave, du violet (grave) au rose (aigu)" },
-  { value: "rainbowMixed", label: "Arc-en-ciel mélangé", hint: "les mêmes couleurs dans un ordre mélangé : deux octaves voisines contrastent davantage" },
+  {
+    value: "rainbowMixed",
+    label: "Arc-en-ciel mélangé",
+    hint: "les mêmes couleurs dans un ordre mélangé : deux octaves voisines contrastent davantage",
+  },
   { value: "muted", label: "Feutré", hint: "des teintes douces et discrètes, dans l'ordre" },
   { value: "mutedMixed", label: "Feutré mélangé", hint: "les teintes feutrées dans un ordre mélangé" },
 ];
@@ -101,20 +122,31 @@ const NOTE_POSITIONS: Option<RenderOptions["notePosition"]>[] = [
   { value: "top", label: "En haut", hint: "les notes en haut de leur couloir d'octave" },
   { value: "center", label: "Centrées", hint: "chaque groupe de notes centré dans son couloir" },
   { value: "aligned", label: "Alignées", hint: "une note rejouée garde sa ligne, pour la suivre des yeux" },
-  { value: "pitch", label: "Une ligne par note", hint: "alignées, et deux notes d'une même mesure sur deux lignes, l'aiguë au-dessus : le dessin des arpèges et de la mélodie" },
+  {
+    value: "pitch",
+    label: "Une ligne par note",
+    hint: "alignées, et deux notes d'une même mesure sur deux lignes, l'aiguë au-dessus : le dessin des arpèges et de la mélodie",
+  },
 ];
 
 const RULER_DETAILS: Option<RenderOptions["rulerDetail"]>[] = [
   { value: "written", label: "Telle qu'écrite", hint: "les cases écrites dans le texte, sans plus" },
-  { value: "division", label: "Premier découpage", hint: "chaque temps coupé au moins en 2 (en 3 s'il est ternaire), même sans attaque : 1 * 2 *" },
-  { value: "subdivision", label: "Second découpage", hint: "chaque temps coupé au moins en 4 (en 6 s'il est ternaire), même sans attaque : 1 . * . 2 . * . ; la partition s'allonge" },
+  {
+    value: "division",
+    label: "Premier découpage",
+    hint: "chaque temps coupé au moins en 2 (en 3 s'il est ternaire), même sans attaque : 1 * 2 *",
+  },
+  {
+    value: "subdivision",
+    label: "Second découpage",
+    hint: "chaque temps coupé au moins en 4 (en 6 s'il est ternaire), même sans attaque : 1 . * . 2 . * . ; la partition s'allonge",
+  },
 ];
 
 const DENSITIES: Option<RenderOptions["density"]>[] = [
   { value: "normal", label: "Normal", hint: "des cases larges, plus lisibles" },
   { value: "compact", label: "Compact", hint: "des cases serrées, pour les partitions chargées" },
 ];
-
 
 const CLICK_LEVELS: { value: ClickLevel; label: string; hint: string }[] = [
   { value: "downbeat", label: "Premier temps", hint: "le 1 de la mesure" },
@@ -124,7 +156,19 @@ const CLICK_LEVELS: { value: ClickLevel; label: string; hint: string }[] = [
 ];
 
 /** Une ligne de réglage : son nom, la commande, puis l'explication, et sa portée. */
-function Row({ label, htmlFor, hint, scope, children }: { label: string; htmlFor?: string; hint?: ReactNode; scope?: Scope; children: ReactNode }) {
+function Row({
+  label,
+  htmlFor,
+  hint,
+  scope,
+  children,
+}: {
+  label: string;
+  htmlFor?: string;
+  hint?: ReactNode;
+  scope?: Scope;
+  children: ReactNode;
+}) {
   return (
     <div className="group grid grid-cols-[8.5em_1fr] items-center gap-x-3 gap-y-0.5 py-2.5 border-b border-[#ecece8] last:border-b-0">
       <label className={`font-semibold ${scope?.mark === "own" || scope?.mark === "overridden" ? "text-accent" : ""}`} htmlFor={htmlFor}>
@@ -160,12 +204,33 @@ type Portee = "general" | "piece";
 const SCOPE_KEY = "prisma:options-scope";
 
 /** Un choix dans une liste déroulante, avec l'explication du choix en cours. */
-function Choice<T extends string>({ id, label, value, options, onChange, icon, scope }: { id: string; label: string; value: T; options: Option<T>[]; onChange: (v: T) => void; icon?: (v: T) => ReactNode; scope?: Scope }) {
+function Choice<T extends string>({
+  id,
+  label,
+  value,
+  options,
+  onChange,
+  icon,
+  scope,
+}: {
+  id: string;
+  label: string;
+  value: T;
+  options: Option<T>[];
+  onChange: (v: T) => void;
+  icon?: (v: T) => ReactNode;
+  scope?: Scope;
+}) {
   const current = options.find((o) => o.value === value) ?? options[0];
   return (
     <Row label={label} htmlFor={id} hint={current.hint} scope={scope}>
       {icon?.(current.value)}
-      <select className="flex-1 min-w-0 px-1.5 py-1 bg-white border border-line rounded" id={id} value={current.value} onChange={(e) => onChange(e.target.value as T)}>
+      <select
+        className="flex-1 min-w-0 px-1.5 py-1 bg-white border border-line rounded"
+        id={id}
+        value={current.value}
+        onChange={(e) => onChange(e.target.value as T)}
+      >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
@@ -176,7 +241,23 @@ function Choice<T extends string>({ id, label, value, options, onChange, icon, s
   );
 }
 
-function Check({ id, label, text, checked, onChange, hint, scope }: { id: string; label: string; text: string; checked: boolean; onChange: (v: boolean) => void; hint?: string; scope?: Scope }) {
+function Check({
+  id,
+  label,
+  text,
+  checked,
+  onChange,
+  hint,
+  scope,
+}: {
+  id: string;
+  label: string;
+  text: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  hint?: string;
+  scope?: Scope;
+}) {
   return (
     <Row label={label} hint={hint} scope={scope}>
       <label className="inline-flex items-center gap-1.5 cursor-pointer">
@@ -189,7 +270,9 @@ function Check({ id, label, text, checked, onChange, hint, scope }: { id: string
 
 /** Le drapeau d'une palette : les octaves empilées, de l'aigu (en haut) au grave. */
 function Flag({ colors }: { colors: OctaveColors }) {
-  const stripes = Array.from({ length: 9 }, (_, k) => 4 - k).map((offset, k) => octaveTint(colors, offset)?.tab ?? (k % 2 ? "#ffffff" : "#e6e8e3"));
+  const stripes = Array.from({ length: 9 }, (_, k) => 4 - k).map(
+    (offset, k) => octaveTint(colors, offset)?.tab ?? (k % 2 ? "#ffffff" : "#e6e8e3"),
+  );
   return (
     <svg className="flex-none w-[38px] h-7" viewBox="0 0 24 18" preserveAspectRatio="none" aria-hidden>
       {stripes.map((c, k) => (
@@ -260,7 +343,8 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
   const setOptions = onPiece ? piece.setPiece : piece.setGeneral;
   const isOwn = (keys: PieceKey[]) => keys.every((k) => own[k] !== undefined);
   const same = (keys: PieceKey[]) => keys.every((k) => own[k] === general[k]);
-  const pick = (keys: PieceKey[], from: Partial<RenderOptions>) => Object.fromEntries(keys.map((k) => [k, from[k]])) as Partial<RenderOptions>;
+  const pick = (keys: PieceKey[], from: Partial<RenderOptions>) =>
+    Object.fromEntries(keys.map((k) => [k, from[k]])) as Partial<RenderOptions>;
 
   /** La portée d'une ligne : ce qu'en dit l'autre portée, et de quoi passer de l'une à l'autre. */
   const scope = (keys: PieceKey[], describe: string): Scope => {
@@ -278,7 +362,11 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
           line: (
             <p className={SCOPE}>
               <span className="text-muted">option générale</span>
-              {link("Définir pour la partition", () => piece.setPiece(pick(keys, general)), "La partition garde cette valeur, quelles que soient les options générales")}
+              {link(
+                "Définir pour la partition",
+                () => piece.setPiece(pick(keys, general)),
+                "La partition garde cette valeur, quelles que soient les options générales",
+              )}
             </p>
           ),
         };
@@ -287,9 +375,23 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
         line: (
           <p className={SCOPE}>
             <span className={BADGE}>partition</span>
-            {same(keys) ? <span className="text-muted">comme l'option générale</span> : <span className="text-muted">générale : {theirs({})}</span>}
-            {!same(keys) && link("Appliquer aux générales", () => piece.setGeneral(pick(keys, own)), "Cette valeur devient l'option générale, pour tous les morceaux")}
-            {!same(keys) && link("Reprendre la générale", () => piece.setPiece(pick(keys, general)), "La partition prend la valeur de l'option générale, et la garde")}
+            {same(keys) ? (
+              <span className="text-muted">comme l'option générale</span>
+            ) : (
+              <span className="text-muted">générale : {theirs({})}</span>
+            )}
+            {!same(keys) &&
+              link(
+                "Appliquer aux générales",
+                () => piece.setGeneral(pick(keys, own)),
+                "Cette valeur devient l'option générale, pour tous les morceaux",
+              )}
+            {!same(keys) &&
+              link(
+                "Reprendre la générale",
+                () => piece.setPiece(pick(keys, general)),
+                "La partition prend la valeur de l'option générale, et la garde",
+              )}
             {link("Retirer", () => piece.unsetPiece(keys), "Retirer de la partition : elle suit alors l'option générale")}
           </p>
         ),
@@ -318,13 +420,26 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
       };
     // rien de propre à la partition : l'action ne paraît qu'au survol, pour ne pas encombrer
     return {
-      line: <p className="invisible col-start-1 row-start-2 self-start m-0 text-muted text-[0.8em] leading-[1.3] group-hover:visible group-focus-within:visible">{link("Appliquer à la partition", () => piece.setPiece(pick(keys, general)), "La partition garde cette valeur, quelles que soient les options générales")}</p>,
+      line: (
+        <p className="invisible col-start-1 row-start-2 self-start m-0 text-muted text-[0.8em] leading-[1.3] group-hover:visible group-focus-within:visible">
+          {link(
+            "Appliquer à la partition",
+            () => piece.setPiece(pick(keys, general)),
+            "La partition garde cette valeur, quelles que soient les options générales",
+          )}
+        </p>
+      ),
     };
   };
   const ownCount = Object.keys(own).length;
 
   return (
-    <aside id="options" data-drawer className="print:hidden! absolute top-0 right-0 bottom-0 z-15 flex flex-col w-[min(440px,100%)] bg-panel border-l border-line shadow-[-8px_0_24px_rgba(0,0,0,0.08)]" aria-label="Options">
+    <aside
+      id="options"
+      data-drawer
+      className="print:hidden! absolute top-0 right-0 bottom-0 z-15 flex flex-col w-[min(440px,100%)] bg-panel border-l border-line shadow-[-8px_0_24px_rgba(0,0,0,0.08)]"
+      aria-label="Options"
+    >
       <header className="flex items-center justify-between px-4 pt-3 pb-1">
         <h2 className="m-0 text-[1rem]">Options</h2>
         <Button kind="quiet" size="icon" onClick={onClose} aria-label="Fermer les options" title="Fermer (Échap)">
@@ -332,10 +447,22 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
         </Button>
       </header>
       <div className="flex mx-3 mt-0 mb-2 overflow-hidden border border-line rounded-md" role="radiogroup" aria-label="Portée des options">
-        <button role="radio" aria-checked={!onPiece} className={porteeButton(!onPiece)} onClick={() => setPortee("general")} title="Les options de tous les morceaux">
+        <button
+          role="radio"
+          aria-checked={!onPiece}
+          className={porteeButton(!onPiece)}
+          onClick={() => setPortee("general")}
+          title="Les options de tous les morceaux"
+        >
           Générales
         </button>
-        <button role="radio" aria-checked={onPiece} className={`${porteeButton(onPiece)} border-l border-line`} onClick={() => setPortee("piece")} title="Les options de la partition ouverte : elles priment sur les générales">
+        <button
+          role="radio"
+          aria-checked={onPiece}
+          className={`${porteeButton(onPiece)} border-l border-line`}
+          onClick={() => setPortee("piece")}
+          title="Les options de la partition ouverte : elles priment sur les générales"
+        >
           Partition{ownCount ? ` (${ownCount})` : ""}
         </button>
       </div>
@@ -343,14 +470,24 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
         <div className="mx-3 mt-0 mb-1.5">
           <p className="mt-0 mb-0.5 text-[0.9em] text-muted leading-[1.4] wrap-anywhere">
             <strong>{piece.name}</strong> :{" "}
-            {piece.where ? `ses options s'enregistrent à côté d'elle, dans ${piece.where}, et la suivent d'un ordinateur à l'autre.` : "ses options valent le temps qu'elle est ouverte ; ouverte depuis la bibliothèque, elle les garderait à côté d'elle."}
+            {piece.where
+              ? `ses options s'enregistrent à côté d'elle, dans ${piece.where}, et la suivent d'un ordinateur à l'autre.`
+              : "ses options valent le temps qu'elle est ouverte ; ouverte depuis la bibliothèque, elle les garderait à côté d'elle."}
           </p>
           <p className="flex gap-3 m-0 text-[0.9em]">
-            <button className={LINK} onClick={() => piece.setPiece(pick([...piece.keys], general))} title="Chaque option du rendu est définie pour la partition, avec la valeur générale actuelle">
+            <button
+              className={LINK}
+              onClick={() => piece.setPiece(pick([...piece.keys], general))}
+              title="Chaque option du rendu est définie pour la partition, avec la valeur générale actuelle"
+            >
               Tout définir pour la partition
             </button>
             {ownCount > 0 && (
-              <button className={LINK} onClick={() => piece.unsetPiece([...piece.keys])} title="La partition suit alors toutes les options générales">
+              <button
+                className={LINK}
+                onClick={() => piece.unsetPiece([...piece.keys])}
+                title="La partition suit alors toutes les options générales"
+              >
                 Tout retirer
               </button>
             )}
@@ -359,7 +496,13 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
       )}
       <nav className="flex px-2 border-b border-line" role="tablist">
         {tabs.map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} className={`flex-[1_1_auto] -mb-px px-1 py-2 whitespace-nowrap bg-transparent border-0 border-b-2 rounded-none ${tab === t.id ? "text-ink border-b-accent font-semibold" : "text-muted border-b-transparent hover:border-b-muted"}`} onClick={() => setTab(t.id)}>
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            className={`flex-[1_1_auto] -mb-px px-1 py-2 whitespace-nowrap bg-transparent border-0 border-b-2 rounded-none ${tab === t.id ? "text-ink border-b-accent font-semibold" : "text-muted border-b-transparent hover:border-b-muted"}`}
+            onClick={() => setTab(t.id)}
+          >
             {t.label}
           </button>
         ))}
@@ -373,7 +516,11 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
               text="Mettre en page automatiquement"
               checked={options.autoEngrave}
               onChange={(autoEngrave) => setOptions({ autoEngrave })}
-              hint={options.autoEngrave ? "la mise en page suit la saisie, peu après la dernière frappe" : "on met en page d'un clic sur le bouton en bas de l'éditeur (Ctrl+Entrée)"}
+              hint={
+                options.autoEngrave
+                  ? "la mise en page suit la saisie, peu après la dernière frappe"
+                  : "on met en page d'un clic sur le bouton en bas de l'éditeur (Ctrl+Entrée)"
+              }
             />
             <Check
               id="score-to-text"
@@ -381,15 +528,38 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
               text="Relier la partition et le texte"
               checked={options.scoreToText}
               onChange={(scoreToText) => setOptions({ scoreToText })}
-              hint={options.scoreToText ? "un clic sur la partition place le curseur du texte sur le signe cliqué ; le signe sous le curseur du texte est encadré sur la partition" : "le clic sur la partition ne place que l'écoute ; rien n'est encadré"}
+              hint={
+                options.scoreToText
+                  ? "un clic sur la partition place le curseur du texte sur le signe cliqué ; le signe sous le curseur du texte est encadré sur la partition"
+                  : "le clic sur la partition ne place que l'écoute ; rien n'est encadré"
+              }
             />
-            <Choice id="source-colors" label="Coloration" value={options.sourceColors} options={SOURCE_COLORS} onChange={(sourceColors) => setOptions({ sourceColors })} />
-            <Choice id="note-names" label="Noms des notes" value={options.noteNames} options={NOTE_NAMES} onChange={(noteNames) => setOptions({ noteNames })} />
+            <Choice
+              id="source-colors"
+              label="Coloration"
+              value={options.sourceColors}
+              options={SOURCE_COLORS}
+              onChange={(sourceColors) => setOptions({ sourceColors })}
+            />
+            <Choice
+              id="note-names"
+              label="Noms des notes"
+              value={options.noteNames}
+              options={NOTE_NAMES}
+              onChange={(noteNames) => setOptions({ noteNames })}
+            />
           </>
         )}
         {tab === "score" && (
           <>
-            <Choice id="chords" label="Accompagnement" value={options.chords} options={CHORDS} onChange={(chords) => setOptions({ chords })} scope={scope(["chords"], "chords")} />
+            <Choice
+              id="chords"
+              label="Accompagnement"
+              value={options.chords}
+              options={CHORDS}
+              onChange={(chords) => setOptions({ chords })}
+              scope={scope(["chords"], "chords")}
+            />
             {options.chords !== "notes" && (
               <Choice
                 id="chord-names"
@@ -406,7 +576,11 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
               text="Récapituler les grilles en tête de partition"
               checked={options.chordChart}
               onChange={(chordChart) => setOptions({ chordChart })}
-              hint={options.chordChart ? "la grille de guitare de chaque accord du morceau, une fois, sous le titre" : "les grilles seulement sur la partition, avec l'accompagnement « Nom et grille »"}
+              hint={
+                options.chordChart
+                  ? "la grille de guitare de chaque accord du morceau, une fois, sous le titre"
+                  : "les grilles seulement sur la partition, avec l'accompagnement « Nom et grille »"
+              }
               scope={scope(["chordChart"], "chordChart")}
             />
             <Check
@@ -415,25 +589,86 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
               text="Répéter les noms à chaque système"
               checked={options.namesEverySystem}
               onChange={(namesEverySystem) => setOptions({ namesEverySystem })}
-              hint={options.namesEverySystem ? "le nom de chaque partie en tête de chaque système" : "les noms au premier système seulement, comme sur une partition"}
+              hint={
+                options.namesEverySystem
+                  ? "le nom de chaque partie en tête de chaque système"
+                  : "les noms au premier système seulement, comme sur une partition"
+              }
               scope={scope(["namesEverySystem"], "namesEverySystem")}
             />
-            <Choice id="ruler-detail" label="Règle" value={options.rulerDetail} options={RULER_DETAILS} onChange={(rulerDetail) => setOptions({ rulerDetail })} scope={scope(["rulerDetail"], "rulerDetail")} />
-            <Choice id="sections" label="Sections" value={options.sections} options={SECTIONS} onChange={(sections) => setOptions({ sections })} scope={scope(["sections"], "sections")} />
-            <Choice id="simile" label="Ped. simile" value={options.simile} options={SIMILE} onChange={(simile) => setOptions({ simile })} scope={scope(["simile"], "simile")} />
+            <Choice
+              id="ruler-detail"
+              label="Règle"
+              value={options.rulerDetail}
+              options={RULER_DETAILS}
+              onChange={(rulerDetail) => setOptions({ rulerDetail })}
+              scope={scope(["rulerDetail"], "rulerDetail")}
+            />
+            <Choice
+              id="sections"
+              label="Sections"
+              value={options.sections}
+              options={SECTIONS}
+              onChange={(sections) => setOptions({ sections })}
+              scope={scope(["sections"], "sections")}
+            />
+            <Choice
+              id="simile"
+              label="Ped. simile"
+              value={options.simile}
+              options={SIMILE}
+              onChange={(simile) => setOptions({ simile })}
+              scope={scope(["simile"], "simile")}
+            />
           </>
         )}
         {tab === "octaves" && (
           <>
-            <Choice id="octave-position" label="Position" value={options.octavePosition} options={OCTAVE_POSITIONS} onChange={(octavePosition) => setOptions({ octavePosition })} scope={scope(["octavePosition"], "octavePosition")} />
-            <Choice id="octave-symbol" label="Symbole" value={options.octaveStyle} options={OCTAVE_SYMBOLS} onChange={(octaveStyle) => setOptions({ octaveStyle })} scope={scope(["octaveStyle"], "octaveStyle")} />
-            <Choice id="octave-colors" label="Couleurs" value={options.octaveColors} options={COLORS} onChange={(octaveColors) => setOptions({ octaveColors })} icon={(c) => <Flag colors={c} />} scope={scope(["octaveColors"], "octaveColors")} />
+            <Choice
+              id="octave-position"
+              label="Position"
+              value={options.octavePosition}
+              options={OCTAVE_POSITIONS}
+              onChange={(octavePosition) => setOptions({ octavePosition })}
+              scope={scope(["octavePosition"], "octavePosition")}
+            />
+            <Choice
+              id="octave-symbol"
+              label="Symbole"
+              value={options.octaveStyle}
+              options={OCTAVE_SYMBOLS}
+              onChange={(octaveStyle) => setOptions({ octaveStyle })}
+              scope={scope(["octaveStyle"], "octaveStyle")}
+            />
+            <Choice
+              id="octave-colors"
+              label="Couleurs"
+              value={options.octaveColors}
+              options={COLORS}
+              onChange={(octaveColors) => setOptions({ octaveColors })}
+              icon={(c) => <Flag colors={c} />}
+              scope={scope(["octaveColors"], "octaveColors")}
+            />
           </>
         )}
         {tab === "notes" && (
           <>
-            <Choice id="density" label="Espacement" value={options.density} options={DENSITIES} onChange={(density) => setOptions({ density })} scope={scope(["density"], "density")} />
-            <Choice id="note-position" label="Position" value={options.notePosition} options={NOTE_POSITIONS} onChange={(notePosition) => setOptions({ notePosition })} scope={scope(["notePosition"], "notePosition")} />
+            <Choice
+              id="density"
+              label="Espacement"
+              value={options.density}
+              options={DENSITIES}
+              onChange={(density) => setOptions({ density })}
+              scope={scope(["density"], "density")}
+            />
+            <Choice
+              id="note-position"
+              label="Position"
+              value={options.notePosition}
+              options={NOTE_POSITIONS}
+              onChange={(notePosition) => setOptions({ notePosition })}
+              scope={scope(["notePosition"], "notePosition")}
+            />
             <Check
               id="hold-reminders"
               label="Tenues"
@@ -449,7 +684,11 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
               text="Afficher les doigtés"
               checked={options.fingerings}
               onChange={(fingerings) => setOptions({ fingerings })}
-              hint={options.fingerings ? "en chiffre blanc sur une pastille, en bas à droite de la note" : "masqués : la page s'allège, le fichier les garde"}
+              hint={
+                options.fingerings
+                  ? "en chiffre blanc sur une pastille, en bas à droite de la note"
+                  : "masqués : la page s'allège, le fichier les garde"
+              }
               scope={scope(["fingerings"], "fingerings")}
             />
           </>
@@ -462,18 +701,45 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
               text="Le montrer d'avance"
               checked={options.lookAhead}
               onChange={(lookAhead) => setOptions({ lookAhead })}
-              hint={options.lookAhead ? "à l'écoute, dans la dernière mesure d'un système, la page glisse peu à peu pour le montrer" : "à l'écoute, la page ne bouge qu'en arrivant au système suivant"}
+              hint={
+                options.lookAhead
+                  ? "à l'écoute, dans la dernière mesure d'un système, la page glisse peu à peu pour le montrer"
+                  : "à l'écoute, la page ne bouge qu'en arrivant au système suivant"
+              }
             />
           </>
         )}
         {tab === "metronome" && (
           <>
             <Row label="Volume" htmlFor="click-volume" hint="par rapport aux instruments">
-              <input type="range" className={SLIDER} id="click-volume" min={0} max={2} step={0.1} value={options.clickVolume} onChange={(e) => setOptions({ clickVolume: Number(e.target.value) })} aria-valuetext={`${Math.round(options.clickVolume * 100)} %`} />
+              <input
+                type="range"
+                className={SLIDER}
+                id="click-volume"
+                min={0}
+                max={2}
+                step={0.1}
+                value={options.clickVolume}
+                onChange={(e) => setOptions({ clickVolume: Number(e.target.value) })}
+                aria-valuetext={`${Math.round(options.clickVolume * 100)} %`}
+              />
               <span className="min-w-[4.5em] text-ink">{Math.round(options.clickVolume * 100)} %</span>
             </Row>
-            <Check id="count-in" label="Décompte" text="Une mesure avant de jouer" checked={options.countIn} onChange={(countIn) => setOptions({ countIn })} hint="au départ et à la reprise, même métronome coupé" />
-            <Choice id="click-grid" label="Battre" value={options.clickGrid} options={CLICK_GRIDS} onChange={(clickGrid) => setOptions({ clickGrid })} />
+            <Check
+              id="count-in"
+              label="Décompte"
+              text="Une mesure avant de jouer"
+              checked={options.countIn}
+              onChange={(countIn) => setOptions({ countIn })}
+              hint="au départ et à la reprise, même métronome coupé"
+            />
+            <Choice
+              id="click-grid"
+              label="Battre"
+              value={options.clickGrid}
+              options={CLICK_GRIDS}
+              onChange={(clickGrid) => setOptions({ clickGrid })}
+            />
             {CLICK_LEVELS.map((l) => {
               const index = CLICK_SOUNDS.findIndex((c) => c.value === options.clickSounds[l.value]);
               return (
@@ -487,7 +753,9 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
                     max={CLICK_SOUNDS.length - 1}
                     step={1}
                     value={index}
-                    onChange={(e) => setOptions({ clickSounds: { ...options.clickSounds, [l.value]: CLICK_SOUNDS[Number(e.target.value)].value } })}
+                    onChange={(e) =>
+                      setOptions({ clickSounds: { ...options.clickSounds, [l.value]: CLICK_SOUNDS[Number(e.target.value)].value } })
+                    }
                     aria-valuetext={CLICK_SOUNDS[index]?.label}
                   />
                   <span className="min-w-[4.5em] text-ink">{CLICK_SOUNDS[index]?.label}</span>

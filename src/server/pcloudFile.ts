@@ -12,14 +12,16 @@
 /** Les seuls serveurs de pCloud qu'on accepte de joindre : le relais ne sert à rien d'autre. */
 const HOSTS = new Set(["api.pcloud.com", "eapi.pcloud.com"]);
 
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 
 export async function pcloudFile(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const host = url.searchParams.get("host") ?? "";
   const fileid = url.searchParams.get("fileid") ?? "";
   const token = req.headers.get("x-pcloud-token") ?? "";
-  if (req.method !== "GET" || !HOSTS.has(host) || !/^\d+$/.test(fileid) || !token) return json({ result: 400, error: "requête de relais invalide" }, 400);
+  if (req.method !== "GET" || !HOSTS.has(host) || !/^\d+$/.test(fileid) || !token)
+    return json({ result: 400, error: "requête de relais invalide" }, 400);
   try {
     const q = new URLSearchParams({ fileid, access_token: token });
     const link = await (await fetch(`https://${host}/getfilelink?${q}`)).json();

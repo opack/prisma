@@ -122,7 +122,10 @@ describe("écrire un accord sur la ligne @c", () => {
   it("élargit la case d'un accord trop long, comme celle d'une note ; les accords suivants gardent la leur", () => {
     const out = apply(lines, writeChord(lines, sys, 0, 4, 6, "10:m=x02210"));
     expect(out.slice(0, 2)).toEqual(["@c  10:m=x02210      8", "m1 |1           |2  |3  |4  ||"]);
-    expect(parsePrisma(text(out)).chords.map((textMark) => [textMark.t / 2880, textMark.text])).toEqual([[0, "10:m=x02210"], [2, "8"]]);
+    expect(parsePrisma(text(out)).chords.map((textMark) => [textMark.t / 2880, textMark.text])).toEqual([
+      [0, "10:m=x02210"],
+      [2, "8"],
+    ]);
     // le dernier accord de la ligne aussi
     const last = apply(lines, writeChord(lines, sys, 0, 12, 1, "8=320003"));
     expect(last.slice(0, 2)).toEqual(["@c  x02210  8=320003", "m1 |1  |2  |3        |4  ||"]);

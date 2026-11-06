@@ -8,7 +8,12 @@ describe("écoute : nuances", () => {
   const piece = (n: number, more: Partial<Score> = {}, staves = 1): Score => ({
     ...parsePrisma("m1 |1  ||\n0  |1  ||\n"),
     parts: [{ staves }],
-    notes: Array.from({ length: n * staves }, (_, index) => ({ staff: index % staves, midi: 60, start: Math.floor(index / staves) * TICKS_PER_BEAT, end: (Math.floor(index / staves) + 1) * TICKS_PER_BEAT })),
+    notes: Array.from({ length: n * staves }, (_, index) => ({
+      staff: index % staves,
+      midi: 60,
+      start: Math.floor(index / staves) * TICKS_PER_BEAT,
+      end: (Math.floor(index / staves) + 1) * TICKS_PER_BEAT,
+    })),
     ...more,
   });
   const dyn = (t: number, text: string, staff = 0) => ({ staff, t: t * TICKS_PER_BEAT, text, kind: "dynamic" as const });
@@ -29,7 +34,9 @@ describe("écoute : nuances", () => {
   });
 
   it("lit « cresc. » et « dim. » comme des soufflets jusqu'à la nuance suivante", () => {
-    expect(velocities(piece(3, { expressions: [dyn(0, "f"), { staff: 0, t: 0, text: "dim.", kind: "text" }, dyn(2, "p")] }))).toEqual([86, 64, 42]);
+    expect(velocities(piece(3, { expressions: [dyn(0, "f"), { staff: 0, t: 0, text: "dim.", kind: "text" }, dyn(2, "p")] }))).toEqual([
+      86, 64, 42,
+    ]);
   });
 
   it("applique une nuance à toute la partie, sauf à une portée qui a la sienne au même instant", () => {

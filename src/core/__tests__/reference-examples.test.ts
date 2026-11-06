@@ -9,7 +9,12 @@ function examples(markdown: string): string[] {
   const re = /^( *)```prisma\n([\s\S]*?)^\1```/gm;
   for (let match = re.exec(markdown); match; match = re.exec(markdown)) {
     const indent = match[1].length;
-    out.push(match[2].split("\n").map((line) => line.slice(indent)).join("\n"));
+    out.push(
+      match[2]
+        .split("\n")
+        .map((line) => line.slice(indent))
+        .join("\n"),
+    );
   }
   return out;
 }
@@ -37,7 +42,10 @@ describe("référence", () => {
 
 describe("liens du site vers la référence", () => {
   it("chaque partie visée est un titre de la référence", () => {
-    const titles = readFileSync("REFERENCE.md", "utf8").split("\n").filter((line) => line.startsWith("#")).map((l) => l.replace(/^#+\s*/, ""));
+    const titles = readFileSync("REFERENCE.md", "utf8")
+      .split("\n")
+      .filter((line) => line.startsWith("#"))
+      .map((l) => l.replace(/^#+\s*/, ""));
     for (const text of Object.values(REFERENCE_PARTS)) expect(titles).toContain(text);
   });
 });

@@ -18,16 +18,28 @@
    doigt, les boutons plus grands demandent ces replis plus tôt. Les mêmes largeurs dans MenuBar
    (COMPACT). */
 @custom-variant bare {
-  @media (max-width: 600px) { @slot; }
-  @media (pointer: coarse) and (max-width: 1280px) { @slot; }
+  @media (max-width: 600px) {
+    @slot;
+  }
+  @media (pointer: coarse) and (max-width: 1280px) {
+    @slot;
+  }
 }
 @custom-variant compact {
-  @media (max-width: 1100px) { @slot; }
-  @media (pointer: coarse) and (max-width: 1220px) { @slot; }
+  @media (max-width: 1100px) {
+    @slot;
+  }
+  @media (pointer: coarse) and (max-width: 1220px) {
+    @slot;
+  }
 }
 @custom-variant crowded {
-  @media (max-width: 800px) { @slot; }
-  @media (pointer: coarse) and (max-width: 900px) { @slot; }
+  @media (max-width: 800px) {
+    @slot;
+  }
+  @media (pointer: coarse) and (max-width: 900px) {
+    @slot;
+  }
 }
 /* au doigt (une tablette, un téléphone) : des boutons assez grands pour être touchés sans viser */
 @custom-variant touch (@media (pointer: coarse));
@@ -60,13 +72,25 @@
   /* l'apparition d'un système, dans la lecture focalisée */
   --animate-focus-in: focus-in 0.35s ease-out;
   @keyframes focus-in {
-    from { opacity: 0; }
+    from {
+      opacity: 0;
+    }
   }
 }
 
 /* les titres en gras, et la main sur ce qui se clique (le preflight les retire) ; l'allure des
    boutons : le composant Button (app/ui/button) */
 @layer base {
-  h1, h2, h3, h4, h5, h6 { font-weight: 700; }
-  button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 700;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
 }

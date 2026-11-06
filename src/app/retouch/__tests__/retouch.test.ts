@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { TICKS_PER_BEAT, parsePrisma } from "../../../core/index.ts";
-import { cellOf, durationOf, holdChoices, holdIn, joinCell, freeStrings, moveOctave, placeOnString, resize, retouch, splitCell } from "../retouch.ts";
+import {
+  cellOf,
+  durationOf,
+  holdChoices,
+  holdIn,
+  joinCell,
+  freeStrings,
+  moveOctave,
+  placeOnString,
+  resize,
+  retouch,
+  splitCell,
+} from "../retouch.ts";
 
 const text = ["m1 |1  |2  ||", "───┼───┼───┼┼", "+1 |3  |   ||", "-1 |1  |-  ||", "───┼───┼───┼┼", "-2 |8  |   ||", "@   p"].join("\n");
 
@@ -33,7 +45,9 @@ describe("retouche sur place", () => {
   });
 
   it("une note à la place d'une tenue : la note d'avant s'arrête là, ses tenues suivantes s'effacent", () => {
-    const t = ["m1 |1  |2  |3  ||", "0  |5  |-  |-  ||", "   |3  |-  |   ||", "", "m2 |1  |2  ||", "0  |-5 |-  ||", "   |   |   ||"].join("\n");
+    const t = ["m1 |1  |2  |3  ||", "0  |5  |-  |-  ||", "   |3  |-  |   ||", "", "m2 |1  |2  ||", "0  |-5 |-  ||", "   |   |   ||"].join(
+      "\n",
+    );
     // la tenue du 5 (et non celle du 3, sur l'autre ligne)
     const r = retouch(t, { t: TICKS_PER_BEAT, staff: 0, octave: 4, content: "-5" }, "8")!.text.split("\n");
     expect(r[1]).toBe("0  |5  |8  |   ||");
@@ -70,7 +84,10 @@ describe("retouche sur place", () => {
     expect(() => parsePrisma(c.text)).not.toThrow();
     // ou sur une ligne de son octave déjà libre
     const u = ["m1 |1  |2  ||", "0  |3  |4  ||", "   |   |   ||"].join("\n");
-    expect(resize(u, { t: 0, staff: 0, octave: 4, content: "3" }, 1)!.text.split("\n").slice(1)).toEqual(["0  |   |4  ||", "   |3  |-  ||"]);
+    expect(resize(u, { t: 0, staff: 0, octave: 4, content: "3" }, 1)!.text.split("\n").slice(1)).toEqual([
+      "0  |   |4  ||",
+      "   |3  |-  ||",
+    ]);
   });
 
   it("tient, dans une case vide, une note de son couloir qui s'arrête juste avant", () => {
@@ -102,10 +119,25 @@ describe("retouche sur place", () => {
   });
 
   it("change l'octave d'une note, avec ses tenues, jusque dans le système suivant", () => {
-    const t = ["m1 |1  |2  |3  ||", "+1 |   |   |   ||", "0  |5  |-  |-  ||", "   |3  |   |   ||", "", "m2 |1  |2  ||", "0  |-5 |   ||"].join("\n");
+    const t = [
+      "m1 |1  |2  |3  ||",
+      "+1 |   |   |   ||",
+      "0  |5  |-  |-  ||",
+      "   |3  |   |   ||",
+      "",
+      "m2 |1  |2  ||",
+      "0  |-5 |   ||",
+    ].join("\n");
     const up = moveOctave(t, { t: 0, staff: 0, octave: 4, content: "5" }, 1)!;
     // les lignes restées vides disparaissent : le 3 prend le numéro de l'octave 0
-    expect(up.text.split("\n")).toEqual(["m1 |1  |2  |3  ||", "+1 |5  |-  |-  ||", "0  |3  |   |   ||", "", "m2 |1  |2  ||", "+1 |-5 |   ||"]);
+    expect(up.text.split("\n")).toEqual([
+      "m1 |1  |2  |3  ||",
+      "+1 |5  |-  |-  ||",
+      "0  |3  |   |   ||",
+      "",
+      "m2 |1  |2  ||",
+      "+1 |-5 |   ||",
+    ]);
     expect(up).toMatchObject({ octave: 5, line: 2, column: 5 });
     expect(() => parsePrisma(up.text)).not.toThrow();
     // vers une octave que le système n'a pas encore : sa ligne s'ouvre sous les autres
@@ -120,13 +152,28 @@ describe("retouche sur place", () => {
     expect(down.text.split("\n")).toEqual(["m1 |1  |2  ||", "0  |5  |-  ||", "   |3  |   ||"]);
     expect(down).toMatchObject({ line: 2 });
     const t2 = ["m1 |1  |2  ||", "0  |   |   ||", "   |5  |-  ||", "-1 |1  |   ||"].join("\n");
-    expect(moveOctave(t2, { t: 0, staff: 0, octave: 4, content: "5" }, 1)!.text.split("\n")).toEqual(["m1 |1  |2  ||", "+1 |5  |-  ||", "0  |   |   ||", "-1 |1  |   ||"]);
+    expect(moveOctave(t2, { t: 0, staff: 0, octave: 4, content: "5" }, 1)!.text.split("\n")).toEqual([
+      "m1 |1  |2  ||",
+      "+1 |5  |-  ||",
+      "0  |   |   ||",
+      "-1 |1  |   ||",
+    ]);
   });
 });
 
 describe("retouche sur une corde", () => {
   // une guitare : le mi4 sur la corde 1 à vide, le la2 tenu sur la corde 5 ; les autres cordes omises
-  const tab = ["---", "parts: Guitare", "---", "", "m1 |1  |2  |3  ||", "───┼─ Guitare ─┼┼", "1  |0  |   |   ||", "5  |0  |-  |   ||", ""].join("\n");
+  const tab = [
+    "---",
+    "parts: Guitare",
+    "---",
+    "",
+    "m1 |1  |2  |3  ||",
+    "───┼─ Guitare ─┼┼",
+    "1  |0  |   |   ||",
+    "5  |0  |-  |   ||",
+    "",
+  ].join("\n");
   const S = 100; // le couloir d'une corde : 100 plus son numéro
   const line = (t: string, n: number) => t.split("\n")[n];
 
@@ -150,12 +197,22 @@ describe("retouche sur une corde", () => {
     const same = placeOnString(tab, la, 6, 5)!;
     expect(same.octave).toBe(S + 6);
     expect(same.text.split("\n").slice(6, 8)).toEqual(["1  |0  |   |   ||", "6  |5  |-  |   ||"]);
-    expect(parsePrisma(same.text).notes.map((note) => [note.string, note.midi])).toEqual([[1, 64], [6, 45]]);
-    expect(parsePrisma(placeOnString(tab, la, 6, 3)!.text).notes.map((n) => [n.string, n.midi])).toEqual([[1, 64], [6, 43]]);
+    expect(parsePrisma(same.text).notes.map((note) => [note.string, note.midi])).toEqual([
+      [1, 64],
+      [6, 45],
+    ]);
+    expect(parsePrisma(placeOnString(tab, la, 6, 3)!.text).notes.map((n) => [n.string, n.midi])).toEqual([
+      [1, 64],
+      [6, 43],
+    ]);
     // sur sa propre corde, la note change de case, sa tenue avec elle
     expect(line(placeOnString(tab, la, 5, 2)!.text, 7)).toBe("5  |2  |-  |   ||");
     // une case vide s'écrit sur la corde choisie
-    expect(parsePrisma(placeOnString(tab, { t: TICKS_PER_BEAT, staff: 0, octave: S + 1, content: "" }, 2, 1)!.text).notes.find((n) => n.start === TICKS_PER_BEAT)).toMatchObject({ string: 2, midi: 60 });
+    expect(
+      parsePrisma(placeOnString(tab, { t: TICKS_PER_BEAT, staff: 0, octave: S + 1, content: "" }, 2, 1)!.text).notes.find(
+        (n) => n.start === TICKS_PER_BEAT,
+      ),
+    ).toMatchObject({ string: 2, midi: 60 });
     // la corde 1 joue déjà au premier temps : le la ne peut pas y passer
     expect(placeOnString(tab, la, 1, 5)).toBeUndefined();
     expect(freeStrings(tab, la, 6)).toEqual([false, true, true, true, true, true]);
@@ -164,11 +221,25 @@ describe("retouche sur une corde", () => {
 
   it("comme sur l'instrument : coupe la note qui sonnait sur la corde, s'arrête à la suivante", () => {
     // le la2 (corde 5) tenu trois temps ; le sol2 (corde 6, case 3) attaqué avant et tenu ; le fa2 attaqué au temps 3
-    const t = ["---", "parts: Guitare", "---", "", "m1 |1  |2  |3  |4  ||", "───┼─ Guitare ─┼┼───┼┼", "5  |   |0  |-  |-  ||", "6  |3  |-  |1  |   ||", ""].join("\n");
+    const t = [
+      "---",
+      "parts: Guitare",
+      "---",
+      "",
+      "m1 |1  |2  |3  |4  ||",
+      "───┼─ Guitare ─┼┼───┼┼",
+      "5  |   |0  |-  |-  ||",
+      "6  |3  |-  |1  |   ||",
+      "",
+    ].join("\n");
     const r = placeOnString(t, { t: TICKS_PER_BEAT, staff: 0, octave: S + 5, content: "0" }, 6, 5)!.text;
     // le sol s'arrête au temps 2, où le la le remplace ; le la s'arrête au fa du temps 3
     expect(r.split("\n").slice(6)).toEqual(["6  |3  |5  |1  |   ||", ""]);
-    expect(parsePrisma(r).notes.map((note) => [note.start / TICKS_PER_BEAT, note.end / TICKS_PER_BEAT, note.midi])).toEqual([[0, 1, 43], [1, 2, 45], [2, 3, 41]]);
+    expect(parsePrisma(r).notes.map((note) => [note.start / TICKS_PER_BEAT, note.end / TICKS_PER_BEAT, note.midi])).toEqual([
+      [0, 1, 43],
+      [1, 2, 45],
+      [2, 3, 41],
+    ]);
   });
 
   it("élargit une case sans couper le nom de la partie écrit sur le trait", () => {

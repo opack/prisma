@@ -7,7 +7,15 @@
 import type { KeyboardEvent, PointerEvent, RefObject } from "react";
 import { EDITOR_WIDTH, clampWidth } from "../score/useView.ts";
 
-export function Splitter({ host, width, onWidth }: { host: RefObject<HTMLElement | null>; width: number; onWidth: (width: number) => void }) {
+export function Splitter({
+  host,
+  width,
+  onWidth,
+}: {
+  host: RefObject<HTMLElement | null>;
+  width: number;
+  onWidth: (width: number) => void;
+}) {
   const drag = (e: PointerEvent<HTMLDivElement>) => {
     const zone = host.current;
     if (!zone || e.button !== 0) return;

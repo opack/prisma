@@ -13,7 +13,10 @@ describe("partage par un lien", () => {
   });
 
   it("un morceau courant tient dans un lien court", async () => {
-    const link = shareLink(await encodeShare({ name: "g.prisma", text: GREENSLEEVES_CHORDS, settings: {} }), "https://prisma.valdera.fr/app/");
+    const link = shareLink(
+      await encodeShare({ name: "g.prisma", text: GREENSLEEVES_CHORDS, settings: {} }),
+      "https://prisma.valdera.fr/app/",
+    );
     expect(link.length).toBeLessThan(LONG_LINK / 4);
   });
 

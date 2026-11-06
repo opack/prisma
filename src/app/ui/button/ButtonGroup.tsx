@@ -6,7 +6,11 @@ import type { ReactNode } from "react";
 
 export function ButtonGroup({ label, className = "", children }: { label?: string; className?: string; children: ReactNode }) {
   return (
-    <span className={`${className} inline-flex *:rounded-none *:first:rounded-l *:last:rounded-r *:not-first:-ml-px`} role="group" aria-label={label}>
+    <span
+      className={`${className} inline-flex *:rounded-none *:first:rounded-l *:last:rounded-r *:not-first:-ml-px`}
+      role="group"
+      aria-label={label}
+    >
       {children}
     </span>
   );

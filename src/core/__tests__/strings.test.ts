@@ -25,7 +25,16 @@ describe("instruments à cordes", () => {
     const s = parsePrisma(ARPEGGIO);
     expect(s.parts[0].strings).toMatchObject({ tuning: "standard", capo: 0 });
     // la, mi, la, do, mi, do, la, mi : la corde à vide plus la case
-    expect(s.notes.map((note) => [note.string, note.midi])).toEqual([[5, 45], [4, 52], [3, 57], [2, 60], [1, 64], [2, 60], [3, 57], [4, 52]]);
+    expect(s.notes.map((note) => [note.string, note.midi])).toEqual([
+      [5, 45],
+      [4, 52],
+      [3, 57],
+      [2, 60],
+      [1, 64],
+      [2, 60],
+      [3, 57],
+      [4, 52],
+    ]);
     expect(s.notes[0].end).toBe(3 * 2880);
   });
 
@@ -80,12 +89,24 @@ m1 |1  |2  ||
 ═══╪═ Guitare ═╪╪
 2  |1  |   ||
 `);
-    expect(s.notes.map((note) => [note.staff, note.string, note.midi])).toEqual([[0, undefined, 64], [1, 2, 63], [0, undefined, 67]]);
+    expect(s.notes.map((note) => [note.staff, note.string, note.midi])).toEqual([
+      [0, undefined, 64],
+      [1, 2, 63],
+      [0, undefined, 67],
+    ]);
   });
 
   it("exporte une tablature, que l'import relit telle quelle", () => {
     // mi4 sur la 2ᵉ corde (case 3 au capo 2) plutôt qu'à vide sur la 1ʳᵉ : le choix de l'arrangeur revient
-    const text = writePrisma(parsePrisma(piece("Guitare (drop-d, capo 2)", ["1  |      |      |0     |      ||", "2  |      |   3  |      |      ||", "6  |0  -  |-  -  |      |      ||"])));
+    const text = writePrisma(
+      parsePrisma(
+        piece("Guitare (drop-d, capo 2)", [
+          "1  |      |      |0     |      ||",
+          "2  |      |   3  |      |      ||",
+          "6  |0  -  |-  -  |      |      ||",
+        ]),
+      ),
+    );
     const xml = exportMusicXml(parsePrisma(text));
     expect(xml).toContain("<sign>TAB</sign>");
     expect(xml).toContain("<capo>2</capo>");
@@ -102,23 +123,39 @@ m1 |1  |2  ||
 -1 |   5  |10    |      |10 5  ||
 -2 |10    |      |      |      ||
 `);
-    const back = importMusicXml(exportMusicXml(s).replace("<part-name>Piano</part-name>", "<part-name>Guitare</part-name>").replace(/<midi-program>\d+</, "<midi-program>25<"));
+    const back = importMusicXml(
+      exportMusicXml(s)
+        .replace("<part-name>Piano</part-name>", "<part-name>Guitare</part-name>")
+        .replace(/<midi-program>\d+</, "<midi-program>25<"),
+    );
     expect(back.parts[0].strings).toBeDefined();
     expect(back.notes.every((note) => note.string !== undefined)).toBe(true);
     expect(back.notes.map((n) => n.midi)).toEqual(s.notes.map((n) => n.midi));
     // deux notes qui sonnent ensemble ne partagent jamais une corde
-    for (const a of back.notes) for (const b of back.notes) if (a !== b && a.string === b.string) expect(a.end <= b.start || b.end <= a.start).toBe(true);
+    for (const a of back.notes)
+      for (const b of back.notes) if (a !== b && a.string === b.string) expect(a.end <= b.start || b.end <= a.start).toBe(true);
     expect(writePrisma(back)).toMatch(/^1 {2}\|/m);
   });
 
   it("lit une tablature MusicXML : ses cordes, sans la partition qui la double", () => {
     // mi4 joué sur la 2ᵉ corde, case 5 (et non sur la 1ʳᵉ à vide), puis la2 à vide ; accordage drop-d, capo 2
-    const tuning = [["D", 2], ["A", 2], ["D", 3], ["G", 3], ["B", 3], ["E", 4]]
-      .map(([step, octave], index) => `<staff-tuning line="${index + 1}"><tuning-step>${step}</tuning-step><tuning-octave>${octave}</tuning-octave></staff-tuning>`)
+    const tuning = [
+      ["D", 2],
+      ["A", 2],
+      ["D", 3],
+      ["G", 3],
+      ["B", 3],
+      ["E", 4],
+    ]
+      .map(
+        ([step, octave], index) =>
+          `<staff-tuning line="${index + 1}"><tuning-step>${step}</tuning-step><tuning-octave>${octave}</tuning-octave></staff-tuning>`,
+      )
       .join("");
     const note = (staff: number, step: string, octave: number, tab = "") =>
       `<note><pitch><step>${step}</step><octave>${octave}</octave></pitch><duration>1</duration><voice>${staff}</voice><type>quarter</type><staff>${staff}</staff>${tab}</note>`;
-    const tech = (string: number, fret: number) => `<notations><technical><string>${string}</string><fret>${fret}</fret></technical></notations>`;
+    const tech = (string: number, fret: number) =>
+      `<notations><technical><string>${string}</string><fret>${fret}</fret></technical></notations>`;
     const xml = `<?xml version="1.0"?><score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Guitare</part-name></score-part></part-list>
 <part id="P1"><measure number="1"><attributes><divisions>1</divisions><time><beats>2</beats><beat-type>4</beat-type></time><staves>2</staves>
 <clef number="1"><sign>G</sign><line>2</line></clef><clef number="2"><sign>TAB</sign></clef>
@@ -126,7 +163,10 @@ m1 |1  |2  ||
 ${note(1, "F", 4)}${note(1, "B", 2)}<backup><duration>2</duration></backup>${note(2, "F", 4, tech(2, 4))}${note(2, "B", 2, tech(5, 0))}</measure></part></score-partwise>`;
     const s = importMusicXml(xml);
     expect(s.parts).toEqual([{ name: "Guitare", staves: 1, strings: { tuning: "drop-d", open: [64, 59, 55, 50, 45, 38], capo: 2 } }]);
-    expect(s.notes.map((n) => [n.string, n.midi])).toEqual([[2, 65], [5, 47]]);
+    expect(s.notes.map((n) => [n.string, n.midi])).toEqual([
+      [2, 65],
+      [5, 47],
+    ]);
     expect(writePrisma(s)).toContain("parts: Guitare (drop-d, capo 2)");
   });
 
@@ -156,11 +196,15 @@ m1 |1  |2  |3  |4  ||
 0  |5  |6  |8  |   ||
 `;
     // deux notes qui sonnent ensemble ne partagent jamais une corde
-    const apart = (notes: Note[]) => notes.every((note) => notes.every((b) => note === b || note.string !== b.string || note.end <= b.start || b.end <= note.start));
+    const apart = (notes: Note[]) =>
+      notes.every((note) => notes.every((b) => note === b || note.string !== b.string || note.end <= b.start || b.end <= note.start));
 
     it("réunit les portées d'une partie en une partie de guitare, sur des cordes", () => {
       const { score, report } = convertToStrings(parsePrisma(DUO), 0, { instrument: "guitar", octave: 0 });
-      expect(score.parts).toMatchObject([{ name: "Guitare", staves: 1, strings: { tuning: "standard", capo: 0 } }, { name: "Chant", staves: 1 }]);
+      expect(score.parts).toMatchObject([
+        { name: "Guitare", staves: 1, strings: { tuning: "standard", capo: 0 } },
+        { name: "Chant", staves: 1 },
+      ]);
       const guitar = score.notes.filter((note) => note.staff === 0);
       expect(guitar.map((n) => n.midi).sort()).toEqual([48, 55, 64, 67, 71]);
       expect(guitar.every((n) => n.string !== undefined)).toBe(true);
@@ -194,7 +238,12 @@ m1 |1  |2  |3  |4  ||
     it("choisit l'octave : telle quelle ou, comme l'écriture de la guitare, une octave plus bas", () => {
       const s = parsePrisma(DUO);
       const low = convertToStrings(s, 0, { instrument: "guitar", octave: -1 });
-      expect(low.score.notes.filter((note) => note.staff === 0).map((n) => n.midi).sort()).toEqual([43, 48, 52, 55, 59]);
+      expect(
+        low.score.notes
+          .filter((note) => note.staff === 0)
+          .map((n) => n.midi)
+          .sort(),
+      ).toEqual([43, 48, 52, 55, 59]);
       // le do2 descendu sous le mi grave remonte : une note déplacée
       expect(low.report).toMatchObject({ octave: -1, moved: 1 });
       expect([0, -1]).toContain(convertToStrings(s, 0, { instrument: "guitar" }).report.octave);
