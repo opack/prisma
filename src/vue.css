@@ -1,11 +1,11 @@
 /*
- * Les styles de l'application Vue : le thème commun (src/tailwind.css), puis les jetons des
- * composants de shadcn-vue (app-vue/ui/), pris dans la même palette. Deux noms sont communs aux
- * deux : accent (pour shadcn-vue, le fond d'un élément survolé) et muted (un fond éteint) restent
+ * Les styles de l'application et du site en Vue : le thème commun (src/tailwind.css), puis les
+ * jetons des composants de shadcn-vue (app-vue/ui/), pris dans la même palette. Deux noms sont
+ * communs aux deux : accent (pour shadcn-vue, le fond d'un élément survolé) et muted (un fond éteint) restent
  * les nôtres, la couleur de l'application et le texte discret ; un composant qui s'en sert pour un
  * fond prend, à son ajout, la classe de notre palette qui convient (bg-accent-12, bg-panel…).
  */
-@import "../tailwind.css";
+@import "./tailwind.css";
 @import "tw-animate-css";
 
 /* le mode sombre des composants de shadcn-vue : sous une classe .dark, que l'application ne pose pas
