@@ -69,7 +69,9 @@ function lyricsOf(
   quantize: (t: number) => number,
   end: number,
 ): Lyric[] {
-  const numbers = [...new Set(raw.map((lyric) => lyric.number))].sort((first, second) => (Number(first) || 0) - (Number(second) || 0) || first.localeCompare(second));
+  const numbers = [...new Set(raw.map((lyric) => lyric.number))].sort(
+    (first, second) => (Number(first) || 0) - (Number(second) || 0) || first.localeCompare(second),
+  );
   const out: (Lyric & { voice: string; melisma: boolean })[] = [];
   for (const lyric of raw) {
     const tick = quantize(lyric.t);
@@ -88,8 +90,13 @@ function lyricsOf(
   const notes = voiceNotes.map((note) => ({ ...note, start: quantize(note.start), end: quantize(note.end) }));
   for (const lyric of out) {
     if (!lyric.melisma) continue;
-    const next = Math.min(end, ...out.filter((other) => other.staff === lyric.staff && other.verse === lyric.verse && other.t > lyric.t).map((other) => other.t));
-    const sung = notes.filter((note) => note.staff === lyric.staff && note.voice === lyric.voice && note.start >= lyric.t && note.start < next);
+    const next = Math.min(
+      end,
+      ...out.filter((other) => other.staff === lyric.staff && other.verse === lyric.verse && other.t > lyric.t).map((other) => other.t),
+    );
+    const sung = notes.filter(
+      (note) => note.staff === lyric.staff && note.voice === lyric.voice && note.start >= lyric.t && note.start < next,
+    );
     if (sung.some((note) => note.start > lyric.t)) lyric.extend = Math.min(next, Math.max(...sung.map((note) => note.end)));
   }
   return sortLyrics(out.map(({ voice, melisma, ...lyric }) => lyric));
@@ -229,7 +236,7 @@ const SMUFL_DYNAMICS: Record<number, string> = {
   0xe53c: "rf",
   0xe53d: "rfz",
 };
-const plainDynamics = (value: string) => value.replace(/[\ue520-\ue53d]/g, (cell) => SMUFL_DYNAMICS[cell.codePointAt(0)!] ?? "");
+const plainDynamics = (value: string) => value.replace(/[\ue520-\ue53d]/g, (glyph) => SMUFL_DYNAMICS[glyph.codePointAt(0)!] ?? "");
 
 /** Indications d'octave (« 8va », « (sol 8vb) », « loco »…) : inutiles, chaque note porte déjà son octave. */
 const OCTAVE_WORDS = /(^|[^0-9a-z])(8|15|22)\s*(va|vb|ma|mb|ve|a|b)(?![a-z])|\b(loco|ottava|bassa)\b/i;
@@ -360,7 +367,9 @@ function tabStaffOf(measures: XNode[]): { staff: number; open: number[]; capo: n
       .map((xNode) => ({
         line: Number(attr(xNode, "line")),
         midi:
-          12 * (num(find(kids(xNode), "tuning-octave")) + 1) + STEP[text(find(kids(xNode), "tuning-step"))] + num(find(kids(xNode), "tuning-alter")),
+          12 * (num(find(kids(xNode), "tuning-octave")) + 1) +
+          STEP[text(find(kids(xNode), "tuning-step"))] +
+          num(find(kids(xNode), "tuning-alter")),
       }))
       .sort((first, second) => second.line - first.line);
     if (!lines.length) return undefined;
@@ -469,7 +478,13 @@ function readMeasures(partNode: XNode, base: Staff, staves: number, tab?: number
                 if (value) directions.push({ staff, at, kind: "dynamic", text: value });
               }
             } else if (typeTag === "wedge") {
-              directions.push({ staff, at, kind: "wedge", text: attr(typeNode, "type") ?? "", number: String(attr(typeNode, "number") ?? "1") });
+              directions.push({
+                staff,
+                at,
+                kind: "wedge",
+                text: attr(typeNode, "type") ?? "",
+                number: String(attr(typeNode, "number") ?? "1"),
+              });
             } else if (typeTag === "dashes" && attr(typeNode, "type") === "stop") {
               // la fin des tirets d'un « P.M. »
               directions.push({ staff, at, kind: "palmMute", text: "stop", number: String(attr(typeNode, "number") ?? "1") });
@@ -563,7 +578,8 @@ function readMeasures(partNode: XNode, base: Staff, staves: number, tab?: number
         const stringNode = technical.find((child) => tag(child) === "string");
         const onString = tab !== undefined && stringNode ? { string: num(stringNode) } : {};
         const voice = staff + ":" + (text(find(noteNodes, "voice")) || "1");
-        const pitchOf = (xNodes: XNode[]) => Math.round(12 * (num(find(xNodes, "octave")) + 1) + STEP[text(find(xNodes, "step"))] + num(find(xNodes, "alter")));
+        const pitchOf = (xNodes: XNode[]) =>
+          Math.round(12 * (num(find(xNodes, "octave")) + 1) + STEP[text(find(xNodes, "step"))] + num(find(xNodes, "alter")));
         if (find(noteNodes, "grace")) {
           // sans durée : ne fait pas avancer le temps ; attend la note principale de sa voix
           const pitch = find(noteNodes, "pitch");
@@ -633,7 +649,11 @@ function readMeasures(partNode: XNode, base: Staff, staves: number, tab?: number
             const name = tag(xNode);
             if (name === "trill-mark") raw.trill = neighbor(1);
             else if (ORNAMENT_GRACES[name]) {
-              const base = Math.max(-1, ...graces.filter((rawGrace) => rawGrace.staff === staff && rawGrace.on === on).map((rawGrace) => rawGrace.slot)) + 1;
+              const base =
+                Math.max(
+                  -1,
+                  ...graces.filter((rawGrace) => rawGrace.staff === staff && rawGrace.on === on).map((rawGrace) => rawGrace.slot),
+                ) + 1;
               ORNAMENT_GRACES[name].forEach((dir, index) => graces.push({ staff, midi: neighbor(dir), on, slot: base + index }));
             } else if (DELAYED_TURNS[name]) {
               if (!waiting.has(voice)) waiting.set(voice, []);
@@ -663,7 +683,8 @@ function readMeasures(partNode: XNode, base: Staff, staves: number, tab?: number
           if (!t2.release) delete t2.release;
           // le glissé vers la note suivante : son sens se lit sur elle (settleSlides) ; vers rien ou
           // depuis rien, les articulations de MusicXML : falloff et doit, scoop et plop
-          if (notations.some((child) => (tag(child) === "slide" || tag(child) === "glissando") && attr(child, "type") === "start")) t2.slide = "up";
+          if (notations.some((child) => (tag(child) === "slide" || tag(child) === "glissando") && attr(child, "type") === "start"))
+            t2.slide = "up";
           const arts = notations
             .filter((child) => tag(child) === "articulations")
             .flatMap((child) => kids(child))
@@ -680,7 +701,8 @@ function readMeasures(partNode: XNode, base: Staff, staves: number, tab?: number
           }
           for (const wavyLine of ornaments.filter((child) => tag(child) === "wavy-line")) {
             const type = String(attr(wavyLine, "type") ?? "");
-            if (type === "start") directions.push({ staff, at: on, kind: "vibrato", text: type, number: String(attr(wavyLine, "number") ?? "1") });
+            if (type === "start")
+              directions.push({ staff, at: on, kind: "vibrato", text: type, number: String(attr(wavyLine, "number") ?? "1") });
             else if (type === "stop")
               directions.push({ staff, at: on + dur, kind: "vibrato", text: type, number: String(attr(wavyLine, "number") ?? "1") });
           }
@@ -698,7 +720,12 @@ function readMeasures(partNode: XNode, base: Staff, staves: number, tab?: number
           if (finger) raw.finger = finger;
           const arpeggiate = notations.find((child) => tag(child) === "arpeggiate");
           if (arpeggiate && !arpeggios.some((existing) => existing.staff === staff && existing.on === on)) {
-            arpeggios.push({ staff, on, number: attr(arpeggiate, "number") as string | undefined, down: attr(arpeggiate, "direction") === "down" });
+            arpeggios.push({
+              staff,
+              on,
+              number: attr(arpeggiate, "number") as string | undefined,
+              down: attr(arpeggiate, "direction") === "down",
+            });
           }
           voiceNotes.push({ staff, voice, on, off: on + dur });
           // articulations : une par portée et instant (un accord n'en porte qu'une de chaque)
@@ -758,7 +785,10 @@ function readMeasures(partNode: XNode, base: Staff, staves: number, tab?: number
  */
 function foldRehearsals(rawMeasures: RawMeasure[]): { measures: RawMeasure[]; kept: number[] } | undefined {
   const starts = rawMeasures.flatMap((rawMeasure, index) => (index === 0 || rawMeasure.rehearsal ? [index] : []));
-  const spans = starts.map((from, index) => ({ label: rawMeasures[from].rehearsal, bars: rawMeasures.slice(from, starts[index + 1] ?? rawMeasures.length) }));
+  const spans = starts.map((from, index) => ({
+    label: rawMeasures[from].rehearsal,
+    bars: rawMeasures.slice(from, starts[index + 1] ?? rawMeasures.length),
+  }));
   // le contenu d'une mesure, hors numéros (de mesure, de liaison, de soufflet) et barres de reprise :
   // une partie reprise une fois, et écrite à nouveau plus loin, reste la même partie
   const BARS = new Set(["number", "rehearsal", "implicit", "startRepeat", "endRepeat", "times", "endings"]);
@@ -794,7 +824,9 @@ type PlayMeasure = Pick<RawMeasure, "startRepeat" | "endRepeat" | "times" | "end
 export function playOrder(playMeasures: PlayMeasure[]): number[] {
   const EPS = 1e-6;
   const count = playMeasures.length;
-  const items = playMeasures.flatMap((playMeasure, barIndex) => (playMeasure.structure ?? []).map((structure) => ({ ...structure, barIndex, length: playMeasure.length ?? 0 })));
+  const items = playMeasures.flatMap((playMeasure, barIndex) =>
+    (playMeasure.structure ?? []).map((structure) => ({ ...structure, barIndex, length: playMeasure.length ?? 0 })),
+  );
   // signe coda sans <sound> : le dernier marque la coda, les précédents l'endroit d'où l'on y saute
   const signs = items.filter((sign) => sign.kind === "codaSign");
   signs.forEach((sign, index) => (sign.kind = index === signs.length - 1 ? "coda" : "tocoda"));
@@ -893,7 +925,9 @@ export function sectionsOf(sequence: number[], count: number): { repeats: Repeat
     if (sequence[index] + 1 < count) starts.add(sequence[index] + 1);
   }
   type Section = { from: number; to: number; times: number };
-  const sections: Section[] = [...starts].sort((first, second) => first - second).map((from, index, all) => ({ from, to: (all[index + 1] ?? count) - 1, times: 1 }));
+  const sections: Section[] = [...starts]
+    .sort((first, second) => first - second)
+    .map((from, index, all) => ({ from, to: (all[index + 1] ?? count) - 1, times: 1 }));
   // ordre : une entrée à chaque début de section
   let order: Section[] = sequence.filter((bar) => starts.has(bar)).map((bar) => sections.find((section) => section.from === bar)!);
 
@@ -920,7 +954,10 @@ export function sectionsOf(sequence: number[], count: number): { repeats: Repeat
     for (let position = 0; position + 1 < sections.length; position++) {
       const current = sections[position],
         following = sections[position + 1];
-      const together = order.every((section, index) => (section === current ? order[index + 1] === following : true) && (section === following ? order[index - 1] === current : true));
+      const together = order.every(
+        (section, index) =>
+          (section === current ? order[index + 1] === following : true) && (section === following ? order[index - 1] === current : true),
+      );
       if (!together || !order.includes(current)) continue;
       current.to = following.to;
       staves.get(current)!.push(...staves.get(following)!);
@@ -977,7 +1014,9 @@ function quantizer(times: number[]): (t: number) => number {
     );
     const readable = DIVISIONS.find((count) => {
       const snapped = snap(TICKS_PER_BEAT / count);
-      return snapped.every((value, index) => Math.abs(value - offsets[index]) <= TICKS_PER_BEAT / 16 && (index === 0 || value > snapped[index - 1]));
+      return snapped.every(
+        (value, index) => Math.abs(value - offsets[index]) <= TICKS_PER_BEAT / 16 && (index === 0 || value > snapped[index - 1]),
+      );
     });
     step.set(beat, TICKS_PER_BEAT / (exact ?? readable ?? 48));
   }
@@ -1008,7 +1047,15 @@ export function importMusicXml(xml: string, fileName?: string): Score {
           .map((xNode) => clean(text(xNode)))
           .filter(Boolean)
       : [];
-    return pieces.reduce((joined, piece) => (joined && /\d$/.test(joined) && /^(st|nd|rd|th|e|er|re|ème|eme)\b/i.test(piece) ? joined + piece : joined ? joined + " " + piece : piece), "");
+    return pieces.reduce(
+      (joined, piece) =>
+        joined && /\d$/.test(joined) && /^(st|nd|rd|th|e|er|re|ème|eme)\b/i.test(piece)
+          ? joined + piece
+          : joined
+            ? joined + " " + piece
+            : piece,
+      "",
+    );
   };
   const title = clean(text(find(kids(work), "work-title")) || text(find(rootKids, "movement-title"))) || creditText("title");
   if (title) meta.title = title;
@@ -1084,7 +1131,11 @@ export function importMusicXml(xml: string, fileName?: string): Score {
       into.articulations.push(...rawMeasure.articulations);
       into.voiceNotes.push(...rawMeasure.voiceNotes);
       // accords et points d'orgue : une seule fois, déjà donnés par la première portée
-      into.directions.push(...rawMeasure.directions.filter((rawDirection) => rawDirection.kind !== "chord" || !into.directions.some((existing) => existing.kind === "chord")));
+      into.directions.push(
+        ...rawMeasure.directions.filter(
+          (rawDirection) => rawDirection.kind !== "chord" || !into.directions.some((existing) => existing.kind === "chord"),
+        ),
+      );
       into.length = Math.max(into.length, rawMeasure.length);
     });
   }
@@ -1109,7 +1160,9 @@ export function importMusicXml(xml: string, fileName?: string): Score {
   const pickup = !!head && measures[0].length > 1e-6 && measures[0].length < head.count * head.quarters - 1e-6;
   const startTempo = findAll(kids(partNodes[0]), "measure")
     .slice(0, pickup ? 2 : 1)
-    .flatMap((xNode) => kids(xNode).flatMap((child) => (tag(child) === "sound" ? [child] : tag(child) === "direction" ? findAll(kids(child), "sound") : [])))
+    .flatMap((xNode) =>
+      kids(xNode).flatMap((child) => (tag(child) === "sound" ? [child] : tag(child) === "direction" ? findAll(kids(child), "sound") : [])),
+    )
     .map((snd) => Number(attr(snd, "tempo")))
     .find((tempo) => tempo > 0);
   if (startTempo && measures.length) meta.bpm = Math.round(startTempo / pulse(measures[0].beats, measures[0].beatType).quarters);
@@ -1157,12 +1210,15 @@ export function importMusicXml(xml: string, fileName?: string): Score {
     const shift = pickup ? nominal - length - (firstLabel - 1) * meter.quarters : 0;
     const ticksPerQuarter = TICKS_PER_BEAT / meter.quarters;
     const base = firstBeat * TICKS_PER_BEAT;
-    for (const rawDirection of rawMeasure.directions) rawDirections.push({ ...rawDirection, t: base + Math.round((rawDirection.at + shift) * ticksPerQuarter) });
-    for (const arpeggio of rawMeasure.arpeggios) rawArpeggios.push({ ...arpeggio, t: base + Math.round((arpeggio.on + shift) * ticksPerQuarter) });
+    for (const rawDirection of rawMeasure.directions)
+      rawDirections.push({ ...rawDirection, t: base + Math.round((rawDirection.at + shift) * ticksPerQuarter) });
+    for (const arpeggio of rawMeasure.arpeggios)
+      rawArpeggios.push({ ...arpeggio, t: base + Math.round((arpeggio.on + shift) * ticksPerQuarter) });
     const tick = (on: number) => base + Math.round((on + shift) * ticksPerQuarter);
     for (const rawLyric of rawMeasure.lyrics) rawLyrics.push({ ...rawLyric, t: tick(rawLyric.on) });
     for (const articulation of rawMeasure.articulations) rawArticulations.push({ ...articulation, t: tick(articulation.on) });
-    for (const rawVoiceNote of rawMeasure.voiceNotes) rawVoiceNotes.push({ ...rawVoiceNote, start: tick(rawVoiceNote.on), end: tick(rawVoiceNote.off) });
+    for (const rawVoiceNote of rawMeasure.voiceNotes)
+      rawVoiceNotes.push({ ...rawVoiceNote, start: tick(rawVoiceNote.on), end: tick(rawVoiceNote.off) });
     for (const rawGrace of rawMeasure.graces)
       rawGraces.push({
         staff: rawGrace.staff,
@@ -1201,7 +1257,14 @@ export function importMusicXml(xml: string, fileName?: string): Score {
   const merged: typeof raw = [];
   for (const note of raw) {
     if (note.tieStop) {
-      const prev = merged.find((candidate) => candidate.staff === note.staff && candidate.midi === note.midi && candidate.string === note.string && candidate.end === note.start && candidate.tieStart);
+      const prev = merged.find(
+        (candidate) =>
+          candidate.staff === note.staff &&
+          candidate.midi === note.midi &&
+          candidate.string === note.string &&
+          candidate.end === note.start &&
+          candidate.tieStart,
+      );
       if (prev) {
         prev.end = note.end;
         prev.tieStart = note.tieStart;
@@ -1213,7 +1276,14 @@ export function importMusicXml(xml: string, fileName?: string): Score {
   // deux notes identiques superposées dans la même portée (voix différentes) : on n'en garde qu'une
   const notes: Note[] = [];
   for (const current of merged) {
-    const duplicate = notes.find((note) => note.staff === current.staff && note.midi === current.midi && note.string === current.string && note.start < current.end && current.start < note.end);
+    const duplicate = notes.find(
+      (note) =>
+        note.staff === current.staff &&
+        note.midi === current.midi &&
+        note.string === current.string &&
+        note.start < current.end &&
+        current.start < note.end,
+    );
     if (duplicate) {
       duplicate.start = Math.min(duplicate.start, current.start);
       duplicate.end = Math.max(duplicate.end, current.end);
@@ -1244,18 +1314,29 @@ export function importMusicXml(xml: string, fileName?: string): Score {
   for (const grace of rawGraces) {
     const tick = quantize(grace.t);
     if (tick >= end) continue;
-    if (!graces.some((existing) => existing.staff === grace.staff && existing.t === tick && existing.slot === grace.slot && existing.midi === grace.midi)) graces.push({ ...grace, t: tick });
+    if (
+      !graces.some(
+        (existing) => existing.staff === grace.staff && existing.t === tick && existing.slot === grace.slot && existing.midi === grace.midi,
+      )
+    )
+      graces.push({ ...grace, t: tick });
   }
   // arpèges : un même numéro sur plusieurs portées au même instant les égrène d'un seul geste
   const arpeggios: Arpeggio[] = [];
   for (const arpeggio of rawArpeggios) {
     const tick = quantize(arpeggio.t);
-    if (tick >= end || arpeggios.some((existing) => existing.t === tick && (existing.staff === undefined || existing.staff === arpeggio.staff))) continue;
+    if (
+      tick >= end ||
+      arpeggios.some((existing) => existing.t === tick && (existing.staff === undefined || existing.staff === arpeggio.staff))
+    )
+      continue;
     // un arpège qui traverse les portées n'en fait qu'un, sauf s'il y a plusieurs parties : un par portée
     const other =
       parts.length === 1 &&
       arpeggio.number !== undefined &&
-      rawArpeggios.find((candidate) => candidate.staff !== arpeggio.staff && quantize(candidate.t) === tick && candidate.number === arpeggio.number);
+      rawArpeggios.find(
+        (candidate) => candidate.staff !== arpeggio.staff && quantize(candidate.t) === tick && candidate.number === arpeggio.number,
+      );
     const down = arpeggio.down ? { down: true } : {};
     if (other) {
       for (let index = arpeggios.length - 1; index >= 0; index--) if (arpeggios[index].t === tick) arpeggios.splice(index, 1);
@@ -1266,7 +1347,10 @@ export function importMusicXml(xml: string, fileName?: string): Score {
   const articulations: Articulation[] = [];
   for (const articulation of rawArticulations) {
     const tick = quantize(articulation.t);
-    if (tick < end && !articulations.some((existing) => existing.staff === articulation.staff && existing.t === tick && existing.kind === articulation.kind))
+    if (
+      tick < end &&
+      !articulations.some((existing) => existing.staff === articulation.staff && existing.t === tick && existing.kind === articulation.kind)
+    )
       articulations.push({ staff: articulation.staff, t: tick, kind: articulation.kind });
   }
   // une partie de guitare ou de basse s'écrit en cordes : chaque note sur une corde
@@ -1288,7 +1372,9 @@ export function importMusicXml(xml: string, fileName?: string): Score {
   // l'étouffé et le vibrato sont des cordes : ailleurs, une ondulation est la fin d'une trille
   score.effects = score.effects.filter((effect) => stringsOfStaff(parts, effect.staff));
   // le sens de l'archet d'un violon, d'un violoncelle : Prisma ne le note que pour le médiator
-  score.articulations = score.articulations.filter((articulation) => !isPick(articulation.kind) || stringsOfStaff(parts, articulation.staff));
+  score.articulations = score.articulations.filter(
+    (articulation) => !isPick(articulation.kind) || stringsOfStaff(parts, articulation.staff),
+  );
   // une grille qui ne va pas avec la guitare du morceau (une autre, ou un autre capo) : l'accord la perd
   const strings = gridStrings(parts.map((part) => part.strings));
   score.chords = score.chords.map((textMark) => {
@@ -1309,10 +1395,11 @@ export function importMusicXml(xml: string, fileName?: string): Score {
  */
 function directionsOf(rawDirections: (RawDirection & { t: number })[], notes: Note[], beatCount: number, lastStaff: (p: Staff) => Staff) {
   const end = beatCount * TICKS_PER_BEAT;
-  const grid = [...new Set([...notes.map((note) => note.start), ...Array.from({ length: beatCount + 1 }, (_, index) => index * TICKS_PER_BEAT)])].sort(
-    (first, second) => first - second,
-  );
-  const snap = (tick: number) => grid.reduce((best, candidate) => (Math.abs(candidate - tick) < Math.abs(best - tick) ? candidate : best), grid[0]);
+  const grid = [
+    ...new Set([...notes.map((note) => note.start), ...Array.from({ length: beatCount + 1 }, (_, index) => index * TICKS_PER_BEAT)]),
+  ].sort((first, second) => first - second);
+  const snap = (tick: number) =>
+    grid.reduce((best, candidate) => (Math.abs(candidate - tick) < Math.abs(best - tick) ? candidate : best), grid[0]);
   const texts: TextMark[] = [];
   const expressions: Expression[] = [];
   const hairpins: Hairpin[] = [];
@@ -1358,7 +1445,9 @@ function directionsOf(rawDirections: (RawDirection & { t: number })[], notes: No
       if (direction.text === "start") {
         if (tick < end) openEffects.push({ staff: direction.staff, kind: direction.kind, start: tick, end, number: direction.number! });
       } else {
-        const index = openEffects.findIndex((candidate) => candidate.kind === direction.kind && candidate.number === direction.number && candidate.staff === direction.staff);
+        const index = openEffects.findIndex(
+          (candidate) => candidate.kind === direction.kind && candidate.number === direction.number && candidate.staff === direction.staff,
+        );
         if (index >= 0) {
           const [effect] = openEffects.splice(index, 1);
           if (tick > effect.start) effects.push({ staff: effect.staff, kind: effect.kind, start: effect.start, end: tick });
@@ -1373,7 +1462,10 @@ function directionsOf(rawDirections: (RawDirection & { t: number })[], notes: No
         const index = openSlurs.findIndex((candidate) => candidate.number === direction.number);
         if (index < 0) continue;
         const [slur] = openSlurs.splice(index, 1);
-        if (tick > slur.start && !slurs.some((existing) => existing.staff === slur.staff && existing.start === slur.start && existing.end === tick))
+        if (
+          tick > slur.start &&
+          !slurs.some((existing) => existing.staff === slur.staff && existing.start === slur.start && existing.end === tick)
+        )
           slurs.push({ staff: slur.staff, start: slur.start, end: tick });
       }
       continue;
@@ -1402,7 +1494,13 @@ function directionsOf(rawDirections: (RawDirection & { t: number })[], notes: No
     }
     if (direction.kind === "wedge") {
       if (direction.text === "crescendo" || direction.text === "diminuendo") {
-        open.push({ staff: direction.staff, kind: direction.text === "crescendo" ? "<" : ">", start: Math.min(tick, end - 1), end, number: direction.number! });
+        open.push({
+          staff: direction.staff,
+          kind: direction.text === "crescendo" ? "<" : ">",
+          start: Math.min(tick, end - 1),
+          end,
+          number: direction.number!,
+        });
       } else if (direction.text === "stop") {
         const index = open.findIndex((candidate) => candidate.number === direction.number && candidate.staff === direction.staff);
         const found = index >= 0 ? index : open.findIndex((candidate) => candidate.number === direction.number);
@@ -1422,15 +1520,27 @@ function directionsOf(rawDirections: (RawDirection & { t: number })[], notes: No
     } else if (direction.kind === "words" && isPedalText(direction.text)) {
       // consigne de pédale : sur la ligne de pédale, quelle que soit la portée qui la porte
       const staff = lastStaff(direction.staff);
-      if (!pedalTexts.some((existing) => existing.staff === staff && existing.t === tick && existing.text === direction.text)) pedalTexts.push({ staff, t: tick, text: direction.text });
+      if (!pedalTexts.some((existing) => existing.staff === staff && existing.t === tick && existing.text === direction.text))
+        pedalTexts.push({ staff, t: tick, text: direction.text });
     } else {
       const prev = expressions[expressions.length - 1];
       // parenthèses écrites à part autour d'une nuance (« ( », « mp », « ) ») : une seule nuance « (mp) »
-      if (direction.kind === "dynamic" && prev && prev.staff === direction.staff && prev.t === tick && (prev.text.endsWith("(") || direction.text === ")")) {
+      if (
+        direction.kind === "dynamic" &&
+        prev &&
+        prev.staff === direction.staff &&
+        prev.t === tick &&
+        (prev.text.endsWith("(") || direction.text === ")")
+      ) {
         prev.text += direction.text;
         prev.kind = isDynamic(prev.text) ? "dynamic" : "text";
       } else {
-        expressions.push({ staff: direction.staff, t: tick, text: direction.text, kind: direction.kind === "dynamic" && isDynamic(direction.text) ? "dynamic" : "text" });
+        expressions.push({
+          staff: direction.staff,
+          t: tick,
+          text: direction.text,
+          kind: direction.kind === "dynamic" && isDynamic(direction.text) ? "dynamic" : "text",
+        });
       }
     }
   }
@@ -1440,10 +1550,21 @@ function directionsOf(rawDirections: (RawDirection & { t: number })[], notes: No
   for (const staff of [...down.keys()]) pedalUp(staff, end);
   pedals.sort((first, second) => first.start - second.start || first.staff - second.staff);
   // un hammer-on ou un pull-off est une liaison entre deux notes d'une corde, sauf si une liaison les couvre déjà
-  for (const slur of legato) if (!slurs.some((other) => other.staff === slur.staff && other.start <= slur.start && slur.end <= other.end)) slurs.push(slur);
+  for (const slur of legato)
+    if (!slurs.some((other) => other.staff === slur.staff && other.start <= slur.start && slur.end <= other.end)) slurs.push(slur);
   slurs.sort((first, second) => first.start - second.start || first.staff - second.staff || first.end - second.end);
   // un étouffé ou un vibrato jamais refermé : jusqu'à la fin du morceau
   for (const effect of openEffects) effects.push({ staff: effect.staff, kind: effect.kind, start: effect.start, end: effect.end });
   effects.sort((first, second) => first.start - second.start || first.staff - second.staff);
-  return { texts, expressions, hairpins, effects, slurs, pedals, pedalTexts, fermatas, chords: chords.sort((first, second) => first.t - second.t) };
+  return {
+    texts,
+    expressions,
+    hairpins,
+    effects,
+    slurs,
+    pedals,
+    pedalTexts,
+    fermatas,
+    chords: chords.sort((first, second) => first.t - second.t),
+  };
 }

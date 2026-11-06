@@ -211,7 +211,9 @@ const errorLineField = StateField.define<RangeSet<GutterMarker>>({
     if (tr.docChanged) set = set.map(tr.changes);
     for (const stateEffect of tr.effects)
       if (stateEffect.is(setDiagnosticsEffect)) {
-        const lines = [...new Set(stateEffect.value.map((diagnostic) => tr.state.doc.lineAt(diagnostic.from).from))].sort((first, second) => first - second);
+        const lines = [...new Set(stateEffect.value.map((diagnostic) => tr.state.doc.lineAt(diagnostic.from).from))].sort(
+          (first, second) => first - second,
+        );
         set = RangeSet.of(lines.map((at) => errorMarker.range(at)));
       }
     return set;
@@ -320,7 +322,12 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
       let common = 0;
       while (common < old.length && common < text.length && old[common] === text[common]) common++;
       let commonEnd = 0;
-      while (commonEnd < old.length - common && commonEnd < text.length - common && old[old.length - 1 - commonEnd] === text[text.length - 1 - commonEnd]) commonEnd++;
+      while (
+        commonEnd < old.length - common &&
+        commonEnd < text.length - common &&
+        old[old.length - 1 - commonEnd] === text[text.length - 1 - commonEnd]
+      )
+        commonEnd++;
       const changes = { from: common, to: old.length - commonEnd, insert: text.slice(common, text.length - commonEnd) };
       const doc = editorView.state.update({ changes }).state.doc;
       const target = doc.line(Math.max(1, Math.min(line, doc.lines)));
@@ -337,7 +344,10 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
       if (!editorView) return;
       const target = editorView.state.doc.line(Math.max(1, Math.min(line, editorView.state.doc.lines)));
       const at = Math.min(target.from + Math.max(0, column - 1), target.to);
-      editorView.dispatch({ selection: EditorSelection.range(Math.min(at + 1, target.to), at), effects: EditorView.scrollIntoView(at, { y: "center" }) });
+      editorView.dispatch({
+        selection: EditorSelection.range(Math.min(at + 1, target.to), at),
+        effects: EditorView.scrollIntoView(at, { y: "center" }),
+      });
       if (focus) editorView.focus();
     },
   }));

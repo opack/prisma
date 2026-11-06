@@ -81,14 +81,17 @@ export function parseSettings(text: string): PieceSettings {
     if (instruments.some((instrument: string | null) => instrument !== null)) out.instruments = instruments;
   }
   if (Array.isArray(raw.volumes)) {
-    const volumes = raw.volumes.map((volume: unknown) => (Number.isInteger(volume) ? Math.min(MAX_VOLUME, Math.max(MIN_VOLUME, volume as number)) : 0));
+    const volumes = raw.volumes.map((volume: unknown) =>
+      Number.isInteger(volume) ? Math.min(MAX_VOLUME, Math.max(MIN_VOLUME, volume as number)) : 0,
+    );
     if (volumes.some((volume: number) => volume !== 0)) out.volumes = volumes;
   }
   if (raw.options && typeof raw.options === "object") {
     // les valeurs se valident comme celles des options générales : une valeur refusée y reprend la valeur par défaut
     const checked = loadOptionsFrom(raw.options);
     const options: PieceSettings["options"] = {};
-    for (const key of PIECE_KEYS) if (key in raw.options && checked[key] === raw.options[key]) (options as Record<string, unknown>)[key] = checked[key];
+    for (const key of PIECE_KEYS)
+      if (key in raw.options && checked[key] === raw.options[key]) (options as Record<string, unknown>)[key] = checked[key];
     if (Object.keys(options).length) out.options = options;
   }
   return out;

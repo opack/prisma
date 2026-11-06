@@ -41,7 +41,8 @@ function marksOf(score: Score, staff: Staff): Mark[] {
     } else if (/^cresc/.test(text)) out.push({ t: expression.t, kind: "ramp", up: true });
     else if (/^(dim|decresc)/.test(text)) out.push({ t: expression.t, kind: "ramp", up: false });
   }
-  for (const hairpin of score.hairpins) if (hairpin.staff === staff) out.push({ t: hairpin.start, kind: "ramp", up: hairpin.kind === "<", end: hairpin.end });
+  for (const hairpin of score.hairpins)
+    if (hairpin.staff === staff) out.push({ t: hairpin.start, kind: "ramp", up: hairpin.kind === "<", end: hairpin.end });
   return out.sort((first, second) => first.t - second.t);
 }
 
@@ -92,7 +93,9 @@ export function velocityAt(score: Score): (staff: Staff, t: number, accent?: boo
     // à un même instant, la nuance d'abord, puis le changement qui part d'elle
     used.set(
       staff,
-      [...mine, ...shared].sort((first, second) => first.t - second.t || (family(first) === "ramp" ? 1 : 0) - (family(second) === "ramp" ? 1 : 0)),
+      [...mine, ...shared].sort(
+        (first, second) => first.t - second.t || (family(first) === "ramp" ? 1 : 0) - (family(second) === "ramp" ? 1 : 0),
+      ),
     );
   }
   return (staff, tick, accent = true) => {

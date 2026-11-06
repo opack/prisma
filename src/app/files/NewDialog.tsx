@@ -11,7 +11,12 @@ import type { Template } from "../editor/templates.ts";
 export function NewDialog({ onCreate, onClose }: { onCreate: (template: Template) => void; onClose: () => void }) {
   const [chosen, setChosen] = useState(TEMPLATES[1].id);
   return (
-    <Dialog title="Nouveau morceau" submit="Créer" onSubmit={() => onCreate(TEMPLATES.find((template) => template.id === chosen)!)} onClose={onClose}>
+    <Dialog
+      title="Nouveau morceau"
+      submit="Créer"
+      onSubmit={() => onCreate(TEMPLATES.find((template) => template.id === chosen)!)}
+      onClose={onClose}
+    >
       <Choices
         legend="Pour commencer"
         name="template"

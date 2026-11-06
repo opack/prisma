@@ -133,7 +133,8 @@ m1 |1  |2  ||
     expect(back.notes.map((note) => note.midi)).toEqual(score.notes.map((note) => note.midi));
     // deux notes qui sonnent ensemble ne partagent jamais une corde
     for (const first of back.notes)
-      for (const note of back.notes) if (first !== note && first.string === note.string) expect(first.end <= note.start || note.end <= first.start).toBe(true);
+      for (const note of back.notes)
+        if (first !== note && first.string === note.string) expect(first.end <= note.start || note.end <= first.start).toBe(true);
     expect(writePrisma(back)).toMatch(/^1 {2}\|/m);
   });
 
@@ -197,7 +198,9 @@ m1 |1  |2  |3  |4  ||
 `;
     // deux notes qui sonnent ensemble ne partagent jamais une corde
     const apart = (notes: Note[]) =>
-      notes.every((note) => notes.every((other) => note === other || note.string !== other.string || note.end <= other.start || other.end <= note.start));
+      notes.every((note) =>
+        notes.every((other) => note === other || note.string !== other.string || note.end <= other.start || other.end <= note.start),
+      );
 
     it("réunit les portées d'une partie en une partie de guitare, sur des cordes", () => {
       const { score, report } = convertToStrings(parsePrisma(DUO), 0, { instrument: "guitar", octave: 0 });

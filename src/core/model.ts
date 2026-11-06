@@ -38,7 +38,8 @@ export function partOf(parts: Part[], staff: Staff): number {
 }
 
 /** Première portée de chaque partie. */
-export const firstStaves = (parts: Part[]) => parts.map((_, index) => parts.slice(0, index).reduce((total, part) => total + part.staves, 0));
+export const firstStaves = (parts: Part[]) =>
+  parts.map((_, index) => parts.slice(0, index).reduce((total, part) => total + part.staves, 0));
 
 /** Les cordes d'une portée, quand elle est celle d'un instrument à cordes. */
 export const stringsOfStaff = (parts: Part[], staff: Staff): Strings | undefined => parts[partOf(parts, staff)]?.strings;
@@ -418,14 +419,19 @@ export const beatStart = (index: number) => index * TICKS_PER_BEAT;
 
 /** Trie les notes de façon stable : par début, portée du haut d'abord, de l'aigu au grave. */
 export function sortNotes(notes: Note[]): Note[] {
-  return [...notes].sort((first, second) => first.start - second.start || first.staff - second.staff || second.midi - first.midi || first.end - second.end);
+  return [...notes].sort(
+    (first, second) => first.start - second.start || first.staff - second.staff || second.midi - first.midi || first.end - second.end,
+  );
 }
 
 /** Trie les petites notes : par instant, portée du haut d'abord, par rang, de l'aigu au grave. */
 const ARTICULATION_ORDER: ArticulationKind[] = ["staccato", "accent", "marcato", "down", "up"];
 /** Trie les articulations : par instant, portée, puis staccato, accent, marcato. */
 export function sortArticulations(xs: Articulation[]): Articulation[] {
-  return [...xs].sort((first, second) => first.t - second.t || first.staff - second.staff || ARTICULATION_ORDER.indexOf(first.kind) - ARTICULATION_ORDER.indexOf(second.kind));
+  return [...xs].sort(
+    (first, second) =>
+      first.t - second.t || first.staff - second.staff || ARTICULATION_ORDER.indexOf(first.kind) - ARTICULATION_ORDER.indexOf(second.kind),
+  );
 }
 
 /** Trie les paroles : par instant, portée du haut d'abord, par couplet. */
@@ -434,7 +440,9 @@ export function sortLyrics(lyrics: Lyric[]): Lyric[] {
 }
 
 export function sortGraces(graces: Grace[]): Grace[] {
-  return [...graces].sort((first, second) => first.t - second.t || first.staff - second.staff || first.slot - second.slot || second.midi - first.midi);
+  return [...graces].sort(
+    (first, second) => first.t - second.t || first.staff - second.staff || first.slot - second.slot || second.midi - first.midi,
+  );
 }
 
 /**
@@ -447,7 +455,8 @@ export function graceDigits(graces: Grace[], staff: Staff, tick: number, parts?:
   for (const grace of graces) {
     if (grace.staff !== staff || grace.t !== tick) continue;
     // sur une corde, le nombre est la case
-    const number = strings && grace.string !== undefined ? grace.midi - strings.open[grace.string - 1] - strings.capo : (grace.midi % 12) + 1;
+    const number =
+      strings && grace.string !== undefined ? grace.midi - strings.open[grace.string - 1] - strings.capo : (grace.midi % 12) + 1;
     out[grace.slot] = Math.max(out[grace.slot] ?? 1, String(number).length);
   }
   return Array.from(out, (digits) => digits ?? 1);

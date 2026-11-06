@@ -79,7 +79,12 @@ export function HeroKeyboard() {
                     className={"stroke-[#8f938d] stroke-1" + (on ? " fill-[#ffc53d]" : "")}
                     style={{ fill: on ? undefined : tint.band }}
                   />
-                  <text x={x0 + index * whiteWidth + whiteWidth / 2} y={LANE + whiteHeight - 16} textAnchor="middle" className={`${NUM} text-[17px] fill-ink`}>
+                  <text
+                    x={x0 + index * whiteWidth + whiteWidth / 2}
+                    y={LANE + whiteHeight - 16}
+                    textAnchor="middle"
+                    className={`${NUM} text-[17px] fill-ink`}
+                  >
                     {note}
                   </text>
                 </g>

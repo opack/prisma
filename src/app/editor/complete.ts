@@ -56,7 +56,9 @@ export function cases(ruler: string): Case[] {
     const labels = [...ruler.slice(from, to).matchAll(/\S+/g)].map((match) => from + match.index);
     if (!labels.length) continue;
     labels[0] = from;
-    labels.forEach((start, index) => out.push({ start, end: index + 1 < labels.length ? labels[index + 1] : to, bar: index + 1 === labels.length }));
+    labels.forEach((start, index) =>
+      out.push({ start, end: index + 1 < labels.length ? labels[index + 1] : to, bar: index + 1 === labels.length }),
+    );
   }
   return out;
 }
@@ -98,7 +100,8 @@ const ruleChar = (line: string) => line.match(/[─━\-=═]/)?.[0] ?? "─";
  * à part.
  */
 function marksOf(line: string) {
-  if (/^@[lc](\s|$)/.test(line)) return [...line.matchAll(/\S+/g)].filter((match) => match.index > 0).map((match) => ({ col: match.index, text: match[0] }));
+  if (/^@[lc](\s|$)/.test(line))
+    return [...line.matchAll(/\S+/g)].filter((match) => match.index > 0).map((match) => ({ col: match.index, text: match[0] }));
   return markTokens(line);
 }
 
@@ -227,7 +230,8 @@ export function rulerSuffixes(ruler: string, cell: number) {
  */
 export function octaveRoom(lines: string[], sys: System, lineIndex: number): { same: boolean; octaves: number[] } {
   const none = { same: false, octaves: [] };
-  const isNote = (line: string) => !!line && !line.startsWith("@") && !line.startsWith("#") && line.includes("|") && !isRuleLine(line) && !isRuler(line);
+  const isNote = (line: string) =>
+    !!line && !line.startsWith("@") && !line.startsWith("#") && line.includes("|") && !isRuleLine(line) && !isRuler(line);
   const label = (line: string) => parseOctaveLabel(line.slice(0, line.indexOf("|")).trim());
   const up = lines[lineIndex - 1] ?? "";
   if (up.startsWith("@")) return none;
@@ -348,6 +352,8 @@ export function writeMark(
   if (busy >= 0) end = Math.min(end, start + busy - 1);
   const room = Math.max(end - start, mark.head.length + (mark.tail?.length ?? 0) + 1);
   const body = mark.head + mark.fill.repeat(Math.max(1, room - mark.head.length - (mark.tail?.length ?? 0))) + (mark.tail ?? "");
-  const out = new Map<number, string>([[lineIndex, (erased.padEnd(start).slice(0, start) + body + erased.slice(start + body.length)).trimEnd()]]);
+  const out = new Map<number, string>([
+    [lineIndex, (erased.padEnd(start).slice(0, start) + body + erased.slice(start + body.length)).trimEnd()],
+  ]);
   return { lines: out, caret: { line: lineIndex, col: start + body.length } };
 }

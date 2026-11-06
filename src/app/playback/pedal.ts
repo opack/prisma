@@ -44,7 +44,8 @@ export function playedPedals(score: Score): Pedal[] {
     for (; bar < bars.length && !pedalled(bar).length && !(bar > at && sectionStarts.has(bar)); bar++) {
       const { from, to } = bars[bar];
       for (const span of motif)
-        if (from + span.start < to) out.push({ staff: text.staff, start: from + span.start, end: Math.min(from + span.end, to), implied: true });
+        if (from + span.start < to)
+          out.push({ staff: text.staff, start: from + span.start, end: Math.min(from + span.end, to), implied: true });
     }
   }
   return out;
@@ -59,7 +60,9 @@ export type SimileDisplay = "pedals" | "faded" | "text";
  */
 export function withSimile(score: Score, display: SimileDisplay): Score {
   if (display === "text" || !score.pedalTexts.some((pedalText) => /simile/i.test(pedalText.text))) return score;
-  const pedals = playedPedals(score).map((pedal) => (display === "pedals" && pedal.implied ? { staff: pedal.staff, start: pedal.start, end: pedal.end } : pedal));
+  const pedals = playedPedals(score).map((pedal) =>
+    display === "pedals" && pedal.implied ? { staff: pedal.staff, start: pedal.start, end: pedal.end } : pedal,
+  );
   return { ...score, pedals, pedalTexts: score.pedalTexts.filter((text) => !/simile/i.test(text.text)) };
 }
 
@@ -81,7 +84,8 @@ export function soundingEnds(score: Score): number[] {
     if (ends[index] === note.end) return note.end;
     let end = ends[index];
     for (const other of score.notes)
-      if (other.midi === note.midi && other.start > note.start && other.start < end && part(other.staff) === part(note.staff)) end = other.start;
+      if (other.midi === note.midi && other.start > note.start && other.start < end && part(other.staff) === part(note.staff))
+        end = other.start;
     return Math.max(end, note.end);
   });
 }

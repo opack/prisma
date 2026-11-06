@@ -66,7 +66,12 @@ function convertAt(score: Score, part: number, instrument: InstrumentName, strin
     if (midi !== original.midi + 12 * octave) moved++;
     const { string: _, ...rest } = original;
     // la voisine de trille suit sa note
-    const note: Note = { ...rest, staff: first, midi, ...(original.trill !== undefined ? { trill: original.trill + midi - original.midi } : {}) };
+    const note: Note = {
+      ...rest,
+      staff: first,
+      midi,
+      ...(original.trill !== undefined ? { trill: original.trill + midi - original.midi } : {}),
+    };
     // la même note jouée par les deux mains (ou ramenée à la même octave) : une seule fois
     const twin = notes.find((other) => other.staff === first && other.midi === midi && other.start === note.start);
     if (twin) {

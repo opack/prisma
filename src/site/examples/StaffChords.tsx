@@ -31,7 +31,15 @@ export function StaffChords() {
         <g key={chord.x}>
           {chord.steps.includes(-2) && <line x1={chord.x - 11} x2={chord.x + 11} y1={y(-2)} y2={y(-2)} stroke="#1b1d1f" strokeWidth={1} />}
           {chord.steps.map((step) => (
-            <ellipse key={step} cx={chord.x} cy={y(step)} rx={6.4} ry={4.6} transform={`rotate(-20 ${chord.x} ${y(step)})`} fill="#1b1d1f" />
+            <ellipse
+              key={step}
+              cx={chord.x}
+              cy={y(step)}
+              rx={6.4}
+              ry={4.6}
+              transform={`rotate(-20 ${chord.x} ${y(step)})`}
+              fill="#1b1d1f"
+            />
           ))}
           <text x={chord.x} y={112} textAnchor="middle" className="font-ui text-[11px] fill-ink" fontStyle="italic">
             {chord.name}

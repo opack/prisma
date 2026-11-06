@@ -152,7 +152,11 @@ function parseRuler(ruler: string, lineNo: number, pipe: number) {
     segs.push({ from, to, barEnd: text !== "|", endRepeat: text.startsWith(":"), startRepeatAfter: text.endsWith(":") });
   }
   if (!segs.length) throw new PrismaError("règle de comptage sans aucun temps", lineNo);
-  const spans: SepSpan[] = seps.map((separator) => ({ from: separator.from, to: separator.from + separator.text.length, text: separator.text }));
+  const spans: SepSpan[] = seps.map((separator) => ({
+    from: separator.from,
+    to: separator.from + separator.text.length,
+    text: separator.text,
+  }));
   return { segs, spans, leadRepeat: lead === "||:" };
 }
 
@@ -219,7 +223,10 @@ export function partExtras(name: string, extras: string[], line: number): { inst
         `« parts » : « ${extra} » pour « ${name} » n'est ni un instrument, ni un accordage (${tuningsOf(played).join(", ")}), ni un capo (capo 2)`,
         line,
       );
-    throw new PrismaError(`« parts » : instrument « ${extra} » inconnu pour « ${name} » ; les instruments : ${INSTRUMENTS.join(", ")}`, line);
+    throw new PrismaError(
+      `« parts » : instrument « ${extra} » inconnu pour « ${name} » ; les instruments : ${INSTRUMENTS.join(", ")}`,
+      line,
+    );
   }
   if (!isStringInstrument(played)) {
     if (capo) throw new PrismaError(`« parts » : « ${name} » n'est pas un instrument à cordes : pas de capo`, line);
@@ -277,7 +284,8 @@ export function parsePrisma(text: string): Score {
       continue;
     }
     const last = blocks[blocks.length - 1];
-    if (!last || pendingMarks.length) throw new PrismaError("une règle de comptage (« m1 |1 … ») doit précéder les lignes de notes", index + 1);
+    if (!last || pendingMarks.length)
+      throw new PrismaError("une règle de comptage (« m1 |1 … ») doit précéder les lignes de notes", index + 1);
     if (last.lines.includes(-1)) throw new PrismaError("ligne de notes séparée de sa règle de comptage par une ligne vide", index + 1);
     last.lines.push(index);
   }
@@ -352,16 +360,22 @@ export function parsePrisma(text: string): Score {
       // chaque case du temps commence par son étiquette : le numéro du temps, puis « * », « . » ou « , »
       const labels: { from: number; text: string }[] = [];
       const body = rulerLine.slice(segment.from, segment.to);
-      for (let regExp = /\S+/g, match = regExp.exec(body); match; match = regExp.exec(body)) labels.push({ from: segment.from + match.index, text: match[0] });
+      for (let regExp = /\S+/g, match = regExp.exec(body); match; match = regExp.exec(body))
+        labels.push({ from: segment.from + match.index, text: match[0] });
       if (!labels.length || labels[0].from !== segment.from || !/^\d+$/.test(labels[0].text) || Number(labels[0].text) < 1) {
         throw new PrismaError("chaque temps commence par son numéro, collé à la barre", rulerLineNumber, segment.from + 1);
       }
       for (const cellLabel of labels.slice(1)) {
         if (!SUB_LABELS.has(cellLabel.text))
-          throw new PrismaError(`étiquette de case « ${cellLabel.text} » inconnue : attendu « * », « . » ou « , »`, rulerLineNumber, cellLabel.from + 1);
+          throw new PrismaError(
+            `étiquette de case « ${cellLabel.text} » inconnue : attendu « * », « . » ou « , »`,
+            rulerLineNumber,
+            cellLabel.from + 1,
+          );
       }
       const count = labels.length;
-      if (TICKS_PER_BEAT % count) throw new PrismaError(`découpage en ${count} cases non pris en charge`, rulerLineNumber, segment.from + 1);
+      if (TICKS_PER_BEAT % count)
+        throw new PrismaError(`découpage en ${count} cases non pris en charge`, rulerLineNumber, segment.from + 1);
       const cells = labels.map((cellLabel) => cellLabel.text);
       const label = Number(cells[0]);
       const stars = cells.filter((cell) => cell === "*").length;
@@ -369,16 +383,23 @@ export function parsePrisma(text: string): Score {
       // nouvelle mesure ? (début de bloc après une mesure fermée, ou après une barre de mesure)
       const newBar = segmentIndex === 0 ? lastBarClosed || label === 1 : segs[segmentIndex - 1].barEnd;
       if (segmentIndex === 0 && !newBar && barLabel && barLabel !== lastBar) {
-        throw new PrismaError(`la mesure ${lastBar} n'est pas terminée : ce système devrait commencer par « m${lastBar} »`, rulerLineNumber, 1, {
-          cascade: true,
-        });
+        throw new PrismaError(
+          `la mesure ${lastBar} n'est pas terminée : ce système devrait commencer par « m${lastBar} »`,
+          rulerLineNumber,
+          1,
+          {
+            cascade: true,
+          },
+        );
       }
-      if (segmentIndex === 0 && !newBar && leadRepeat) throw new PrismaError("« ||: » ne peut pas couper une mesure en deux", rulerLineNumber, pipe + 1);
+      if (segmentIndex === 0 && !newBar && leadRepeat)
+        throw new PrismaError("« ||: » ne peut pas couper une mesure en deux", rulerLineNumber, pipe + 1);
       if (segmentIndex === 0 && !newBar) bar = lastBar;
       if (segmentIndex > 0 && newBar) bar = nextBar(bar);
       if (newBar) {
         barIndex++;
-        if (repeatNext || (segmentIndex === 0 && leadRepeat) || (segmentIndex > 0 && segs[segmentIndex - 1].startRepeatAfter)) repeatAt(barIndex).start = true;
+        if (repeatNext || (segmentIndex === 0 && leadRepeat) || (segmentIndex > 0 && segs[segmentIndex - 1].startRepeatAfter))
+          repeatAt(barIndex).start = true;
         repeatNext = false;
       }
       if (segment.endRepeat) repeatAt(barIndex).end = true;
@@ -440,7 +461,11 @@ export function parsePrisma(text: string): Score {
                 at,
               );
             if (frets.length !== guitarStrings.open.length)
-              throw new PrismaError(`grille « ${shape} » : ${frets.length} cordes pour une guitare de ${guitarStrings.open.length}`, lineIndex + 1, at);
+              throw new PrismaError(
+                `grille « ${shape} » : ${frets.length} cordes pour une guitare de ${guitarStrings.open.length}`,
+                lineIndex + 1,
+                at,
+              );
             const notes = new Set(chordNotes(match[0])!.map((note) => (note - 1) % 12));
             const stray = shapePitches(frets, guitarStrings).find((pitchClass) => !notes.has(pitchClass));
             if (stray !== undefined)
@@ -450,7 +475,8 @@ export function parsePrisma(text: string): Score {
                 at,
               );
           }
-          if (chords.some((textMark) => textMark.t === anchor.t)) throw new PrismaError("deux accords sur une même case", lineIndex + 1, col + 1);
+          if (chords.some((textMark) => textMark.t === anchor.t))
+            throw new PrismaError("deux accords sur une même case", lineIndex + 1, col + 1);
           chords.push({ t: anchor.t, text: match[0] });
         }
         continue;
@@ -472,7 +498,11 @@ export function parsePrisma(text: string): Score {
         }
         const anchor = anchors.find((candidate) => candidate.from === token.col);
         if (!anchor)
-          throw new PrismaError(`« ${token.text} » doit commencer exactement sur une case de la règle de comptage`, lineIndex + 1, token.col + 1);
+          throw new PrismaError(
+            `« ${token.text} » doit commencer exactement sur une case de la règle de comptage`,
+            lineIndex + 1,
+            token.col + 1,
+          );
         const times = token.text.match(/^(\d+)\s*[×xX]$/);
         if (times) timesMarks.push({ bar: anchor.barIndex, times: Number(times[1]), line: lineIndex + 1, col: token.col + 1 });
         else if (token.text === FERMATA) {
@@ -480,7 +510,11 @@ export function parsePrisma(text: string): Score {
         } else if (isArpeggioSign(token.text)) {
           addArpeggio({ t: anchor.t, ...(token.text === ARPEGGIO_DOWN ? { down: true } : {}) }, lineIndex + 1, token.col + 1);
         } else if (isArticulationSign(token.text)) {
-          throw new PrismaError(`« ${token.text} » : une articulation se place sur une ligne @ sous sa portée`, lineIndex + 1, token.col + 1);
+          throw new PrismaError(
+            `« ${token.text} » : une articulation se place sur une ligne @ sous sa portée`,
+            lineIndex + 1,
+            token.col + 1,
+          );
         } else texts.push({ t: anchor.t, text: token.text });
       }
     }
@@ -498,17 +532,23 @@ export function parsePrisma(text: string): Score {
       const rule = rules.get(lineIndex);
       if (!rule) return staffOfLine.set(lineIndex, blockStaves.length - 1);
       if (position === 0) {
-        if (rule.double) throw new PrismaError("le trait sous la règle est simple (─) : le double (═) sépare deux parties", lineIndex + 1, 1);
+        if (rule.double)
+          throw new PrismaError("le trait sous la règle est simple (─) : le double (═) sépare deux parties", lineIndex + 1, 1);
         blockStaves[0] = { rule, line: lineIndex + 1 };
       } else blockStaves.push({ rule, line: lineIndex + 1 });
     });
     // parties du système : un trait double en commence une nouvelle
     const here: { name?: string; staves: number; line: number }[] = [];
     blockStaves.forEach((blockStaff, index) => {
-      if (index === 0 || blockStaff.rule!.double) here.push({ ...(blockStaff.rule?.name ? { name: blockStaff.rule.name } : {}), staves: 1, line: blockStaff.line });
+      if (index === 0 || blockStaff.rule!.double)
+        here.push({ ...(blockStaff.rule?.name ? { name: blockStaff.rule.name } : {}), staves: 1, line: blockStaff.line });
       else {
         if (blockStaff.rule!.name)
-          throw new PrismaError(`« ${blockStaff.rule!.name} » : le nom d'une partie s'écrit sur le trait double (═) qui la commence`, blockStaff.line, 1);
+          throw new PrismaError(
+            `« ${blockStaff.rule!.name} » : le nom d'une partie s'écrit sur le trait double (═) qui la commence`,
+            blockStaff.line,
+            1,
+          );
         here[here.length - 1].staves++;
       }
     });
@@ -521,9 +561,14 @@ export function parsePrisma(text: string): Score {
       if (index >= declared.length)
         throw new PrismaError(`partie de trop : « parts » en déclare ${declared.length} (${declared.join(", ")})`, part.line, 1);
       if (!part.name)
-        throw new PrismaError(`il manque le nom de la partie « ${declared[index]} » sur le trait au-dessus de sa première portée`, part.line, 1, {
-          cascade: true,
-        });
+        throw new PrismaError(
+          `il manque le nom de la partie « ${declared[index]} » sur le trait au-dessus de sa première portée`,
+          part.line,
+          1,
+          {
+            cascade: true,
+          },
+        );
       if (part.name !== declared[index]) {
         throw new PrismaError(
           declared.includes(part.name)
@@ -536,9 +581,14 @@ export function parsePrisma(text: string): Score {
       }
     });
     if (declared && here.length < declared.length)
-      throw new PrismaError(`il manque des parties : « parts » en déclare ${declared.length} (${declared.join(", ")})`, rulerLineNumber, 1, {
-        cascade: true,
-      });
+      throw new PrismaError(
+        `il manque des parties : « parts » en déclare ${declared.length} (${declared.join(", ")})`,
+        rulerLineNumber,
+        1,
+        {
+          cascade: true,
+        },
+      );
     if (!parts) {
       parts = here.map(({ name, staves }, index) => ({
         ...(name ? { name } : {}),
@@ -547,7 +597,8 @@ export function parsePrisma(text: string): Score {
         ...(entries?.[index]?.strings ? { strings: entries[index].strings } : {}),
       }));
       const multi = parts.find((part) => part.strings && part.staves > 1);
-      if (multi) throw new PrismaError(`« ${multi.name} » est un instrument à cordes : une seule portée, une ligne par corde`, rulerLineNumber, 1);
+      if (multi)
+        throw new PrismaError(`« ${multi.name} » est un instrument à cordes : une seule portée, une ligne par corde`, rulerLineNumber, 1);
     } else if (here.length !== parts.length || here.some((part, index) => part.staves !== parts![index].staves)) {
       const shape = (list: { staves: number }[]) => list.map((part) => part.staves).join(" + ");
       throw new PrismaError(
@@ -573,15 +624,26 @@ export function parsePrisma(text: string): Score {
           isHairpin(token.text) || isEffect(token.text) || isSlur(token.text) || isArticulationSign(token.text)
             ? anchors.findIndex((candidate) => token.col >= candidate.from && token.col < candidate.to)
             : anchors.findIndex((candidate) => candidate.from === token.col);
-        if (anchorIndex < 0) throw new PrismaError(`« ${token.text} » doit commencer exactement sur une case de la règle de comptage`, lineNumber, token.col + 1);
+        if (anchorIndex < 0)
+          throw new PrismaError(
+            `« ${token.text} » doit commencer exactement sur une case de la règle de comptage`,
+            lineNumber,
+            token.col + 1,
+          );
         const anchor = anchors[anchorIndex];
         if (isArpeggioSign(token.text)) {
           addArpeggio({ t: anchor.t, staff, ...(token.text === ARPEGGIO_DOWN ? { down: true } : {}) }, lineNumber, token.col + 1);
         } else if (isArticulationSign(token.text)) {
           const kind = articulationOf(token.text)!;
           if (isPick(kind) && !stringsOfStaff(parts!, staff))
-            throw new PrismaError(`« ${token.text} » : le sens du médiator se note pour une partie de guitare ou de basse`, lineNumber, token.col + 1);
-          if (articulations.some((articulation) => articulation.staff === staff && articulation.t === anchor.t && articulation.kind === kind))
+            throw new PrismaError(
+              `« ${token.text} » : le sens du médiator se note pour une partie de guitare ou de basse`,
+              lineNumber,
+              token.col + 1,
+            );
+          if (
+            articulations.some((articulation) => articulation.staff === staff && articulation.t === anchor.t && articulation.kind === kind)
+          )
             throw new PrismaError(`« ${token.text} » posé deux fois sur la même case`, lineNumber, token.col + 1);
           articulations.push({ staff, t: anchor.t, kind });
         } else if (isPedalSign(token.text) || isPedalText(token.text)) {
@@ -598,9 +660,13 @@ export function parsePrisma(text: string): Score {
           // plusieurs suites : de haut en bas, dans l'ordre où les liaisons ont commencé
           const continued = token.text.startsWith("(")
             ? undefined
-            : pendingSlurs.filter((openSlur) => openSlur.slur.staff === staff).sort((first, second) => first.slur.start - second.slur.start)[0];
+            : pendingSlurs
+                .filter((openSlur) => openSlur.slur.staff === staff)
+                .sort((first, second) => first.slur.start - second.slur.start)[0];
           if (!token.text.startsWith("(") && (!continued || anchorIndex !== 0)) {
-            throw new PrismaError("« ---) » sans liaison ouverte : une liaison commence par « ( »", lineNumber, token.col + 1, { cascade: true });
+            throw new PrismaError("« ---) » sans liaison ouverte : une liaison commence par « ( »", lineNumber, token.col + 1, {
+              cascade: true,
+            });
           }
           const slur = continued ? continued.slur : { staff, start: anchor.t, end: -1 };
           if (continued) pendingSlurs = pendingSlurs.filter((openSlur) => openSlur !== continued);
@@ -625,7 +691,8 @@ export function parsePrisma(text: string): Score {
           const last = token.col + token.text.length - 1;
           const next = anchors.find((candidate) => candidate.from > last);
           const end = next ? next.t : t1;
-          const prev = anchorIndex === 0 ? effects.find((effect) => effect.staff === staff && effect.kind === kind && effect.end === t0) : undefined;
+          const prev =
+            anchorIndex === 0 ? effects.find((effect) => effect.staff === staff && effect.kind === kind && effect.end === t0) : undefined;
           if (prev) prev.end = end;
           else effects.push({ staff, kind, start: anchor.t, end });
         } else if (isHairpin(token.text)) {
@@ -635,7 +702,10 @@ export function parsePrisma(text: string): Score {
           const end = next ? next.t : t1;
           const kind = token.text[0] as Hairpin["kind"];
           // suite d'un soufflet du système précédent
-          const prev = anchorIndex === 0 ? hairpins.find((hairpin) => hairpin.staff === staff && hairpin.kind === kind && hairpin.end === t0) : undefined;
+          const prev =
+            anchorIndex === 0
+              ? hairpins.find((hairpin) => hairpin.staff === staff && hairpin.kind === kind && hairpin.end === t0)
+              : undefined;
           if (prev) prev.end = end;
           else hairpins.push({ staff, kind, start: anchor.t, end });
         } else {
@@ -661,16 +731,27 @@ export function parsePrisma(text: string): Score {
           if (!last) {
             // suite de la prolongation d'une syllabe du système précédent
             const prev =
-              col === anchors[0].from ? lyrics.find((lyric) => lyric.staff === staff && lyric.verse === verse && lyric.extend === t0) : undefined;
+              col === anchors[0].from
+                ? lyrics.find((lyric) => lyric.staff === staff && lyric.verse === verse && lyric.extend === t0)
+                : undefined;
             if (!prev)
-              throw new PrismaError("« --- » prolonge la syllabe qui le précède sur la ligne : écrivez d'abord la syllabe", lineNumber, col + 1, {
-                cascade: true,
-              });
+              throw new PrismaError(
+                "« --- » prolonge la syllabe qui le précède sur la ligne : écrivez d'abord la syllabe",
+                lineNumber,
+                col + 1,
+                {
+                  cascade: true,
+                },
+              );
             prev.extend = end;
             last = prev;
           } else {
             if (last.hyphen)
-              throw new PrismaError(`« ${last.text}${HYPHEN} » continue sur la syllabe suivante : elle ne se prolonge pas`, lineNumber, col + 1);
+              throw new PrismaError(
+                `« ${last.text}${HYPHEN} » continue sur la syllabe suivante : elle ne se prolonge pas`,
+                lineNumber,
+                col + 1,
+              );
             if (extended) throw new PrismaError("une seule prolongation par syllabe", lineNumber, col + 1);
             // une syllabe sur la dernière case d'un système se prolonge au suivant : vérifié à la fin
             const anchorIndex = anchors.findIndex((candidate) => candidate.t === last!.t);
@@ -682,7 +763,11 @@ export function parsePrisma(text: string): Score {
         }
         const anchor = anchors.find((candidate) => candidate.from === col);
         if (!anchor)
-          throw new PrismaError(`syllabe « ${token} » : elle doit commencer exactement sur une case de la règle de comptage`, lineNumber, col + 1);
+          throw new PrismaError(
+            `syllabe « ${token} » : elle doit commencer exactement sur une case de la règle de comptage`,
+            lineNumber,
+            col + 1,
+          );
         const hyphen = token.length > 1 && token.endsWith(HYPHEN);
         last = { staff, verse, t: anchor.t, text: hyphen ? token.slice(0, -HYPHEN.length) : token, ...(hyphen ? { hyphen: true } : {}) };
         extended = false;
@@ -720,14 +805,20 @@ export function parsePrisma(text: string): Score {
         );
       }
       if (row[pipe] !== "|")
-        throw new PrismaError("le « | » de début de ligne doit être aligné sur celui de la règle", lineNumber, Math.min(row.length, pipe) + 1);
+        throw new PrismaError(
+          "le « | » de début de ligne doit être aligné sur celui de la règle",
+          lineNumber,
+          Math.min(row.length, pipe) + 1,
+        );
       // les barres (et leurs deux points de reprise, facultatifs) sont alignées sur la règle
       for (let column = pipe; column < row.length; column++) {
         const rulerChar = rulerLine[column],
           rowChar = row[column];
         if (inSpan(column)) {
-          if (rulerChar === "|" && rowChar !== "|") throw new PrismaError("barre attendue ici, alignée sur la règle de comptage", lineNumber, column + 1);
-          if (rulerChar === ":" && rowChar !== ":" && rowChar !== " ") throw new PrismaError("« : » de reprise ou espace attendu ici", lineNumber, column + 1);
+          if (rulerChar === "|" && rowChar !== "|")
+            throw new PrismaError("barre attendue ici, alignée sur la règle de comptage", lineNumber, column + 1);
+          if (rulerChar === ":" && rowChar !== ":" && rowChar !== " ")
+            throw new PrismaError("« : » de reprise ou espace attendu ici", lineNumber, column + 1);
         } else if (rowChar === "|") {
           throw new PrismaError("« | » mal placé : il ne tombe pas sur une barre de la règle", lineNumber, column + 1);
         }
@@ -741,9 +832,11 @@ export function parsePrisma(text: string): Score {
       const strings = stringsOfStaff(parts!, staff);
       if (strings) {
         const count = strings.open.length;
-        if (!label) throw new PrismaError(`une ligne par corde : chaque ligne commence par le numéro de sa corde (1 à ${count})`, lineNumber, 1);
+        if (!label)
+          throw new PrismaError(`une ligne par corde : chaque ligne commence par le numéro de sa corde (1 à ${count})`, lineNumber, 1);
         const stringNumber = /^\d+$/.test(label) ? Number(label) : NaN;
-        if (!(stringNumber >= 1 && stringNumber <= count)) throw new PrismaError(`corde invalide : « ${label} » (attendu 1, la plus aiguë, à ${count})`, lineNumber, 1);
+        if (!(stringNumber >= 1 && stringNumber <= count))
+          throw new PrismaError(`corde invalide : « ${label} » (attendu 1, la plus aiguë, à ${count})`, lineNumber, 1);
         const above = lastOctave[staff];
         if (above !== undefined && stringNumber <= above) {
           throw new PrismaError(
@@ -796,7 +889,11 @@ export function parsePrisma(text: string): Score {
           const graceColumn = anchor.from + grace.index! + 1;
           const number = Number(grace[1]);
           if (number < lowest || number > highest)
-            throw new PrismaError(`petite note invalide « ${grace[0]} » : attendu ${what} suivi de « ${GRACE_MARK} »`, lineNumber, graceColumn);
+            throw new PrismaError(
+              `petite note invalide « ${grace[0]} » : attendu ${what} suivi de « ${GRACE_MARK} »`,
+              lineNumber,
+              graceColumn,
+            );
           const key = staff + ":" + anchor.t;
           if (!blockGraces.has(key)) blockGraces.set(key, []);
           blockGraces.get(key)!.push({ staff, t: anchor.t, col: graceColumn, midi: pitch(number), ...onString });
@@ -853,7 +950,14 @@ export function parsePrisma(text: string): Score {
         const match = cell.match(/^(-?)(\d{0,2})(?:~(\d{1,2}))?(?:_(\d))?$/);
         const bad = (key?: string) => !!key && (Number(key) < lowest || Number(key) > highest);
         const badFinger = match && match[4] && (Number(match[4]) < 1 || Number(match[4]) > 5 || match[1] || !match[2]);
-        if (!match || bad(match[2]) || bad(match[3]) || (!match[1] && !match[2] && cell) || (match[3] && (match[1] || !match[2])) || badFinger) {
+        if (
+          !match ||
+          bad(match[2]) ||
+          bad(match[3]) ||
+          (!match[1] && !match[2] && cell) ||
+          (match[3] && (match[1] || !match[2])) ||
+          badFinger
+        ) {
           throw new PrismaError(
             `case invalide « ${cell} » : attendu ${what}, « - », « -N », une trille « N${TRILL_MARK}N », un doigté « N${FINGER_MARK}D » (doigt de 1 à 5), des petites notes « N' »${strings ? `, une note étouffée « ${DEAD_MARK} », une harmonique « <12> », un glissé « 7${SLIDE_MARKS.up} » ou « 9${SLIDE_MARKS.down} », vers rien « 7${SLIDE_MARKS.up.repeat(2)} » ou depuis rien « ${SLIDE_MARKS.up.repeat(2)}7 », un bend « 7${BEND_MARK}9 » (« 7${BEND_MARK}9${RELEASE_MARK} » relâché)` : ""} ou une case vide`,
             lineNumber,
@@ -885,7 +989,9 @@ export function parsePrisma(text: string): Score {
           if (open?.dead) throw new PrismaError(`« - » après « ${DEAD_MARK} » : une note étouffée ne se tient pas`, lineNumber, col);
           if (open) return;
           throw new PrismaError(
-            anchorIndex === 0 ? "tenue en début de système : écrivez le numéro de la note, par exemple « -7 »" : "« - » sans note à prolonger",
+            anchorIndex === 0
+              ? "tenue en début de système : écrivez le numéro de la note, par exemple « -7 »"
+              : "« - » sans note à prolonger",
             lineNumber,
             col,
             anchorIndex === 0 ? { cascade: true } : undefined,
@@ -903,7 +1009,9 @@ export function parsePrisma(text: string): Score {
           return;
         }
         const prev =
-          anchorIndex === 0 ? pending.find((note) => note.staff === staff && note.midi === midi && note.string === string && note.end === t0) : undefined;
+          anchorIndex === 0
+            ? pending.find((note) => note.staff === staff && note.midi === midi && note.string === string && note.end === t0)
+            : undefined;
         if (prev) {
           pending = pending.filter((note) => note !== prev);
           open = prev;
@@ -957,9 +1065,14 @@ export function parsePrisma(text: string): Score {
     }
     if (pendingSlurs.length) {
       const openSlur = pendingSlurs[0];
-      throw new PrismaError("liaison coupée en fin de système : reprenez-la au début du suivant par « ---) »", openSlur.line, openSlur.col, {
-        cascade: true,
-      });
+      throw new PrismaError(
+        "liaison coupée en fin de système : reprenez-la au début du suivant par « ---) »",
+        openSlur.line,
+        openSlur.col,
+        {
+          cascade: true,
+        },
+      );
     }
   }
   if (openSlurs.length)
@@ -1006,7 +1119,8 @@ export function parsePrisma(text: string): Score {
     }
   }
   for (const [lyric, cell] of lyricCell) {
-    if (lyric.extend! <= cell.end) throw new PrismaError("la prolongation doit dépasser la case de sa syllabe", cell.line, cell.col, { global: true });
+    if (lyric.extend! <= cell.end)
+      throw new PrismaError("la prolongation doit dépasser la case de sa syllabe", cell.line, cell.col, { global: true });
   }
   // une pédale jamais relâchée tient jusqu'à la fin du morceau
   for (const pedal of pedalDown.values()) pedal.end = beats.length * TICKS_PER_BEAT;
@@ -1015,9 +1129,14 @@ export function parsePrisma(text: string): Score {
   for (const timesMark of timesMarks) {
     const repeat = repeats.get(timesMark.bar);
     if (!repeat?.end)
-      throw new PrismaError(`« ${timesMark.times}× » doit être placé dans une mesure qui se termine par « :|| »`, timesMark.line, timesMark.col, {
-        global: true,
-      });
+      throw new PrismaError(
+        `« ${timesMark.times}× » doit être placé dans une mesure qui se termine par « :|| »`,
+        timesMark.line,
+        timesMark.col,
+        {
+          global: true,
+        },
+      );
     if (timesMark.times !== 2) repeat.times = timesMark.times;
   }
 
@@ -1084,7 +1203,9 @@ export function parsePrisma(text: string): Score {
     hairpins: hairpins.sort((first, second) => first.start - second.start || first.staff - second.staff),
     effects: effects.sort((first, second) => first.start - second.start || first.staff - second.staff),
     slurs: slurs.sort((first, second) => first.start - second.start || first.staff - second.staff || first.end - second.end),
-    pedals: pedals.filter((pedal) => pedal.end > pedal.start).sort((first, second) => first.start - second.start || first.staff - second.staff),
+    pedals: pedals
+      .filter((pedal) => pedal.end > pedal.start)
+      .sort((first, second) => first.start - second.start || first.staff - second.staff),
     pedalTexts: pedalTexts.sort((first, second) => first.t - second.t || first.staff - second.staff),
     markers: markers.map(({ label, barIndex }) => ({ label, barIndex })),
     chords: chords.sort((first, second) => first.t - second.t),

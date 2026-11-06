@@ -266,7 +266,9 @@ export function RetouchMenu({
                         className="flex-1 font-mono"
                         size="small"
                         pressed={on}
-                        onClick={() => amend({ graces: on ? parts.graces.filter((other) => other !== String(grace)) : [...parts.graces, String(grace)] })}
+                        onClick={() =>
+                          amend({ graces: on ? parts.graces.filter((other) => other !== String(grace)) : [...parts.graces, String(grace)] })
+                        }
                         title={on ? "retirer cette petite note" : `${name(grace) || grace} joué très vite juste avant`}
                       >
                         {grace}&#8217;

@@ -25,7 +25,9 @@ const CELL = "px-[5px] py-[3px] border border-line text-center align-top whitesp
 type Step = { title: string; body: ReactNode; text: string; label: string };
 
 /** Les douze notes de l'octave et leur nombre. */
-const NAMES = ["do", "do♯ ré♭", "ré", "ré♯ mi♭", "mi", "fa", "fa♯ sol♭", "sol", "sol♯ la♭", "la", "la♯ si♭", "si"].map((name) => name.split(" "));
+const NAMES = ["do", "do♯ ré♭", "ré", "ré♯ mi♭", "mi", "fa", "fa♯ sol♭", "sol", "sol♯ la♭", "la", "la♯ si♭", "si"].map((name) =>
+  name.split(" "),
+);
 
 const STEPS: Step[] = [
   {

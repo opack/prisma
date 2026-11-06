@@ -37,7 +37,8 @@ export function Progress({ bpm }: { bpm: number }) {
       : current === null
         ? 0
         : current + Math.min(1, (played! - bars[current].at) / (bars[current].end - bars[current].at));
-  const sectionOf = (bar: number) => sections.find((playedSection) => bar >= playedSection.first && bar < playedSection.first + playedSection.count);
+  const sectionOf = (bar: number) =>
+    sections.find((playedSection) => bar >= playedSection.first && bar < playedSection.first + playedSection.count);
   const label = (bar: number) => {
     const section = sectionOf(bar);
     return `mesure ${bar + 1} sur ${barCount}${section?.label ? `, section ${section.label}` : ""}`;

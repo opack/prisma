@@ -9,7 +9,8 @@ import type { Page, PlacedSystem } from "./engrave.ts";
 import { PAGE } from "./engrave.ts";
 import type { RenderOptions } from "../options/options.ts";
 import { player } from "../playback/player.ts";
-import { CursorRect, FONT, OrderLine, SeekAreas, SystemView, TextMarks, barsIn, columnAt } from "./PageView.tsx";
+import { CursorRect, FONT, OrderLine, SeekAreas, SystemView, TextMarks } from "./PageView.tsx";
+import { barsIn, columnAt } from "./geometry.ts";
 
 type Slots = [number, number];
 
@@ -17,8 +18,8 @@ export function FocusView({ pages, options }: { pages: Page[]; options: RenderOp
   const systems = useMemo(() => pages.flatMap((page) => page.systems), [pages]);
   const { tick } = useSyncExternalStore(player.subscribe, player.getSnapshot);
   const at = (moment: number | null) => (moment === null ? -1 : systems.findIndex((ps) => moment >= ps.sys.start && moment < ps.sys.end));
-  const cur = at(tick);
-  const ci = cur >= 0 ? columnAt(systems[cur], tick!) : -1;
+  const playing = at(tick);
+  const column = playing >= 0 ? columnAt(systems[playing], tick!) : -1;
   // l'autre système joué après celui-ci : la suite, le retour d'une reprise, la section suivante ;
   // une reprise ou une section rejouée sur place (« A A B ») ne compte pas, la place resterait en double
   const after = (index: number) => {
@@ -37,17 +38,17 @@ export function FocusView({ pages, options }: { pages: Page[]; options: RenderOp
       if (initial[0] !== slots[0] || initial[1] !== slots[1]) setSlots(initial);
       return;
     }
-    if (cur < 0) return;
-    const here = slots.indexOf(cur);
+    if (playing < 0) return;
+    const here = slots.indexOf(playing);
     // un saut ailleurs (un clic, une section) : le système joué en haut, le suivant dessous
-    if (here < 0) return setSlots([cur, after(cur)]);
+    if (here < 0) return setSlots([playing, after(playing)]);
     // à l'avant-dernière mesure, l'autre place reçoit la suite (rien à faire si elle y est déjà)
-    const bars = barsIn(systems[cur]);
-    const barIndex = bars.findIndex((bar) => bar.includes(ci));
+    const bars = barsIn(systems[playing]);
+    const barIndex = bars.findIndex((bar) => bar.includes(column));
     if (barIndex < bars.length - 2) return;
-    const next = after(cur);
+    const next = after(playing);
     if (next >= 0 && slots[1 - here] !== next) setSlots((current) => (here ? [next, current[1]] : [current[0], next]));
-  }, [tick, cur, ci, slots, systems]);
+  }, [tick, playing, column, slots, systems]);
 
   // une même échelle pour les deux places : la largeur des systèmes, la hauteur du plus haut
   const frame = useMemo(() => {
@@ -78,7 +79,7 @@ export function FocusView({ pages, options }: { pages: Page[]; options: RenderOp
       {slots.map((index, place) => {
         const ps: PlacedSystem | undefined = systems[index];
         // la place qu'on ne joue pas : le système à venir, à peine atténué, ou celui qu'on vient de jouer, effacé
-        const role = cur < 0 || index === cur ? "" : index === after(cur) ? "opacity-80" : "opacity-35";
+        const role = playing < 0 || index === playing ? "" : index === after(playing) ? "opacity-80" : "opacity-35";
         return (
           <div
             key={`${place}:${index}`}
@@ -96,7 +97,7 @@ export function FocusView({ pages, options }: { pages: Page[]; options: RenderOp
                 <SystemView ps={ps} options={options} names={index === 0 || options.namesEverySystem} />
                 <TextMarks systems={[ps]} />
                 <SeekAreas systems={[ps]} />
-                {index === cur && <CursorRect ps={ps} column={ci} />}
+                {index === playing && <CursorRect ps={ps} column={column} />}
               </svg>
             )}
           </div>

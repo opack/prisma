@@ -15,7 +15,13 @@ export function PopoverChoices<T>({
   onChange: (value: T) => void;
 }) {
   return options.map((popoverOption) => (
-    <PopoverChoice key={String(popoverOption.value)} name={name} option={popoverOption} checked={popoverOption.value === value} onChange={() => onChange(popoverOption.value)} />
+    <PopoverChoice
+      key={String(popoverOption.value)}
+      name={name}
+      option={popoverOption}
+      checked={popoverOption.value === value}
+      onChange={() => onChange(popoverOption.value)}
+    />
   ));
 }
 

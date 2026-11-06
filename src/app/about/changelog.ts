@@ -33,7 +33,8 @@ export function releases(markdown: string): Release[] {
 /** Compare deux versions semver (sans étiquette) : négatif si a est plus ancienne que b. */
 export function compareVersions(first: string, second: string) {
   const [firstParts, secondParts] = [first, second].map((version) => version.split(".").map(Number));
-  for (let index = 0; index < 3; index++) if (firstParts[index] !== secondParts[index]) return (firstParts[index] ?? 0) - (secondParts[index] ?? 0);
+  for (let index = 0; index < 3; index++)
+    if (firstParts[index] !== secondParts[index]) return (firstParts[index] ?? 0) - (secondParts[index] ?? 0);
   return 0;
 }
 

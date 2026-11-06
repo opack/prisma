@@ -74,7 +74,12 @@ export function appMenus(ctx: Ctx): MenuDef[] {
         { label: "Piste de lecture", onSelect: () => ctx.setView({ progress: !view.progress }), checked: view.progress },
         { label: "Plein écran", onSelect: ctx.fullScreen.toggle, checked: ctx.fullScreen.on, shortcut: "F11" },
         "separator",
-        { label: "Zoom avant", onSelect: () => ctx.zoomBy(1), shortcut: "Ctrl++", disabled: view.zoom >= ZOOMS[ZOOMS.length - 1] || focused },
+        {
+          label: "Zoom avant",
+          onSelect: () => ctx.zoomBy(1),
+          shortcut: "Ctrl++",
+          disabled: view.zoom >= ZOOMS[ZOOMS.length - 1] || focused,
+        },
         { label: "Zoom arrière", onSelect: () => ctx.zoomBy(-1), shortcut: "Ctrl+−", disabled: view.zoom <= ZOOMS[0] || focused },
         {
           label: `Taille normale${view.zoom !== 1 ? ` (zoom ${Math.round(view.zoom * 100)} %)` : ""}`,
@@ -93,7 +98,11 @@ export function appMenus(ctx: Ctx): MenuDef[] {
           onSelect: () => ctx.setView({ fit: "width", zoom: 1 }),
           checked: view.fit === "width" && view.zoom === 1,
         },
-        { label: "Lecture focalisée : deux systèmes", onSelect: () => ctx.setView({ fit: "focus", zoom: 1 }), checked: view.fit === "focus" },
+        {
+          label: "Lecture focalisée : deux systèmes",
+          onSelect: () => ctx.setView({ fit: "focus", zoom: 1 }),
+          checked: view.fit === "focus",
+        },
       ],
     },
     {

@@ -122,12 +122,14 @@ export function clicks(score: Score, route: Passage[], grid: ClickGrid = "beats"
         const { count, labels } = cells[index] ?? { count: 1, labels: [] };
         for (let cell = 1; cell < count; cell++) {
           const offset = (cell * TICKS_PER_BEAT) / count;
-          if (!attacks || attacks.has(tick + offset)) out.push({ at: at + offset, level: labels[cell] === "*" ? "division" : "subdivision" });
+          if (!attacks || attacks.has(tick + offset))
+            out.push({ at: at + offset, level: labels[cell] === "*" ? "division" : "subdivision" });
         }
         continue;
       }
       const division = beat?.division ?? 2;
-      for (let step = 1; step < 2 * division; step++) out.push({ at: at + (step * TICKS_PER_BEAT) / (2 * division), level: step % 2 ? "subdivision" : "division" });
+      for (let step = 1; step < 2 * division; step++)
+        out.push({ at: at + (step * TICKS_PER_BEAT) / (2 * division), level: step % 2 ? "subdivision" : "division" });
     }
   return out;
 }
@@ -142,16 +144,21 @@ export function countIn(score: Score, route: Passage[], played: number): ClickLe
   if (tick === null) return [];
   const beat = score.beats[Math.floor(tick / TICKS_PER_BEAT)];
   if (!beat) return [];
-  const barLength = (bar: number) => Math.max(0, ...score.beats.filter((beat) => beat.barIndex === bar).map((candidate) => candidate.label));
+  const barLength = (bar: number) =>
+    Math.max(0, ...score.beats.filter((beat) => beat.barIndex === bar).map((candidate) => candidate.label));
   const first = score.beats.find((candidate) => candidate.barIndex === beat.barIndex)!;
   // une levée n'a pas toute sa mesure : on compte celle qui la suit
   const length = first.label > 1 ? barLength(beat.barIndex + 1) || barLength(beat.barIndex) : barLength(beat.barIndex);
-  const labels = [...Array.from({ length }, (_, index) => index + 1), ...Array.from({ length: Math.max(0, beat.label - 1) }, (_, index) => index + 1)];
+  const labels = [
+    ...Array.from({ length }, (_, index) => index + 1),
+    ...Array.from({ length: Math.max(0, beat.label - 1) }, (_, index) => index + 1),
+  ];
   return labels.map((label) => (label === 1 ? "downbeat" : "beat"));
 }
 
 /** Durée totale du déroulé, en ticks. */
-export const playedLength = (route: Passage[]) => (route.length ? route[route.length - 1].at + route[route.length - 1].to - route[route.length - 1].from : 0);
+export const playedLength = (route: Passage[]) =>
+  route.length ? route[route.length - 1].at + route[route.length - 1].to - route[route.length - 1].from : 0;
 
 /**
  * Les notes du déroulé, dans l'ordre où elles commencent. Une note qui déborde de son passage
@@ -168,13 +175,20 @@ export function playedNotes(original: Score, route: Passage[]): PlayedNote[] {
     else runs.push(passage);
   }
   // articulations : la touche relâchée plus tôt (la pédale peut encore tenir le son), l'attaque plus forte
-  const marks = score.notes.map((note) => score.articulations.filter((articulation) => articulation.staff === note.staff && articulation.t === note.start).map((articulation) => articulation.kind));
+  const marks = score.notes.map((note) =>
+    score.articulations
+      .filter((articulation) => articulation.staff === note.staff && articulation.t === note.start)
+      .map((articulation) => articulation.kind),
+  );
   const released = score.notes.map((note, index) => ({
     ...note,
     end: note.start + (note.end - note.start) * Math.min(1, ...marks[index].map((articulationKind) => SHORTER[articulationKind])),
   }));
   const velocity = velocities(score).map((base, index) =>
-    Math.round(Math.min(127, base + Math.max(0, ...marks[index].map((articulationKind) => LOUDER[articulationKind]))) * (soft.has(score.notes[index]) ? LEGATO : 1)),
+    Math.round(
+      Math.min(127, base + Math.max(0, ...marks[index].map((articulationKind) => LOUDER[articulationKind]))) *
+        (soft.has(score.notes[index]) ? LEGATO : 1),
+    ),
   );
   const ends = soundingEnds({ ...score, notes: released }),
     rolls = rollRanks(score);
@@ -188,7 +202,9 @@ export function playedNotes(original: Score, route: Passage[]): PlayedNote[] {
           end: passage.at + Math.min(ends[index], passage.to) - passage.from,
           midi: note.midi,
           velocity: velocity[index],
-          ...(note.trill !== undefined ? { trill: { midi: note.trill, until: passage.at + Math.min(note.end, passage.to) - passage.from } } : {}),
+          ...(note.trill !== undefined
+            ? { trill: { midi: note.trill, until: passage.at + Math.min(note.end, passage.to) - passage.from } }
+            : {}),
           ...(rolls[index] ? { roll: rolls[index] } : {}),
           ...(filter.has(score.notes[index]) ? { filter: filter.get(score.notes[index]) } : {}),
         });
@@ -196,7 +212,8 @@ export function playedNotes(original: Score, route: Passage[]): PlayedNote[] {
   // petites notes : rangées avant leur note, la première le plus tôt ; même rang, jouées ensemble
   const level = velocityAt(score);
   const ranks = new Map<string, number>();
-  for (const grace of score.graces) ranks.set(`${grace.staff}:${grace.t}`, Math.max(ranks.get(`${grace.staff}:${grace.t}`) ?? 0, grace.slot + 1));
+  for (const grace of score.graces)
+    ranks.set(`${grace.staff}:${grace.t}`, Math.max(ranks.get(`${grace.staff}:${grace.t}`) ?? 0, grace.slot + 1));
   for (const passage of runs)
     for (const grace of score.graces)
       if (grace.t >= passage.from && grace.t < passage.to) {
@@ -236,9 +253,13 @@ function stringTechniques(score: Score) {
   const filter = new Map<Note, number>();
   if (!score.parts.some((part) => part.strings)) return { score, soft, filter };
   const notes: Note[] = [];
-  const sameString = (first: Note, second: Note) => first.staff === second.staff && first.string !== undefined && first.string === second.string;
+  const sameString = (first: Note, second: Note) =>
+    first.staff === second.staff && first.string !== undefined && first.string === second.string;
   // la note suivante sur la même corde
-  const next = (from: Note) => score.notes.filter((second) => sameString(second, from) && second.start > from.start).sort((first, second) => first.start - second.start)[0];
+  const next = (from: Note) =>
+    score.notes
+      .filter((second) => sameString(second, from) && second.start > from.start)
+      .sort((first, second) => first.start - second.start)[0];
   // les notes liées après la première, sur une corde : jouées sans attaque
   const legato = new Set<Note>();
   for (const slur of score.slurs)
@@ -258,7 +279,10 @@ function stringTechniques(score: Score) {
       notes.push(current);
       continue;
     }
-    const muted = score.effects.some((effect) => effect.kind === "palmMute" && effect.staff === current.staff && current.start >= effect.start && current.start < effect.end);
+    const muted = score.effects.some(
+      (effect) =>
+        effect.kind === "palmMute" && effect.staff === current.staff && current.start >= effect.start && current.start < effect.end,
+    );
     const add = (note: Note, quiet = false) => {
       notes.push(note);
       if (quiet || legato.has(current) || glided.has(current)) soft.add(note);
@@ -381,7 +405,8 @@ export function unstretched(hs: Hold[], clock: number): number {
 }
 
 /** Le passage joué à un instant joué. */
-const passageAt = (route: Passage[], played: number) => route.find((passage) => played >= passage.at && played < passage.at + passage.to - passage.from);
+const passageAt = (route: Passage[], played: number) =>
+  route.find((passage) => played >= passage.at && played < passage.at + passage.to - passage.from);
 
 /** L'instant du morceau qui correspond à un instant joué : celui qu'on surligne. */
 export function scoreTick(route: Passage[], played: number): number | null {
@@ -436,11 +461,14 @@ export type PlayedBar = { at: number; end: number; entry: number };
 export function playedBars(score: Score, route: Passage[]): PlayedBar[] {
   // les instants du morceau où commence une mesure
   const starts = new Set(
-    score.beats.flatMap((beat, index) => (index === 0 || score.beats[index - 1].barIndex !== beat.barIndex ? [index * TICKS_PER_BEAT] : [])),
+    score.beats.flatMap((beat, index) =>
+      index === 0 || score.beats[index - 1].barIndex !== beat.barIndex ? [index * TICKS_PER_BEAT] : [],
+    ),
   );
   const at: { at: number; entry: number }[] = [];
   for (const passage of route)
-    for (let tick = passage.from; tick < passage.to; tick += TICKS_PER_BEAT) if (starts.has(tick)) at.push({ at: passage.at + tick - passage.from, entry: passage.entry });
+    for (let tick = passage.from; tick < passage.to; tick += TICKS_PER_BEAT)
+      if (starts.has(tick)) at.push({ at: passage.at + tick - passage.from, entry: passage.entry });
   const length = playedLength(route);
   return at.map((start, index) => ({ ...start, end: at[index + 1]?.at ?? length }));
 }
@@ -450,7 +478,9 @@ export type PlayedSection = { entry: number; label: string; first: number; count
 
 /** Les sections dans l'ordre où elles se jouent, chacune avec ses mesures. */
 export function playedSections(score: Score, bars: PlayedBar[]): PlayedSection[] {
-  const labels = score.order.length ? score.order : [...score.markers].sort((first, second) => first.barIndex - second.barIndex).map((marker) => marker.label);
+  const labels = score.order.length
+    ? score.order
+    : [...score.markers].sort((first, second) => first.barIndex - second.barIndex).map((marker) => marker.label);
   const out: PlayedSection[] = [];
   bars.forEach((playedBar, index) => {
     const last = out[out.length - 1];

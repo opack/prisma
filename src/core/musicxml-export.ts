@@ -117,9 +117,17 @@ const keyAlter = (fifths: number, letter: string) => {
 /** Le nom d'une hauteur dans une armure : la lettre de l'armure, sinon la note naturelle, sinon un dièse (ou un bémol en tonalité bémolisée). */
 function spell(midi: number, fifths: number): { step: string; alter: number; octave: number } {
   const pitchClass = pitchClassOf(midi);
-  const candidates = LETTERS.flatMap((letter) => [-1, 0, 1].filter((offset) => pitchClassOf(STEP[letter] + offset) === pitchClass).map((alter) => ({ letter, alter })));
+  const candidates = LETTERS.flatMap((letter) =>
+    [-1, 0, 1].filter((offset) => pitchClassOf(STEP[letter] + offset) === pitchClass).map((alter) => ({ letter, alter })),
+  );
   const rank = (candidate: { letter: string; alter: number }) =>
-    candidate.alter === keyAlter(fifths, candidate.letter) ? 0 : candidate.alter === 0 ? 1 : (fifths >= 0 ? candidate.alter > 0 : candidate.alter < 0) ? 2 : 3;
+    candidate.alter === keyAlter(fifths, candidate.letter)
+      ? 0
+      : candidate.alter === 0
+        ? 1
+        : (fifths >= 0 ? candidate.alter > 0 : candidate.alter < 0)
+          ? 2
+          : 3;
   const best = candidates.sort((first, second) => rank(first) - rank(second))[0];
   return { step: best.letter, alter: best.alter, octave: Math.floor((midi - best.alter) / 12) - 1 };
 }
@@ -181,7 +189,15 @@ function barsOf(score: Score): Bar[] {
       last.end = (index + 1) * TICKS_PER_BEAT;
       last.beats++;
     } else
-      bars.push({ index: beat.barIndex, number: beat.bar, start: index * TICKS_PER_BEAT, end: (index + 1) * TICKS_PER_BEAT, beats: 1, compound, implicit: index === 0 && beat.label > 1 });
+      bars.push({
+        index: beat.barIndex,
+        number: beat.bar,
+        start: index * TICKS_PER_BEAT,
+        end: (index + 1) * TICKS_PER_BEAT,
+        beats: 1,
+        compound,
+        implicit: index === 0 && beat.label > 1,
+      });
   });
   return bars;
 }
@@ -258,7 +274,12 @@ function writtenBars(score: Score, bars: Bar[], options: ExportOptions): Written
       // une section reprise avec des fins différentes : X E1 X E2 (X E3…), en cases 1, 2…
       const refrain = order[index];
       let endings = 0;
-      while (order[index + 2 * endings] === refrain && order[index + 2 * endings + 1] !== undefined && order[index + 2 * endings + 1] !== refrain) endings++;
+      while (
+        order[index + 2 * endings] === refrain &&
+        order[index + 2 * endings + 1] !== undefined &&
+        order[index + 2 * endings + 1] !== refrain
+      )
+        endings++;
       const ends = Array.from({ length: endings }, (_, endingIndex) => order[index + 2 * endingIndex + 1]);
       // les cases qui reprennent ne s'emboîtent pas ; la dernière, qui ne reprend pas, le peut
       if (endings >= 2 && !repeated(refrain) && !ends.slice(0, -1).some(repeated)) {
@@ -300,7 +321,9 @@ type Group = { start: number; end: number; notes: Note[] };
 /** Les voix d'une portée : chaque accord dans la première voix libre à son début, l'accord le plus aigu d'abord ; la voix du dessus en premier. */
 function voicesOf(notes: Note[]): Group[][] {
   const groups: Group[] = [];
-  for (const current of [...notes].sort((first, second) => first.start - second.start || first.end - second.end || first.midi - second.midi)) {
+  for (const current of [...notes].sort(
+    (first, second) => first.start - second.start || first.end - second.end || first.midi - second.midi,
+  )) {
     const group = groups.find((candidate) => candidate.start === current.start && candidate.end === current.end);
     if (group) group.notes.push(current);
     else groups.push({ start: current.start, end: current.end, notes: [current] });
@@ -336,7 +359,12 @@ export function exportMusicXml(score: Score, options: ExportOptions = {}): strin
   const key = (score.meta.key ? parseKey(score.meta.key) : undefined) ?? guessKey(score) ?? { tonic: 1, minor: false };
   const fifths = fifthsOf(key);
   const bars = barsOf(score);
-  const voices = new Map([...new Set(score.notes.map((note) => note.staff))].map((staff) => [staff, voicesOf(score.notes.filter((note) => note.staff === staff))]));
+  const voices = new Map(
+    [...new Set(score.notes.map((note) => note.staff))].map((staff) => [
+      staff,
+      voicesOf(score.notes.filter((note) => note.staff === staff)),
+    ]),
+  );
   const firstStaff = firstStaves(score.parts);
   const ctx: Ctx = { score, fifths, bars, firstStaff, voices, slurMarks: slurMarks(score, voices, firstStaff, bars) };
   const order = writtenBars(score, bars, options);
@@ -372,7 +400,9 @@ export function exportMusicXml(score: Score, options: ExportOptions = {}): strin
   score.parts.forEach((part, partIndex) => {
     // un instrument à cordes : sa portée deux fois, en partition puis en tablature (la seconde porte les cordes)
     const strings = part.strings;
-    const staves = strings ? [ctx.firstStaff[partIndex], ctx.firstStaff[partIndex]] : Array.from({ length: part.staves }, (_, index) => ctx.firstStaff[partIndex] + index);
+    const staves = strings
+      ? [ctx.firstStaff[partIndex], ctx.firstStaff[partIndex]]
+      : Array.from({ length: part.staves }, (_, index) => ctx.firstStaff[partIndex] + index);
     const voices = staves.map((staff) => ctx.voices.get(staff) ?? []);
     const clefs = strings ? [] : staves.map((staff) => clefOf(score.notes.filter((note) => note.staff === staff)));
     out.push(`  <part id="P${partIndex + 1}">`);
@@ -402,7 +432,9 @@ export function exportMusicXml(score: Score, options: ExportOptions = {}): strin
         if (position === 0) {
           if (staves.length > 1) out.push(`        <staves>${staves.length}</staves>`);
           clefs.forEach((clef, index) =>
-            out.push(`        <clef${part.staves > 1 ? ` number="${index + 1}"` : ""}><sign>${clef.sign}</sign><line>${clef.line}</line></clef>`),
+            out.push(
+              `        <clef${part.staves > 1 ? ` number="${index + 1}"` : ""}><sign>${clef.sign}</sign><line>${clef.line}</line></clef>`,
+            ),
           );
           if (strings) out.push(...tablatureAttributes(strings));
         }
@@ -417,12 +449,17 @@ export function exportMusicXml(score: Score, options: ExportOptions = {}): strin
         );
       }
       if (partIndex === 0 && written.marker && (options.repeats !== "traditional" || options.letters !== false))
-        out.push(`      <direction placement="above"><direction-type><rehearsal>${written.marker}</rehearsal></direction-type></direction>`);
+        out.push(
+          `      <direction placement="above"><direction-type><rehearsal>${written.marker}</rehearsal></direction-type></direction>`,
+        );
       out.push(...measureBody(ctx, partIndex, staves, voices, bar, !!strings));
       // à droite : la fin d'une case, d'une reprise, du morceau
       const final = position === order.length - 1;
       const ending = written.endingStop ? `<ending number="${written.ending}" type="${written.endingStop}"/>` : "";
-      const backward = written.backward !== undefined ? `<repeat direction="backward"${written.backward !== 2 ? ` times="${written.backward}"` : ""}/>` : "";
+      const backward =
+        written.backward !== undefined
+          ? `<repeat direction="backward"${written.backward !== 2 ? ` times="${written.backward}"` : ""}/>`
+          : "";
       if (backward || final || ending)
         out.push(
           `      <barline location="right">${backward || final ? "<bar-style>light-heavy</bar-style>" : ""}${ending}${backward}</barline>`,
@@ -655,7 +692,9 @@ function eventXml(
   const ends = event.end === group.end;
   // petites notes, avant l'attaque
   if (starts) {
-    const graces = score.graces.filter((grace) => grace.staff === staff && grace.t === tick).sort((first, second) => first.slot - second.slot || first.midi - second.midi);
+    const graces = score.graces
+      .filter((grace) => grace.staff === staff && grace.t === tick)
+      .sort((first, second) => first.slot - second.slot || first.midi - second.midi);
     graces.forEach((grace, index) => {
       const chord = index > 0 && graces[index - 1].slot === grace.slot ? "<chord/>" : "";
       const tech = onString(grace);
@@ -666,7 +705,10 @@ function eventXml(
   }
   const notes = [...group.notes].sort((first, second) => first.midi - second.midi);
   // les liaisons, sur le premier morceau : l'attaque, ou la suite d'une note tenue en début de mesure
-  const slurs = layer === "notation" ? [] : (ctx.slurMarks.get(group) ?? []).filter((mark) => mark.t === (starts ? tick : event.start)).map((mark) => mark.xml);
+  const slurs =
+    layer === "notation"
+      ? []
+      : (ctx.slurMarks.get(group) ?? []).filter((mark) => mark.t === (starts ? tick : event.start)).map((mark) => mark.xml);
   for (const piece of pieces) {
     const tieStart = !(ends && piece.last);
     const tieStop = !(starts && piece.first);
@@ -721,7 +763,10 @@ function attackNotations(
       );
     // le sens du médiator : celui de l'archet, en MusicXML
     const picks = all.filter((articulation) => isPick(articulation.kind));
-    if (picks.length) out.push(`<technical>${picks.map((articulation) => (articulation.kind === "down" ? "<down-bow/>" : "<up-bow/>")).join("")}</technical>`);
+    if (picks.length)
+      out.push(
+        `<technical>${picks.map((articulation) => (articulation.kind === "down" ? "<down-bow/>" : "<up-bow/>")).join("")}</technical>`,
+      );
   }
   if (note.finger) out.push(`<technical><fingering>${note.finger}</fingering></technical>`);
   if (note.trill !== undefined) {
@@ -752,7 +797,8 @@ function techniqueXml(ctx: Ctx, staff: Staff, played: Note, layer?: "notation" |
   const next = score.notes.filter((note) => same(note) && note.start > played.start).sort((first, second) => first.start - second.start)[0];
   const prev = score.notes.filter((note) => same(note) && note.start < played.start).sort((first, second) => second.start - first.start)[0];
   const tied = (firstNote: Note, secondNote: Note) =>
-    score.slurs.some((slur) => slur.staff === staff && slur.start <= firstNote.start && secondNote.start <= slur.end) && firstNote.midi !== secondNote.midi;
+    score.slurs.some((slur) => slur.staff === staff && slur.start <= firstNote.start && secondNote.start <= slur.end) &&
+    firstNote.midi !== secondNote.midi;
   if (layer !== "notation") {
     const tech: string[] = [];
     if (played.bend !== undefined) {
@@ -777,7 +823,9 @@ function techniqueXml(ctx: Ctx, staff: Staff, played: Note, layer?: "notation" |
   if (slides.length) out.push(`<articulations>${slides.join("")}</articulations>`);
   // le vibrato : commencé sur la première note qu'il couvre, fini sur la dernière
   for (const effect of score.effects.filter((candidate) => candidate.staff === staff && candidate.kind === "vibrato")) {
-    const covered = score.notes.filter((note) => note.staff === staff && note.start >= effect.start && note.start < effect.end).sort((first, second) => first.start - second.start);
+    const covered = score.notes
+      .filter((note) => note.staff === staff && note.start >= effect.start && note.start < effect.end)
+      .sort((first, second) => first.start - second.start);
     if (covered[0] === played) out.push('<ornaments><wavy-line type="start" number="1"/></ornaments>');
     if (covered.length && covered[covered.length - 1] === played) out.push('<ornaments><wavy-line type="stop" number="1"/></ornaments>');
   }
@@ -809,7 +857,10 @@ function slurMarks(
       const other = staves.map(attack).find(Boolean);
       if (other) return { group: other, t: tick };
       const before = groups(own).filter((group) => group.start < tick);
-      const last = before.reduce<Group | undefined>((group, candidate) => (!group || candidate.start > group.start ? candidate : group), undefined);
+      const last = before.reduce<Group | undefined>(
+        (group, candidate) => (!group || candidate.start > group.start ? candidate : group),
+        undefined,
+      );
       return last && { group: last, t: last.start };
     };
     const slurs = score.slurs
@@ -849,7 +900,9 @@ function lyricsXml(score: Score, staff: Staff, tick: number): string {
     .join("");
 }
 const previousSyllable = (lyrics: Lyric[], lyric: Lyric) =>
-  lyrics.filter((candidate) => candidate.staff === lyric.staff && candidate.verse === lyric.verse && candidate.t < lyric.t).sort((first, second) => second.t - first.t)[0];
+  lyrics
+    .filter((candidate) => candidate.staff === lyric.staff && candidate.verse === lyric.verse && candidate.t < lyric.t)
+    .sort((first, second) => second.t - first.t)[0];
 
 /* ---------------------------------------------------------------- indications */
 
@@ -871,7 +924,8 @@ function directionsOf(ctx: Ctx, partIndex: number, staff: Staff, bar: Bar): Dire
   const out: Direction[] = [];
   const firstOfPart = staff === ctx.firstStaff[partIndex];
   if (firstOfPart && partIndex === 0) {
-    for (const textMark of score.texts.filter((textMark) => inBar(textMark.t))) out.push(direction(textMark.t, "above", `<words>${esc(textMark.text)}</words>`));
+    for (const textMark of score.texts.filter((textMark) => inBar(textMark.t)))
+      out.push(direction(textMark.t, "above", `<words>${esc(textMark.text)}</words>`));
   }
   if (firstOfPart && partIndex === 0) {
     for (const textMark of score.chords.filter((candidate) => inBar(candidate.t))) {
@@ -897,7 +951,8 @@ function directionsOf(ctx: Ctx, partIndex: number, staff: Staff, bar: Bar): Dire
     if (atEnd(effect.end) && effect.end > effect.start) out.push(direction(effect.end, "above", '<dashes type="stop" number="1"/>'));
   }
   for (const hairpin of score.hairpins.filter((candidate) => candidate.staff === staff)) {
-    if (inBar(hairpin.start)) out.push(direction(hairpin.start, "below", `<wedge type="${hairpin.kind === "<" ? "crescendo" : "diminuendo"}"/>`));
+    if (inBar(hairpin.start))
+      out.push(direction(hairpin.start, "below", `<wedge type="${hairpin.kind === "<" ? "crescendo" : "diminuendo"}"/>`));
     if (atEnd(hairpin.end) && hairpin.end > hairpin.start) out.push(direction(hairpin.end, "below", '<wedge type="stop"/>'));
   }
   const pedals = score.pedals.filter((pedal) => pedal.staff === staff && !pedal.implied);

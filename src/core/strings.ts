@@ -163,7 +163,8 @@ export function fingerStrings(notes: Note[], strings: Strings): { dropped: Note[
       }
       prev.forEach((previous, previousIndex) => {
         if (best[index - 1][previousIndex] === Infinity) return;
-        const move = placement.position !== undefined && previous.position !== undefined ? Math.abs(placement.position - previous.position) : 0;
+        const move =
+          placement.position !== undefined && previous.position !== undefined ? Math.abs(placement.position - previous.position) : 0;
         const cut = ringing.filter((note) => placement.strings.includes(previous.strings[chords[index - 1].indexOf(note)])).length * 3;
         const total = best[index - 1][previousIndex] + placement.cost + move + cut;
         if (total < best[index][placementIndex]) [best[index][placementIndex], from[index][placementIndex]] = [total, previousIndex];
@@ -228,7 +229,10 @@ export function stringParts(parts: Part[], notes: Note[], graces: Grace[]): Note
       string >= 1 && string <= strings.open.length && fretOf(strings, string, midi) >= 0 && fretOf(strings, string, midi) <= MAX_FRET;
     const mine = notes.filter((note) => note.staff === staff);
     if (!tab && !mine.every((note) => strings.open.some((_, index) => plays(index + 1, note.midi)))) continue;
-    const trial = mine.map((note) => ({ ...note, ...(note.string !== undefined && !plays(note.string, note.midi) ? { string: undefined } : {}) }));
+    const trial = mine.map((note) => ({
+      ...note,
+      ...(note.string !== undefined && !plays(note.string, note.midi) ? { string: undefined } : {}),
+    }));
     // sans tablature, le doigté le moins coûteux ; une note qu'il ne place pas garde les couloirs d'octave
     if (tab) assignStrings(trial, strings);
     else if (fingerStrings(trial, strings).dropped.length) continue;

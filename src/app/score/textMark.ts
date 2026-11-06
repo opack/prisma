@@ -14,7 +14,16 @@ export const textMark = {
   set(next: TextMark) {
     const before = current?.place,
       after = next?.place;
-    if (before === after || (before && after && before.t === after.t && before.staff === after.staff && before.octave === after.octave && before.content === after.content)) return;
+    if (
+      before === after ||
+      (before &&
+        after &&
+        before.t === after.t &&
+        before.staff === after.staff &&
+        before.octave === after.octave &&
+        before.content === after.content)
+    )
+      return;
     current = next;
     listeners.forEach((listener) => listener());
   },

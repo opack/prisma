@@ -28,7 +28,7 @@ function toBase64(bytes: Uint8Array) {
 }
 function fromBase64(text: string) {
   const binary = atob(text.replace(/-/g, "+").replace(/_/g, "/"));
-  return Uint8Array.from(binary, (cell) => cell.charCodeAt(0));
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
 /** Le nom d'un fichier reçu : sans dossier ni signe qu'un système refuse, en .prisma. */
@@ -52,7 +52,12 @@ export function shareName(fileName: string, title?: string) {
 
 /** Le morceau, écrit pour le fragment d'un lien. */
 export async function encodeShare(shared: Shared): Promise<string> {
-  const data = { v: VERSION, n: shared.name, t: shared.text, ...(isEmpty(shared.settings) ? {} : { s: JSON.parse(writeSettings(shared.settings)) }) };
+  const data = {
+    v: VERSION,
+    n: shared.name,
+    t: shared.text,
+    ...(isEmpty(shared.settings) ? {} : { s: JSON.parse(writeSettings(shared.settings)) }),
+  };
   return toBase64(await through(new TextEncoder().encode(JSON.stringify(data)), new CompressionStream("deflate-raw")));
 }
 

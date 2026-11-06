@@ -11,7 +11,9 @@ import { pcloudFile } from "./src/server/pcloudFile.ts";
 /** Le relais de lecture pCloud (une fonction Netlify en ligne), servi aussi par `npm run dev` et `npm run preview`. */
 const relay: Connect.NextHandleFunction = async (req, res) => {
   const url = new URL(req.originalUrl ?? req.url ?? "/", "http://localhost");
-  const headers = new Headers(Object.entries(req.headers).flatMap(([name, value]) => (typeof value === "string" ? [[name, value] as [string, string]] : [])));
+  const headers = new Headers(
+    Object.entries(req.headers).flatMap(([name, value]) => (typeof value === "string" ? [[name, value] as [string, string]] : [])),
+  );
   const response = await pcloudFile(new Request(url, { method: req.method, headers }));
   res.statusCode = response.status;
   response.headers.forEach((value, name) => res.setHeader(name, value));

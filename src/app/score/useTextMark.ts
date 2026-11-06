@@ -18,7 +18,10 @@ export function useTextMark(linked: boolean, retouch: MutableRefObject<RetouchMa
   const mark = useCallback((reveal: boolean) => {
     const retouching = retouch.current;
     if (retouching)
-      return textMark.set({ place: retouching.lane === undefined ? retouching.clicked : { ...retouching.at, octave: retouching.lane, content: undefined }, reveal: false });
+      return textMark.set({
+        place: retouching.lane === undefined ? retouching.clicked : { ...retouching.at, octave: retouching.lane, content: undefined },
+        reveal: false,
+      });
     const caretAt = caret.current;
     const place = linkedNow.current && caretAt ? textPlace(caretAt[2], caretAt[0], caretAt[1]) : undefined;
     textMark.set(place ? { place, reveal: reveal && player.getSnapshot().state !== "playing" } : null);

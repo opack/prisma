@@ -39,7 +39,10 @@ export function diskLibrary(root: FileSystemDirectoryHandle): LibrarySource {
         for await (const fileSystemHandle of (fileSystemDirectoryHandle as unknown as Iterable).values()) {
           if (fileSystemHandle.name.startsWith(".")) continue;
           if (fileSystemHandle.kind === "directory") {
-            await walk(fileSystemHandle as FileSystemDirectoryHandle, folder ? `${folder}/${fileSystemHandle.name}` : fileSystemHandle.name);
+            await walk(
+              fileSystemHandle as FileSystemDirectoryHandle,
+              folder ? `${folder}/${fileSystemHandle.name}` : fileSystemHandle.name,
+            );
             continue;
           }
           if (!kindOf(fileSystemHandle.name)) continue;

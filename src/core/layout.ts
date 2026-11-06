@@ -348,7 +348,8 @@ function breakSystems(score: Score, grids: BeatGrid[], metrics: Metrics): number
       (sectionStarts.has(barIndex + 1) ? (metrics.sectionSep ?? 0) : 0)
     );
   };
-  const beatW = (index: number, last: boolean) => cellsWidth(index, grids[index].count, metrics) + (last ? barEndW(score.beats[index].barIndex) : metrics.beatSep);
+  const beatW = (index: number, last: boolean) =>
+    cellsWidth(index, grids[index].count, metrics) + (last ? barEndW(score.beats[index].barIndex) : metrics.beatSep);
   const barW = (bar: number[]) => bar.reduce((total, index, innerIndex) => total + beatW(index, innerIndex === bar.length - 1), 0);
   // une reprise en début de système ajoute « |: » après la barre de gauche
   const leadW = (bar: number[]) => (repeatOf(score, score.beats[bar[0]].barIndex)?.start ? metrics.repeatDots + metrics.beatSep : 0);
@@ -498,8 +499,10 @@ function alignedLanes(list: Note[], t0: number, staff: Staff, octave: number, ba
   // les mesures où sonne une note : de celle de son attaque à celle où elle s'arrête
   const bars = (note: Note) => [barOf!(startOf(note)), barOf!(Math.max(startOf(note), note.end - 1))];
   const overlap = barOf
-    ? (firstNotes: Note[], notes: Note[]) => firstNotes.some((note) => notes.some((other) => bars(note)[0] <= bars(other)[1] && bars(other)[0] <= bars(note)[1]))
-    : (notes: Note[], secondNotes: Note[]) => notes.some((note) => secondNotes.some((other) => startOf(note) < other.end && startOf(other) < note.end));
+    ? (firstNotes: Note[], notes: Note[]) =>
+        firstNotes.some((note) => notes.some((other) => bars(note)[0] <= bars(other)[1] && bars(other)[0] <= bars(note)[1]))
+    : (notes: Note[], secondNotes: Note[]) =>
+        notes.some((note) => secondNotes.some((other) => startOf(note) < other.end && startOf(other) < note.end));
   // de l'aigu au grave : toutes les chaînes à ranger au-dessus d'une chaîne sont déjà placées
   const sorted = [...chains].sort((first, second) => second.midi - first.midi);
   const lane = new Map<(typeof chains)[number], number>();
@@ -541,8 +544,10 @@ export const noteText = (note: Note, parts?: Part[]) => {
   if (note.harmonic) return `<${written(note.midi)}>` + finger;
   // le glissé d'entrée avant la case ; après elle, le glissé vers la note suivante, ou vers rien
   const into = note.slideIn ? slideText(note.slideIn, true) : "";
-  if (note.slide || note.slideOut) return into + written(note.midi) + (note.slide ? slideText(note.slide, false) : slideText(note.slideOut!, true)) + finger;
-  if (note.bend !== undefined) return into + written(note.midi) + BEND_MARK + written(note.bend) + (note.release ? RELEASE_MARK : "") + finger;
+  if (note.slide || note.slideOut)
+    return into + written(note.midi) + (note.slide ? slideText(note.slide, false) : slideText(note.slideOut!, true)) + finger;
+  if (note.bend !== undefined)
+    return into + written(note.midi) + BEND_MARK + written(note.bend) + (note.release ? RELEASE_MARK : "") + finger;
   if (into) return into + written(note.midi) + finger;
   return String(written(note.midi)) + (note.trill !== undefined ? TRILL_MARK + written(note.trill) : "") + finger;
 };
@@ -600,7 +605,8 @@ export function layout(score: Score, metrics: Metrics): System[] {
       const spaced = metrics.sectionSep !== undefined && !lastOfSystem && score.markers.some((mk) => mk.barIndex === barIndex + 1);
       if (spaced) separator.spaced = true;
       columns.push(separator);
-      width += metrics.barSep + (endRepeat ? metrics.repeatDots : 0) + (startRepeat ? metrics.repeatDots : 0) + (spaced ? metrics.sectionSep! : 0);
+      width +=
+        metrics.barSep + (endRepeat ? metrics.repeatDots : 0) + (startRepeat ? metrics.repeatDots : 0) + (spaced ? metrics.sectionSep! : 0);
     });
 
     const inSystem = score.notes.filter((note) => note.start < t1 && note.end > t0);
@@ -620,7 +626,13 @@ export function layout(score: Score, metrics: Metrics): System[] {
       if (strings && metrics.allStrings) {
         for (let string = 1; string <= strings.open.length; string++) {
           if (!staffGroups.some((group) => group.string === string))
-            staffGroups.push({ staff, octave: CENTRAL_OCTAVE, string, lanes: [{ staff, octave: CENTRAL_OCTAVE, string, notes: [] }], blocks: [] });
+            staffGroups.push({
+              staff,
+              octave: CENTRAL_OCTAVE,
+              string,
+              lanes: [{ staff, octave: CENTRAL_OCTAVE, string, notes: [] }],
+              blocks: [],
+            });
         }
         staffGroups.sort((first, second) => first.string! - second.string!);
       }
@@ -631,7 +643,9 @@ export function layout(score: Score, metrics: Metrics): System[] {
       for (const grace of graces) {
         const octave = strings ? CENTRAL_OCTAVE : octaveOf(grace.midi);
         // sur une corde : la ligne de sa corde
-        let group = strings ? staffGroups.find((candidate) => candidate.string === grace.string) : staffGroups.find((candidate) => candidate.octave === octave);
+        let group = strings
+          ? staffGroups.find((candidate) => candidate.string === grace.string)
+          : staffGroups.find((candidate) => candidate.octave === octave);
         if (!group) {
           group = strings
             ? { staff, octave, string: grace.string, lanes: [{ staff, octave, string: grace.string, notes: [] }], blocks: [] }
@@ -756,7 +770,12 @@ export function layout(score: Score, metrics: Metrics): System[] {
       const placed: SlurSpan[] = [];
       for (const span of [...spans].sort((first, second) => first.toAnchor - first.fromAnchor - (second.toAnchor - second.fromAnchor))) {
         // deux liaisons qui se touchent seulement (l'une finit sur la note où l'autre commence) restent au même étage
-        while (placed.some((slurSpan) => slurSpan.level === span.level && slurSpan.fromAnchor < span.toAnchor && span.fromAnchor < slurSpan.toAnchor)) span.level++;
+        while (
+          placed.some(
+            (slurSpan) => slurSpan.level === span.level && slurSpan.fromAnchor < span.toAnchor && span.fromAnchor < slurSpan.toAnchor,
+          )
+        )
+          span.level++;
         placed.push(span);
       }
       return spans;
@@ -764,13 +783,16 @@ export function layout(score: Score, metrics: Metrics): System[] {
     // paroles : autant de lignes que le plus haut couplet présent dans le système
     const lyricLines = (staff: Staff): LyricLine[] => {
       const here = score.lyrics.filter(
-        (lyric) => lyric.staff === staff && ((lyric.t >= t0 && lyric.t < t1) || (lyric.t < t0 && lyric.extend !== undefined && lyric.extend > t0)),
+        (lyric) =>
+          lyric.staff === staff && ((lyric.t >= t0 && lyric.t < t1) || (lyric.t < t0 && lyric.extend !== undefined && lyric.extend > t0)),
       );
       const verses = Math.max(0, ...here.map((lyric) => lyric.verse));
       return Array.from({ length: verses }, (_, verseIndex) => {
         const mine = here.filter((lyric) => lyric.verse === verseIndex + 1);
         return {
-          syllables: mine.filter((lyric) => lyric.t >= t0).map((lyric) => ({ anchor: anchorAt(lyric.t), text: lyric.text, hyphen: !!lyric.hyphen })),
+          syllables: mine
+            .filter((lyric) => lyric.t >= t0)
+            .map((lyric) => ({ anchor: anchorAt(lyric.t), text: lyric.text, hyphen: !!lyric.hyphen })),
           extenders: mine
             .filter((lyric) => lyric.extend !== undefined)
             .map((lyric) => ({
@@ -789,10 +811,18 @@ export function layout(score: Score, metrics: Metrics): System[] {
         .concat(
           score.arpeggios
             .filter((arpeggio) => arpeggio.staff === staff)
-            .map((arpeggio) => ({ anchor: anchorAt(arpeggio.t), text: arpeggio.down ? ARPEGGIO_DOWN : ARPEGGIO_UP, kind: "arpeggio" as const })),
+            .map((arpeggio) => ({
+              anchor: anchorAt(arpeggio.t),
+              text: arpeggio.down ? ARPEGGIO_DOWN : ARPEGGIO_UP,
+              kind: "arpeggio" as const,
+            })),
           score.articulations
             .filter((articulation) => articulation.staff === staff)
-            .map((articulation) => ({ anchor: anchorAt(articulation.t), text: ARTICULATION_SIGNS[articulation.kind], kind: "articulation" as const })),
+            .map((articulation) => ({
+              anchor: anchorAt(articulation.t),
+              text: ARTICULATION_SIGNS[articulation.kind],
+              kind: "articulation" as const,
+            })),
         )
         .filter((voiceMark) => voiceMark.anchor >= 0)
         .sort((first, second) => first.anchor - second.anchor),
@@ -879,7 +909,9 @@ export function layout(score: Score, metrics: Metrics): System[] {
       section: section?.label,
       endsSection: score.markers.some((mk) => mk.barIndex > 0 && lastAnchorOfBar(mk.barIndex - 1) === anchors.length - 1),
       arpeggios,
-      chords: score.chords.map((textMark) => ({ anchor: anchorTicks.indexOf(textMark.t), text: textMark.text })).filter((chord) => chord.anchor >= 0),
+      chords: score.chords
+        .map((textMark) => ({ anchor: anchorTicks.indexOf(textMark.t), text: textMark.text }))
+        .filter((chord) => chord.anchor >= 0),
       width,
     };
   });

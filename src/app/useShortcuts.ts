@@ -30,7 +30,8 @@ export function useShortcuts(actions: Actions) {
       else if (ctrl && key === "o") run(actions.open);
       else if (ctrl && key === "b") run(actions.library);
       else if (ctrl && key === "e") run(actions.editor);
-      else if (ctrl && ["+", "=", "-", "0"].includes(event.key)) run(() => actions.zoom(event.key === "0" ? 0 : event.key === "-" ? -1 : 1));
+      else if (ctrl && ["+", "=", "-", "0"].includes(event.key))
+        run(() => actions.zoom(event.key === "0" ? 0 : event.key === "-" ? -1 : 1));
       else if (event.key === "F11") run(actions.fullScreen);
     };
     addEventListener("keydown", onKey);

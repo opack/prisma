@@ -154,7 +154,8 @@ export function useRetouch({ current, rewrite, editor, linked, score, names }: D
       // l'octave de la note : le choix reste sur la note, à sa nouvelle place
       onOctave: (dir) => {
         const result = moveOctave(text(), open.at, dir);
-        if (rewrite(result)) setOpen(describe(result!.text, { ...open.at, octave: result!.octave }, open.where, { ...open.clicked, octave: result!.octave }));
+        if (rewrite(result))
+          setOpen(describe(result!.text, { ...open.at, octave: result!.octave }, open.where, { ...open.clicked, octave: result!.octave }));
       },
       // sur une corde : la note passe à la case choisie, sur cette corde ou une autre ; sur une tenue et sa corde, une note nouvelle commence dans la case cliquée
       onString: (string, fret) => {

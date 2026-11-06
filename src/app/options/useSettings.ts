@@ -48,8 +48,8 @@ export function useSettings() {
   const changed = useRef(false);
 
   const updatePiece = (patch: Partial<PieceSettings>) =>
-    setPiece((cur) => {
-      const next = { ...cur, ...patch };
+    setPiece((previous) => {
+      const next = { ...previous, ...patch };
       for (const key of Object.keys(next) as (keyof PieceSettings)[]) if (next[key] === undefined) delete next[key];
       changed.current = true;
       persistPiece(next);

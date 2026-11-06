@@ -232,7 +232,8 @@ function before(lines: string[], pos: Pos, note: string): Pos | undefined {
   const last = cases(lines[prev.ruler]).length - 1;
   for (const lineIndex of laneLines(lines, prev, lane.staff, lane.octave)) {
     const cell = cellAt(lines, { line: lineIndex, index: last });
-    if (attackOf(cell) === note || (cell.startsWith("-") && heldBefore(lines[lineIndex], cases(lines[prev.ruler]), last) === note)) return { line: lineIndex, index: last };
+    if (attackOf(cell) === note || (cell.startsWith("-") && heldBefore(lines[lineIndex], cases(lines[prev.ruler]), last) === note))
+      return { line: lineIndex, index: last };
   }
   return undefined;
 }
@@ -246,7 +247,9 @@ function after(lines: string[], pos: Pos, note: string): Pos | undefined {
   const next = lane && nextSystem(lines, here.sys, 1);
   if (!next || !lane) return undefined;
   const rows = laneLines(lines, next, lane.staff, lane.octave);
-  const lineIndex = rows.find((row) => cellAt(lines, { line: row, index: 0 }) === "-" + note) ?? rows.find((row) => !cellAt(lines, { line: row, index: 0 }));
+  const lineIndex =
+    rows.find((row) => cellAt(lines, { line: row, index: 0 }) === "-" + note) ??
+    rows.find((row) => !cellAt(lines, { line: row, index: 0 }));
   return lineIndex === undefined ? undefined : { line: lineIndex, index: 0 };
 }
 
@@ -430,7 +433,10 @@ function lastNote(lines: string[], pos: Pos): { note: string; from: number } | u
     const cell = cellAt(lines, { line: lineIndex, index: last });
     const held = attackOf(cell) ?? (cell.startsWith("-") ? heldBefore(lines[lineIndex], previousCells, last) : undefined);
     // une note qui ne continue pas déjà ailleurs dans ce système
-    if (held && !laneLines(lines, here.sys, lane.staff, lane.octave).some((other) => cellAt(lines, { line: other, index: 0 }) === "-" + held))
+    if (
+      held &&
+      !laneLines(lines, here.sys, lane.staff, lane.octave).some((other) => cellAt(lines, { line: other, index: 0 }) === "-" + held)
+    )
       return { note: held, from: 0 };
   }
   return undefined;
@@ -448,7 +454,8 @@ export function holdIn(text: string, at: ScorePlace, note: string): Done | undef
     const stopped = lastNote(lines, { line: lineIndex, index: pos.index });
     if (stopped?.note !== note) continue;
     // dans le système suivant, la première tenue nomme sa note
-    for (let cellIndex = stopped.from; cellIndex <= pos.index; cellIndex++) lines = write(lines, { line: lineIndex, index: cellIndex }, cellIndex === 0 ? "-" + note : "-");
+    for (let cellIndex = stopped.from; cellIndex <= pos.index; cellIndex++)
+      lines = write(lines, { line: lineIndex, index: cellIndex }, cellIndex === 0 ? "-" + note : "-");
     return done(lines, { line: lineIndex, index: pos.index });
   }
   return undefined;
@@ -468,7 +475,10 @@ export function splitCell(cell: string): CellParts | undefined {
 
 /** La case réécrite d'après ses morceaux. */
 export const joinCell = (cellParts: CellParts) =>
-  cellParts.graces.map((grace) => grace + "'").join("") + cellParts.note + (cellParts.trill ? "~" + cellParts.trill : "") + (cellParts.finger ? "_" + cellParts.finger : "");
+  cellParts.graces.map((grace) => grace + "'").join("") +
+  cellParts.note +
+  (cellParts.trill ? "~" + cellParts.trill : "") +
+  (cellParts.finger ? "_" + cellParts.finger : "");
 
 /**
  * Une ligne de notes restée vide après qu'une note l'a quittée disparaît : son numéro d'octave passe
@@ -479,10 +489,12 @@ function dropIfEmpty(lines: string[], lineIndex: number): string[] {
   if (!here || here.all.some((_, cellIndex) => cellAt(lines, { line: lineIndex, index: cellIndex }))) return lines;
   const lane = laneOf(lines, lineIndex);
   if (!lane) return lines;
-  const isNote = (line?: string) => !!line && !line.startsWith("@") && !line.startsWith("#") && line.includes("|") && !isRule(line) && !isRuler(line);
+  const isNote = (line?: string) =>
+    !!line && !line.startsWith("@") && !line.startsWith("#") && line.includes("|") && !isRule(line) && !isRuler(line);
   // la seule ligne de notes de sa portée : elle reste
   let count = 0;
-  for (let index = here.sys.ruler + 1; index <= here.sys.last; index++) if (isNote(lines[index]) && laneOf(lines, index)?.staff === lane.staff) count++;
+  for (let index = here.sys.ruler + 1; index <= here.sys.last; index++)
+    if (isNote(lines[index]) && laneOf(lines, index)?.staff === lane.staff) count++;
   if (count <= 1) return lines;
   const out = [...lines];
   const label = out[lineIndex].slice(0, out[lineIndex].indexOf("|"));

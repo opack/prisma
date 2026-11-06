@@ -88,7 +88,7 @@ function db(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB, 2);
     req.onupgradeneeded = () => {
-      for (const text of [STORE, THUMBS]) if (!req.result.objectStoreNames.contains(text)) req.result.createObjectStore(text);
+      for (const name of [STORE, THUMBS]) if (!req.result.objectStoreNames.contains(name)) req.result.createObjectStore(name);
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);

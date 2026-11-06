@@ -127,7 +127,8 @@ describe("nuances et soufflets", () => {
 });
 
 describe("liaisons d'expression", () => {
-  const sk = (score: Score) => score.slurs.map((slur) => `${slur.staff}:${slur.start / TICKS_PER_BEAT}-${slur.end / TICKS_PER_BEAT}`).join(" ");
+  const sk = (score: Score) =>
+    score.slurs.map((slur) => `${slur.staff}:${slur.start / TICKS_PER_BEAT}-${slur.end / TICKS_PER_BEAT}`).join(" ");
   const ruler = "m1 |1  |2  |3  |4  ||1  |2  |3  |4  ||";
   const rh = "0  |5  |7  |8  |10 ||8  |7  |5  |3  ||";
   const piece = (slurLine: string) => [ruler, rh, slurLine, "---", ""].join("\n");

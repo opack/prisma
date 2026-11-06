@@ -45,9 +45,15 @@ describe("retouche sur place", () => {
   });
 
   it("une note à la place d'une tenue : la note d'avant s'arrête là, ses tenues suivantes s'effacent", () => {
-    const piece = ["m1 |1  |2  |3  ||", "0  |5  |-  |-  ||", "   |3  |-  |   ||", "", "m2 |1  |2  ||", "0  |-5 |-  ||", "   |   |   ||"].join(
-      "\n",
-    );
+    const piece = [
+      "m1 |1  |2  |3  ||",
+      "0  |5  |-  |-  ||",
+      "   |3  |-  |   ||",
+      "",
+      "m2 |1  |2  ||",
+      "0  |-5 |-  ||",
+      "   |   |   ||",
+    ].join("\n");
     // la tenue du 5 (et non celle du 3, sur l'autre ligne)
     const result = retouch(piece, { t: TICKS_PER_BEAT, staff: 0, octave: 4, content: "-5" }, "8")!.text.split("\n");
     expect(result[1]).toBe("0  |5  |8  |   ||");
@@ -99,7 +105,9 @@ describe("retouche sur place", () => {
   });
 
   it("tient une note jusqu'à une case vide plus loin, sans note entre elles", () => {
-    const piece = ["m1 |1  |2  |3  |4  ||", "0  |5  |   |   |   ||", "   |3  |4  |   |   ||", "", "m2 |1  |2  ||", "0  |   |   ||"].join("\n");
+    const piece = ["m1 |1  |2  |3  |4  ||", "0  |5  |   |   |   ||", "   |3  |4  |   |   ||", "", "m2 |1  |2  ||", "0  |   |   ||"].join(
+      "\n",
+    );
     const far = { t: 3 * TICKS_PER_BEAT, staff: 0, octave: 4, content: "" };
     expect(holdChoices(piece, far)).toEqual(["4", "5"]);
     expect(holdIn(piece, far, "5")!.text.split("\n")[1]).toBe("0  |5  |-  |-  |-  ||");

@@ -283,7 +283,8 @@ function Flag({ colors }: { colors: OctaveColors }) {
   );
 }
 
-const labelOf = <T extends string>(list: { value: T; label: string }[], value: T) => list.find((option) => option.value === value)?.label ?? value;
+const labelOf = <T extends string>(list: { value: T; label: string }[], value: T) =>
+  list.find((option) => option.value === value)?.label ?? value;
 
 /** Le nom, en clair, de la valeur d'une option du rendu (pour dire celle de l'autre portée). */
 const DESCRIBE: Record<string, (renderOptions: RenderOptions) => string> = {
@@ -754,7 +755,9 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
                     step={1}
                     value={index}
                     onChange={(changeEvent) =>
-                      setOptions({ clickSounds: { ...options.clickSounds, [level.value]: CLICK_SOUNDS[Number(changeEvent.target.value)].value } })
+                      setOptions({
+                        clickSounds: { ...options.clickSounds, [level.value]: CLICK_SOUNDS[Number(changeEvent.target.value)].value },
+                      })
                     }
                     aria-valuetext={CLICK_SOUNDS[index]?.label}
                   />

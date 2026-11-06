@@ -225,7 +225,10 @@ function partNames(ctx: CompletionContext, line: string): CompletionResult | nul
     boost: -index,
     // le son, quand il n'est pas celui du nom (Chant : des voix)
     detail:
-      [instrumentLabel(guessInstrument(part.name)) !== part.name ? `à l'écoute : ${instrumentLabel(guessInstrument(part.name))}` : "", part.detail]
+      [
+        instrumentLabel(guessInstrument(part.name)) !== part.name ? `à l'écoute : ${instrumentLabel(guessInstrument(part.name))}` : "",
+        part.detail,
+      ]
         .filter(Boolean)
         .join(" ; ") || undefined,
   }));
@@ -237,7 +240,8 @@ function partNames(ctx: CompletionContext, line: string): CompletionResult | nul
  * la liste ne se filtre pas.
  */
 function ranked(options: Completion[]): Completion[] {
-  const rank = (completion: Completion) => (typeof completion.section === "object" && typeof completion.section.rank === "number" ? completion.section.rank : 0);
+  const rank = (completion: Completion) =>
+    typeof completion.section === "object" && typeof completion.section.rank === "number" ? completion.section.rank : 0;
   return [...options].sort((first, second) => rank(first) - rank(second) || (second.boost ?? 0) - (first.boost ?? 0));
 }
 
@@ -265,7 +269,13 @@ function instruments(ctx: CompletionContext, line: string, names: NoteNames): Co
   const group = (name: string, rank: number) => ({ name, rank });
   const options: Completion[] = written.length
     ? []
-    : INSTRUMENTS.map((instrument) => ({ label: instrument, type: "enum", detail: instrumentLabel(instrument), section: group("Instruments", 2), apply: end(instrument) }));
+    : INSTRUMENTS.map((instrument) => ({
+        label: instrument,
+        type: "enum",
+        detail: instrumentLabel(instrument),
+        section: group("Instruments", 2),
+        apply: end(instrument),
+      }));
   // un instrument à cordes (écrit, ou deviné du nom) : ses accordages, et le capo
   const played = (written.find((entry) => (INSTRUMENTS as readonly string[]).includes(entry)) ?? guessInstrument(name)) as InstrumentName;
   if (isStringInstrument(played)) {
@@ -385,9 +395,14 @@ function lineStarts(
         return line.includes("|") && !line.startsWith("@") ? Number(line.slice(0, line.indexOf("|")).trim()) || undefined : undefined;
       };
       let above = 0;
-      for (let index = lineIndex - 1; index > sys.ruler && !parseRule(lines[index], index + 1); index--) above = Math.max(above, laneOf(index) ?? 0);
-      const below = lineIndex + 1 <= sys.last && !parseRule(lines[lineIndex + 1], lineIndex + 2) ? (laneOf(lineIndex + 1) ?? strings.open.length + 1) : strings.open.length + 1;
-      for (let string = above + 1; string < below; string++) add(String(string), openName(strings, string, names), strings.open.length - string);
+      for (let index = lineIndex - 1; index > sys.ruler && !parseRule(lines[index], index + 1); index--)
+        above = Math.max(above, laneOf(index) ?? 0);
+      const below =
+        lineIndex + 1 <= sys.last && !parseRule(lines[lineIndex + 1], lineIndex + 2)
+          ? (laneOf(lineIndex + 1) ?? strings.open.length + 1)
+          : strings.open.length + 1;
+      for (let string = above + 1; string < below; string++)
+        add(String(string), openName(strings, string, names), strings.open.length - string);
     } else {
       const room = octaveRoom(lines, sys, lineIndex);
       if (room.same) add("", "une ligne de plus, dans l'octave de la ligne du dessus", 1);
@@ -458,7 +473,11 @@ function stringCells(
     for (const harmonic of Object.keys(HARMONICS)
       .map(Number)
       .sort((first, second) => first - second))
-      add(`<${harmonic}>`, `harmonique : elle sonne ${name(harmonic, soundingOf(strings, string, 0) + HARMONICS[harmonic]) || `sur la case ${harmonic}`}`, "Cases");
+      add(
+        `<${harmonic}>`,
+        `harmonique : elle sonne ${name(harmonic, soundingOf(strings, string, 0) + HARMONICS[harmonic]) || `sur la case ${harmonic}`}`,
+        "Cases",
+      );
   } else {
     // la note suivante de la corde, si elle vient sans silence : le glissé vers elle, dans son sens
     const all = cases(lines[systemOf(lines, lineIndex)!.ruler]);
@@ -473,7 +492,8 @@ function stringCells(
     const toward = next !== undefined && next !== fret ? (next > fret ? "up" : "down") : undefined;
     const glide = (direction: Direction) => (direction === "up" ? "vers l'aigu" : "vers le grave");
     if (toward) add(fret + slideText(toward, false), `glisser ${glide(toward)} jusqu'à la case ${next}, sans la rejouer`, "Glissé");
-    for (const direction of ["down", "up"] as const) add(fret + slideText(direction, true), `glisser ${glide(direction)} en laissant la note s'éteindre`, "Glissé");
+    for (const direction of ["down", "up"] as const)
+      add(fret + slideText(direction, true), `glisser ${glide(direction)} en laissant la note s'éteindre`, "Glissé");
     for (const direction of ["up", "down"] as const)
       add(slideText(direction, true) + fret, `arriver en glissant d'${direction === "up" ? "en dessous" : "au-dessus"}`, "Glissé");
     for (let up = 1; up <= MAX_BEND && fret + up <= MAX_FRET; up++) {
@@ -563,7 +583,9 @@ function markLine(
   const here = tokens.find((token) => token.col >= start && token.col < target.end);
   const system = lineIndex < sys.ruler;
   const used = new Set(
-    [...lines.join("\n").matchAll(/^@.*?\[([A-Z])\]/gm)].flatMap((match) => [...match[0].matchAll(/\[([A-Z])\]/g)].map((letterMatch) => letterMatch[1])),
+    [...lines.join("\n").matchAll(/^@.*?\[([A-Z])\]/gm)].flatMap((match) =>
+      [...match[0].matchAll(/\[([A-Z])\]/g)].map((letterMatch) => letterMatch[1]),
+    ),
   );
   const next = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].find((letter) => !used.has(letter));
   const strings = !system && !!stringsAt(lines, sys, lineIndex, head);
@@ -641,8 +663,10 @@ function notes(
   const typed = Number(content);
   if (/^\d+$/.test(content) && typed >= 1 && typed <= 12) {
     FINGERS.forEach((finger, index) => note(`${typed}_${index + 1}`, `doigt ${index + 1} : ${finger}`, "Doigté"));
-    for (const step of [1, 2, -1, -2]) note(`${typed}~${wrap(typed + step)}`, `trille avec ${name(wrap(typed + step)) || wrap(typed + step)}`, "Trille");
-    for (const step of [1, -1, 2, -2]) note(`${wrap(typed + step)}'${typed}`, `petite note ${name(wrap(typed + step)) || wrap(typed + step)} devant`, "Petite note");
+    for (const step of [1, 2, -1, -2])
+      note(`${typed}~${wrap(typed + step)}`, `trille avec ${name(wrap(typed + step)) || wrap(typed + step)}`, "Trille");
+    for (const step of [1, -1, 2, -2])
+      note(`${wrap(typed + step)}'${typed}`, `petite note ${name(wrap(typed + step)) || wrap(typed + step)} devant`, "Petite note");
   }
   // ce qui est déjà tapé dans la case filtre la liste
   const from = ctx.state.doc.lineAt(ctx.pos).from + target.start + lead;
@@ -711,7 +735,8 @@ function chordAt(
     type: "constant",
     boost: -index,
     detail,
-    apply: (view: EditorView) => rewrite(view, writeChord(view.state.doc.toString().split("\n"), sys, lineIndex, start, word.length, chord)),
+    apply: (view: EditorView) =>
+      rewrite(view, writeChord(view.state.doc.toString().split("\n"), sys, lineIndex, start, word.length, chord)),
   }));
   return { from, to: from + (line.length >= start ? word.length : 0), options, filter: false };
 }

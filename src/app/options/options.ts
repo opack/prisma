@@ -112,7 +112,8 @@ export const OCTAVE_POSITIONS: { value: OctavePosition; label: string }[] = [
 ];
 
 /** Les notes alignées à la gravure, selon la place des notes choisie. */
-export const alignOf = (position: NotePosition): Align | undefined => (position === "aligned" ? "replayed" : position === "pitch" ? "pitch" : undefined);
+export const alignOf = (position: NotePosition): Align | undefined =>
+  position === "aligned" ? "replayed" : position === "pitch" ? "pitch" : undefined;
 
 export const NOTE_POSITIONS: { value: NotePosition; label: string }[] = [
   { value: "top", label: "En haut" },
@@ -172,13 +173,17 @@ export function loadOptions(stored?: string | null): RenderOptions {
       ? raw.octavePosition
       : DEFAULT_OPTIONS.octavePosition;
     const autoEngrave = typeof raw.autoEngrave === "boolean" ? raw.autoEngrave : DEFAULT_OPTIONS.autoEngrave;
-    const notePosition = NOTE_POSITIONS.some((choice) => choice.value === raw.notePosition) ? raw.notePosition : DEFAULT_OPTIONS.notePosition;
+    const notePosition = NOTE_POSITIONS.some((choice) => choice.value === raw.notePosition)
+      ? raw.notePosition
+      : DEFAULT_OPTIONS.notePosition;
     const density = DENSITIES.some((choice) => choice.value === raw.density) ? raw.density : DEFAULT_OPTIONS.density;
     const rulerDetail = RULER_DETAILS.includes(raw.rulerDetail) ? raw.rulerDetail : DEFAULT_OPTIONS.rulerDetail;
     const fingerings = typeof raw.fingerings === "boolean" ? raw.fingerings : DEFAULT_OPTIONS.fingerings;
     const namesEverySystem = typeof raw.namesEverySystem === "boolean" ? raw.namesEverySystem : DEFAULT_OPTIONS.namesEverySystem;
     const holdReminders = typeof raw.holdReminders === "boolean" ? raw.holdReminders : DEFAULT_OPTIONS.holdReminders;
-    const octaveColors = OCTAVE_COLORS.some((choice) => choice.value === raw.octaveColors) ? raw.octaveColors : DEFAULT_OPTIONS.octaveColors;
+    const octaveColors = OCTAVE_COLORS.some((choice) => choice.value === raw.octaveColors)
+      ? raw.octaveColors
+      : DEFAULT_OPTIONS.octaveColors;
     const chords = CHORD_STYLES.some((choice) => choice.value === raw.chords) ? raw.chords : DEFAULT_OPTIONS.chords;
     const chordNames = raw.chordNames === "english" || raw.chordNames === "prisma" ? raw.chordNames : DEFAULT_OPTIONS.chordNames;
     const chordChart = typeof raw.chordChart === "boolean" ? raw.chordChart : DEFAULT_OPTIONS.chordChart;

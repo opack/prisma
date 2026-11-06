@@ -100,7 +100,8 @@ export function parseFrontmatter(lines: string[]): FrontmatterResult {
     if (NUMERIC_KEYS.has(key)) {
       const number = Number(value);
       if (!Number.isInteger(number) || number < 2) throw new PrismaError(`« ${key} » doit être un entier ≥ 2`, index + 1);
-      if (key === "division" && number !== 2 && number !== 3) throw new PrismaError("« division » vaut 2 (binaire) ou 3 (ternaire)", index + 1);
+      if (key === "division" && number !== 2 && number !== 3)
+        throw new PrismaError("« division » vaut 2 (binaire) ou 3 (ternaire)", index + 1);
       meta[key] = number;
     } else {
       meta[key] = value;

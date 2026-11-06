@@ -67,7 +67,11 @@ function cell(text: string, at: number, out: Span[]) {
   for (const match of text.matchAll(/(\d+')|(-\d*)|(~\d*)|(_\d*)|(\d+)/g)) {
     const from = at + match.index;
     const to = from + match[0].length;
-    out.push({ from, to, cls: match[1] ? "cm-p-grace" : match[2] ? "cm-p-hold" : match[3] ? "cm-p-trill" : match[4] ? "cm-p-finger" : "cm-p-note" });
+    out.push({
+      from,
+      to,
+      cls: match[1] ? "cm-p-grace" : match[2] ? "cm-p-hold" : match[3] ? "cm-p-trill" : match[4] ? "cm-p-finger" : "cm-p-note",
+    });
   }
 }
 
@@ -103,7 +107,8 @@ function readLine(text: string, state: State, mode: SourceColors, palette: Octav
         spans.push({ from: key, to: key + match[2].length, cls: "cm-p-key" });
         // les instruments de « parts: », entre parenthèses
         if (match[2] === "parts")
-          for (const instrument of text.matchAll(/\([^()]*\)/g)) spans.push({ from: instrument.index, to: instrument.index + instrument[0].length, cls: "cm-p-instrument" });
+          for (const instrument of text.matchAll(/\([^()]*\)/g))
+            spans.push({ from: instrument.index, to: instrument.index + instrument[0].length, cls: "cm-p-instrument" });
       }
       return line;
     }
@@ -209,7 +214,8 @@ function build(view: EditorView, mode: SourceColors, palette: OctaveColors): Dec
   const doc = view.state.doc;
   const state: State = { head: "before", lane: 0 };
   const last = view.visibleRanges.length ? doc.lineAt(view.visibleRanges[view.visibleRanges.length - 1].to).number : 0;
-  const shown = (lineNumber: number) => view.visibleRanges.some((range) => lineNumber >= doc.lineAt(range.from).number && lineNumber <= doc.lineAt(range.to).number);
+  const shown = (lineNumber: number) =>
+    view.visibleRanges.some((range) => lineNumber >= doc.lineAt(range.from).number && lineNumber <= doc.lineAt(range.to).number);
   for (let lineNumber = 1; lineNumber <= last; lineNumber++) {
     const line = doc.line(lineNumber);
     const read = readLine(line.text.replace(/\t/g, " "), state, mode, palette);

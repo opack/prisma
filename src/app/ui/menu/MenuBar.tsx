@@ -67,7 +67,14 @@ function Actions({ items }: { items: MenuItem[] }) {
         })}
       >
         {group.actions.map((action) => (
-          <Item key={action.label} id={action.label} textValue={action.label} isDisabled={action.disabled} onAction={action.onSelect} className={ITEM}>
+          <Item
+            key={action.label}
+            id={action.label}
+            textValue={action.label}
+            isDisabled={action.disabled}
+            onAction={action.onSelect}
+            className={ITEM}
+          >
             {({ isSelected }) => (
               <>
                 <span className="text-accent">{isSelected ? "✓" : ""}</span>
@@ -223,7 +230,11 @@ function CompactMenu({ menus, heading }: { menus: MenuDef[]; heading?: ReactNode
               onKeyDownCapture={(event) =>
                 event.key === "ArrowRight" &&
                 (event.preventDefault(),
-                enter(menus.findIndex((menuDef) => menuDef.label === (event.target as HTMLElement).closest<HTMLElement>("[data-key]")?.dataset.key)))
+                enter(
+                  menus.findIndex(
+                    (menuDef) => menuDef.label === (event.target as HTMLElement).closest<HTMLElement>("[data-key]")?.dataset.key,
+                  ),
+                ))
               }
             >
               {heading}

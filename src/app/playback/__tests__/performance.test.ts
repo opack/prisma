@@ -30,7 +30,12 @@ describe("écoute", () => {
       { length: count },
       (_, index) => ({ bar: String(index + 1), barIndex: index, label: 1, division: 2 }) as Score["beats"][number],
     ),
-    notes: Array.from({ length: count }, (_, index) => ({ staff: 0, midi: 60 + index, start: index * TICKS_PER_BEAT, end: (index + 1) * TICKS_PER_BEAT })),
+    notes: Array.from({ length: count }, (_, index) => ({
+      staff: 0,
+      midi: 60 + index,
+      start: index * TICKS_PER_BEAT,
+      end: (index + 1) * TICKS_PER_BEAT,
+    })),
     ...more,
   });
   const order = (score: Score, ps: ReturnType<typeof passages>) =>
@@ -256,7 +261,9 @@ describe("écoute : arpèges", () => {
     );
     const notes = playNotes(playedNotes(score, passages(score)), 60);
     const at = (second: number) =>
-      notes.filter((playNote) => playNote.time >= second && playNote.time < second + 0.5).map((playNote) => [playNote.midi, +playNote.time.toFixed(2)]);
+      notes
+        .filter((playNote) => playNote.time >= second && playNote.time < second + 0.5)
+        .map((playNote) => [playNote.midi, +playNote.time.toFixed(2)]);
     expect(at(0)).toEqual([
       [60, 0],
       [64, 0.04],
@@ -268,7 +275,9 @@ describe("écoute : arpèges", () => {
       [60, 1.08],
     ]);
     // toutes les notes s'arrêtent ensemble, à la fin de l'accord
-    expect(notes.filter((playNote) => playNote.time < 0.5).map((playNote) => +(playNote.time + playNote.duration).toFixed(2))).toEqual([1, 1, 1]);
+    expect(notes.filter((playNote) => playNote.time < 0.5).map((playNote) => +(playNote.time + playNote.duration).toFixed(2))).toEqual([
+      1, 1, 1,
+    ]);
   });
 });
 

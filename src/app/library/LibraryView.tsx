@@ -177,14 +177,19 @@ export function LibraryView({
     if (state.kind !== "ready") return [];
     const needle = fold(query.trim());
     const found = state.entries.filter(
-      (libraryEntry) => (kinds === "all" || libraryEntry.kind === kinds) && (!needle || fold([titleOf(libraryEntry), libraryEntry.composer ?? "", libraryEntry.path].join(" ")).includes(needle)),
+      (libraryEntry) =>
+        (kinds === "all" || libraryEntry.kind === kinds) &&
+        (!needle || fold([titleOf(libraryEntry), libraryEntry.composer ?? "", libraryEntry.path].join(" ")).includes(needle)),
     );
     if (sort === "recent") {
       const recent = recentOpenings();
       const at = (entry: LibraryEntry) => recent[entry.path] ?? 0;
-      return [{ folder: "", entries: [...found].sort((first, second) => at(second) - at(first) || compare(titleOf(first), titleOf(second))) }];
+      return [
+        { folder: "", entries: [...found].sort((first, second) => at(second) - at(first) || compare(titleOf(first), titleOf(second))) },
+      ];
     }
-    const key = (entry: LibraryEntry) => (sort === "composer" ? [entry.composer ?? "￿", titleOf(entry)] : [titleOf(entry), entry.composer ?? ""]);
+    const key = (entry: LibraryEntry) =>
+      sort === "composer" ? [entry.composer ?? "￿", titleOf(entry)] : [titleOf(entry), entry.composer ?? ""];
     const byFolder = new Map<string, LibraryEntry[]>();
     for (const entry of found) byFolder.set(entry.folder, [...(byFolder.get(entry.folder) ?? []), entry]);
     return [...byFolder]
@@ -195,7 +200,8 @@ export function LibraryView({
       }));
   }, [state, query, sort, kinds]);
   const count = groups.reduce((sum, group) => sum + group.entries.length, 0);
-  const total = (shown: Kinds) => (state.kind === "ready" ? state.entries.filter((libraryEntry) => shown === "all" || libraryEntry.kind === shown).length : 0);
+  const total = (shown: Kinds) =>
+    state.kind === "ready" ? state.entries.filter((libraryEntry) => shown === "all" || libraryEntry.kind === shown).length : 0;
 
   return (
     <main data-library className="flex-1 overflow-auto bg-white">
@@ -342,14 +348,23 @@ export function LibraryView({
                   <ul className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-[18px] m-0 px-0 pt-1 pb-0 list-none">
                     {group.entries.map((libraryEntry) => (
                       <li key={libraryEntry.path}>
-                        <button className={`flex flex-col gap-0.5 h-full p-2 rounded-md ${ENTRY}`} onClick={() => onOpen(libraryEntry)} title={libraryEntry.path}>
-                          <ThumbView entry={libraryEntry} options={thumbsOwn && libraryEntry.own ? { ...options, ...libraryEntry.own } : options} />
+                        <button
+                          className={`flex flex-col gap-0.5 h-full p-2 rounded-md ${ENTRY}`}
+                          onClick={() => onOpen(libraryEntry)}
+                          title={libraryEntry.path}
+                        >
+                          <ThumbView
+                            entry={libraryEntry}
+                            options={thumbsOwn && libraryEntry.own ? { ...options, ...libraryEntry.own } : options}
+                          />
                           <span className="font-semibold">{titleOf(libraryEntry)}</span>
                           <span className="text-left text-[13px] text-muted">{libraryEntry.composer ?? "\u00a0"}</span>
                           <span className={`${META} flex-wrap text-[11px]`}>
                             {sort === "recent" && libraryEntry.folder ? `${libraryEntry.folder}/` : ""}
                             {libraryEntry.name}
-                            {libraryEntry.kind === "musicxml" && <span className="px-1.5 rounded-[3px] bg-accent-12 text-accent">à importer</span>}
+                            {libraryEntry.kind === "musicxml" && (
+                              <span className="px-1.5 rounded-[3px] bg-accent-12 text-accent">à importer</span>
+                            )}
                           </span>
                         </button>
                       </li>

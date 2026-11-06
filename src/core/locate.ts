@@ -123,7 +123,9 @@ export function findRow(text: string, at: ScorePlace): { line: number; column: n
  * ajoute à la gravure : le texte ne l'a pas, rien ne peut s'y écrire.
  */
 export function isWrittenCase(text: string, tick: number): boolean {
-  const system = systems(split(text)).find((candidate) => tick >= candidate.beat0 * TICKS_PER_BEAT && tick < (candidate.beat0 + candidate.beats.length) * TICKS_PER_BEAT);
+  const system = systems(split(text)).find(
+    (candidate) => tick >= candidate.beat0 * TICKS_PER_BEAT && tick < (candidate.beat0 + candidate.beats.length) * TICKS_PER_BEAT,
+  );
   if (!system) return false;
   const cellCount = system.beats[Math.floor(tick / TICKS_PER_BEAT) - system.beat0].length;
   return ((tick % TICKS_PER_BEAT) * cellCount) % TICKS_PER_BEAT === 0;
@@ -142,10 +144,15 @@ export function textPlace(text: string, lineNumber: number, columnNumber: number
   const system = systems(lines).find((candidate) => lineIndex >= candidate.first && lineIndex <= candidate.last);
   if (!system) return undefined;
   const cases = system.beats.flatMap((beat, beatIndex) =>
-    beat.map((cell, cellIndex) => ({ ...cell, t: (system.beat0 + beatIndex) * TICKS_PER_BEAT + (cellIndex * TICKS_PER_BEAT) / beat.length })),
+    beat.map((cell, cellIndex) => ({
+      ...cell,
+      t: (system.beat0 + beatIndex) * TICKS_PER_BEAT + (cellIndex * TICKS_PER_BEAT) / beat.length,
+    })),
   );
   if (!cases.length) return undefined;
-  const at = cases.find((cell) => columnIndex >= cell.start && columnIndex < cell.end) ?? (columnIndex < cases[0].start ? cases[0] : cases[cases.length - 1]);
+  const at =
+    cases.find((cell) => columnIndex >= cell.start && columnIndex < cell.end) ??
+    (columnIndex < cases[0].start ? cases[0] : cases[cases.length - 1]);
   if (lineIndex <= system.ruler) return { t: at.t, staff: -1 };
   let staff = -1;
   let octave: number | undefined;

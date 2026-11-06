@@ -95,7 +95,8 @@ export function playNotes(notes: PlayedNote[], bpm: number, from = 0, hs: Hold[]
     if (playedNote.end <= from) continue;
     const begin = Math.max(playedNote.start, from);
     // une note d'arpège part un peu après la précédente, et reste tenue (sauf reprise en cours d'accord)
-    const rolled = playedNote.roll && playedNote.start >= from ? playedNote.roll.rank * Math.min(ROLL, 60 / bpm / 2 / playedNote.roll.count) : 0;
+    const rolled =
+      playedNote.roll && playedNote.start >= from ? playedNote.roll.rank * Math.min(ROLL, 60 / bpm / 2 / playedNote.roll.count) : 0;
     const time = at(begin) + rolled,
       end = at(playedNote.end);
     const trill = playedNote.trill && playedNote.trill.until > begin ? playedNote.trill : undefined;
@@ -406,7 +407,9 @@ class Player {
     // s'entend ; la pause se cale donc sur elle, même si le curseur n'a pas encore eu le temps d'y passer
     const played = at ?? this.now();
     this.halt();
-    this.pos = at ?? this.notes.reduce((latest, playedNote) => (playedNote.start <= played && playedNote.start > latest ? playedNote.start : latest), 0);
+    this.pos =
+      at ??
+      this.notes.reduce((latest, playedNote) => (playedNote.start <= played && playedNote.start > latest ? playedNote.start : latest), 0);
     this.set({ state: "paused", ...this.at(this.pos), error: undefined });
   }
 
@@ -489,7 +492,9 @@ class Player {
     const beats = this.sound.metronome
       ? this.clicks.flatMap((planned) => {
           const sound = sounds[planned.level];
-          return planned.at >= from && sound !== "none" ? [{ time: (stretched(hs, planned.at) - zero) * sec, level: planned.level, sound }] : [];
+          return planned.at >= from && sound !== "none"
+            ? [{ time: (stretched(hs, planned.at) - zero) * sec, level: planned.level, sound }]
+            : [];
         })
       : [];
     let next = 0,

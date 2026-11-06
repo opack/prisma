@@ -32,6 +32,8 @@ import { mainOf, rowLane } from "../../core/locate.ts";
 import { keyName, parseKey, prismaKey } from "../../core/key.ts";
 import type { Key, NoteNames } from "../../core/index.ts";
 import { glide } from "./glide.ts";
+import { anchorAt, arpeggioPath, barsIn, columnAt, markWidth, nearestColumn, spacedWidths, systemBand, trillPath } from "./geometry.ts";
+import type { BarColumn } from "./geometry.ts";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 
 const INK = "#1b1d1f";
@@ -347,7 +349,7 @@ function Row({
         const width = ws[column] - extra;
         const mid = y + dy + ps.rowH / 2;
         // trille : la note, sa voisine en petit, puis un trait ondulé sur toute sa durée
-        if (row.trill[anchor] && cell === "-") return <path key={anchor} d={wave(xs[column], x + width, mid)} {...WAVE} />;
+        if (row.trill[anchor] && cell === "-") return <path key={anchor} d={trillPath(xs[column], x + width, mid)} {...WAVE} />;
         // note annotée : son articulation au-dessus d'elle, la voisine de trille en petit (en haut à
         // droite), le doigt en négatif (en bas à droite)
         const arts = !cell.startsWith("-") ? articulations?.get(anchor) : undefined;
@@ -462,7 +464,7 @@ function Row({
                   </text>
                 </g>
               )}
-              {aux && end + 0.3 < x + width && <path d={wave(end + 0.3, x + width, mid)} {...WAVE} />}
+              {aux && end + 0.3 < x + width && <path d={trillPath(end + 0.3, x + width, mid)} {...WAVE} />}
             </g>
           );
         }
@@ -474,7 +476,7 @@ function Row({
               <text x={x + 0.5} y={base + dy} fontSize={3.1} fill={GREY}>
                 {"–" + cell.slice(1)}
               </text>
-              {end < x + width && <path d={wave(end, x + width, mid)} {...WAVE} />}
+              {end < x + width && <path d={trillPath(end, x + width, mid)} {...WAVE} />}
             </g>
           );
         }
@@ -517,31 +519,6 @@ function Row({
   );
 }
 
-/** Trait ondulé horizontal (trille) de x1 à x2, centré sur y. */
-function wave(x1: number, x2: number, y: number): string {
-  const period = 1.3,
-    amp = 0.35;
-  let path = `M ${x1} ${y}`;
-  for (let x = x1, index = 0; x < x2 - 0.01; x += period / 2, index++) {
-    const nx = Math.min(x + period / 2, x2);
-    path += ` Q ${(x + nx) / 2} ${y + (index % 2 ? amp : -amp) * 2} ${nx} ${y}`;
-  }
-  return path;
-}
-
-/** Vaguelette verticale (arpège) de y1 à y2, centrée sur x ; down : flèche vers le bas. */
-function vwave(x: number, y1: number, y2: number, down: boolean): string {
-  const period = 1.3,
-    amp = 0.35;
-  let path = `M ${x} ${y1}`;
-  for (let y = y1, index = 0; y < y2 - 0.01; y += period / 2, index++) {
-    const ny = Math.min(y + period / 2, y2);
-    path += ` Q ${x + (index % 2 ? amp : -amp) * 2} ${(y + ny) / 2} ${x} ${ny}`;
-  }
-  if (down) path += ` M ${x - 0.7} ${y2 - 0.9} L ${x} ${y2} L ${x + 0.7} ${y2 - 0.9}`;
-  return path;
-}
-
 const WAVE = { fill: "none", stroke: INK, strokeWidth: 0.3, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
 
 /**
@@ -560,10 +537,15 @@ function SlurBand({ ps, voice, rows, top }: { ps: PlacedSystem; voice: Voice; ro
   for (const slurSpan of voice.slurs) {
     for (const row of rows.filter((candidate) => candidate.string !== undefined)) {
       let prev: { anchor: number; fret: number } | undefined;
-      for (let anchor = slurSpan.opens ? slurSpan.fromAnchor : 0; anchor <= (slurSpan.closes ? slurSpan.toAnchor : sys.anchors.length - 1); anchor++) {
+      for (
+        let anchor = slurSpan.opens ? slurSpan.fromAnchor : 0;
+        anchor <= (slurSpan.closes ? slurSpan.toAnchor : sys.anchors.length - 1);
+        anchor++
+      ) {
         const played = fret(row.cells[anchor] ?? "");
         if (Number.isNaN(played)) continue;
-        if (prev && played !== prev.fret) letters.push({ x: (noteX(prev.anchor) + noteX(anchor)) / 2, text: played > prev.fret ? "H" : "P" });
+        if (prev && played !== prev.fret)
+          letters.push({ x: (noteX(prev.anchor) + noteX(anchor)) / 2, text: played > prev.fret ? "H" : "P" });
         prev = { anchor, fret: played };
       }
     }
@@ -582,22 +564,12 @@ function SlurBand({ ps, voice, rows, top }: { ps: PlacedSystem; voice: Voice; ro
         const y = top + 0.5 + slurSpan.level * METRICS.slurLevel;
         const depth = Math.min(1.1, 0.45 + (x2 - x1) * 0.02); // creux, un peu plus marqué pour une longue liaison
         const mx = (x1 + x2) / 2;
-        return <path key={index} d={`M ${x1} ${y} Q ${mx} ${y + 2 * depth} ${x2} ${y} Q ${mx} ${y + 2 * depth - 0.7} ${x1} ${y} Z`} fill={INK} />;
+        return (
+          <path key={index} d={`M ${x1} ${y} Q ${mx} ${y + 2 * depth} ${x2} ${y} Q ${mx} ${y + 2 * depth - 0.7} ${x1} ${y} Z`} fill={INK} />
+        );
       })}
     </g>
   );
-}
-
-type BarCol = Extract<PlacedSystem["sys"]["columns"][number], { kind: "barSep" }>;
-
-/**
- * Barre entre deux sections à la suite : la fin de la section (double barre, ou « :|| »), un
- * blanc, puis le début de la suivante, ouverte comme une ligne (trait, ou « ||: »).
- */
-function spacedWidths(col: BarCol, x: number, width: number) {
-  const close = METRICS.barSep + (col.endRepeat ? METRICS.repeatDots : 0);
-  const open = col.startRepeat ? METRICS.repeatDots + METRICS.beatSep : 0;
-  return { close, open, gap: [x + close, x + width - open] as [number, number] };
 }
 
 /**
@@ -615,7 +587,7 @@ function BarLine({
 }: {
   x: number;
   width: number;
-  column: BarCol;
+  column: BarColumn;
   top: number;
   bottom: number;
   sections: number[][];
@@ -752,9 +724,13 @@ function Marks({ ps }: { ps: PlacedSystem }) {
       {sys.marks
         .filter((mark) => mark.kind === "marker")
         .map((mark, index) => {
-          const barColumn = mark.column! >= 0 ? (sys.columns[mark.column!] as BarCol) : undefined;
+          const barColumn = mark.column! >= 0 ? (sys.columns[mark.column!] as BarColumn) : undefined;
           // en cours de ligne, contre la barre qui ouvre la section (après le blanc, s'il y en a un)
-          const bar = !barColumn ? left : barColumn.spaced ? spacedWidths(barColumn, xs[mark.column!], ws[mark.column!]).gap[1] : xs[mark.column!] + ws[mark.column!] / 2;
+          const bar = !barColumn
+            ? left
+            : barColumn.spaced
+              ? spacedWidths(barColumn, xs[mark.column!], ws[mark.column!]).gap[1]
+              : xs[mark.column!] + ws[mark.column!] / 2;
           return <SectionBox key={"r" + index} x={bar + 0.6} y={top} label={mark.label!} />;
         })}
       {sys.marks
@@ -765,7 +741,15 @@ function Marks({ ps }: { ps: PlacedSystem }) {
       {sys.marks
         .filter((mark) => mark.kind === "times")
         .map((mark, index) => (
-          <text key={"x" + index} x={anchorEnd(mark.anchor!) - 0.4} y={top + 2.55} fontSize={2.6} fontWeight={700} textAnchor="end" fill={INK}>
+          <text
+            key={"x" + index}
+            x={anchorEnd(mark.anchor!) - 0.4}
+            y={top + 2.55}
+            fontSize={2.6}
+            fontWeight={700}
+            textAnchor="end"
+            fill={INK}
+          >
             {mark.text}
           </text>
         ))}
@@ -845,7 +829,9 @@ function LyricBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: nu
                   <text x={sx(syllable.anchor)} y={base} fontFamily={LYRIC_FONT} fontSize={3.1} fill={INK} {...halo}>
                     {syllable.text}
                   </text>
-                  {syllable.hyphen && <line x1={hx - hw / 2} x2={hx + hw / 2} y1={base - 0.9} y2={base - 0.9} stroke={INK} strokeWidth={0.22} />}
+                  {syllable.hyphen && (
+                    <line x1={hx - hw / 2} x2={hx + hw / 2} y1={base - 0.9} y2={base - 0.9} stroke={INK} strokeWidth={0.22} />
+                  )}
                 </g>
               );
             })}
@@ -863,9 +849,6 @@ function LyricBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: nu
     </g>
   );
 }
-
-/** Largeur estimée d'une indication gravée : une nuance (gras italique), ou un texte. */
-const markW = (text: string, kind: string) => [...text].length * (kind === "dynamic" ? 2.1 : 1.35) + 0.9;
 
 /**
  * Bande des nuances d'une portée : nuances (p, mf…), textes (cresc., dolce…) et soufflets.
@@ -886,7 +869,7 @@ function VoiceBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: nu
       {voice.effects.map((effectSpan, index) => {
         const x1 = ax(effectSpan.fromAnchor) + 0.5;
         const x2 = anchorEnd(effectSpan.toAnchor) - 0.6;
-        if (effectSpan.kind === "vibrato") return <path key={"e" + index} d={wave(x1, x2, cy)} {...WAVE} />;
+        if (effectSpan.kind === "vibrato") return <path key={"e" + index} d={trillPath(x1, x2, cy)} {...WAVE} />;
         const label = effectSpan.opens ? "P.M." : "(P.M.)";
         const lx = x1 + label.length * 1.45 + 0.5;
         return (
@@ -920,8 +903,10 @@ function VoiceBand({ ps, voice, top }: { ps: PlacedSystem; voice: Voice; top: nu
         // l'arpège et les articulations se dessinent sur l'accord (voir SystemView), pas dans cette bande
         if (voiceMark.kind === "arpeggio" || voiceMark.kind === "articulation") return null;
         // plusieurs indications sur une même case (« pp » puis « con sordina ») : à la suite
-        const before = voice.marks.slice(0, index).filter((other) => other.anchor === voiceMark.anchor && other.kind !== "arpeggio" && other.kind !== "articulation");
-        const x = ax(voiceMark.anchor) + before.reduce((total, other) => total + markW(other.text, other.kind) + 1, 0);
+        const before = voice.marks
+          .slice(0, index)
+          .filter((other) => other.anchor === voiceMark.anchor && other.kind !== "arpeggio" && other.kind !== "articulation");
+        const x = ax(voiceMark.anchor) + before.reduce((total, other) => total + markWidth(other.text, other.kind) + 1, 0);
         return voiceMark.kind === "dynamic" ? (
           <text
             key={"m" + index}
@@ -1037,7 +1022,9 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
   const right = xs[xs.length - 1] + ws[ws.length - 1];
   const rulerBase = y + METRICS.rulerH * 0.72;
   // sections à la suite : le blanc entre la fin d'une section et la suivante coupe les couloirs
-  const gaps = sys.columns.flatMap((column, index) => (column.kind === "barSep" && column.spaced ? [spacedWidths(column, xs[index], ws[index]).gap] : []));
+  const gaps = sys.columns.flatMap((column, index) =>
+    column.kind === "barSep" && column.spaced ? [spacedWidths(column, xs[index], ws[index]).gap] : [],
+  );
   const spans = (start: number, end: number) => {
     const out: [number, number][] = [];
     let from = start;
@@ -1076,7 +1063,9 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
     const out = new Map<number, string[]>();
     for (const voiceMark of systemStaff.voice.marks) {
       if (voiceMark.kind !== "articulation" || isPickSign(voiceMark.text)) continue;
-      const top = systemStaff.rows.findIndex((systemRow) => !!systemRow.cells[voiceMark.anchor] && !systemRow.cells[voiceMark.anchor].startsWith("-"));
+      const top = systemStaff.rows.findIndex(
+        (systemRow) => !!systemRow.cells[voiceMark.anchor] && !systemRow.cells[voiceMark.anchor].startsWith("-"),
+      );
       if (top === index) out.set(voiceMark.anchor, [...(out.get(voiceMark.anchor) ?? []), voiceMark.text]);
     }
     return out;
@@ -1109,7 +1098,11 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
         if (column.label === ".") return <circle key={anchor} cx={x} cy={cy} r={0.3} fill={LIGHT_TEXT} />;
         if (column.label === ",") {
           return (
-            <path key={anchor} d={`M ${x - 0.22} ${cy} a 0.22 0.22 0 1 1 0.44 0 q 0 0.55 -0.4 0.8 q 0.2 -0.35 0.1 -0.62 z`} fill={LIGHT_TEXT} />
+            <path
+              key={anchor}
+              d={`M ${x - 0.22} ${cy} a 0.22 0.22 0 1 1 0.44 0 q 0 0.55 -0.4 0.8 q 0.2 -0.35 0.1 -0.62 z`}
+              fill={LIGHT_TEXT}
+            />
           );
         }
         // astérisque à trois branches, plus fin que le trait du « . »
@@ -1187,7 +1180,14 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
           return (
             fill &&
             spans(left, right).map(([from, to], innerIndex) => (
-              <rect key={`bd${staff}-${index}-${innerIndex}`} x={from} y={rowY(staff, index)} width={to - from} height={ps.rowH} fill={fill} />
+              <rect
+                key={`bd${staff}-${index}-${innerIndex}`}
+                x={from}
+                y={rowY(staff, index)}
+                width={to - from}
+                height={ps.rowH}
+                fill={fill}
+              />
             ))
           );
         });
@@ -1234,18 +1234,30 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
         (staffPlace, staff) =>
           staffPlace.separator !== undefined &&
           spans(left, right).map(([from, to], innerIndex) => (
-            <line key={`sep${staff}-${innerIndex}`} x1={from} x2={to} y1={staffPlace.separator} y2={staffPlace.separator} stroke={INK} strokeWidth={0.5} />
+            <line
+              key={`sep${staff}-${innerIndex}`}
+              x1={from}
+              x2={to}
+              y1={staffPlace.separator}
+              y2={staffPlace.separator}
+              stroke={INK}
+              strokeWidth={0.5}
+            />
           )),
       )}
       {/* arpèges : une vaguelette devant l'accord, de sa note la plus grave à la plus aiguë */}
       {sys.arpeggios.map((arpeggio, index) => {
         const attack = (systemRow: SystemRow) => !!systemRow.cells[arpeggio.anchor] && !systemRow.cells[arpeggio.anchor].startsWith("-");
         const ys = sys.staves.flatMap((systemStaff, staff) =>
-          arpeggio.staff === undefined || arpeggio.staff === staff ? systemStaff.rows.flatMap((systemRow, innerIndex) => (attack(systemRow) ? [rowY(staff, innerIndex)] : [])) : [],
+          arpeggio.staff === undefined || arpeggio.staff === staff
+            ? systemStaff.rows.flatMap((systemRow, innerIndex) => (attack(systemRow) ? [rowY(staff, innerIndex)] : []))
+            : [],
         );
         if (!ys.length) return null;
         const x = xs[sys.anchors[arpeggio.anchor]] + graceExtra(sys, arpeggio.anchor) + METRICS.arpeggioW / 2 + 0.2;
-        return <path key={"arp" + index} d={vwave(x, Math.min(...ys) + 0.5, Math.max(...ys) + ps.rowH - 0.5, arpeggio.down)} {...WAVE} />;
+        return (
+          <path key={"arp" + index} d={arpeggioPath(x, Math.min(...ys) + 0.5, Math.max(...ys) + ps.rowH - 0.5, arpeggio.down)} {...WAVE} />
+        );
       })}
 
       {/* séparations verticales, instrument par instrument : temps fins, mesures épaisses, reprises */}
@@ -1254,7 +1266,11 @@ export function SystemView({ ps: placed, options, names }: { ps: PlacedSystem; o
         const last = ps.staves[part.last];
         const bottom = last.voiceTop + last.voiceBand;
         const sections = sys.staves
-          .map((systemStaff, staff) => (staff >= part.first && staff <= part.last && systemStaff.rows.length ? [rowY(staff, 0), rowY(staff, systemStaff.rows.length)] : null))
+          .map((systemStaff, staff) =>
+            staff >= part.first && staff <= part.last && systemStaff.rows.length
+              ? [rowY(staff, 0), rowY(staff, systemStaff.rows.length)]
+              : null,
+          )
           .filter(Boolean) as number[][];
         return (
           <g key={"bars" + index}>
@@ -1316,7 +1332,10 @@ export function Excerpt({ pages, options, scale = 1 }: { pages: Page[]; options:
   let offset = 0;
   const placed = pages.flatMap((page, index) => {
     if (index)
-      offset += Math.max(...pages[index - 1].systems.map((ps) => ps.y + ps.height)) - Math.min(...page.systems.map((ps) => ps.y)) + METRICS.systemGap;
+      offset +=
+        Math.max(...pages[index - 1].systems.map((ps) => ps.y + ps.height)) -
+        Math.min(...page.systems.map((ps) => ps.y)) +
+        METRICS.systemGap;
     return page.systems.map((ps) => ({ ...ps, y: ps.y + offset }));
   });
   const order = pages[0].order;
@@ -1439,17 +1458,9 @@ function PlayCursor({ page, lookAhead }: { page: Page; lookAhead: boolean }) {
   return <CursorRect ps={page.systems[current]} column={column} rectRef={ref} />;
 }
 
-/** La colonne jouée d'un système à cet instant du morceau. */
-export function columnAt(ps: PlacedSystem, tick: number): number {
-  const { sys } = ps;
-  let current = sys.anchors[0];
-  for (const column of sys.anchors) if ((sys.columns[column] as { t: number }).t <= tick) current = column;
-  return current;
-}
-
 /** La case jouée, surlignée sur toute la hauteur de son système. */
 export function CursorRect({ ps, column, rectRef }: { ps: PlacedSystem; column: number; rectRef?: React.Ref<SVGRectElement> }) {
-  const { top, bottom } = band(ps);
+  const { top, bottom } = systemBand(ps);
   return (
     <rect
       ref={rectRef}
@@ -1482,10 +1493,9 @@ export function TextMarks({ systems }: { systems: PlacedSystem[] }) {
   if (!at || !ps) return null;
   const { sys } = ps;
   // la case : la dernière qui commence à l'instant du signe ou avant
-  let anchor = 0;
-  sys.anchors.forEach((candidate, index) => (sys.columns[candidate] as { t: number }).t <= at.t && (anchor = index));
+  const anchor = anchorAt(ps, at.t);
   const column = sys.anchors[anchor];
-  let { top, bottom } = band(ps);
+  let { top, bottom } = systemBand(ps);
   const staff = at.staff >= 0 ? ps.staves[at.staff] : undefined;
   if (staff) {
     const rows = sys.staves[at.staff].rows;
@@ -1521,24 +1531,12 @@ function extent(area: SVGRectElement) {
     page = svg.getBoundingClientRect(),
     unit = page.width / svg.viewBox.baseVal.width;
   const rect = area.getBoundingClientRect();
-  return { left: rect.left, right: rect.right, top: page.top + Number(area.dataset.top) * unit, bottom: page.top + Number(area.dataset.bottom) * unit };
-}
-
-/** Les mesures d'un système : les colonnes de leurs cases, de gauche à droite. */
-export function barsIn(ps: PlacedSystem): number[][] {
-  const bars: number[][] = [[]];
-  ps.sys.columns.forEach((column, index) => {
-    if (column.kind === "barSep") {
-      if (bars[bars.length - 1].length) bars.push([]);
-    } else if (column.kind === "anchor") bars[bars.length - 1].push(index);
-  });
-  return bars.filter((bar) => bar.length);
-}
-
-/** Hauteur d'un système, de sa règle au bas de sa dernière portée : celle du curseur. */
-function band(ps: PlacedSystem) {
-  const last = ps.staves[ps.staves.length - 1];
-  return { top: ps.y + ps.rulerTop, bottom: ps.y + last.voiceTop + last.voiceBand };
+  return {
+    left: rect.left,
+    right: rect.right,
+    top: page.top + Number(area.dataset.top) * unit,
+    bottom: page.top + Number(area.dataset.bottom) * unit,
+  };
 }
 
 /** Deux touchers du doigt font un double toucher s'ils sont aussi proches, dans le temps (ms) et sur la page (px). */
@@ -1561,19 +1559,13 @@ export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
     const { x, y } = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse());
     const { sys } = ps;
     // la colonne sous le clic, ou la plus proche quand on clique entre deux
-    let best = sys.anchors[0],
-      dist = Infinity;
-    for (const column of sys.anchors) {
-      const distance = x < ps.xs[column] ? ps.xs[column] - x : x > ps.xs[column] + ps.ws[column] ? x - ps.xs[column] - ps.ws[column] : 0;
-      if (distance < dist) {
-        best = column;
-        dist = distance;
-      }
-    }
+    const best = nearestColumn(ps, x);
     const tick = (sys.columns[best] as { t: number }).t;
     // la ligne sous le clic (les places des portées se comptent depuis le haut du système)
     const dy = y - ps.y;
-    const staff = ps.staves.findIndex((staffPlace, index) => dy >= staffPlace.rowsTop && dy < staffPlace.rowsTop + sys.staves[index].rows.length * ps.rowH);
+    const staff = ps.staves.findIndex(
+      (staffPlace, index) => dy >= staffPlace.rowsTop && dy < staffPlace.rowsTop + sys.staves[index].rows.length * ps.rowH,
+    );
     const nearest =
       staff >= 0
         ? staff
@@ -1597,7 +1589,10 @@ export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
         if (!cell.startsWith("-")) break;
       }
     }
-    return { at: { t: tick, staff: rows[0]?.staff ?? nearest, octave: row && rowLane(row), content }, where: { x: event.clientX, y: event.clientY } };
+    return {
+      at: { t: tick, staff: rows[0]?.staff ?? nearest, octave: row && rowLane(row), content },
+      where: { x: event.clientX, y: event.clientY },
+    };
   };
   // un clic place l'écoute (et le curseur du texte) ; un double-clic ouvre la retouche de la case
   const seek = (ps: PlacedSystem, event: React.MouseEvent<SVGRectElement>) => {
@@ -1626,7 +1621,7 @@ export function SeekAreas({ systems }: { systems: PlacedSystem[] }) {
   return (
     <g className="seek">
       {systems.map((ps, index) => {
-        const { top, bottom } = band(ps);
+        const { top, bottom } = systemBand(ps);
         const left = ps.xs[ps.sys.anchors[0]],
           last = ps.sys.anchors[ps.sys.anchors.length - 1];
         return (

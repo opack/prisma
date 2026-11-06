@@ -32,7 +32,10 @@ describe("écoute : pédale", () => {
   });
 
   it("vaut pour toutes les portées de la partie, posée sous la dernière", () => {
-    expect(soundingEnds(score([note(0, 1, 72, 0), note(0, 1, 48, 1)], [ped(0, 2, 1)], 2))).toEqual([2 * TICKS_PER_BEAT, 2 * TICKS_PER_BEAT]);
+    expect(soundingEnds(score([note(0, 1, 72, 0), note(0, 1, 48, 1)], [ped(0, 2, 1)], 2))).toEqual([
+      2 * TICKS_PER_BEAT,
+      2 * TICKS_PER_BEAT,
+    ]);
   });
 });
 

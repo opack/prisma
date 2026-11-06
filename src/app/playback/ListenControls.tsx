@@ -285,7 +285,8 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, 
     : silent
       ? "Musique : coupée (le métronome seul)"
       : `Musique : ${muted.length} portée${muted.length > 1 ? "s" : ""} muette${muted.length > 1 ? "s" : ""} sur ${names.length}`;
-  const toggle = (staff: number) => onMuted(muted.includes(staff) ? muted.filter((other) => other !== staff) : [...muted, staff].sort((first, second) => first - second));
+  const toggle = (staff: number) =>
+    onMuted(muted.includes(staff) ? muted.filter((other) => other !== staff) : [...muted, staff].sort((first, second) => first - second));
   if (!silent) before.current = muted;
   const music = () => onMuted(silent ? before.current : all);
   return (

@@ -37,7 +37,8 @@ export function musicXml(measures: XMeasure[], divisions = 12): string {
       body += `<attributes>${index === 0 ? `<divisions>${divisions}</divisions><staves>2</staves>` : ""}${key}<time><beats>${beats}</beats><beat-type>${beatType}</beat-type></time></attributes>`;
     }
     xMeasure.notes.forEach((voice, voiceIndex) => {
-      if (voiceIndex) body += `<backup><duration>${xMeasure.notes[voiceIndex - 1].reduce((total, xNote) => total + xNote.duration, 0)}</duration></backup>`;
+      if (voiceIndex)
+        body += `<backup><duration>${xMeasure.notes[voiceIndex - 1].reduce((total, xNote) => total + xNote.duration, 0)}</duration></backup>`;
       for (const note of voice) {
         if (note.before) body += note.before;
         const staff =

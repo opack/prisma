@@ -33,7 +33,9 @@ describe("ordre de jeu du MusicXML", () => {
   });
 
   it("déroule les cases 1 et 2", () => {
-    expect(playOrder([measure, measure, { ...measure, endRepeat: true, endings: [1] }, { ...measure, endings: [2] }, measure])).toEqual([0, 1, 2, 0, 1, 3, 4]);
+    expect(playOrder([measure, measure, { ...measure, endRepeat: true, endings: [1] }, { ...measure, endings: [2] }, measure])).toEqual([
+      0, 1, 2, 0, 1, 3, 4,
+    ]);
   });
 
   it("joue la case 2 placée après la mesure de la reprise, hors de la case 1", () => {
@@ -48,7 +50,13 @@ describe("ordre de jeu du MusicXML", () => {
   });
 
   it("déroule un D.S. al Coda", () => {
-    const ms = [measure, { ...measure, ...st("segno", 0) }, { ...measure, ...st("tocoda") }, { ...measure, ...st("dalsegno") }, { ...measure, ...st("coda", 0) }];
+    const ms = [
+      measure,
+      { ...measure, ...st("segno", 0) },
+      { ...measure, ...st("tocoda") },
+      { ...measure, ...st("dalsegno") },
+      { ...measure, ...st("coda", 0) },
+    ];
     expect(playOrder(ms)).toEqual([0, 1, 2, 3, 1, 2, 4]);
   });
 

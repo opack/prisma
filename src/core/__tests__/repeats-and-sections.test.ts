@@ -37,7 +37,9 @@ describe("reprises", () => {
   });
 
   it("note le nombre de passages « 3× »", () => {
-    const xml = musicXml([{ ...measure(60), barlineLeft: `<repeat direction="forward"/>`, barline: `<repeat direction="backward" times="3"/>` }]);
+    const xml = musicXml([
+      { ...measure(60), barlineLeft: `<repeat direction="forward"/>`, barline: `<repeat direction="backward" times="3"/>` },
+    ]);
     const score = importMusicXml(xml);
     expect(score.repeats[0].times).toBe(3);
     const { text } = roundTrip(score);

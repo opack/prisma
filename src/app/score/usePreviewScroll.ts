@@ -24,7 +24,8 @@ export function usePreviewScroll(preview: RefObject<HTMLElement | null>, reading
     };
     // pendant la promenade, tout défilement est le sien (le suivi, lui, ne fait plus défiler) et la prolonge
     const hold = () => follow.hold();
-    const onBar = (event: PointerEvent) => event.target === pane && (event.offsetX > pane.clientWidth || event.offsetY > pane.clientHeight) && hold();
+    const onBar = (event: PointerEvent) =>
+      event.target === pane && (event.offsetX > pane.clientWidth || event.offsetY > pane.clientHeight) && hold();
     const onScroll = () => {
       if (!follow.active() && follow.enabled()) hold();
       const first = pane.querySelector(".page")?.getBoundingClientRect();

@@ -106,7 +106,9 @@ const QUALITIES: [string[], number[]][] = [
 ];
 
 /** Suffixes, du plus long au plus court, pour lire « m7b5 » avant « m7 » et « m ». */
-const SUFFIXES = QUALITIES.flatMap(([names, intervals]) => names.map((name) => ({ name, intervals }))).sort((first, second) => second.name.length - first.name.length);
+const SUFFIXES = QUALITIES.flatMap(([names, intervals]) => names.map((name) => ({ name, intervals }))).sort(
+  (first, second) => second.name.length - first.name.length,
+);
 
 const toPitchClass = (semitones: number) => ((semitones % 12) + 12) % 12;
 /** Numéro Prisma (1 à 12) d'une classe de hauteur (0 = do). */
@@ -211,7 +213,8 @@ export const chordWriting = (word: string): "prisma" | "english" | "notes" => {
 export function recognize(notes: number[]): { root: number; quality: string; bass: number } | undefined {
   const set = new Set(notes.map((note) => note - 1));
   const bass = notes[0] - 1;
-  const same = (intervals: number[], root: number) => intervals.length === set.size && intervals.every((interval) => set.has(toPitchClass(root + interval)));
+  const same = (intervals: number[], root: number) =>
+    intervals.length === set.size && intervals.every((interval) => set.has(toPitchClass(root + interval)));
   const roots = [bass, ...[...set].filter((pitchClass) => pitchClass !== bass)];
   for (const root of roots) {
     const quality = QUALITIES.find(([, intervals]) => same(intervals, root));
@@ -229,7 +232,10 @@ export function chordName(notes: number[]): string | undefined {
 /** Nom Prisma d'un accord donné par ses notes : « 10:m », « 8/12 ». */
 export function chordPrismaName(notes: number[]): string | undefined {
   const chord = recognize(notes);
-  return chord && `${chord.root + 1}${chord.quality ? CHORD_QUALITY_SEPARATOR + chord.quality : ""}${chord.root === chord.bass ? "" : "/" + (chord.bass + 1)}`;
+  return (
+    chord &&
+    `${chord.root + 1}${chord.quality ? CHORD_QUALITY_SEPARATOR + chord.quality : ""}${chord.root === chord.bass ? "" : "/" + (chord.bass + 1)}`
+  );
 }
 
 /** Écriture d'un accord en notes Prisma : ses notes séparées par des virgules. */

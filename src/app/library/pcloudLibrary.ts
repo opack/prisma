@@ -95,7 +95,9 @@ export function pcloudLibrary(): LibrarySource {
       const walk = (item: PcloudItem, folder: string, path: string) => {
         const items = item.contents ?? [];
         const children = new Map(
-          items.filter((child) => !child.isfolder).map((child) => [child.name, { fileid: child.fileid!, modified: Date.parse(child.modified) }]),
+          items
+            .filter((child) => !child.isfolder)
+            .map((child) => [child.name, { fileid: child.fileid!, modified: Date.parse(child.modified) }]),
         );
         const dir = pcloudFolder(path, children);
         for (const child of items) {

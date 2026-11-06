@@ -107,14 +107,18 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
   const graceW = sys.anchors.map((_, anchor) => Math.max(...sys.staves.map((systemStaff) => graceWidth(systemStaff.graceDigits[anchor]))));
   const cellText = (systemRow: SystemRow, anchor: number) => {
     const graces = sys.staves[systemRow.staff].graceDigits[anchor]
-      .map((width, rank) => (systemRow.graces[anchor][rank] ? systemRow.graces[anchor][rank] + GRACE_MARK : "").padEnd(width + GRACE_MARK.length))
+      .map((width, rank) =>
+        (systemRow.graces[anchor][rank] ? systemRow.graces[anchor][rank] + GRACE_MARK : "").padEnd(width + GRACE_MARK.length),
+      )
       .join("");
     return graces.trim() || systemRow.cells[anchor] ? graces.padEnd(graceW[anchor]) + systemRow.cells[anchor] : "";
   };
   const rows = (list: SystemRow[]) =>
     list.map((systemRow) =>
       (
-        (systemRow.string !== undefined ? String(systemRow.string) : systemRow.showOctave ? octaveLabel(systemRow.octave) : "").padEnd(prefix - 1) +
+        (systemRow.string !== undefined ? String(systemRow.string) : systemRow.showOctave ? octaveLabel(systemRow.octave) : "").padEnd(
+          prefix - 1,
+        ) +
         "|" +
         line((anchor) => cellText(systemRow, anchor))
       ).trimEnd(),
@@ -140,7 +144,9 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
         // deux articulations d'une même case se suivent sur la même ligne : « . ! »
         ...voice.marks.map((voiceMark, index) => {
           const before =
-            voiceMark.kind === "articulation" ? voice.marks.slice(0, index).filter((other) => other.kind === "articulation" && other.anchor === voiceMark.anchor) : [];
+            voiceMark.kind === "articulation"
+              ? voice.marks.slice(0, index).filter((other) => other.kind === "articulation" && other.anchor === voiceMark.anchor)
+              : [];
           return {
             col: anchorCol[voiceMark.anchor] + before.reduce((total, other) => total + other.text.length + 1, 0),
             text: voiceMark.text,
@@ -148,20 +154,27 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
           };
         }),
         ...voice.hairpins.map((hairpinSpan) => {
-          const before = Math.max(0, ...voice.marks.filter((voiceMark) => voiceMark.anchor === hairpinSpan.fromAnchor).map((voiceMark) => voiceMark.text.length + 1));
+          const before = Math.max(
+            0,
+            ...voice.marks.filter((voiceMark) => voiceMark.anchor === hairpinSpan.fromAnchor).map((voiceMark) => voiceMark.text.length + 1),
+          );
           const col = anchorCol[hairpinSpan.fromAnchor] + before;
           const last = Math.max(col, anchorCol[hairpinSpan.toAnchor] + widths[hairpinSpan.toAnchor] - 2);
           return { col, text: hairpinSpan.kind + "-".repeat(last - col) };
         }),
         // l'étouffé et le vibrato, comme un soufflet : « P.M.--- », « ~~~~ »
         ...voice.effects.map((effectSpan) => {
-          const before = Math.max(0, ...voice.marks.filter((voiceMark) => voiceMark.anchor === effectSpan.fromAnchor).map((voiceMark) => voiceMark.text.length + 1));
+          const before = Math.max(
+            0,
+            ...voice.marks.filter((voiceMark) => voiceMark.anchor === effectSpan.fromAnchor).map((voiceMark) => voiceMark.text.length + 1),
+          );
           const col = anchorCol[effectSpan.fromAnchor] + before;
           const last = Math.max(col, anchorCol[effectSpan.toAnchor] + widths[effectSpan.toAnchor] - 2);
           const sign = EFFECT_SIGNS[effectSpan.kind];
           return {
             col,
-            text: effectSpan.kind === "palmMute" ? sign + "-".repeat(Math.max(0, last - col + 1 - sign.length)) : sign.repeat(last - col + 1),
+            text:
+              effectSpan.kind === "palmMute" ? sign + "-".repeat(Math.max(0, last - col + 1 - sign.length)) : sign.repeat(last - col + 1),
           };
         }),
       ],
@@ -175,7 +188,9 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
     stackLines(
       voice.slurs.map((slurSpan) => {
         const col = anchorCol[slurSpan.fromAnchor];
-        const last = slurSpan.closes ? Math.max(col + 1, anchorCol[slurSpan.toAnchor] + 1) : anchorCol[slurSpan.toAnchor] + widths[slurSpan.toAnchor] - 2;
+        const last = slurSpan.closes
+          ? Math.max(col + 1, anchorCol[slurSpan.toAnchor] + 1)
+          : anchorCol[slurSpan.toAnchor] + widths[slurSpan.toAnchor] - 2;
         return { col, text: (slurSpan.opens ? "(" : "-") + "-".repeat(Math.max(0, last - col - 1)) + (slurSpan.closes ? ")" : "-") };
       }),
     );
@@ -185,7 +200,10 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
   const lyricLines = (voice: Voice) =>
     voice.lyrics.map((lyricLine) => {
       const items = [
-        ...lyricLine.syllables.map((syllable) => ({ col: anchorCol[syllable.anchor], text: syllable.text + (syllable.hyphen ? HYPHEN : "") })),
+        ...lyricLine.syllables.map((syllable) => ({
+          col: anchorCol[syllable.anchor],
+          text: syllable.text + (syllable.hyphen ? HYPHEN : ""),
+        })),
         ...lyricLine.extenders.map((extender) => {
           const syl = extender.opens ? lyricLine.syllables.find((syllable) => syllable.anchor === extender.fromAnchor) : undefined;
           const col = anchorCol[extender.fromAnchor] + (syl ? syl.text.length + 1 : 0);
@@ -197,10 +215,16 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
     });
   const firsts = firstStaves(sys.parts);
   // accords : une ligne à part, juste au-dessus de la règle, chaque accord sur sa case
-  const chordLine = sys.chords.length ? [sys.chords.reduce((written, chord) => written.padEnd(anchorCol[chord.anchor]) + chord.text, CHORD_LINE).trimEnd()] : [];
+  const chordLine = sys.chords.length
+    ? [sys.chords.reduce((written, chord) => written.padEnd(anchorCol[chord.anchor]) + chord.text, CHORD_LINE).trimEnd()]
+    : [];
   return [
     ...stackLines(
-      sys.marks.map((mark) => ({ col: colOf(mark), text: mark.text, ...(mark.kind === "text" && mark.anchor !== undefined ? { t: tickAt(mark.anchor) } : {}) })),
+      sys.marks.map((mark) => ({
+        col: colOf(mark),
+        text: mark.text,
+        ...(mark.kind === "text" && mark.anchor !== undefined ? { t: tickAt(mark.anchor) } : {}),
+      })),
       collide,
     ),
     ...chordLine,
@@ -273,7 +297,16 @@ function cellWidths(score: Score, cell: number, widen: Set<number> = new Set()):
   // une trille ou un doigté (« 12~10 », « 12_3 ») élargit sa case, suivie d'une espace
   const trillNeed = new Map<number, number>();
   for (const note of score.notes) {
-    if (note.trill === undefined && !note.finger && !note.harmonic && !note.slide && !note.slideOut && !note.slideIn && note.bend === undefined) continue;
+    if (
+      note.trill === undefined &&
+      !note.finger &&
+      !note.harmonic &&
+      !note.slide &&
+      !note.slideOut &&
+      !note.slideIn &&
+      note.bend === undefined
+    )
+      continue;
     const len = noteText(note, score.parts).length + 1;
     trillNeed.set(note.start, Math.max(trillNeed.get(note.start) ?? cell, len));
     want(note.start, len);

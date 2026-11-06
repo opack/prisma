@@ -276,7 +276,9 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
   // au-dessus de la règle : indications du système et accords
   if (at < rulerAt) {
     if (line.startsWith(CHORD_LINE)) {
-      const word = [...line.matchAll(/\S+/g)].find((match) => match.index! > 0 && cursorColumn >= match.index! && cursorColumn < match.index! + match[0].length);
+      const word = [...line.matchAll(/\S+/g)].find(
+        (match) => match.index! > 0 && cursorColumn >= match.index! && cursorColumn < match.index! + match[0].length,
+      );
       if (word) chord(word[0]);
       else if (cursorColumn < CHORD_LINE.length) symbol(CHORD_LINE, "ligne des accords d'accompagnement");
       return out;
@@ -374,7 +376,9 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
   if (out.symbol) return out;
 
   if (line.startsWith("@l")) {
-    const word = [...line.matchAll(/\S+/g)].find((match) => match.index! > 0 && cursorColumn >= match.index! && cursorColumn < match.index! + match[0].length);
+    const word = [...line.matchAll(/\S+/g)].find(
+      (match) => match.index! > 0 && cursorColumn >= match.index! && cursorColumn < match.index! + match[0].length,
+    );
     if (word)
       symbol(
         word[0],
@@ -483,7 +487,9 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
         : (technique.slideIn ? `arriver en glissant ${from(technique.slideIn)} sur la ${at(technique.fret)}` : at(technique.fret)) +
           (technique.slide ? `, puis glisser ${way(technique.slide)} jusqu'à la note suivante de la corde, sans la rejouer` : "") +
           (technique.slideOut ? `, puis glisser ${way(technique.slideOut)} en laissant la note s'éteindre` : "") +
-          (technique.bend !== undefined ? ` tirée jusqu'à sonner comme la ${at(technique.bend)}${technique.release ? ", puis relâchée" : ""}` : "");
+          (technique.bend !== undefined
+            ? ` tirée jusqu'à sonner comme la ${at(technique.bend)}${technique.release ? ", puis relâchée" : ""}`
+            : "");
     if (technique.finger) description += `, doigt ${technique.finger}`;
     return description;
   }

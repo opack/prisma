@@ -49,7 +49,8 @@ export function parseErrors(text: string): PrismaError[] {
         if (!aside.size) errors.push(error);
         break;
       }
-      const near = aside.has(group - 1) || aside.has(group + 1) || (aside.size > 0 && error.cascade && group === firstKept(groups.length, aside));
+      const near =
+        aside.has(group - 1) || aside.has(group + 1) || (aside.size > 0 && error.cascade && group === firstKept(groups.length, aside));
       if (!(error.cascade && near)) errors.push(error);
       if (aside.has(group)) break; // déjà de côté : l'erreur ne vient pas de ce système
       aside.add(group);

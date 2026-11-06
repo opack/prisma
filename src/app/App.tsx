@@ -73,7 +73,7 @@ export function App() {
   // chasse l'autre), et celui des options, par-dessus, qu'Échap ferme
   // de retour de la connexion à pCloud : la bibliothèque, qu'on était allé ouvrir
   const [panel, setPanel] = useState<"guide" | "library" | null>(fromPcloud ? "library" : null);
-  const togglePanel = (panel: "guide" | "library") => setPanel((cur) => (cur === panel ? null : panel));
+  const togglePanel = (panel: "guide" | "library") => setPanel((open) => (open === panel ? null : panel));
   const [showOptions, setShowOptions] = useState(false);
   useEffect(() => {
     if (!showOptions) return;
@@ -88,7 +88,7 @@ export function App() {
   });
   const setEditing = (on: boolean) => {
     setEditingState(on);
-    setPanel((cur) => (cur === "guide" ? null : cur));
+    setPanel((open) => (open === "guide" ? null : open));
     saveEditing(on);
   };
   const reading = !editing;
@@ -100,7 +100,7 @@ export function App() {
     onLoaded: settings.resetPiece,
     onSavedIn: settings.placePiece,
     setEditing,
-    onOpenedFrom: (from) => setPanel((cur) => (from !== "drop" || cur === "guide" ? null : cur)),
+    onOpenedFrom: (from) => setPanel((open) => (from !== "drop" || open === "guide" ? null : open)),
   });
   useSettingsAutosave(piece, settings.pieceDir, doc.handle, settings.changed, notify);
   const appUpdate = useAppUpdate(notify);
