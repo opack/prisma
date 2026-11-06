@@ -22,7 +22,7 @@ describe("paroles", () => {
       { staff: 0, verse: 1, t: 4 * TICKS_PER_BEAT, text: "A", hyphen: true },
       { staff: 0, verse: 1, t: 5 * TICKS_PER_BEAT, text: "men", extend: 8 * TICKS_PER_BEAT },
     ]);
-    expect(score.lyrics.filter((l) => l.verse === 2).map((l) => l.text)).toEqual(["oh", "la", "la", "di"]);
+    expect(score.lyrics.filter((lyric) => lyric.verse === 2).map((lyric) => lyric.text)).toEqual(["oh", "la", "la", "di"]);
   });
 
   it("réécrit les paroles telles quelles", () => {
@@ -30,15 +30,15 @@ describe("paroles", () => {
     for (const line of piece
       .split("\n")
       .slice(0, 7)
-      .filter((x) => x !== "---"))
+      .filter((syllable) => syllable !== "---"))
       expect(written).toContain(line);
   });
 
   it("prolonge une syllabe d'un système au suivant", () => {
-    const s = parsePrisma(piece);
-    const text = writePrisma(s, { width: 26 });
+    const score = parsePrisma(piece);
+    const text = writePrisma(score, { width: 26 });
     expect(text.match(/^@l  A-  men -------$/gm)).toHaveLength(2);
-    expect(parsePrisma(text).lyrics).toEqual(s.lyrics);
+    expect(parsePrisma(text).lyrics).toEqual(score.lyrics);
     // une syllabe tenue jusque dans le système suivant y reprend par « --- » en tête
     const long = parsePrisma(
       ["m1 |1  |2  ||1  |2  ||", "0  |1  |3  ||5  |-  ||", "@l  oh ------------", "---", "-1 |   |   ||   |   ||", ""].join("\n"),
@@ -80,14 +80,14 @@ describe("paroles", () => {
   });
 
   it("importe les paroles du MusicXML : syllabes, couplets, mélismes", () => {
-    const ly = (n: number, syllabic: string, text: string, extend = false) =>
-      `<lyric number="${n}"><syllabic>${syllabic}</syllabic><text>${text}</text>${extend ? "<extend/>" : ""}</lyric>`;
+    const lyric = (verse: number, syllabic: string, text: string, extend = false) =>
+      `<lyric number="${verse}"><syllabic>${syllabic}</syllabic><text>${text}</text>${extend ? "<extend/>" : ""}</lyric>`;
     const xml = musicXml([
       {
         notes: [
           [
-            { midi: [C4], duration: QUARTER, lyric: ly(1, "begin", "A") + ly(2, "single", "Oh !") },
-            { midi: [C4 + 2], duration: QUARTER, lyric: ly(1, "end", "men", true) + ly(2, "single", "la") },
+            { midi: [C4], duration: QUARTER, lyric: lyric(1, "begin", "A") + lyric(2, "single", "Oh !") },
+            { midi: [C4 + 2], duration: QUARTER, lyric: lyric(1, "end", "men", true) + lyric(2, "single", "la") },
             { midi: [C4 + 4], duration: QUARTER },
             { midi: [C4 + 5], duration: QUARTER, tie: ["start"] },
           ],
@@ -97,19 +97,19 @@ describe("paroles", () => {
         notes: [
           [
             { midi: [C4 + 5], duration: QUARTER, tie: ["stop"] },
-            { midi: [C4], duration: 3 * QUARTER, lyric: ly(1, "single", "oui") },
+            { midi: [C4], duration: 3 * QUARTER, lyric: lyric(1, "single", "oui") },
           ],
         ],
       },
     ]);
-    const s = importMusicXml(xml);
-    expect(s.lyrics).toEqual([
+    const score = importMusicXml(xml);
+    expect(score.lyrics).toEqual([
       { staff: 0, verse: 1, t: 0, text: "A", hyphen: true },
       { staff: 0, verse: 2, t: 0, text: "Oh\u00A0!" },
       { staff: 0, verse: 1, t: TICKS_PER_BEAT, text: "men", extend: 5 * TICKS_PER_BEAT },
       { staff: 0, verse: 2, t: TICKS_PER_BEAT, text: "la" },
       { staff: 0, verse: 1, t: 5 * TICKS_PER_BEAT, text: "oui" },
     ]);
-    expect(parsePrisma(writePrisma(s)).lyrics).toEqual(s.lyrics);
+    expect(parsePrisma(writePrisma(score)).lyrics).toEqual(score.lyrics);
   });
 });

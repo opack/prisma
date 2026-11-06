@@ -24,32 +24,32 @@ export type EngraveOptions = Pick<
   | "sections"
   | "rulerDetail"
 >;
-export const engraveOptions = (o: RenderOptions): EngraveOptions => ({
-  density: o.density,
-  fingerings: o.fingerings,
-  chords: o.chords,
-  chordNames: o.chordNames,
-  chordChart: o.chordChart,
-  notePosition: o.notePosition,
-  holdReminders: o.holdReminders,
-  simile: o.simile,
-  sections: o.sections,
-  rulerDetail: o.rulerDetail,
+export const engraveOptions = (renderOptions: RenderOptions): EngraveOptions => ({
+  density: renderOptions.density,
+  fingerings: renderOptions.fingerings,
+  chords: renderOptions.chords,
+  chordNames: renderOptions.chordNames,
+  chordChart: renderOptions.chordChart,
+  notePosition: renderOptions.notePosition,
+  holdReminders: renderOptions.holdReminders,
+  simile: renderOptions.simile,
+  sections: renderOptions.sections,
+  rulerDetail: renderOptions.rulerDetail,
 });
 
-export function engravePages(score: Score, o: EngraveOptions): Page[] {
+export function engravePages(score: Score, options: EngraveOptions): Page[] {
   // doigtés masqués : retirés avant la gravure, pour que les cases reprennent leur largeur
-  const plain = o.fingerings ? score : { ...score, notes: score.notes.map(({ finger: _, ...n }) => n) };
+  const plain = options.fingerings ? score : { ...score, notes: score.notes.map(({ finger: _, ...note }) => note) };
   // « Ped. simile » : les pédales qu'il demande, gravées comme les autres ou atténuées, ou la mention seule
-  return engrave(withSimile(plain, o.simile), {
-    compact: o.density === "compact",
-    chords: o.chords,
-    chordNames: o.chordNames,
-    chart: o.chordChart,
-    align: alignOf(o.notePosition),
-    reminders: o.holdReminders,
-    inlineSections: o.sections === "inline",
-    detail: o.rulerDetail,
+  return engrave(withSimile(plain, options.simile), {
+    compact: options.density === "compact",
+    chords: options.chords,
+    chordNames: options.chordNames,
+    chart: options.chordChart,
+    align: alignOf(options.notePosition),
+    reminders: options.holdReminders,
+    inlineSections: options.sections === "inline",
+    detail: options.rulerDetail,
   });
 }
 

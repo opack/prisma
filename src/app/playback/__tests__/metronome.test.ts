@@ -16,11 +16,11 @@ describe("écoute : métronome", () => {
       repeats: [{ barIndex: 1, start: true, end: true }],
     };
     const beats = clicks(score, passages(score)).filter((click) => click.level === "beat" || click.level === "downbeat");
-    expect(beats.map((c) => `${c.at / TICKS_PER_BEAT}${c.level === "downbeat" ? "!" : ""}`).join(" ")).toBe("0 1! 2 3! 4");
+    expect(beats.map((click) => `${click.at / TICKS_PER_BEAT}${click.level === "downbeat" ? "!" : ""}`).join(" ")).toBe("0 1! 2 3! 4");
   });
 
   it("divise chaque temps sur sa grille régulière, en 2 ou en 3, puis en deux", () => {
-    const s: Score = {
+    const score: Score = {
       ...parsePrisma("m1 |1  ||\n0  |1  ||\n"),
       beats: [
         { bar: "1", barIndex: 0, label: 1, division: 2 },
@@ -29,7 +29,7 @@ describe("écoute : métronome", () => {
     };
     const short = { downbeat: "1", beat: "T", division: "d", subdivision: "s" };
     expect(
-      clicks(s, passages(s))
+      clicks(score, passages(score))
         .map((click) => `${short[click.level]}${+(click.at / TICKS_PER_BEAT).toFixed(3)}`)
         .join(" "),
     ).toBe("10 s0.25 d0.5 s0.75 T1 s1.167 d1.333 s1.5 d1.667 s1.833");
@@ -37,10 +37,10 @@ describe("écoute : métronome", () => {
 
   it("bat les cases écrites, chacune à son niveau, pour faire entendre quand jouer", () => {
     // une noire, deux croches, quatre doubles croches
-    const s = parsePrisma("m1 |1  |2  *  |3  .  *  .  ||\n0  |1  |3  5  |8  10 12 1  ||\n");
+    const score = parsePrisma("m1 |1  |2  *  |3  .  *  .  ||\n0  |1  |3  5  |8  10 12 1  ||\n");
     const short = { downbeat: "1", beat: "T", division: "d", subdivision: "s" };
     expect(
-      clicks(s, passages(s), "cells")
+      clicks(score, passages(score), "cells")
         .map((click) => `${short[click.level]}${click.at / TICKS_PER_BEAT}`)
         .join(" "),
     ).toBe("10 T1 d1.5 T2 s2.25 d2.5 s2.75");
@@ -48,10 +48,10 @@ describe("écoute : métronome", () => {
 
   it("bat les seules attaques, temps compris : ni les tenues, ni les cases d'un soufflet", () => {
     // la case « * » du premier temps n'existe que pour le soufflet ; le 3e temps n'est qu'une tenue
-    const s = parsePrisma("m1 |1  *  |2  |3  ||\n0  |1  -  |3  |-  ||\n@      <----\n");
+    const score = parsePrisma("m1 |1  *  |2  |3  ||\n0  |1  -  |3  |-  ||\n@      <----\n");
     const short = { downbeat: "1", beat: "T", division: "d", subdivision: "s" };
     const at = (grid: "cells" | "attacks") =>
-      clicks(s, passages(s), grid)
+      clicks(score, passages(score), grid)
         .map((click) => `${short[click.level]}${click.at / TICKS_PER_BEAT}`)
         .join(" ");
     expect(at("cells")).toBe("10 d0.5 T1 T2");

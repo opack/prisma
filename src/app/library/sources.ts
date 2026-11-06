@@ -12,8 +12,8 @@ const KEY = "prisma:library-source";
 
 function chosen(): SourceKind | null {
   try {
-    const k = localStorage.getItem(KEY);
-    return k === "disk" || k === "pcloud" ? k : null;
+    const key = localStorage.getItem(KEY);
+    return key === "disk" || key === "pcloud" ? key : null;
   } catch {
     return null;
   }

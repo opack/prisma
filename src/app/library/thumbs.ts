@@ -24,9 +24,9 @@ const waiting = new Map<number, (r: { thumb?: Thumb; error?: string }) => void>(
 function compute(req: Omit<ThumbRequest, "id">): Promise<{ thumb?: Thumb; error?: string }> {
   if (!worker) {
     worker = new Worker(new URL("./thumbs.worker.ts", import.meta.url), { type: "module" });
-    worker.onmessage = (e: MessageEvent<{ id: number; thumb?: Thumb; error?: string }>) => {
-      waiting.get(e.data.id)?.(e.data);
-      waiting.delete(e.data.id);
+    worker.onmessage = (messageEvent: MessageEvent<{ id: number; thumb?: Thumb; error?: string }>) => {
+      waiting.get(messageEvent.data.id)?.(messageEvent.data);
+      waiting.delete(messageEvent.data.id);
     };
   }
   const id = nextId++;
@@ -44,13 +44,13 @@ const inFlight = new Map<string, Promise<Cached>>();
 export function thumbOf(entry: LibraryEntry, options: EngraveOptions): Promise<Cached> {
   // un aperçu fait par une autre version de l'application se refait
   const key = JSON.stringify({ build: __BUILD__, options });
-  const fresh = (c?: Cached) => c && c.modified === entry.modified && c.options === key;
+  const fresh = (cached?: Cached) => cached && cached.modified === entry.modified && cached.options === key;
   const hit = memory.get(entry.path);
   if (fresh(hit)) return Promise.resolve(hit!);
   const pending = inFlight.get(entry.path + key);
   if (pending) return pending;
   const job = (async () => {
-    const stored = await tx<Cached | undefined>("readonly", (s) => s.get(entry.path), THUMBS).catch(() => undefined);
+    const stored = await tx<Cached | undefined>("readonly", (objectStore) => objectStore.get(entry.path), THUMBS).catch(() => undefined);
     if (fresh(stored)) return stored!;
     const run = chain.then(async () => {
       const text = await entry.file.text();
@@ -59,12 +59,12 @@ export function thumbOf(entry: LibraryEntry, options: EngraveOptions): Promise<C
     chain = run.catch(() => undefined);
     const result = await run;
     const cached: Cached = { modified: entry.modified, options: key, ...result };
-    await tx("readwrite", (s) => s.put(cached, entry.path), THUMBS).catch(() => undefined);
+    await tx("readwrite", (store) => store.put(cached, entry.path), THUMBS).catch(() => undefined);
     return cached;
-  })().then((c) => {
-    memory.set(entry.path, c);
+  })().then((thumb) => {
+    memory.set(entry.path, thumb);
     inFlight.delete(entry.path + key);
-    return c;
+    return thumb;
   });
   inFlight.set(entry.path + key, job);
   return job;

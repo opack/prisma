@@ -25,7 +25,7 @@ const CELL = "px-[5px] py-[3px] border border-line text-center align-top whitesp
 type Step = { title: string; body: ReactNode; text: string; label: string };
 
 /** Les douze notes de l'octave et leur nombre. */
-const NAMES = ["do", "do♯ ré♭", "ré", "ré♯ mi♭", "mi", "fa", "fa♯ sol♭", "sol", "sol♯ la♭", "la", "la♯ si♭", "si"].map((n) => n.split(" "));
+const NAMES = ["do", "do♯ ré♭", "ré", "ré♯ mi♭", "mi", "fa", "fa♯ sol♭", "sol", "sol♯ la♭", "la", "la♯ si♭", "si"].map((name) => name.split(" "));
 
 const STEPS: Step[] = [
   {
@@ -39,19 +39,19 @@ const STEPS: Step[] = [
         <table className="block max-w-full overflow-x-auto mt-1 mb-4 text-[0.88rem]" aria-label="Le nombre de chaque note">
           <tbody>
             <tr>
-              {NAMES.map((_, i) => (
-                <td key={i} className={`${CELL} font-bold`}>
-                  <Prisma>{i + 1}</Prisma>
+              {NAMES.map((_, index) => (
+                <td key={index} className={`${CELL} font-bold`}>
+                  <Prisma>{index + 1}</Prisma>
                 </td>
               ))}
             </tr>
             <tr>
-              {NAMES.map((n) => (
-                <td key={n[0]} className={CELL}>
-                  {n.map((x, i) => (
-                    <span key={x}>
-                      {i > 0 && <br />}
-                      <i>{x}</i>
+              {NAMES.map((spellings) => (
+                <td key={spellings[0]} className={CELL}>
+                  {spellings.map((spelling, index) => (
+                    <span key={spelling}>
+                      {index > 0 && <br />}
+                      <i>{spelling}</i>
                     </span>
                   ))}
                 </td>
@@ -238,23 +238,23 @@ export function Learn() {
           </Actions>
           <OnThisPage
             parts={[
-              ...STEPS.map((s, i) => ({ id: slug(s.title), label: `${i + 1}. ${s.title}` })),
+              ...STEPS.map((step, index) => ({ id: slug(step.title), label: `${index + 1}. ${step.title}` })),
               { id: "et-ensuite", label: "Et ensuite" },
             ]}
           />
         </Section>
 
-        {STEPS.map((s, i) => (
-          <Idea key={s.title} kind="step" id={slug(s.title)}>
+        {STEPS.map((step, index) => (
+          <Idea key={step.title} kind="step" id={slug(step.title)}>
             <IdeaText>
               <h2>
-                {i + 1}. {s.title}
+                {index + 1}. {step.title}
               </h2>
-              {s.body}
+              {step.body}
             </IdeaText>
             <div className="grid grid-cols-[minmax(0,1fr)] justify-items-start gap-3 min-w-0">
-              <Source text={s.text} />
-              <Engraving text={s.text} label={s.label} />
+              <Source text={step.text} />
+              <Engraving text={step.text} label={step.label} />
             </div>
           </Idea>
         ))}

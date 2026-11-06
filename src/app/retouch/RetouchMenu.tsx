@@ -51,7 +51,7 @@ type Props = {
 };
 
 /** Un numéro de note, ramené entre 1 et 12. */
-const wrap = (n: number) => ((((n - 1) % 12) + 12) % 12) + 1;
+const wrap = (note: number) => ((((note - 1) % 12) + 12) % 12) + 1;
 
 export function RetouchMenu({
   x,
@@ -82,24 +82,24 @@ export function RetouchMenu({
 
   const written = writtenNames(names);
   const short = (midi: number) => noteName(midi, written).replace(/ \(.*\)$/, "");
-  const name = (n: number, string = strings?.string) =>
-    strings ? short(strings.open[string! - 1] + n) : octave === undefined ? "" : short(midiOf(octave, n));
+  const name = (number: number, string = strings?.string) =>
+    strings ? short(strings.open[string! - 1] + number) : octave === undefined ? "" : short(midiOf(octave, number));
   // le son de la note actuelle, pour marquer la case qui le donne sur une autre corde
   const sounding = strings && /^\d+$/.test(current) ? strings.open[strings.string - 1] + Number(current) : undefined;
   const parts = splitCell(content);
   // sur une corde, les cases de 0 à la dernière ; sinon les douze notes, que la trille fait boucler
-  const choices = strings ? Array.from({ length: MAX_FRET + 1 }, (_, k) => k) : Array.from({ length: 12 }, (_, k) => k + 1);
-  const near = (n: number) => (strings ? (n >= 0 && n <= MAX_FRET ? n : undefined) : wrap(n));
+  const choices = strings ? Array.from({ length: MAX_FRET + 1 }, (_, index) => index) : Array.from({ length: 12 }, (_, index) => index + 1);
+  const near = (number: number) => (strings ? (number >= 0 && number <= MAX_FRET ? number : undefined) : wrap(number));
   // la voisine d'une trille : la plus proche qui porte ce numéro, au-dessus ou au-dessous
-  const neighbour = (m: number) => {
-    if (strings) return name(m);
+  const neighbour = (number: number) => {
+    if (strings) return name(number);
     if (octave === undefined || !parts) return "";
     const main = midiOf(octave, Number(parts.note));
     const near = [-1, 0, 1]
-      .map((d) => midiOf(octave + d, m))
-      .filter((x) => x !== main)
-      .sort((a, b) => Math.abs(a - main) - Math.abs(b - main))[0];
-    return noteName(near, written).replace(/ \(.*\)$/, "") || String(m);
+      .map((shift) => midiOf(octave + shift, number))
+      .filter((midi) => midi !== main)
+      .sort((first, second) => Math.abs(first - main) - Math.abs(second - main))[0];
+    return noteName(near, written).replace(/ \(.*\)$/, "") || String(number);
   };
   const amend = (change: Partial<CellParts>) => parts && onAmend(joinCell({ ...parts, ...change }));
   const label = strings
@@ -151,26 +151,26 @@ export function RetouchMenu({
           </div>
           {strings && (
             <div className="grid grid-flow-col auto-cols-fr gap-1 mb-1.5 pb-1.5 border-b border-line" role="group" aria-label="Corde">
-              {strings.open.map((_, k) => {
-                const n = k + 1;
+              {strings.open.map((_, index) => {
+                const string = index + 1;
                 return (
                   <Button
-                    key={n}
+                    key={string}
                     size="small"
-                    pressed={n === target}
-                    disabled={!strings.free[k]}
-                    onClick={() => (setTarget(n), onTarget?.(n))}
+                    pressed={string === target}
+                    disabled={!strings.free[index]}
+                    onClick={() => (setTarget(string), onTarget?.(string))}
                     title={
-                      !strings.free[k]
-                        ? `la corde ${n} attaque déjà une note à cet instant`
-                        : n === strings.string
+                      !strings.free[index]
+                        ? `la corde ${string} attaque déjà une note à cet instant`
+                        : string === strings.string
                           ? "la corde de la note"
-                          : `montrer les cases de la corde ${n}, pour y placer la note`
+                          : `montrer les cases de la corde ${string}, pour y placer la note`
                     }
                   >
                     <span className="grid justify-items-center gap-px">
-                      <b className={`font-mono text-[13px] ${n === strings.string ? "underline underline-offset-2" : ""}`}>{n}</b>
-                      {written !== "none" && <small className="text-[10px] text-muted">{name(0, n)}</small>}
+                      <b className={`font-mono text-[13px] ${string === strings.string ? "underline underline-offset-2" : ""}`}>{string}</b>
+                      {written !== "none" && <small className="text-[10px] text-muted">{name(0, string)}</small>}
                     </span>
                   </Button>
                 );
@@ -181,15 +181,15 @@ export function RetouchMenu({
             <KeyboardPicker current={current} onPick={onPick} />
           ) : (
             <div className="grid grid-cols-6 gap-1">
-              {choices.map((n) => {
-                const same = elsewhere && strings!.open[target - 1] + n === sounding;
-                const tip = same ? `${name(n, target)}, le même son` : name(n, target) || undefined;
+              {choices.map((number) => {
+                const same = elsewhere && strings!.open[target - 1] + number === sounding;
+                const tip = same ? `${name(number, target)}, le même son` : name(number, target) || undefined;
                 return (
                   <Button
-                    key={n}
+                    key={number}
                     size="small"
-                    pressed={!elsewhere && String(n) === current}
-                    onClick={() => (strings ? onString(target, n) : onPick(String(n)))}
+                    pressed={!elsewhere && String(number) === current}
+                    onClick={() => (strings ? onString(target, number) : onPick(String(number)))}
                     title={tip}
                   >
                     {/* sur une autre corde, la case du même son : son numéro souligné de tirets */}
@@ -197,9 +197,9 @@ export function RetouchMenu({
                       <b
                         className={`font-mono text-[15px] ${same ? "underline decoration-dashed decoration-accent underline-offset-3" : ""}`}
                       >
-                        {n}
+                        {number}
                       </b>
-                      {written !== "none" && <small className="text-[10.5px] text-muted">{name(n, target)}</small>}
+                      {written !== "none" && <small className="text-[10.5px] text-muted">{name(number, target)}</small>}
                     </span>
                   </Button>
                 );
@@ -220,35 +220,35 @@ export function RetouchMenu({
             <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1 mt-2 pt-2 text-[13px] border-t border-line">
               <span className="text-muted">Doigt</span>
               <div className="flex gap-1">
-                {(strings ? [1, 2, 3, 4] : [1, 2, 3, 4, 5]).map((f) => (
+                {(strings ? [1, 2, 3, 4] : [1, 2, 3, 4, 5]).map((finger) => (
                   <Button
-                    key={f}
+                    key={finger}
                     className="flex-1 font-mono"
                     size="small"
-                    pressed={parts.finger === String(f)}
-                    onClick={() => amend({ finger: parts.finger === String(f) ? undefined : String(f) })}
-                    title={parts.finger === String(f) ? "retirer le doigté" : `jouer avec le doigt ${f}`}
+                    pressed={parts.finger === String(finger)}
+                    onClick={() => amend({ finger: parts.finger === String(finger) ? undefined : String(finger) })}
+                    title={parts.finger === String(finger) ? "retirer le doigté" : `jouer avec le doigt ${finger}`}
                   >
-                    {f}
+                    {finger}
                   </Button>
                 ))}
               </div>
               <span className="text-muted">Trille</span>
               <div className="flex gap-1">
-                {[1, 2, -1, -2].map((d) => {
-                  const v = near(Number(parts.note) + d);
-                  if (v === undefined) return null;
-                  const m = String(v);
+                {[1, 2, -1, -2].map((step) => {
+                  const neighbourNumber = near(Number(parts.note) + step);
+                  if (neighbourNumber === undefined) return null;
+                  const trill = String(neighbourNumber);
                   return (
                     <Button
-                      key={d}
+                      key={step}
                       className="flex-1 font-mono"
                       size="small"
-                      pressed={parts.trill === m}
-                      onClick={() => amend({ trill: parts.trill === m ? undefined : m })}
-                      title={parts.trill === m ? "retirer la trille" : `alterner avec ${neighbour(Number(m))}`}
+                      pressed={parts.trill === trill}
+                      onClick={() => amend({ trill: parts.trill === trill ? undefined : trill })}
+                      title={parts.trill === trill ? "retirer la trille" : `alterner avec ${neighbour(Number(trill))}`}
                     >
-                      ~{m}
+                      ~{trill}
                     </Button>
                   );
                 })}
@@ -256,20 +256,20 @@ export function RetouchMenu({
               <span className="text-muted">Petite note</span>
               <div className="flex gap-1">
                 {[-2, -1, 1, 2]
-                  .map((d) => Number(parts.note) + d)
-                  .filter((g) => (strings ? g >= 0 && g <= MAX_FRET : g >= 1 && g <= 12))
-                  .map((g) => {
-                    const on = parts.graces.includes(String(g));
+                  .map((step) => Number(parts.note) + step)
+                  .filter((grace) => (strings ? grace >= 0 && grace <= MAX_FRET : grace >= 1 && grace <= 12))
+                  .map((grace) => {
+                    const on = parts.graces.includes(String(grace));
                     return (
                       <Button
-                        key={g}
+                        key={grace}
                         className="flex-1 font-mono"
                         size="small"
                         pressed={on}
-                        onClick={() => amend({ graces: on ? parts.graces.filter((x) => x !== String(g)) : [...parts.graces, String(g)] })}
-                        title={on ? "retirer cette petite note" : `${name(g) || g} joué très vite juste avant`}
+                        onClick={() => amend({ graces: on ? parts.graces.filter((other) => other !== String(grace)) : [...parts.graces, String(grace)] })}
+                        title={on ? "retirer cette petite note" : `${name(grace) || grace} joué très vite juste avant`}
                       >
-                        {g}&#8217;
+                        {grace}&#8217;
                       </Button>
                     );
                   })}
@@ -308,10 +308,10 @@ export function RetouchMenu({
           )}
           {!!holds?.length && !elsewhere && (
             <div className="grid gap-1 mt-2 pt-2 border-t border-line">
-              {holds.map((n) => (
-                <Button key={n} onClick={() => onHold(n)} title={`le ${n} de la case d'avant continue dans celle-ci`}>
+              {holds.map((hold) => (
+                <Button key={hold} onClick={() => onHold(hold)} title={`le ${hold} de la case d'avant continue dans celle-ci`}>
                   <span className="flex-1 text-left">
-                    Tenir le {n} <small className="ml-1 text-muted">{name(Number(n))}</small>
+                    Tenir le {hold} <small className="ml-1 text-muted">{name(Number(hold))}</small>
                   </span>
                 </Button>
               ))}

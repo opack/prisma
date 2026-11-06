@@ -50,9 +50,9 @@ m1 |1  |2  |3  |4  ||
 /** La première case à remplir d'un modèle : sa ligne et sa colonne, à partir de 1. */
 export function firstCell(text: string): { line: number; column: number } | undefined {
   const lines = text.split("\n");
-  const ruler = lines.findIndex((l) => /^m\d/.test(l));
+  const ruler = lines.findIndex((line) => /^m\d/.test(line));
   if (ruler < 0) return undefined;
-  for (let k = ruler + 1; k < lines.length; k++)
-    if (/^[-+]?\d+\s*\|/.test(lines[k])) return { line: k + 1, column: lines[k].indexOf("|") + 2 };
+  for (let lineIndex = ruler + 1; lineIndex < lines.length; lineIndex++)
+    if (/^[-+]?\d+\s*\|/.test(lines[lineIndex])) return { line: lineIndex + 1, column: lines[lineIndex].indexOf("|") + 2 };
   return undefined;
 }

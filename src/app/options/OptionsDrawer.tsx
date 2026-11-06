@@ -221,7 +221,7 @@ function Choice<T extends string>({
   icon?: (v: T) => ReactNode;
   scope?: Scope;
 }) {
-  const current = options.find((o) => o.value === value) ?? options[0];
+  const current = options.find((option) => option.value === value) ?? options[0];
   return (
     <Row label={label} htmlFor={id} hint={current.hint} scope={scope}>
       {icon?.(current.value)}
@@ -229,11 +229,11 @@ function Choice<T extends string>({
         className="flex-1 min-w-0 px-1.5 py-1 bg-white border border-line rounded"
         id={id}
         value={current.value}
-        onChange={(e) => onChange(e.target.value as T)}
+        onChange={(changeEvent) => onChange(changeEvent.target.value as T)}
       >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
+        {options.map((choice) => (
+          <option key={choice.value} value={choice.value}>
+            {choice.label}
           </option>
         ))}
       </select>
@@ -261,7 +261,7 @@ function Check({
   return (
     <Row label={label} hint={hint} scope={scope}>
       <label className="inline-flex items-center gap-1.5 cursor-pointer">
-        <input type="checkbox" id={id} checked={checked} onChange={(e) => onChange(e.target.checked)} />
+        <input type="checkbox" id={id} checked={checked} onChange={(changeEvent) => onChange(changeEvent.target.checked)} />
         {text}
       </label>
     </Row>
@@ -270,36 +270,36 @@ function Check({
 
 /** Le drapeau d'une palette : les octaves empilées, de l'aigu (en haut) au grave. */
 function Flag({ colors }: { colors: OctaveColors }) {
-  const stripes = Array.from({ length: 9 }, (_, k) => 4 - k).map(
-    (offset, k) => octaveTint(colors, offset)?.tab ?? (k % 2 ? "#ffffff" : "#e6e8e3"),
+  const stripes = Array.from({ length: 9 }, (_, index) => 4 - index).map(
+    (offset, index) => octaveTint(colors, offset)?.tab ?? (index % 2 ? "#ffffff" : "#e6e8e3"),
   );
   return (
     <svg className="flex-none w-[38px] h-7" viewBox="0 0 24 18" preserveAspectRatio="none" aria-hidden>
-      {stripes.map((c, k) => (
-        <rect key={k} x={0} y={k * 2} width={24} height={2} fill={c} />
+      {stripes.map((tint, index) => (
+        <rect key={index} x={0} y={index * 2} width={24} height={2} fill={tint} />
       ))}
       <rect x={0.25} y={0.25} width={23.5} height={17.5} fill="none" stroke="#c9cdd1" strokeWidth={0.5} rx={1.5} />
     </svg>
   );
 }
 
-const labelOf = <T extends string>(list: { value: T; label: string }[], v: T) => list.find((o) => o.value === v)?.label ?? v;
+const labelOf = <T extends string>(list: { value: T; label: string }[], value: T) => list.find((option) => option.value === value)?.label ?? value;
 
 /** Le nom, en clair, de la valeur d'une option du rendu (pour dire celle de l'autre portée). */
-const DESCRIBE: Record<string, (o: RenderOptions) => string> = {
-  chords: (o) => labelOf(CHORDS, o.chords),
-  chordNames: (o) => labelOf(CHORD_NAMES, o.chordNames),
-  namesEverySystem: (o) => (o.namesEverySystem ? "à chaque système" : "au premier système"),
-  sections: (o) => labelOf(SECTIONS, o.sections),
-  simile: (o) => labelOf(SIMILE, o.simile),
-  octavePosition: (o) => labelOf(OCTAVE_POSITIONS, o.octavePosition),
-  octaveStyle: (o) => labelOf(OCTAVE_SYMBOLS, o.octaveStyle),
-  octaveColors: (o) => labelOf(COLORS, o.octaveColors),
-  density: (o) => labelOf(DENSITIES, o.density),
-  rulerDetail: (o) => labelOf(RULER_DETAILS, o.rulerDetail),
-  notePosition: (o) => labelOf(NOTE_POSITIONS, o.notePosition),
-  holdReminders: (o) => (o.holdReminders ? "rappelée" : "trait seul"),
-  fingerings: (o) => (o.fingerings ? "affichés" : "masqués"),
+const DESCRIBE: Record<string, (renderOptions: RenderOptions) => string> = {
+  chords: (renderOptions) => labelOf(CHORDS, renderOptions.chords),
+  chordNames: (renderOptions) => labelOf(CHORD_NAMES, renderOptions.chordNames),
+  namesEverySystem: (renderOptions) => (renderOptions.namesEverySystem ? "à chaque système" : "au premier système"),
+  sections: (renderOptions) => labelOf(SECTIONS, renderOptions.sections),
+  simile: (renderOptions) => labelOf(SIMILE, renderOptions.simile),
+  octavePosition: (renderOptions) => labelOf(OCTAVE_POSITIONS, renderOptions.octavePosition),
+  octaveStyle: (renderOptions) => labelOf(OCTAVE_SYMBOLS, renderOptions.octaveStyle),
+  octaveColors: (renderOptions) => labelOf(COLORS, renderOptions.octaveColors),
+  density: (renderOptions) => labelOf(DENSITIES, renderOptions.density),
+  rulerDetail: (renderOptions) => labelOf(RULER_DETAILS, renderOptions.rulerDetail),
+  notePosition: (renderOptions) => labelOf(NOTE_POSITIONS, renderOptions.notePosition),
+  holdReminders: (renderOptions) => (renderOptions.holdReminders ? "rappelée" : "trait seul"),
+  fingerings: (renderOptions) => (renderOptions.fingerings ? "affichés" : "masqués"),
 };
 
 export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose: () => void }) {
@@ -311,17 +311,17 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
       return "general";
     }
   });
-  const setPortee = (p: Portee) => {
-    setPorteeState(p);
+  const setPortee = (next: Portee) => {
+    setPorteeState(next);
     try {
-      localStorage.setItem(SCOPE_KEY, p);
+      localStorage.setItem(SCOPE_KEY, next);
     } catch {
       /* stockage indisponible : sans conséquence */
     }
   };
   const [tabChoice, setTab] = useState<Tab>(() => {
     try {
-      return (TABS.find((t) => t.id === localStorage.getItem("prisma:options-tab"))?.id ?? "score") as Tab;
+      return (TABS.find((item) => item.id === localStorage.getItem("prisma:options-tab"))?.id ?? "score") as Tab;
     } catch {
       return "score";
     }
@@ -333,23 +333,23 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
       /* stockage indisponible : sans conséquence */
     }
   }, [tabChoice]);
-  const tabs = TABS.filter((t) => portee === "general" || t.piece);
-  const tab = tabs.some((t) => t.id === tabChoice) ? tabChoice : "score";
+  const tabs = TABS.filter((item) => portee === "general" || item.piece);
+  const tab = tabs.some((item) => item.id === tabChoice) ? tabChoice : "score";
 
   // les valeurs montrées et ce que change une commande : celles de la portée choisie (côté
   // partition, une option qu'elle ne définit pas montre la générale, qu'elle suit)
   const onPiece = portee === "piece";
   const options: RenderOptions = onPiece ? { ...general, ...own } : general;
   const setOptions = onPiece ? piece.setPiece : piece.setGeneral;
-  const isOwn = (keys: PieceKey[]) => keys.every((k) => own[k] !== undefined);
-  const same = (keys: PieceKey[]) => keys.every((k) => own[k] === general[k]);
+  const isOwn = (keys: PieceKey[]) => keys.every((key) => own[key] !== undefined);
+  const same = (keys: PieceKey[]) => keys.every((key) => own[key] === general[key]);
   const pick = (keys: PieceKey[], from: Partial<RenderOptions>) =>
-    Object.fromEntries(keys.map((k) => [k, from[k]])) as Partial<RenderOptions>;
+    Object.fromEntries(keys.map((key) => [key, from[key]])) as Partial<RenderOptions>;
 
   /** La portée d'une ligne : ce qu'en dit l'autre portée, et de quoi passer de l'une à l'autre. */
   const scope = (keys: PieceKey[], describe: string): Scope => {
     const name = DESCRIBE[describe];
-    const theirs = (o: Partial<RenderOptions>) => name({ ...general, ...o });
+    const theirs = (values: Partial<RenderOptions>) => name({ ...general, ...values });
     const link = (text: string, run: () => void, title?: string) => (
       <button className={LINK} onClick={run} title={title}>
         {text}
@@ -495,15 +495,15 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
         </div>
       )}
       <nav className="flex px-2 border-b border-line" role="tablist">
-        {tabs.map((t) => (
+        {tabs.map((item) => (
           <button
-            key={t.id}
+            key={item.id}
             role="tab"
-            aria-selected={tab === t.id}
-            className={`flex-[1_1_auto] -mb-px px-1 py-2 whitespace-nowrap bg-transparent border-0 border-b-2 rounded-none ${tab === t.id ? "text-ink border-b-accent font-semibold" : "text-muted border-b-transparent hover:border-b-muted"}`}
-            onClick={() => setTab(t.id)}
+            aria-selected={tab === item.id}
+            className={`flex-[1_1_auto] -mb-px px-1 py-2 whitespace-nowrap bg-transparent border-0 border-b-2 rounded-none ${tab === item.id ? "text-ink border-b-accent font-semibold" : "text-muted border-b-transparent hover:border-b-muted"}`}
+            onClick={() => setTab(item.id)}
           >
-            {t.label}
+            {item.label}
           </button>
         ))}
       </nav>
@@ -646,7 +646,7 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
               value={options.octaveColors}
               options={COLORS}
               onChange={(octaveColors) => setOptions({ octaveColors })}
-              icon={(c) => <Flag colors={c} />}
+              icon={(octaveColors) => <Flag colors={octaveColors} />}
               scope={scope(["octaveColors"], "octaveColors")}
             />
           </>
@@ -720,7 +720,7 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
                 max={2}
                 step={0.1}
                 value={options.clickVolume}
-                onChange={(e) => setOptions({ clickVolume: Number(e.target.value) })}
+                onChange={(changeEvent) => setOptions({ clickVolume: Number(changeEvent.target.value) })}
                 aria-valuetext={`${Math.round(options.clickVolume * 100)} %`}
               />
               <span className="min-w-[4.5em] text-ink">{Math.round(options.clickVolume * 100)} %</span>
@@ -740,21 +740,21 @@ export function OptionsDrawer({ piece, onClose }: { piece: PieceOptions; onClose
               options={CLICK_GRIDS}
               onChange={(clickGrid) => setOptions({ clickGrid })}
             />
-            {CLICK_LEVELS.map((l) => {
-              const index = CLICK_SOUNDS.findIndex((c) => c.value === options.clickSounds[l.value]);
+            {CLICK_LEVELS.map((level) => {
+              const index = CLICK_SOUNDS.findIndex((sound) => sound.value === options.clickSounds[level.value]);
               return (
-                <Row key={l.value} label={l.label} htmlFor={"click-" + l.value} hint={l.hint}>
+                <Row key={level.value} label={level.label} htmlFor={"click-" + level.value} hint={level.hint}>
                   {/* du silence au plus aigu : un curseur, plus parlant qu'une liste pour cinq crans */}
                   <input
                     type="range"
                     className={SLIDER}
-                    id={"click-" + l.value}
+                    id={"click-" + level.value}
                     min={0}
                     max={CLICK_SOUNDS.length - 1}
                     step={1}
                     value={index}
-                    onChange={(e) =>
-                      setOptions({ clickSounds: { ...options.clickSounds, [l.value]: CLICK_SOUNDS[Number(e.target.value)].value } })
+                    onChange={(changeEvent) =>
+                      setOptions({ clickSounds: { ...options.clickSounds, [level.value]: CLICK_SOUNDS[Number(changeEvent.target.value)].value } })
                     }
                     aria-valuetext={CLICK_SOUNDS[index]?.label}
                   />

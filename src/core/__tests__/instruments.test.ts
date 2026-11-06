@@ -74,7 +74,7 @@ describe("instruments", () => {
     const body = (id: string) =>
       `<part id="${id}"><measure number="1"><attributes><divisions>1</divisions><time><beats>2</beats><beat-type>4</beat-type></time></attributes><note><pitch><step>C</step><octave>5</octave></pitch><duration>2</duration><type>half</type></note></measure></part>`;
     const xml = (parts: [string, string, number][]) =>
-      `<?xml version="1.0"?><score-partwise version="3.1"><part-list>${parts.map(([id, n, p]) => part(id, n, p)).join("")}</part-list>${parts.map(([id]) => body(id)).join("")}</score-partwise>`;
+      `<?xml version="1.0"?><score-partwise version="3.1"><part-list>${parts.map(([id, name, program]) => part(id, name, program)).join("")}</part-list>${parts.map(([id]) => body(id)).join("")}</score-partwise>`;
     expect(
       importMusicXml(
         xml([

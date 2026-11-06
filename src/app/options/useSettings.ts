@@ -23,10 +23,10 @@ function loadPiece(): PieceSettings {
     return {};
   }
 }
-function persistPiece(s: PieceSettings) {
+function persistPiece(pieceSettings: PieceSettings) {
   try {
-    if (isEmpty(s)) localStorage.removeItem(PIECE_KEY);
-    else localStorage.setItem(PIECE_KEY, writeSettings(s));
+    if (isEmpty(pieceSettings)) localStorage.removeItem(PIECE_KEY);
+    else localStorage.setItem(PIECE_KEY, writeSettings(pieceSettings));
   } catch {
     /* stockage indisponible : sans conséquence */
   }
@@ -34,7 +34,7 @@ function persistPiece(s: PieceSettings) {
 
 /** Les seules options du rendu, celles qu'une partition peut définir. */
 const renderOnly = (patch: Partial<RenderOptions>) =>
-  Object.fromEntries(Object.entries(patch).filter(([k]) => isPieceKey(k))) as Partial<RenderOptions>;
+  Object.fromEntries(Object.entries(patch).filter(([key]) => isPieceKey(key))) as Partial<RenderOptions>;
 
 export function useSettings() {
   const [general, setGeneral] = useState<RenderOptions>(loadOptions);
@@ -50,18 +50,18 @@ export function useSettings() {
   const updatePiece = (patch: Partial<PieceSettings>) =>
     setPiece((cur) => {
       const next = { ...cur, ...patch };
-      for (const k of Object.keys(next) as (keyof PieceSettings)[]) if (next[k] === undefined) delete next[k];
+      for (const key of Object.keys(next) as (keyof PieceSettings)[]) if (next[key] === undefined) delete next[key];
       changed.current = true;
       persistPiece(next);
       return next;
     });
   /** Un autre morceau : ses réglages, lus à côté de lui ou vides. */
-  const resetPiece = (s: PieceSettings, dir: StoredFolder | null) => {
+  const resetPiece = (pieceSettings: PieceSettings, dir: StoredFolder | null) => {
     changed.current = false;
-    setPiece(s);
-    persistPiece(s);
+    setPiece(pieceSettings);
+    persistPiece(pieceSettings);
     setPieceDir(dir);
-    setPieceId((n) => n + 1);
+    setPieceId((id) => id + 1);
   };
   /** Le morceau enregistré dans un dossier : ses réglages l'y suivent, au prochain enregistrement automatique. */
   const placePiece = (dir: StoredFolder) => {
@@ -78,7 +78,7 @@ export function useSettings() {
   const setPieceOptions = (patch: Partial<RenderOptions>) => updatePiece({ options: { ...piece.options, ...renderOnly(patch) } });
   const unsetPieceOptions = (keys: PieceKey[]) => {
     const own: Record<string, unknown> = { ...piece.options };
-    for (const k of keys) delete own[k];
+    for (const key of keys) delete own[key];
     updatePiece({ options: Object.keys(own).length ? (own as PieceSettings["options"]) : undefined });
   };
   return {
@@ -113,7 +113,7 @@ export function useSettingsAutosave(
     const name = handle.name;
     const timer = setTimeout(() => {
       changed.current = false;
-      saveSettings(dir, name, piece).catch((e) => onError(`Réglages du morceau non enregistrés : ${(e as Error).message}`));
+      saveSettings(dir, name, piece).catch((error) => onError(`Réglages du morceau non enregistrés : ${(error as Error).message}`));
     }, 400);
     return () => clearTimeout(timer);
   }, [piece, dir, handle]);

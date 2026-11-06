@@ -17,15 +17,15 @@ describe("petites notes", () => {
   ].join("\n");
 
   it("lit les petites notes de gauche à droite dans la case, chacune dans son octave", () => {
-    const s = parsePrisma(piece);
-    expect(gk(s)).toBe("0:74@0#0 0:66@0#1 0:68@0#2 0:69@2#0 0:71@2#1 1:52@2#0 1:52@2#1");
+    const score = parsePrisma(piece);
+    expect(gk(score)).toBe("0:74@0#0 0:66@0#1 0:68@0#2 0:69@2#0 0:71@2#1 1:52@2#0 1:52@2#1");
     // les petites notes ne comptent pas dans le temps
-    expect(notesKey(s)).toBe("0:64@0-5760 1:48@0-2880 1:55@2880-5760 0:66@5760-8640 1:52@5760-8640 0:60@8640-11520 1:48@8640-11520");
+    expect(notesKey(score)).toBe("0:64@0-5760 1:48@0-2880 1:55@2880-5760 0:66@5760-8640 1:52@5760-8640 0:60@8640-11520 1:48@8640-11520");
   });
 
   it("joue ensemble deux petites notes alignées", () => {
-    const s = parsePrisma("m1 |1     |2  ||\n+1 |3'    |   ||\n0  |7'5   |   ||\n---\n");
-    expect(gk(s)).toBe("0:74@0#0 0:66@0#0");
+    const score = parsePrisma("m1 |1     |2  ||\n+1 |3'    |   ||\n0  |7'5   |   ||\n---\n");
+    expect(gk(score)).toBe("0:74@0#0 0:66@0#0");
   });
 
   it("refuse une petite note placée après la note de sa case", () => {
@@ -33,9 +33,9 @@ describe("petites notes", () => {
   });
 
   it("garde les petites notes à l'aller-retour, en alignant les notes de la case", () => {
-    const s = parsePrisma(piece);
-    const { text, back } = roundTrip(s);
-    expect(gk(back)).toBe(gk(s));
+    const score = parsePrisma(piece);
+    const { text, back } = roundTrip(score);
+    expect(gk(back)).toBe(gk(score));
     expect(text).toContain("|3'      ");
     expect(text).toMatch(/^0  \|  7'9'5  \|/m);
   });
@@ -55,29 +55,29 @@ describe("petites notes", () => {
         ],
       },
     ]);
-    const s = importMusicXml(xml);
-    expect(gk(s)).toBe("0:62@0#0 0:64@0#1 0:71@2#0 0:67@2#0");
-    expect(notesKey(s)).toBe("0:60@0-5760 1:48@0-11520 0:72@5760-11520");
-    expect(gk(roundTrip(s).back)).toBe(gk(s));
+    const score = importMusicXml(xml);
+    expect(gk(score)).toBe("0:62@0#0 0:64@0#1 0:71@2#0 0:67@2#0");
+    expect(notesKey(score)).toBe("0:60@0-5760 1:48@0-11520 0:72@5760-11520");
+    expect(gk(roundTrip(score).back)).toBe(gk(score));
   });
 });
 
 describe("ornements", () => {
-  const gk = (score: Score) =>
+  const graces = (score: Score) =>
     score.graces.map((grace) => `${grace.staff}:${grace.midi}@${grace.t / TICKS_PER_BEAT}#${grace.slot}`).join(" ");
-  const tk = (s: Score) =>
-    s.notes
+  const trills = (score: Score) =>
+    score.notes
       .filter((note) => note.trill !== undefined)
-      .map((n) => `${n.midi}~${n.trill}`)
+      .map((note) => `${note.midi}~${note.trill}`)
       .join(" ");
   const ruler = "m1 |1    |2    |3    |4    ||";
 
   it("lit une trille « 5~7 » : la note et sa voisine la plus proche", () => {
-    const s = parsePrisma([ruler, "0  |5~7  |-    |12~1 |-    ||", "---", ""].join("\n"));
-    expect(tk(s)).toBe("64~66 71~72");
-    expect(notesKey(s)).toBe(`0:64@0-${2 * TICKS_PER_BEAT} 0:71@${2 * TICKS_PER_BEAT}-${4 * TICKS_PER_BEAT}`);
-    const { text, back } = roundTrip(s);
-    expect(tk(back)).toBe(tk(s));
+    const score = parsePrisma([ruler, "0  |5~7  |-    |12~1 |-    ||", "---", ""].join("\n"));
+    expect(trills(score)).toBe("64~66 71~72");
+    expect(notesKey(score)).toBe(`0:64@0-${2 * TICKS_PER_BEAT} 0:71@${2 * TICKS_PER_BEAT}-${4 * TICKS_PER_BEAT}`);
+    const { text, back } = roundTrip(score);
+    expect(trills(back)).toBe(trills(score));
     expect(text).toContain("|5~7 ");
   });
 
@@ -87,7 +87,7 @@ describe("ornements", () => {
   });
 
   it("lit les arpèges : d'une portée sur sa ligne @, de toutes sur celle du haut", () => {
-    const s = parsePrisma(
+    const score = parsePrisma(
       [
         "@         \\",
         ruler,
@@ -99,13 +99,13 @@ describe("ornements", () => {
         "",
       ].join("\n"),
     );
-    expect(s.arpeggios).toEqual([
+    expect(score.arpeggios).toEqual([
       { t: 0, staff: 0 },
       { t: TICKS_PER_BEAT, down: true },
     ]);
-    expect(s.expressions).toEqual([]);
-    const { back } = roundTrip(s);
-    expect(back.arpeggios).toEqual(s.arpeggios);
+    expect(score.expressions).toEqual([]);
+    const { back } = roundTrip(score);
+    expect(back.arpeggios).toEqual(score.arpeggios);
   });
 
   it("refuse deux arpèges sur un même accord", () => {
@@ -127,15 +127,15 @@ describe("ornements", () => {
         ],
       },
     ]);
-    const s = importMusicXml(xml);
-    expect(tk(s)).toBe("65~67");
-    expect(gk(s)).toBe(`0:62@1#0 0:63@1#1 0:74@2#0 0:72@2#1 0:70@2#2 0:67@3#0 0:65@3#1`);
-    expect(gk(roundTrip(s).back)).toBe(gk(s));
+    const score = importMusicXml(xml);
+    expect(trills(score)).toBe("65~67");
+    expect(graces(score)).toBe(`0:62@1#0 0:63@1#1 0:74@2#0 0:72@2#1 0:70@2#2 0:67@3#0 0:65@3#1`);
+    expect(graces(roundTrip(score).back)).toBe(graces(score));
   });
 
   it("joue un gruppetto placé après la note juste avant la note suivante", () => {
     const orn = `<ornaments><delayed-turn/></ornaments>`;
-    const s = importMusicXml(
+    const score = importMusicXml(
       musicXml([
         {
           notes: [
@@ -147,7 +147,7 @@ describe("ornements", () => {
         },
       ]),
     );
-    expect(gk(s)).toBe("0:65@2#0 0:64@2#1 0:62@2#2 0:64@2#3");
+    expect(graces(score)).toBe("0:65@2#0 0:64@2#1 0:62@2#2 0:64@2#3");
   });
 
   it("importe les arpèges : par portée, ou d'un seul geste quand les deux portées partagent leur numéro", () => {

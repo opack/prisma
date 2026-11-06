@@ -34,9 +34,9 @@ export function tryParse(text: string): { score?: Score; problem?: Problem } {
   if (!text.trim()) return {};
   try {
     return { score: parsePrisma(text) };
-  } catch (e) {
-    if (e instanceof PrismaError) return { problem: { message: e.message, line: e.line, column: e.column } };
-    return { problem: { message: (e as Error).message } };
+  } catch (error) {
+    if (error instanceof PrismaError) return { problem: { message: error.message, line: error.line, column: error.column } };
+    return { problem: { message: (error as Error).message } };
   }
 }
 
@@ -86,16 +86,16 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, onSavedIn, 
   // gravure automatique, après un court délai sans frappe
   useEffect(() => {
     if (!autoEngrave || !dirty) return;
-    const t = setTimeout(engraveNow, AUTO_ENGRAVE_DELAY);
-    return () => clearTimeout(t);
+    const timeout = setTimeout(engraveNow, AUTO_ENGRAVE_DELAY);
+    return () => clearTimeout(timeout);
   }, [autoEngrave, dirty, engraveNow]);
 
   // un texte réécrit d'un geste (comme une frappe, pour l'annuler avec Ctrl+Z), puis remis en page
   const engraveAfter = useRef(false);
-  const rewrite = (r: { text: string; line: number; column: number } | undefined) => {
-    if (!r || r.text === current.current) return false;
+  const rewrite = (rewritten: { text: string; line: number; column: number } | undefined) => {
+    if (!rewritten || rewritten.text === current.current) return false;
     engraveAfter.current = true;
-    editor.current?.replace(r.text, r.line, r.column);
+    editor.current?.replace(rewritten.text, rewritten.line, rewritten.column);
     return true;
   };
   useEffect(() => {
@@ -107,7 +107,7 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, onSavedIn, 
   // prévenir avant de quitter avec des modifications non enregistrées
   useEffect(() => {
     if (!unsaved) return;
-    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    const warn = (beforeUnloadEvent: BeforeUnloadEvent) => beforeUnloadEvent.preventDefault();
     addEventListener("beforeunload", warn);
     return () => removeEventListener("beforeunload", warn);
   }, [unsaved]);
@@ -136,8 +136,8 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, onSavedIn, 
         setSavedText(source);
         notify(`${fileName} téléchargé (dans le dossier des téléchargements)`);
       }
-    } catch (e) {
-      notify(`Enregistrement impossible : ${(e as Error).message}`);
+    } catch (error) {
+      notify(`Enregistrement impossible : ${(error as Error).message}`);
     }
   };
 
@@ -155,8 +155,8 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, onSavedIn, 
       setSavedText(source);
       onSavedIn(dir);
       notify(`${target.name} enregistré dans la bibliothèque, ${target.where}`);
-    } catch (e) {
-      notify(`Enregistrement impossible : ${(e as Error).message}`);
+    } catch (error) {
+      notify(`Enregistrement impossible : ${(error as Error).message}`);
     }
   };
 
@@ -166,8 +166,8 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, onSavedIn, 
     let xml: string;
     try {
       xml = exportMusicXml(parsePrisma(source), options);
-    } catch (e) {
-      notify(`Export impossible : ${(e as Error).message}`);
+    } catch (error) {
+      notify(`Export impossible : ${(error as Error).message}`);
       return;
     }
     const name = fileName.replace(/\.(prisma|txt|musicxml|xml)$/i, "") + ".musicxml";
@@ -181,8 +181,8 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, onSavedIn, 
         download(name, xml);
         notify(`Exporté sous le nom ${name}`);
       }
-    } catch (e) {
-      notify(`Export impossible : ${(e as Error).message}`);
+    } catch (error) {
+      notify(`Export impossible : ${(error as Error).message}`);
     }
   };
 
@@ -203,8 +203,8 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, onSavedIn, 
     if (dir && !given) {
       try {
         settings = (await readSettings(dir, name)) ?? {};
-      } catch (e) {
-        notify(`Réglages de ${name} ignorés (${settingsName(name)} : ${(e as Error).message})`);
+      } catch (error) {
+        notify(`Réglages de ${name} ignorés (${settingsName(name)} : ${(error as Error).message})`);
       }
     }
     onLoaded(settings, dir);
@@ -215,8 +215,8 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, onSavedIn, 
     if (isXml) {
       try {
         prisma = writePrisma(importMusicXml(text, file.name), { width: DEFAULT_WIDTH });
-      } catch (e) {
-        setEngraved({ problem: { message: `Import MusicXML impossible : ${(e as Error).message}` } });
+      } catch (error) {
+        setEngraved({ problem: { message: `Import MusicXML impossible : ${(error as Error).message}` } });
         setEditing(true);
         return;
       }
@@ -243,8 +243,8 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, onSavedIn, 
     try {
       const picked = await pickFile();
       if (picked) await open(picked, picked);
-    } catch (e) {
-      notify(`Ouverture impossible : ${(e as Error).message}`);
+    } catch (error) {
+      notify(`Ouverture impossible : ${(error as Error).message}`);
     }
   };
   /** Ouvre un morceau de la bibliothèque. */
@@ -254,8 +254,8 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, onSavedIn, 
       await open(entry.file, entry.kind === "prisma" ? entry.file : null, false, entry.dir);
       markOpened(entry.path);
       onOpenedFrom("library");
-    } catch (e) {
-      notify(`Ouverture impossible : ${(e as Error).message}`);
+    } catch (error) {
+      notify(`Ouverture impossible : ${(error as Error).message}`);
     }
   };
   /** Ouvre un fichier déposé sur la fenêtre. */
@@ -268,8 +268,8 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, onSavedIn, 
     try {
       await open(dropped.file, dropped.handle);
       onOpenedFrom("drop");
-    } catch (e) {
-      notify(`Ouverture impossible : ${(e as Error).message}`);
+    } catch (error) {
+      notify(`Ouverture impossible : ${(error as Error).message}`);
     }
   };
 
@@ -291,8 +291,8 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, onSavedIn, 
       onOpenedFrom("link");
       notify(file ? `${shared.name} enregistré dans la bibliothèque, ${file.where}` : `${shared.name} ouvert`);
       return true;
-    } catch (e) {
-      notify(`Ouverture impossible : ${(e as Error).message}`);
+    } catch (error) {
+      notify(`Ouverture impossible : ${(error as Error).message}`);
       return false;
     }
   };
@@ -327,8 +327,8 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, onSavedIn, 
     try {
       await open(handle, handle, true);
       notify(`${handle.name} rechargé`);
-    } catch (e) {
-      notify(`Rechargement impossible : ${(e as Error).message}`);
+    } catch (error) {
+      notify(`Rechargement impossible : ${(error as Error).message}`);
     }
   };
 

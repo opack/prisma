@@ -7,16 +7,16 @@ import { roundTrip } from "../../../tests/support/round-trip.ts";
 
 describe("accords", () => {
   it("calcule les notes d'un accord nommé, de la basse vers l'aigu", () => {
-    const n = (name: string) => chordNameNotes(name)?.join(",");
-    expect(n("C")).toBe("1,5,8");
-    expect(n("Am")).toBe("10,1,5");
-    expect(n("Am7")).toBe("10,1,5,8");
-    expect(n("G/B")).toBe("12,3,8");
-    expect(n("F#m7b5")).toBe("7,10,1,5");
-    expect(n("Bb")).toBe("11,3,6");
-    expect(n("C6/9")).toBe("1,3,5,8,10");
-    expect(n("Xm")).toBeUndefined();
-    expect(n("Cfoo")).toBeUndefined();
+    const notes = (name: string) => chordNameNotes(name)?.join(",");
+    expect(notes("C")).toBe("1,5,8");
+    expect(notes("Am")).toBe("10,1,5");
+    expect(notes("Am7")).toBe("10,1,5,8");
+    expect(notes("G/B")).toBe("12,3,8");
+    expect(notes("F#m7b5")).toBe("7,10,1,5");
+    expect(notes("Bb")).toBe("11,3,6");
+    expect(notes("C6/9")).toBe("1,3,5,8,10");
+    expect(notes("Xm")).toBeUndefined();
+    expect(notes("Cfoo")).toBeUndefined();
   });
 
   it("reconnaît un accord à partir de ses notes, la basse décidant entre Am7 et C6", () => {
@@ -31,14 +31,14 @@ describe("accords", () => {
   });
 
   it("lit le nom Prisma d'un accord : la fondamentale, « : » et la sorte d'accord, « / » et la basse", () => {
-    const n = (name: string) => chordNotes(name)?.join(",");
-    expect(n("8")).toBe("8,12,3");
-    expect(n("5:m")).toBe("5,8,12");
-    expect(n("8:7")).toBe("8,12,3,6");
-    expect(n("7:m7b5")).toBe("7,10,1,5");
-    expect(n("1/8")).toBe("8,1,5");
-    expect(n("1:7/5")).toBe("5,8,11,1");
-    expect(n("1:6/9")).toBe("1,3,5,8,10");
+    const notes = (name: string) => chordNotes(name)?.join(",");
+    expect(notes("8")).toBe("8,12,3");
+    expect(notes("5:m")).toBe("5,8,12");
+    expect(notes("8:7")).toBe("8,12,3,6");
+    expect(notes("7:m7b5")).toBe("7,10,1,5");
+    expect(notes("1/8")).toBe("8,1,5");
+    expect(notes("1:7/5")).toBe("5,8,11,1");
+    expect(notes("1:6/9")).toBe("1,3,5,8,10");
     for (const bad of ["8:", "5m", "13", "1:xx", "0"]) expect(chordNotes(bad)).toBeUndefined();
     expect(chordPrismaName([10, 1, 5, 8])).toBe("10:m7");
     expect(chordPrismaName([12, 3, 8])).toBe("8/12");
@@ -69,9 +69,9 @@ describe("accords", () => {
   });
 
   it("tient dans la colonne de gauche la plus étroite", () => {
-    const s = parsePrisma(piece("@c       Am"));
-    expect(writePrisma(s)).toMatch(/^@c  Am$/m);
-    expect(writePrisma(s)).toMatch(/^m1 \|1/m);
+    const score = parsePrisma(piece("@c       Am"));
+    expect(writePrisma(score)).toMatch(/^@c  Am$/m);
+    expect(writePrisma(score)).toMatch(/^m1 \|1/m);
   });
 
   it("refuse un accord inconnu, mal placé ou sous les notes", () => {
@@ -112,11 +112,11 @@ describe("accords", () => {
         ],
       },
     ]);
-    const s = importMusicXml(xml);
-    expect(s.chords).toEqual([
+    const score = importMusicXml(xml);
+    expect(score.chords).toEqual([
       { t: 0, text: "10:7" },
       { t: 2 * TICKS_PER_BEAT, text: "5:7" },
     ]);
-    expect(s.expressions.map((expression) => expression.text)).toEqual(["dolce"]);
+    expect(score.expressions.map((expression) => expression.text)).toEqual(["dolce"]);
   });
 });

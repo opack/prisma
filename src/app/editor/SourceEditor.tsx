@@ -173,7 +173,7 @@ type Props = {
 };
 
 /** Un signe trop long (une liaison, un soufflet sur plusieurs mesures) s'abrège : ses 9 premiers caractères. */
-const short = (t: string) => (t.length > 10 ? t.slice(0, 9) + "…" : t);
+const short = (text: string) => (text.length > 10 ? text.slice(0, 9) + "…" : text);
 
 /**
  * Les erreurs de lecture du texte, toutes en une passe : chacune soulignée du signe fautif jusqu'à
@@ -181,23 +181,23 @@ const short = (t: string) => (t.length > 10 ? t.slice(0, 9) + "…" : t);
  * la ligne.
  */
 export function diagnose(doc: Text): Diagnostic[] {
-  return parseErrors(doc.toString()).map((e) => {
-    const l = doc.line(Math.max(1, Math.min(e.line, doc.lines)));
-    let from = l.from;
-    let to = l.to;
-    if (e.exact) {
-      const at = Math.min(e.column - 1, l.length);
-      const rest = l.text.slice(at);
+  return parseErrors(doc.toString()).map((prismaError) => {
+    const errorLine = doc.line(Math.max(1, Math.min(prismaError.line, doc.lines)));
+    let from = errorLine.from;
+    let to = errorLine.to;
+    if (prismaError.exact) {
+      const at = Math.min(prismaError.column - 1, errorLine.length);
+      const rest = errorLine.text.slice(at);
       const word = rest.startsWith("|") ? 1 : (rest.match(/^[^\s|]+/)?.[0].length ?? 0);
-      from = l.from + at;
+      from = errorLine.from + at;
       to = from + word;
     }
     // un signe absent (une case vide, la fin de la ligne) : un caractère, pour que le soulignement se voie
     if (to === from) {
-      if (to < l.to) to++;
-      else from = Math.max(l.from, from - 1);
+      if (to < errorLine.to) to++;
+      else from = Math.max(errorLine.from, from - 1);
     }
-    return { from, to, severity: "error" as const, message: e.reason, renderMessage: () => messageNode(e.reason) };
+    return { from, to, severity: "error" as const, message: prismaError.reason, renderMessage: () => messageNode(prismaError.reason) };
   });
 }
 
@@ -209,19 +209,19 @@ const errorLineField = StateField.define<RangeSet<GutterMarker>>({
   create: () => RangeSet.empty,
   update(set, tr) {
     if (tr.docChanged) set = set.map(tr.changes);
-    for (const e of tr.effects)
-      if (e.is(setDiagnosticsEffect)) {
-        const lines = [...new Set(e.value.map((d) => tr.state.doc.lineAt(d.from).from))].sort((a, b) => a - b);
+    for (const stateEffect of tr.effects)
+      if (stateEffect.is(setDiagnosticsEffect)) {
+        const lines = [...new Set(stateEffect.value.map((diagnostic) => tr.state.doc.lineAt(diagnostic.from).from))].sort((first, second) => first - second);
         set = RangeSet.of(lines.map((at) => errorMarker.range(at)));
       }
     return set;
   },
-  provide: (f) => gutterLineClass.from(f),
+  provide: (stateField) => gutterLineClass.from(stateField),
 });
 
 // Ctrl+Entrée met la partition en page (raccourci de l'application) : l'éditeur n'en fait rien
 const keys = [
-  ...defaultKeymap.filter((k) => k.key !== "Mod-Enter"),
+  ...defaultKeymap.filter((keyBinding) => keyBinding.key !== "Mod-Enter"),
   // d'une erreur à l'autre
   { key: "F8", run: nextDiagnostic },
   { key: "Shift-F8", run: previousDiagnostic },
@@ -243,7 +243,7 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
   names.current = noteNames;
 
   useEffect(() => {
-    const v = new EditorView({
+    const created = new EditorView({
       parent: host.current!,
       state: EditorState.create({
         doc: value,
@@ -253,13 +253,13 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
           highlightActiveLineGutter(),
           errorLineField,
           linter(
-            (v) => {
-              const found = diagnose(v.state.doc);
+            (editorView) => {
+              const found = diagnose(editorView.state.doc);
               checked.current?.(
-                found.map((d) => {
-                  const l = v.state.doc.lineAt(d.from);
-                  const column = d.from - l.from + 1;
-                  return { message: `ligne ${l.number}, col. ${column} : ${d.message}`, line: l.number, column };
+                found.map((diagnostic) => {
+                  const errorLine = editorView.state.doc.lineAt(diagnostic.from);
+                  const column = diagnostic.from - errorLine.from + 1;
+                  return { message: `ligne ${errorLine.number}, col. ${column} : ${diagnostic.message}`, line: errorLine.number, column };
                 }),
               );
               return found;
@@ -281,30 +281,30 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
             autocorrect: "off",
             autocapitalize: "off",
           }),
-          EditorView.updateListener.of((u) => {
-            if (u.docChanged) changed.current(u.state.doc.toString());
-            if (u.docChanged || u.selectionSet) {
-              const head = u.state.selection.main.head;
+          EditorView.updateListener.of((viewUpdate) => {
+            if (viewUpdate.docChanged) changed.current(viewUpdate.state.doc.toString());
+            if (viewUpdate.docChanged || viewUpdate.selectionSet) {
+              const head = viewUpdate.state.selection.main.head;
               setCaret(head);
-              const l = u.state.doc.lineAt(head);
-              moved.current?.(l.number, head - l.from + 1, u.state.doc.toString());
+              const caretLine = viewUpdate.state.doc.lineAt(head);
+              moved.current?.(caretLine.number, head - caretLine.from + 1, viewUpdate.state.doc.toString());
             }
           }),
         ],
       }),
     });
-    view.current = v;
+    view.current = created;
     return () => {
-      v.destroy();
+      created.destroy();
       view.current = null;
     };
   }, []);
 
   // un texte venu d'ailleurs (un fichier ouvert, une nouvelle partition) remplace celui de l'éditeur
   useEffect(() => {
-    const v = view.current;
-    if (!v || v.state.doc.toString() === value) return;
-    v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: value }, selection: EditorSelection.cursor(0) });
+    const editorView = view.current;
+    if (!editorView || editorView.state.doc.toString() === value) return;
+    editorView.dispatch({ changes: { from: 0, to: editorView.state.doc.length, insert: value }, selection: EditorSelection.cursor(0) });
   }, [value]);
 
   useEffect(() => {
@@ -314,18 +314,18 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
   useImperativeHandle(editor, () => ({
     focus: () => view.current?.focus(),
     replace(text, line, column) {
-      const v = view.current;
-      if (!v) return;
-      const old = v.state.doc.toString();
-      let a = 0;
-      while (a < old.length && a < text.length && old[a] === text[a]) a++;
-      let b = 0;
-      while (b < old.length - a && b < text.length - a && old[old.length - 1 - b] === text[text.length - 1 - b]) b++;
-      const changes = { from: a, to: old.length - b, insert: text.slice(a, text.length - b) };
-      const doc = v.state.update({ changes }).state.doc;
-      const l = doc.line(Math.max(1, Math.min(line, doc.lines)));
-      const at = Math.min(l.from + column - 1, l.to);
-      v.dispatch({
+      const editorView = view.current;
+      if (!editorView) return;
+      const old = editorView.state.doc.toString();
+      let common = 0;
+      while (common < old.length && common < text.length && old[common] === text[common]) common++;
+      let commonEnd = 0;
+      while (commonEnd < old.length - common && commonEnd < text.length - common && old[old.length - 1 - commonEnd] === text[text.length - 1 - commonEnd]) commonEnd++;
+      const changes = { from: common, to: old.length - commonEnd, insert: text.slice(common, text.length - commonEnd) };
+      const doc = editorView.state.update({ changes }).state.doc;
+      const target = doc.line(Math.max(1, Math.min(line, doc.lines)));
+      const at = Math.min(target.from + column - 1, target.to);
+      editorView.dispatch({
         changes,
         selection: { anchor: at },
         effects: EditorView.scrollIntoView(at, { y: "center" }),
@@ -333,12 +333,12 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
       });
     },
     goTo(line, column = 1, focus = true) {
-      const v = view.current;
-      if (!v) return;
-      const l = v.state.doc.line(Math.max(1, Math.min(line, v.state.doc.lines)));
-      const at = Math.min(l.from + Math.max(0, column - 1), l.to);
-      v.dispatch({ selection: EditorSelection.range(Math.min(at + 1, l.to), at), effects: EditorView.scrollIntoView(at, { y: "center" }) });
-      if (focus) v.focus();
+      const editorView = view.current;
+      if (!editorView) return;
+      const target = editorView.state.doc.line(Math.max(1, Math.min(line, editorView.state.doc.lines)));
+      const at = Math.min(target.from + Math.max(0, column - 1), target.to);
+      editorView.dispatch({ selection: EditorSelection.range(Math.min(at + 1, target.to), at), effects: EditorView.scrollIntoView(at, { y: "center" }) });
+      if (focus) editorView.focus();
     },
   }));
 
@@ -355,8 +355,8 @@ export function SourceEditor({ value, onChange, editor, noteNames, colors, palet
     if (name && (info.parts.length > 1 || info.parts[0].staves > 1)) where.push(name);
   }
   if (info.octave !== undefined) {
-    const o = octaveOffset(info.octave);
-    where.push(`octave ${o > 0 ? "+" : o < 0 ? "−" : ""}${Math.abs(o)}`);
+    const offset = octaveOffset(info.octave);
+    where.push(`octave ${offset > 0 ? "+" : offset < 0 ? "−" : ""}${Math.abs(offset)}`);
   }
 
   return (

@@ -38,13 +38,13 @@ export function Dialog({
   const id = useId();
   const { isFocusVisible: keyboard } = useFocusVisible();
   useEffect(() => {
-    const d = ref.current;
-    if (!d || d.open) return;
-    d.showModal();
+    const dialog = ref.current;
+    if (!dialog || dialog.open) return;
+    dialog.showModal();
     // showModal a donné le focus au premier champ
     if (focusField) return;
-    if (!keyboard) d.focus();
-    else if (focusSubmit) d.querySelector<HTMLButtonElement>("button[type=submit]")?.focus();
+    if (!keyboard) dialog.focus();
+    else if (focusSubmit) dialog.querySelector<HTMLButtonElement>("button[type=submit]")?.focus();
   }, []);
   return (
     <dialog
@@ -58,8 +58,8 @@ export function Dialog({
       <form
         className="grid gap-3.5 px-5 pt-4.5 pb-4"
         method="dialog"
-        onSubmit={(e) => {
-          e.preventDefault();
+        onSubmit={(formEvent) => {
+          formEvent.preventDefault();
           onSubmit();
         }}
       >

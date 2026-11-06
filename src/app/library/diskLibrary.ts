@@ -13,10 +13,10 @@ type Permissions = {
 };
 type Iterable = { values(): AsyncIterable<FileSystemHandle> };
 
-const w = (typeof window !== "undefined" ? window : {}) as DirPicker;
+const dirPicker = (typeof window !== "undefined" ? window : {}) as DirPicker;
 
 /** Le navigateur sait-il ouvrir un dossier et en garder l'accès ? */
-export const canUseDisk = typeof w.showDirectoryPicker === "function" && typeof indexedDB !== "undefined";
+export const canUseDisk = typeof dirPicker.showDirectoryPicker === "function" && typeof indexedDB !== "undefined";
 
 const KEY = "folder";
 
@@ -28,27 +28,27 @@ export function diskLibrary(root: FileSystemDirectoryHandle): LibrarySource {
     locked: { hint: `Le navigateur demande de confirmer l'accès au dossier « ${root.name} ».`, action: "Autoriser l'accès" },
     root: diskFolder(root),
     access: async (ask = false) => {
-      const p = root as unknown as Permissions;
-      if ((await p.queryPermission({ mode: "readwrite" })) === "granted") return true;
-      return ask && (await p.requestPermission({ mode: "readwrite" })) === "granted";
+      const permissions = root as unknown as Permissions;
+      if ((await permissions.queryPermission({ mode: "readwrite" })) === "granted") return true;
+      return ask && (await permissions.requestPermission({ mode: "readwrite" })) === "granted";
     },
     files: async () => {
       const out: SourceFile[] = [];
-      const walk = async (d: FileSystemDirectoryHandle, folder: string) => {
-        const dir = diskFolder(d);
-        for await (const h of (d as unknown as Iterable).values()) {
-          if (h.name.startsWith(".")) continue;
-          if (h.kind === "directory") {
-            await walk(h as FileSystemDirectoryHandle, folder ? `${folder}/${h.name}` : h.name);
+      const walk = async (fileSystemDirectoryHandle: FileSystemDirectoryHandle, folder: string) => {
+        const dir = diskFolder(fileSystemDirectoryHandle);
+        for await (const fileSystemHandle of (fileSystemDirectoryHandle as unknown as Iterable).values()) {
+          if (fileSystemHandle.name.startsWith(".")) continue;
+          if (fileSystemHandle.kind === "directory") {
+            await walk(fileSystemHandle as FileSystemDirectoryHandle, folder ? `${folder}/${fileSystemHandle.name}` : fileSystemHandle.name);
             continue;
           }
-          if (!kindOf(h.name)) continue;
-          const handle = h as FileSystemFileHandle;
+          if (!kindOf(fileSystemHandle.name)) continue;
+          const handle = fileSystemHandle as FileSystemFileHandle;
           const file = await handle.getFile();
           out.push({
-            path: folder ? `${folder}/${h.name}` : h.name,
+            path: folder ? `${folder}/${fileSystemHandle.name}` : fileSystemHandle.name,
             folder,
-            name: h.name,
+            name: fileSystemHandle.name,
             modified: file.lastModified,
             file: diskFile(handle),
             dir,
@@ -65,7 +65,7 @@ export function diskLibrary(root: FileSystemDirectoryHandle): LibrarySource {
 /** Le dossier de la bibliothèque, s'il a été choisi. */
 export async function savedFolder(): Promise<LibrarySource | null> {
   try {
-    const dir = (await tx("readonly", (s) => s.get(KEY))) as FileSystemDirectoryHandle | undefined;
+    const dir = (await tx("readonly", (objectStore) => objectStore.get(KEY))) as FileSystemDirectoryHandle | undefined;
     return dir ? diskLibrary(dir) : null;
   } catch {
     return null;
@@ -75,11 +75,11 @@ export async function savedFolder(): Promise<LibrarySource | null> {
 /** Choisit le dossier de la bibliothèque et le retient. Renvoie null si l'utilisateur annule. */
 export async function pickFolder(): Promise<LibrarySource | null> {
   try {
-    const dir = await w.showDirectoryPicker!({ id: "prisma-library", mode: "readwrite" });
-    await tx("readwrite", (s) => s.put(dir, KEY));
+    const dir = await dirPicker.showDirectoryPicker!({ id: "prisma-library", mode: "readwrite" });
+    await tx("readwrite", (objectStore) => objectStore.put(dir, KEY));
     return diskLibrary(dir);
-  } catch (e) {
-    if ((e as Error)?.name === "AbortError") return null;
-    throw e;
+  } catch (error) {
+    if ((error as Error)?.name === "AbortError") return null;
+    throw error;
   }
 }

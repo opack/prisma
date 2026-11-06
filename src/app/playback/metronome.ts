@@ -34,7 +34,7 @@ export function loadClick(context: AudioContext): Promise<AudioBuffer> {
   let sound = cache.get(context);
   if (!sound) {
     sound = fetch(tickUrl)
-      .then((r) => r.arrayBuffer())
+      .then((response) => response.arrayBuffer())
       .then((data) => context.decodeAudioData(data));
     cache.set(context, sound);
   }

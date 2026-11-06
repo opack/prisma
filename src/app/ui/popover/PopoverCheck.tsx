@@ -14,7 +14,7 @@ export function PopoverCheck({
 }) {
   return (
     <label className={`flex gap-2 items-center cursor-pointer whitespace-nowrap ${className}`}>
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <input type="checkbox" checked={checked} onChange={(changeEvent) => onChange(changeEvent.target.checked)} />
       {children}
     </label>
   );

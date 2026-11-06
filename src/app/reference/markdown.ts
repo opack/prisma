@@ -24,7 +24,7 @@ const CLASSES: [RegExp, string][] = [
   [/<th(?=[ >])/g, `<th class="${CELL} bg-panel"`],
   [/<td(?=[ >])/g, `<td class="${CELL}"`],
 ];
-const styled = (html: string) => CLASSES.reduce((h, [tag, open]) => h.replace(tag, open), html);
+const styled = (html: string) => CLASSES.reduce((result, [tag, open]) => result.replace(tag, open), html);
 
 /** Un titre : sa taille et ses marges, selon son niveau. */
 const HEADING: Record<number, string> = {

@@ -25,19 +25,19 @@ export function usePieceSound(
   const parts = useMemo(() => score?.parts ?? [], [score]);
   const instruments = useMemo(() => instrumentsOf(parts, piece.instruments), [parts, piece.instruments]);
   const setInstrument = (part: number, instrument: string) => {
-    const chosen = parts.map((_, i) => piece.instruments?.[i] ?? null);
+    const chosen = parts.map((_, index) => piece.instruments?.[index] ?? null);
     // l'instrument de la partition n'est pas un choix : il n'est pas retenu
     chosen[part] = parts[part] && instrument === scoreInstrument(parts[part]) ? null : instrument;
-    updatePiece({ instruments: chosen.some((t) => t !== null) ? chosen : undefined });
+    updatePiece({ instruments: chosen.some((text) => text !== null) ? chosen : undefined });
   };
   useEffect(() => void player.setInstruments(staffInstruments(parts, instruments)), [parts, instruments]);
   // un volume par partie, 0 tel quel
-  const volumes = useMemo(() => parts.map((_, i) => piece.volumes?.[i] ?? 0), [parts, piece.volumes]);
+  const volumes = useMemo(() => parts.map((_, index) => piece.volumes?.[index] ?? 0), [parts, piece.volumes]);
   const setVolume = (part: number, db: number) => {
-    const next = volumes.map((v, i) => (i === part ? db : v));
-    updatePiece({ volumes: next.some((v) => v !== 0) ? next : undefined });
+    const next = volumes.map((volume, index) => (index === part ? db : volume));
+    updatePiece({ volumes: next.some((volume) => volume !== 0) ? next : undefined });
   };
-  const gains = useMemo(() => parts.flatMap((p, i) => Array.from({ length: p.staves }, () => volumes[i])), [parts, volumes]);
+  const gains = useMemo(() => parts.flatMap((part, index) => Array.from({ length: part.staves }, () => volumes[index])), [parts, volumes]);
 
   const partsKey = JSON.stringify(score?.parts ?? []);
   const written = score?.meta.bpm;

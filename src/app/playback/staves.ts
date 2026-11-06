@@ -6,11 +6,11 @@ const KEYBOARD = /piano|clavier|orgue|clavecin|keyboard|organ|harpsichord/i;
 
 export function staffNames(parts: Part[]): string[] {
   const out: string[] = [];
-  parts.forEach((part, i) => {
-    const name = part.name ?? (parts.length > 1 ? `Partie ${i + 1}` : "");
+  parts.forEach((part, index) => {
+    const name = part.name ?? (parts.length > 1 ? `Partie ${index + 1}` : "");
     const hands = part.staves === 2 && (!part.name || KEYBOARD.test(part.name));
-    for (let k = 0; k < part.staves; k++) {
-      const staff = part.staves === 1 ? "" : hands ? (k ? "main gauche" : "main droite") : `portée ${k + 1}`;
+    for (let staffIndex = 0; staffIndex < part.staves; staffIndex++) {
+      const staff = part.staves === 1 ? "" : hands ? (staffIndex ? "main gauche" : "main droite") : `portée ${staffIndex + 1}`;
       out.push(name && staff ? `${name} — ${staff}` : name || (staff ? staff[0].toUpperCase() + staff.slice(1) : "Portée"));
     }
   });

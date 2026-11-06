@@ -13,9 +13,9 @@ type Picker = {
   showOpenFilePicker?: (o: { types: PickerType[]; multiple?: boolean }) => Promise<FileSystemFileHandle[]>;
   showSaveFilePicker?: (o: { suggestedName: string; types: PickerType[] }) => Promise<FileSystemFileHandle>;
 };
-const w = (typeof window !== "undefined" ? window : {}) as Picker;
+const picker = (typeof window !== "undefined" ? window : {}) as Picker;
 
-export const canWriteInPlace = typeof w.showOpenFilePicker === "function" && typeof w.showSaveFilePicker === "function";
+export const canWriteInPlace = typeof picker.showOpenFilePicker === "function" && typeof picker.showSaveFilePicker === "function";
 
 const PRISMA: PickerType = { description: "Partition Prisma", accept: { "text/plain": [".prisma"] } };
 const XML: PickerType = { description: "MusicXML", accept: { "application/xml": [".musicxml", ".xml"] } };
@@ -30,36 +30,36 @@ const AS_IS = "application/octet-stream";
 const SAVE_PRISMA: PickerType = { description: PRISMA.description, accept: { [AS_IS]: [".prisma"] } };
 const SAVE_XML: PickerType = { description: XML.description, accept: { [AS_IS]: [".musicxml"] } };
 
-const isAbort = (e: unknown) => (e as Error)?.name === "AbortError";
+const isAbort = (error: unknown) => (error as Error)?.name === "AbortError";
 
 /** Ouvre un fichier .prisma ou .musicxml. Renvoie null si l'utilisateur annule. */
 export async function pickFile(): Promise<StoredFile | null> {
   try {
-    const [handle] = await w.showOpenFilePicker!({ types: [PRISMA, XML], multiple: false });
+    const [handle] = await picker.showOpenFilePicker!({ types: [PRISMA, XML], multiple: false });
     return diskFile(handle);
-  } catch (e) {
-    if (isAbort(e)) return null;
-    throw e;
+  } catch (error) {
+    if (isAbort(error)) return null;
+    throw error;
   }
 }
 
 /** Demande où enregistrer un nouveau fichier .prisma. Renvoie null si l'utilisateur annule. */
 export async function pickSaveTarget(suggestedName: string): Promise<StoredFile | null> {
   try {
-    return diskFile(await w.showSaveFilePicker!({ suggestedName, types: [SAVE_PRISMA] }));
-  } catch (e) {
-    if (isAbort(e)) return null;
-    throw e;
+    return diskFile(await picker.showSaveFilePicker!({ suggestedName, types: [SAVE_PRISMA] }));
+  } catch (error) {
+    if (isAbort(error)) return null;
+    throw error;
   }
 }
 
 /** Demande où enregistrer un MusicXML exporté. Renvoie null si l'utilisateur annule. */
 export async function pickExportTarget(suggestedName: string): Promise<StoredFile | null> {
   try {
-    return diskFile(await w.showSaveFilePicker!({ suggestedName, types: [SAVE_XML] }));
-  } catch (e) {
-    if (isAbort(e)) return null;
-    throw e;
+    return diskFile(await picker.showSaveFilePicker!({ suggestedName, types: [SAVE_XML] }));
+  } catch (error) {
+    if (isAbort(error)) return null;
+    throw error;
   }
 }
 
@@ -71,7 +71,7 @@ export const OPENABLE = /\.(prisma|txt|musicxml|xml)$/i;
  * (Chrome, Edge) : on peut alors l'enregistrer en place, comme un fichier ouvert.
  */
 export async function droppedFile(data: DataTransfer): Promise<{ file: File; handle: StoredFile | null } | null> {
-  const item = [...data.items].find((i) => i.kind === "file");
+  const item = [...data.items].find((dataTransferItem) => dataTransferItem.kind === "file");
   if (!item) return null;
   const withHandle = item as DataTransferItem & { getAsFileSystemHandle?: () => Promise<FileSystemHandle | null> };
   // à demander avant tout « await » : la liste des éléments déposés n'est valable qu'un instant
@@ -96,9 +96,9 @@ export async function targetIn(dir: StoredFolder, name: string): Promise<StoredF
 /** Télécharge un fichier sous ce nom, tel quel (voir AS_IS). */
 export function download(name: string, text: string) {
   const blob = new Blob([text], { type: AS_IS });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = name;
+  link.click();
+  URL.revokeObjectURL(link.href);
 }

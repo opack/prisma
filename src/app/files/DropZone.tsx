@@ -18,34 +18,34 @@ export function DropZone({
 }) {
   const [over, setOver] = useState(false);
   const depth = useRef(0);
-  const hasFile = (e: DragEvent) => [...e.dataTransfer.types].includes("Files");
+  const hasFile = (event: DragEvent) => [...event.dataTransfer.types].includes("Files");
   return (
     <div
       className={className}
-      onDragEnter={(e) => {
-        if (!hasFile(e)) return;
-        e.preventDefault();
+      onDragEnter={(event) => {
+        if (!hasFile(event)) return;
+        event.preventDefault();
         depth.current++;
         setOver(true);
       }}
-      onDragLeave={(e) => {
-        if (!hasFile(e)) return;
+      onDragLeave={(event) => {
+        if (!hasFile(event)) return;
         if (--depth.current <= 0) {
           depth.current = 0;
           setOver(false);
         }
       }}
-      onDragOver={(e) => {
-        if (!hasFile(e)) return;
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "copy";
+      onDragOver={(event) => {
+        if (!hasFile(event)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "copy";
       }}
-      onDrop={async (e) => {
-        if (!hasFile(e)) return;
-        e.preventDefault();
+      onDrop={async (event) => {
+        if (!hasFile(event)) return;
+        event.preventDefault();
         depth.current = 0;
         setOver(false);
-        const dropped = await droppedFile(e.dataTransfer);
+        const dropped = await droppedFile(event.dataTransfer);
         if (dropped) onFile(dropped);
       }}
     >

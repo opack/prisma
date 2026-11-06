@@ -26,7 +26,7 @@ describe("portées et parties", () => {
       { name: "Piano", staves: 2 },
     ]);
     expect(score.meta.staves).toBeUndefined();
-    expect(score.notes.filter((note) => note.start === 0).map((n) => n.staff)).toEqual([0, 1, 2]);
+    expect(score.notes.filter((note) => note.start === 0).map((note) => note.staff)).toEqual([0, 1, 2]);
     expect(score.lyrics.map((lyric) => lyric.staff)).toEqual([0, 0]);
     expect(score.pedals).toEqual([{ staff: 2, start: 0, end: 3 * TICKS_PER_BEAT }]);
   });
@@ -69,14 +69,14 @@ describe("portées et parties", () => {
       <part id="P1"><measure number="1">${attributes(1)}${note("C", 5, 1, "<lyric><syllabic>single</syllabic><text>Ah</text></lyric>")}</measure></part>
       <part id="P2"><measure number="1">${attributes(2)}<direction><direction-type><pedal type="start"/></direction-type><staff>1</staff></direction>${note("E", 4, 1)}<backup><duration>4</duration></backup>${note("C", 3, 2)}</measure></part>
       </score-partwise>`;
-    const s = importMusicXml(twoStaves);
-    expect(s.parts).toEqual([
+    const score = importMusicXml(twoStaves);
+    expect(score.parts).toEqual([
       { name: "Chant", staves: 1 },
       { name: "Piano", staves: 2 },
     ]);
-    expect(s.notes.map((n) => `${n.staff}:${n.midi}`)).toEqual(["0:72", "1:64", "2:48"]);
-    expect(s.lyrics).toEqual([{ staff: 0, verse: 1, t: 0, text: "Ah" }]);
-    expect(s.pedals).toEqual([{ staff: 2, start: 0, end: 4 * TICKS_PER_BEAT }]);
-    expect(parsePrisma(writePrisma(s)).parts).toEqual(s.parts);
+    expect(score.notes.map((note) => `${note.staff}:${note.midi}`)).toEqual(["0:72", "1:64", "2:48"]);
+    expect(score.lyrics).toEqual([{ staff: 0, verse: 1, t: 0, text: "Ah" }]);
+    expect(score.pedals).toEqual([{ staff: 2, start: 0, end: 4 * TICKS_PER_BEAT }]);
+    expect(parsePrisma(writePrisma(score)).parts).toEqual(score.parts);
   });
 });

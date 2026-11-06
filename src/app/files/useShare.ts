@@ -63,10 +63,10 @@ export function useShare({ source, fileName, piece, notify, openShared }: Deps) 
   const [ready, setReady] = useState<{ name: string; url: string } | null>(null);
   useEffect(() => {
     let live = true;
-    const t = setTimeout(() => link(source, fileName, piece).then((l) => live && setReady(l)), 300);
+    const timeout = setTimeout(() => link(source, fileName, piece).then((prepared) => live && setReady(prepared)), 300);
     return () => {
       live = false;
-      clearTimeout(t);
+      clearTimeout(timeout);
     };
   }, [source, fileName, piece]);
 
@@ -81,9 +81,9 @@ export function useShare({ source, fileName, piece, notify, openShared }: Deps) 
       }
       await navigator.clipboard.writeText(url);
       notify(`Lien de partage copié : collez-le dans un message${long}`);
-    } catch (e) {
-      if ((e as Error)?.name === "AbortError") return; // la feuille de partage refermée
-      notify(`Partage impossible : ${(e as Error).message}`);
+    } catch (error) {
+      if ((error as Error)?.name === "AbortError") return; // la feuille de partage refermée
+      notify(`Partage impossible : ${(error as Error).message}`);
     }
   };
 

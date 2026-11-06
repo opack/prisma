@@ -70,25 +70,25 @@ test("site sommaire telephone", async ({ page }) => {
   await page.setViewportSize(PHONE);
   await page.goto("/reference.html");
   await settle(page);
-  await page.locator('[id="3-le-temps"]').evaluate((h) => h.scrollIntoView({ behavior: "instant" }));
+  await page.locator('[id="3-le-temps"]').evaluate((heading) => heading.scrollIntoView({ behavior: "instant" }));
   await settle(page);
   await page.getByRole("button", { name: /^Sommaire/ }).click();
   await expect(page).toHaveScreenshot("site-sommaire-telephone.png");
 });
 
 // le clavier de l'accueil, une touche noire puis une blanche survolées : la même dans les deux octaves
-for (const n of ["2", "5"])
-  test(`site clavier ${n}`, async ({ page }) => {
+for (const digit of ["2", "5"])
+  test(`site clavier ${digit}`, async ({ page }) => {
     await page.setViewportSize(DESKTOP);
     await page.goto("/index.html");
     await settle(page);
     const keyboard = page.getByRole("img", { name: /Deux octaves du clavier/ });
     await keyboard
-      .locator("text", { hasText: new RegExp(`^${n}$`) })
+      .locator("text", { hasText: new RegExp(`^${digit}$`) })
       .first()
       .locator("..")
       .hover();
-    await expect(keyboard).toHaveScreenshot(`site-clavier-${n}.png`);
+    await expect(keyboard).toHaveScreenshot(`site-clavier-${digit}.png`);
   });
 
 // plus bas sur la page, le bouton qui ramène à « Sur cette page »
@@ -238,16 +238,16 @@ test("app partition reçue", async ({ page }) => {
   const text = CLAIR_SECTIONS.replace("bpm: 100", "bpm: 100\nnotes: À jouer lentement, la main droite seule d'abord");
   await openApp(page, { source: TECHNIQUES, editing: false });
   // le lien, écrit par l'application elle-même (le serveur de développement sert ses modules)
-  await page.evaluate(async (t) => {
+  await page.evaluate(async (pieceText) => {
     const module = "/src/app/files/share.ts";
     const { encodeShare } = await import(/* @vite-ignore */ module);
-    location.hash = `p=${await encodeShare({ name: "Au clair de la lune.prisma", text: t, settings: {} })}`;
+    location.hash = `p=${await encodeShare({ name: "Au clair de la lune.prisma", text: pieceText, settings: {} })}`;
   }, text);
   await expect(page.getByRole("dialog")).toContainText("Partition reçue");
   await settle(page);
   await expect(page).toHaveScreenshot("app-partition-recue.png");
   // le morceau en cours, jamais enregistré : on confirme de le remplacer
-  page.once("dialog", (d) => d.accept());
+  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Ouvrir", exact: true }).click();
   await settle(page);
   await expect(page.locator(".page").first()).toContainText("Au clair de la lune");
@@ -256,10 +256,10 @@ test("app partition reçue", async ({ page }) => {
 // Fichier › Importer un lien : un lien collé qui ne se lit pas le dit ; le bon montre la partition reçue
 test("app importer un lien", async ({ page }) => {
   await openApp(page, { source: TECHNIQUES, editing: false });
-  const link = await page.evaluate(async (t) => {
+  const link = await page.evaluate(async (text) => {
     const module = "/src/app/files/share.ts";
     const { encodeShare, shareLink } = await import(/* @vite-ignore */ module);
-    return shareLink(await encodeShare({ name: "Au clair de la lune.prisma", text: t, settings: {} }), location.href);
+    return shareLink(await encodeShare({ name: "Au clair de la lune.prisma", text, settings: {} }), location.href);
   }, CLAIR_SECTIONS);
   await chooseMenu(page, "Fichier", "Importer un lien…");
   // le champ a le focus : on colle aussitôt
@@ -283,10 +283,10 @@ test("app partition reçue, avec une bibliothèque", async ({ page }) => {
   await openApp(page, { source: "", editing: false });
   await chooseMenu(page, "Fichier", "Bibliothèque");
   await page.getByRole("button", { name: "Choisir un dossier" }).click();
-  await page.evaluate(async (t) => {
+  await page.evaluate(async (text) => {
     const module = "/src/app/files/share.ts";
     const { encodeShare } = await import(/* @vite-ignore */ module);
-    location.hash = `p=${await encodeShare({ name: "Au clair de la lune.prisma", text: t, settings: { tempo: 72 } })}`;
+    location.hash = `p=${await encodeShare({ name: "Au clair de la lune.prisma", text, settings: { tempo: 72 } })}`;
   }, CLAIR_SECTIONS);
   await expect(page.getByRole("dialog")).toContainText("Dossier « recus »");
   await settle(page);
@@ -295,7 +295,7 @@ test("app partition reçue, avec une bibliothèque", async ({ page }) => {
   await settle(page);
   const saved = await page.evaluate(async () => {
     const dir = await (await navigator.storage.getDirectory()).getDirectoryHandle("recus");
-    const read = async (n: string) => (await (await dir.getFileHandle(n)).getFile()).text();
+    const read = async (name: string) => (await (await dir.getFileHandle(name)).getFile()).text();
     return { piece: await read("Au clair de la lune.prisma"), settings: JSON.parse(await read("Au clair de la lune.prisma.json")) };
   });
   expect(saved.piece).toContain("title: Au clair de la lune");
@@ -359,7 +359,7 @@ test("app statut au clavier", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS, options: { noteNames: "keyboard" } });
   await page.locator(".cm-line").nth(10).click();
   await page.keyboard.press("Home");
-  for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowRight");
+  for (let index = 0; index < 4; index++) await page.keyboard.press("ArrowRight");
   await settle(page);
   await expect(page).toHaveScreenshot("app-statut-clavier.png");
 });
@@ -423,7 +423,7 @@ test("app menu au clavier", async ({ page }) => {
 test("app tab jusqu'à l'écoute", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS });
   await page.getByRole("button", { name: "Fichier", exact: true }).focus();
-  for (let i = 0; i < 9; i++) await page.keyboard.press("Tab");
+  for (let step = 0; step < 9; step++) await page.keyboard.press("Tab");
   await expect(page.getByRole("button", { name: "Écouter" })).toBeFocused();
   await expect(page.locator("header")).toHaveScreenshot("app-tab-ecoute.png");
 });
@@ -488,7 +488,7 @@ for (const [name, size] of [
     await expect(dialog).toContainText("Version");
     await dialog
       .getByLabel("Nouveautés")
-      .evaluate((list) => [...list.children].forEach((r) => ((r as HTMLElement).style.visibility = "hidden")));
+      .evaluate((list) => [...list.children].forEach((element) => ((element as HTMLElement).style.visibility = "hidden")));
     await expect(page).toHaveScreenshot(`app-a-propos-${name}.png`);
   });
 
@@ -496,7 +496,7 @@ test("app complétion", async ({ page }) => {
   await openApp(page, { source: TECHNIQUES });
   await page.locator(".cm-line").nth(8).click();
   await page.keyboard.press("Home");
-  for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowRight");
+  for (let step = 0; step < 4; step++) await page.keyboard.press("ArrowRight");
   await page.keyboard.press("Control+Space");
   await settle(page);
   await expect(page).toHaveScreenshot("app-completion.png");
@@ -569,7 +569,7 @@ for (const view of ["list", "thumbs"] as const)
     // les dates (celles des fichiers, qui changent) : effacées, sans toucher à la place qu'elles prennent
     await page
       .getByText(/^\d{2}\/\d{2}\/\d{4}$/)
-      .evaluateAll((dates) => dates.forEach((d) => ((d as HTMLElement).style.color = "transparent")));
+      .evaluateAll((dates) => dates.forEach((date) => ((date as HTMLElement).style.color = "transparent")));
     await expect(page).toHaveScreenshot(`app-bibliotheque-${view}.png`);
   });
 
@@ -593,7 +593,7 @@ for (const [fit, zoom, name] of [
 ] as const)
   test(`app retour au début ${name}`, async ({ page }) => {
     await openApp(page, { source: GYMNOPEDIE, editing: false, view: { fit, zoom } });
-    await page.locator("section[data-fit]").evaluate((p) => p.scrollTo({ left: p.scrollWidth, top: p.scrollHeight }));
+    await page.locator("section[data-fit]").evaluate((pane) => pane.scrollTo({ left: pane.scrollWidth, top: pane.scrollHeight }));
     await settle(page);
     await expect(page).toHaveScreenshot(`app-retour-${name}.png`);
     await page.getByRole("button", { name: "Retour au début de la partition" }).click();
@@ -665,9 +665,9 @@ test("app erreur corrigée", async ({ page }) => {
 test("app dépôt", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS });
   const files = await page.evaluateHandle(() => {
-    const d = new DataTransfer();
-    d.items.add(new File(["0 |1 ||"], "morceau.prisma"));
-    return d;
+    const transfer = new DataTransfer();
+    transfer.items.add(new File(["0 |1 ||"], "morceau.prisma"));
+    return transfer;
   });
   await page.dispatchEvent("#root > div", "dragenter", { dataTransfer: files });
   await settle(page);
@@ -678,9 +678,9 @@ test("app avis", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS });
   // un fichier qui ne s'ouvre pas : la barre le dit
   const files = await page.evaluateHandle(() => {
-    const d = new DataTransfer();
-    d.items.add(new File(["x"], "photo.png"));
-    return d;
+    const transfer = new DataTransfer();
+    transfer.items.add(new File(["x"], "photo.png"));
+    return transfer;
   });
   await page.dispatchEvent("#root > div", "drop", { dataTransfer: files });
   await settle(page);

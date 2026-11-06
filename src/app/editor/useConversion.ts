@@ -8,7 +8,7 @@ import type { MutableRefObject } from "react";
 import { convertToStrings, parsePrisma, writePrisma } from "../../core/index.ts";
 import type { ConversionOptions, Part } from "../../core/index.ts";
 
-const count = (n: number, word: string) => `${n} ${word}${n > 1 ? "s" : ""}`;
+const count = (amount: number, word: string) => `${amount} ${word}${amount > 1 ? "s" : ""}`;
 
 export function useConversion(
   current: MutableRefObject<string>,
@@ -19,8 +19,8 @@ export function useConversion(
   const start = () => {
     try {
       setParts(parsePrisma(current.current).parts);
-    } catch (e) {
-      notify(`Conversion impossible : ${(e as Error).message}`);
+    } catch (error) {
+      notify(`Conversion impossible : ${(error as Error).message}`);
     }
   };
   const convert = (part: number, conversion: ConversionOptions) => {
@@ -34,8 +34,8 @@ export function useConversion(
         report.dropped ? `${count(report.dropped, "note")} retirée${report.dropped > 1 ? "s" : ""}` : "",
       ].filter(Boolean);
       notify(`Converti${changes.length ? " : " + changes.join(", ") : ""} (Ctrl+Z pour revenir)`);
-    } catch (e) {
-      notify(`Conversion impossible : ${(e as Error).message}`);
+    } catch (error) {
+      notify(`Conversion impossible : ${(error as Error).message}`);
     }
   };
   return { parts, start, convert, cancel: () => setParts(null) };

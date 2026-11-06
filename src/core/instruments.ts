@@ -67,9 +67,9 @@ const GUESSES: [RegExp, InstrumentName][] = [
 
 export function guessInstrument(name?: string): InstrumentName {
   if (!name) return "piano";
-  const n = name.toLowerCase();
-  if (/\bpiano\b/.test(n) && !/[ée]lec|rhodes|wurli/.test(n)) return "piano";
-  return GUESSES.find(([re]) => re.test(n))?.[1] ?? "piano";
+  const lower = name.toLowerCase();
+  if (/\bpiano\b/.test(lower) && !/[ée]lec|rhodes|wurli/.test(lower)) return "piano";
+  return GUESSES.find(([re]) => re.test(lower))?.[1] ?? "piano";
 }
 
 /**
@@ -77,32 +77,32 @@ export function guessInstrument(name?: string): InstrumentName {
  * liste ; un programme sans équivalent proche (percussions, effets) n'en donne pas.
  */
 export function instrumentOfProgram(program: number): InstrumentName | undefined {
-  const p = program - 1;
-  if (p === 4 || p === 5) return "electric-piano";
-  if (p === 6) return "harpsichord";
-  if (p < 8) return "piano";
-  if (p === 11) return "vibraphone";
-  if (p === 12 || p === 13) return "marimba";
-  if (p === 21 || p === 23) return "accordion";
-  if (p >= 16 && p < 24) return "organ";
-  if (p >= 24 && p < 32) return "guitar";
-  if (p === 32) return "double-bass";
-  if (p >= 33 && p < 40) return "electric-bass";
-  if (p === 40) return "violin";
-  if (p === 41) return "viola";
-  if (p === 42) return "cello";
-  if (p === 43) return "double-bass";
-  if (p === 46) return "harp";
-  if (p >= 44 && p < 52) return "strings";
-  if (p >= 52 && p < 55) return "voice";
-  if (p === 56 || p === 59) return "trumpet";
-  if (p === 57) return "trombone";
-  if (p === 60) return "horn";
-  if (p >= 64 && p < 68) return "saxophone";
-  if (p === 68 || p === 69) return "oboe";
-  if (p === 70) return "bassoon";
-  if (p === 71) return "clarinet";
-  if (p >= 72 && p < 80) return "flute";
+  const zeroBased = program - 1;
+  if (zeroBased === 4 || zeroBased === 5) return "electric-piano";
+  if (zeroBased === 6) return "harpsichord";
+  if (zeroBased < 8) return "piano";
+  if (zeroBased === 11) return "vibraphone";
+  if (zeroBased === 12 || zeroBased === 13) return "marimba";
+  if (zeroBased === 21 || zeroBased === 23) return "accordion";
+  if (zeroBased >= 16 && zeroBased < 24) return "organ";
+  if (zeroBased >= 24 && zeroBased < 32) return "guitar";
+  if (zeroBased === 32) return "double-bass";
+  if (zeroBased >= 33 && zeroBased < 40) return "electric-bass";
+  if (zeroBased === 40) return "violin";
+  if (zeroBased === 41) return "viola";
+  if (zeroBased === 42) return "cello";
+  if (zeroBased === 43) return "double-bass";
+  if (zeroBased === 46) return "harp";
+  if (zeroBased >= 44 && zeroBased < 52) return "strings";
+  if (zeroBased >= 52 && zeroBased < 55) return "voice";
+  if (zeroBased === 56 || zeroBased === 59) return "trumpet";
+  if (zeroBased === 57) return "trombone";
+  if (zeroBased === 60) return "horn";
+  if (zeroBased >= 64 && zeroBased < 68) return "saxophone";
+  if (zeroBased === 68 || zeroBased === 69) return "oboe";
+  if (zeroBased === 70) return "bassoon";
+  if (zeroBased === 71) return "clarinet";
+  if (zeroBased >= 72 && zeroBased < 80) return "flute";
   return undefined;
 }
 
@@ -111,12 +111,12 @@ export function splitParts(list: string): string[] {
   const out: string[] = [];
   let depth = 0,
     from = 0;
-  for (let i = 0; i < list.length; i++) {
-    if (list[i] === "(") depth++;
-    else if (list[i] === ")") depth = Math.max(0, depth - 1);
-    else if (list[i] === "," && depth === 0) {
-      out.push(list.slice(from, i));
-      from = i + 1;
+  for (let index = 0; index < list.length; index++) {
+    if (list[index] === "(") depth++;
+    else if (list[index] === ")") depth = Math.max(0, depth - 1);
+    else if (list[index] === "," && depth === 0) {
+      out.push(list.slice(from, index));
+      from = index + 1;
     }
   }
   out.push(list.slice(from));
@@ -129,13 +129,13 @@ export function splitParts(list: string): string[] {
  * (« Chœur de droite (flute) », « Guitare (guitar, drop-d, capo 2) »).
  */
 export function splitPartEntry(entry: string): { name: string; extras: string[] } {
-  const m = entry.match(/^(.*?)\s*\(\s*([^()]*?)\s*\)\s*$/);
-  if (!m) return { name: entry.trim(), extras: [] };
+  const match = entry.match(/^(.*?)\s*\(\s*([^()]*?)\s*\)\s*$/);
+  if (!match) return { name: entry.trim(), extras: [] };
   return {
-    name: m[1].trim(),
-    extras: m[2]
+    name: match[1].trim(),
+    extras: match[2]
       .split(",")
-      .map((x) => x.trim().toLowerCase().replace(/\s+/g, " "))
+      .map((word) => word.trim().toLowerCase().replace(/\s+/g, " "))
       .filter(Boolean),
   };
 }

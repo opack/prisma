@@ -31,12 +31,12 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
         className="grid gap-3 max-h-[min(50vh,420px)] overflow-auto px-3 py-2.5 bg-white border border-line rounded"
         aria-label="Nouveautés"
       >
-        {list.map((r) => (
-          <article key={r.version} className="text-[14px] leading-[1.4]">
+        {list.map((release) => (
+          <article key={release.version} className="text-[14px] leading-[1.4]">
             <h3 className="m-0 text-[14px]">
-              {r.version} <span className="font-normal text-muted">· {r.date}</span>
+              {release.version} <span className="font-normal text-muted">· {release.date}</span>
             </h3>
-            <div dangerouslySetInnerHTML={{ __html: r.html }} />
+            <div dangerouslySetInnerHTML={{ __html: release.html }} />
           </article>
         ))}
       </section>

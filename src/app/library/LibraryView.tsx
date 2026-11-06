@@ -39,8 +39,8 @@ const SORTS: { value: Sort; label: string }[] = [
 const SORT_KEY = "prisma:library-sort";
 const loadSort = (): Sort => {
   try {
-    const s = localStorage.getItem(SORT_KEY);
-    return SORTS.some((x) => x.value === s) ? (s as Sort) : "title";
+    const text = localStorage.getItem(SORT_KEY);
+    return SORTS.some((sort) => sort.value === text) ? (text as Sort) : "title";
   } catch {
     return "title";
   }
@@ -51,8 +51,8 @@ type Kinds = "all" | "prisma" | "musicxml";
 const KINDS_KEY = "prisma:library-kinds";
 const loadKinds = (): Kinds => {
   try {
-    const k = localStorage.getItem(KINDS_KEY);
-    return k === "prisma" || k === "musicxml" ? k : "all";
+    const key = localStorage.getItem(KINDS_KEY);
+    return key === "prisma" || key === "musicxml" ? key : "all";
   } catch {
     return "all";
   }
@@ -79,9 +79,9 @@ type State =
   | { kind: "error"; message: string };
 
 /** Pour chercher et trier sans tenir compte des accents ni des majuscules. */
-const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-const titleOf = (e: LibraryEntry) => e.title ?? e.name.replace(/\.[^.]+$/, "");
-const compare = (a: string, b: string) => a.localeCompare(b, "fr", { sensitivity: "base", numeric: true });
+const fold = (text: string) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const titleOf = (libraryEntry: LibraryEntry) => libraryEntry.title ?? libraryEntry.name.replace(/\.[^.]+$/, "");
+const compare = (first: string, second: string) => first.localeCompare(second, "fr", { sensitivity: "base", numeric: true });
 
 export function LibraryView({
   options,
@@ -93,10 +93,10 @@ export function LibraryView({
   onClose: () => void;
 }) {
   const [view, setViewState] = useState<View>(loadView);
-  const setView = (v: View) => {
-    setViewState(v);
+  const setView = (next: View) => {
+    setViewState(next);
     try {
-      localStorage.setItem(VIEW_KEY, v);
+      localStorage.setItem(VIEW_KEY, next);
     } catch {
       /* stockage indisponible : sans conséquence */
     }
@@ -109,10 +109,10 @@ export function LibraryView({
       return true;
     }
   });
-  const setThumbsOwn = (v: boolean) => {
-    setThumbsOwnState(v);
+  const setThumbsOwn = (value: boolean) => {
+    setThumbsOwnState(value);
     try {
-      localStorage.setItem(THUMBS_OWN_KEY, String(v));
+      localStorage.setItem(THUMBS_OWN_KEY, String(value));
     } catch {
       /* stockage indisponible : sans conséquence */
     }
@@ -121,18 +121,18 @@ export function LibraryView({
   const [query, setQuery] = useState("");
   const [sort, setSortState] = useState<Sort>(loadSort);
   const [kinds, setKindsState] = useState<Kinds>(loadKinds);
-  const setKinds = (k: Kinds) => {
-    setKindsState(k);
+  const setKinds = (next: Kinds) => {
+    setKindsState(next);
     try {
-      localStorage.setItem(KINDS_KEY, k);
+      localStorage.setItem(KINDS_KEY, next);
     } catch {
       /* stockage indisponible : sans conséquence */
     }
   };
-  const setSort = (s: Sort) => {
-    setSortState(s);
+  const setSort = (next: Sort) => {
+    setSortState(next);
     try {
-      localStorage.setItem(SORT_KEY, s);
+      localStorage.setItem(SORT_KEY, next);
     } catch {
       /* stockage indisponible : sans conséquence */
     }
@@ -143,10 +143,10 @@ export function LibraryView({
       if (!(await source.access(ask))) return setState({ kind: "locked", source });
       setState({ kind: "loading" });
       setState({ kind: "ready", source, entries: await scan(source) });
-    } catch (e) {
+    } catch (error) {
       // la connexion à pCloud ne vaut plus : la redonner
-      if (e instanceof PcloudAuthError) return setState({ kind: "locked", source, reason: e.message });
-      setState({ kind: "error", message: (e as Error).message });
+      if (error instanceof PcloudAuthError) return setState({ kind: "locked", source, reason: error.message });
+      setState({ kind: "error", message: (error as Error).message });
     }
   };
   useEffect(() => {
@@ -159,8 +159,8 @@ export function LibraryView({
       if (!source) return;
       choose("disk");
       await load(source, true);
-    } catch (e) {
-      setState({ kind: "error", message: (e as Error).message });
+    } catch (error) {
+      setState({ kind: "error", message: (error as Error).message });
     }
   };
   const choosePcloud = () => {
@@ -175,27 +175,27 @@ export function LibraryView({
 
   const groups = useMemo(() => {
     if (state.kind !== "ready") return [];
-    const q = fold(query.trim());
+    const needle = fold(query.trim());
     const found = state.entries.filter(
-      (e) => (kinds === "all" || e.kind === kinds) && (!q || fold([titleOf(e), e.composer ?? "", e.path].join(" ")).includes(q)),
+      (libraryEntry) => (kinds === "all" || libraryEntry.kind === kinds) && (!needle || fold([titleOf(libraryEntry), libraryEntry.composer ?? "", libraryEntry.path].join(" ")).includes(needle)),
     );
     if (sort === "recent") {
       const recent = recentOpenings();
-      const at = (e: LibraryEntry) => recent[e.path] ?? 0;
-      return [{ folder: "", entries: [...found].sort((a, b) => at(b) - at(a) || compare(titleOf(a), titleOf(b))) }];
+      const at = (entry: LibraryEntry) => recent[entry.path] ?? 0;
+      return [{ folder: "", entries: [...found].sort((first, second) => at(second) - at(first) || compare(titleOf(first), titleOf(second))) }];
     }
-    const key = (e: LibraryEntry) => (sort === "composer" ? [e.composer ?? "￿", titleOf(e)] : [titleOf(e), e.composer ?? ""]);
+    const key = (entry: LibraryEntry) => (sort === "composer" ? [entry.composer ?? "￿", titleOf(entry)] : [titleOf(entry), entry.composer ?? ""]);
     const byFolder = new Map<string, LibraryEntry[]>();
-    for (const e of found) byFolder.set(e.folder, [...(byFolder.get(e.folder) ?? []), e]);
+    for (const entry of found) byFolder.set(entry.folder, [...(byFolder.get(entry.folder) ?? []), entry]);
     return [...byFolder]
-      .sort(([a], [b]) => (a === "" ? -1 : b === "" ? 1 : compare(a, b)))
+      .sort(([first], [second]) => (first === "" ? -1 : second === "" ? 1 : compare(first, second)))
       .map(([folder, entries]) => ({
         folder,
-        entries: entries.sort((a, b) => compare(key(a)[0], key(b)[0]) || compare(key(a)[1], key(b)[1])),
+        entries: entries.sort((first, second) => compare(key(first)[0], key(second)[0]) || compare(key(first)[1], key(second)[1])),
       }));
   }, [state, query, sort, kinds]);
-  const count = groups.reduce((n, g) => n + g.entries.length, 0);
-  const total = (k: Kinds) => (state.kind === "ready" ? state.entries.filter((e) => k === "all" || e.kind === k).length : 0);
+  const count = groups.reduce((sum, group) => sum + group.entries.length, 0);
+  const total = (shown: Kinds) => (state.kind === "ready" ? state.entries.filter((libraryEntry) => shown === "all" || libraryEntry.kind === shown).length : 0);
 
   return (
     <main data-library className="flex-1 overflow-auto bg-white">
@@ -267,13 +267,13 @@ export function LibraryView({
                 type="search"
                 placeholder="Chercher un titre, un compositeur…"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(changeEvent) => setQuery(changeEvent.target.value)}
                 aria-label="Chercher"
                 autoFocus
               />
               <label className={TOOL}>
                 Afficher
-                <select className={SELECT} value={kinds} onChange={(e) => setKinds(e.target.value as Kinds)}>
+                <select className={SELECT} value={kinds} onChange={(event) => setKinds(event.target.value as Kinds)}>
                   <option value="all">Tout ({total("all")})</option>
                   <option value="prisma">Partitions Prisma ({total("prisma")})</option>
                   <option value="musicxml">MusicXML à importer ({total("musicxml")})</option>
@@ -281,10 +281,10 @@ export function LibraryView({
               </label>
               <label className={TOOL}>
                 Trier par
-                <select className={SELECT} value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
-                  {SORTS.map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {s.label}
+                <select className={SELECT} value={sort} onChange={(event) => setSort(event.target.value as Sort)}>
+                  {SORTS.map((choice) => (
+                    <option key={choice.value} value={choice.value}>
+                      {choice.label}
                     </option>
                   ))}
                 </select>
@@ -294,7 +294,7 @@ export function LibraryView({
                   className="inline-flex items-center gap-1.5 text-muted whitespace-nowrap cursor-pointer"
                   title="Les vignettes montrent chaque partition avec ses propres options, si elle en a ; sinon avec les options générales"
                 >
-                  <input type="checkbox" checked={thumbsOwn} onChange={(e) => setThumbsOwn(e.target.checked)} />
+                  <input type="checkbox" checked={thumbsOwn} onChange={(event) => setThumbsOwn(event.target.checked)} />
                   Options de chaque partition
                 </label>
               )}
@@ -335,21 +335,21 @@ export function LibraryView({
                     : "Aucun MusicXML à importer dans ce dossier."}
               </p>
             )}
-            {groups.map((g) => (
-              <section key={g.folder}>
-                {g.folder && <h2 className="mx-0 mt-6 mb-1.5 text-[13px] uppercase tracking-[.06em] text-muted">{g.folder}</h2>}
+            {groups.map((group) => (
+              <section key={group.folder}>
+                {group.folder && <h2 className="mx-0 mt-6 mb-1.5 text-[13px] uppercase tracking-[.06em] text-muted">{group.folder}</h2>}
                 {view === "thumbs" ? (
                   <ul className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-[18px] m-0 px-0 pt-1 pb-0 list-none">
-                    {g.entries.map((e) => (
-                      <li key={e.path}>
-                        <button className={`flex flex-col gap-0.5 h-full p-2 rounded-md ${ENTRY}`} onClick={() => onOpen(e)} title={e.path}>
-                          <ThumbView entry={e} options={thumbsOwn && e.own ? { ...options, ...e.own } : options} />
-                          <span className="font-semibold">{titleOf(e)}</span>
-                          <span className="text-left text-[13px] text-muted">{e.composer ?? "\u00a0"}</span>
+                    {group.entries.map((libraryEntry) => (
+                      <li key={libraryEntry.path}>
+                        <button className={`flex flex-col gap-0.5 h-full p-2 rounded-md ${ENTRY}`} onClick={() => onOpen(libraryEntry)} title={libraryEntry.path}>
+                          <ThumbView entry={libraryEntry} options={thumbsOwn && libraryEntry.own ? { ...options, ...libraryEntry.own } : options} />
+                          <span className="font-semibold">{titleOf(libraryEntry)}</span>
+                          <span className="text-left text-[13px] text-muted">{libraryEntry.composer ?? "\u00a0"}</span>
                           <span className={`${META} flex-wrap text-[11px]`}>
-                            {sort === "recent" && e.folder ? `${e.folder}/` : ""}
-                            {e.name}
-                            {e.kind === "musicxml" && <span className="px-1.5 rounded-[3px] bg-accent-12 text-accent">à importer</span>}
+                            {sort === "recent" && libraryEntry.folder ? `${libraryEntry.folder}/` : ""}
+                            {libraryEntry.name}
+                            {libraryEntry.kind === "musicxml" && <span className="px-1.5 rounded-[3px] bg-accent-12 text-accent">à importer</span>}
                           </span>
                         </button>
                       </li>
@@ -357,20 +357,20 @@ export function LibraryView({
                   </ul>
                 ) : (
                   <ul className="m-0 p-0 list-none border-t border-line">
-                    {g.entries.map((e) => (
-                      <li key={e.path} className="border-b border-line">
+                    {group.entries.map((entry) => (
+                      <li key={entry.path} className="border-b border-line">
                         <button
                           className={`grid grid-cols-[1fr_auto] gap-x-4 gap-y-0.5 px-2 py-2.5 rounded-none ${ENTRY}`}
-                          onClick={() => onOpen(e)}
-                          title={e.path}
+                          onClick={() => onOpen(entry)}
+                          title={entry.path}
                         >
-                          <span className="font-semibold">{titleOf(e)}</span>
-                          {e.composer && <span className="text-right text-muted">{e.composer}</span>}
+                          <span className="font-semibold">{titleOf(entry)}</span>
+                          {entry.composer && <span className="text-right text-muted">{entry.composer}</span>}
                           <span className={`${META} text-[12px]`}>
-                            {sort === "recent" && e.folder ? `${e.folder}/` : ""}
-                            {e.name}
-                            {e.kind === "musicxml" && <span className="px-1.5 rounded-[3px] bg-accent-12 text-accent">à importer</span>}
-                            <span className="ml-auto">{new Date(e.modified).toLocaleDateString("fr-FR")}</span>
+                            {sort === "recent" && entry.folder ? `${entry.folder}/` : ""}
+                            {entry.name}
+                            {entry.kind === "musicxml" && <span className="px-1.5 rounded-[3px] bg-accent-12 text-accent">à importer</span>}
+                            <span className="ml-auto">{new Date(entry.modified).toLocaleDateString("fr-FR")}</span>
                           </span>
                         </button>
                       </li>
@@ -446,7 +446,7 @@ function ThumbView({ entry, options }: { entry: LibraryEntry; options: RenderOpt
   useEffect(() => {
     const el = ref.current;
     if (!el || visible) return;
-    const seen = new IntersectionObserver(([e]) => e.isIntersecting && setVisible(true), {
+    const seen = new IntersectionObserver(([observed]) => observed.isIntersecting && setVisible(true), {
       root: el.closest("[data-library]"),
       rootMargin: "300px",
     });
@@ -457,7 +457,7 @@ function ThumbView({ entry, options }: { entry: LibraryEntry; options: RenderOpt
     if (!visible) return;
     let live = true;
     setResult(undefined);
-    thumbOf(entry, JSON.parse(engraving)).then((r) => live && setResult(r));
+    thumbOf(entry, JSON.parse(engraving)).then((cached) => live && setResult(cached));
     return () => {
       live = false;
     };

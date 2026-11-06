@@ -23,8 +23,8 @@ export async function pcloudFile(req: Request): Promise<Response> {
   if (req.method !== "GET" || !HOSTS.has(host) || !/^\d+$/.test(fileid) || !token)
     return json({ result: 400, error: "requête de relais invalide" }, 400);
   try {
-    const q = new URLSearchParams({ fileid, access_token: token });
-    const link = await (await fetch(`https://${host}/getfilelink?${q}`)).json();
+    const query = new URLSearchParams({ fileid, access_token: token });
+    const link = await (await fetch(`https://${host}/getfilelink?${query}`)).json();
     if (link.result !== 0) return json({ result: link.result, error: link.error });
     const file = await fetch(`https://${link.hosts[0]}${link.path}`);
     if (!file.ok) return json({ result: file.status, error: "téléchargement refusé" }, 502);

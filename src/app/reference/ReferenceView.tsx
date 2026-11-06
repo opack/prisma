@@ -29,8 +29,8 @@ function Example({ text, options }: { text: string; options: RenderOptions }) {
           inlineSections: options.sections === "inline",
         }),
       };
-    } catch (e) {
-      return { error: (e as Error).message };
+    } catch (error) {
+      return { error: (error as Error).message };
     }
   }, [text, options.density, options.chords, options.chordNames, options.notePosition, options.holdReminders, options.sections]);
   return (
@@ -97,9 +97,9 @@ export function ReferenceView({
       frame = requestAnimationFrame(() => {
         const top = (scroller === window ? 0 : pane.getBoundingClientRect().top) + 90;
         let id = headings[0]?.id;
-        for (const h of headings) {
-          const el = document.getElementById(h.id);
-          if (el && el.getBoundingClientRect().top <= top) id = h.id;
+        for (const heading of headings) {
+          const el = document.getElementById(heading.id);
+          if (el && el.getBoundingClientRect().top <= top) id = heading.id;
         }
         // tout en bas, la dernière partie, même courte
         if (pane.scrollTop + pane.clientHeight >= pane.scrollHeight - 2) id = headings[headings.length - 1]?.id;
@@ -115,8 +115,8 @@ export function ReferenceView({
     };
   }, [headings]);
 
-  const go = (id: string) => (e: React.MouseEvent) => {
-    e.preventDefault();
+  const go = (id: string) => (event: React.MouseEvent) => {
+    event.preventDefault();
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
@@ -128,15 +128,15 @@ export function ReferenceView({
       >
         <p className="mb-2 text-[12px] font-semibold tracking-[0.04em] uppercase text-muted">Sommaire</p>
         <ul className="m-0 p-0 list-none border-l border-line">
-          {headings.map((h) => (
-            <li key={h.id}>
+          {headings.map((heading) => (
+            <li key={heading.id}>
               <a
-                className={tocLink(h.depth, h.id === current)}
-                href={`#${h.id}`}
-                onClick={go(h.id)}
-                aria-current={h.id === current ? "location" : undefined}
+                className={tocLink(heading.depth, heading.id === current)}
+                href={`#${heading.id}`}
+                onClick={go(heading.id)}
+                aria-current={heading.id === current ? "location" : undefined}
               >
-                {h.text}
+                {heading.text}
               </a>
             </li>
           ))}
@@ -146,15 +146,15 @@ export function ReferenceView({
       <ContentsMenu
         className="sticky top-0 z-10 hidden [@media(max-width:980px)]:block"
         title="Sommaire"
-        entries={headings.map((h) => ({ id: h.id, label: h.text, depth: h.depth === 3 ? 3 : 2 }))}
+        entries={headings.map((heading) => ({ id: heading.id, label: heading.text, depth: heading.depth === 3 ? 3 : 2 }))}
         current={current}
         onGo={(id) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
       />
       <article className="guide max-w-[860px] m-0 pt-6 px-8 pb-16 text-[15px] leading-[1.55]">
         <div ref={root} dangerouslySetInnerHTML={{ __html: html }} />
-        {slots.map((el, i) => {
+        {slots.map((el, index) => {
           const text = examples[Number((el as HTMLElement).dataset.example)];
-          return createPortal(example ? example(text) : <Example text={text} options={options} />, el, String(i));
+          return createPortal(example ? example(text) : <Example text={text} options={options} />, el, String(index));
         })}
       </article>
       {away && (

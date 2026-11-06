@@ -12,23 +12,23 @@ const CODE = "font-mono text-[0.92em] px-1 rounded-[3px] bg-[rgba(27,29,31,0.07)
 function pieces(message: string): { text: string; code: boolean }[] {
   const out: { text: string; code: boolean }[] = [];
   let at = 0;
-  for (const m of message.matchAll(QUOTED)) {
-    if (m.index > at) out.push({ text: message.slice(at, m.index), code: false });
-    out.push({ text: m[1], code: true });
-    at = m.index + m[0].length;
+  for (const match of message.matchAll(QUOTED)) {
+    if (match.index > at) out.push({ text: message.slice(at, match.index), code: false });
+    out.push({ text: match[1], code: true });
+    at = match.index + match[0].length;
   }
   if (at < message.length) out.push({ text: message.slice(at), code: false });
   return out;
 }
 
 export function Message({ text }: { text: string }): ReactNode {
-  return pieces(text).map((p, k) =>
-    p.code ? (
-      <code key={k} className={CODE}>
-        {p.text}
+  return pieces(text).map((piece, index) =>
+    piece.code ? (
+      <code key={index} className={CODE}>
+        {piece.text}
       </code>
     ) : (
-      p.text
+      piece.text
     ),
   );
 }
@@ -36,12 +36,12 @@ export function Message({ text }: { text: string }): ReactNode {
 /** Le même, en éléments du DOM, pour l'infobulle de l'éditeur. */
 export function messageNode(text: string): Node {
   const span = document.createElement("span");
-  for (const p of pieces(text)) {
-    if (!p.code) span.append(p.text);
+  for (const piece of pieces(text)) {
+    if (!piece.code) span.append(piece.text);
     else {
       const code = document.createElement("code");
       code.className = CODE;
-      code.textContent = p.text;
+      code.textContent = piece.text;
       span.append(code);
     }
   }

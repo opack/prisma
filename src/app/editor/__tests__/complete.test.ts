@@ -42,23 +42,23 @@ describe("écrire dans un système", () => {
   });
 
   it("allonge un soufflet coupé par l'élargissement", () => {
-    const s = ["m1 |1  |2  |3  ||", "0  |1  |   |   ||", "@   <-------"];
-    const out = apply(s, writeCase(s, systemOf(s, 1)!, 1, caseAt(s[0], 8)!, "5~7"));
+    const lines = ["m1 |1  |2  |3  ||", "0  |1  |   |   ||", "@   <-------"];
+    const out = apply(lines, writeCase(lines, systemOf(lines, 1)!, 1, caseAt(lines[0], 8)!, "5~7"));
     expect(out[2]).toBe("@   <--------");
     expect(out[0]).toBe("m1 |1  |2   |3  ||");
   });
 
   it("prolonge une ligne de notes courte avec les barres de la règle", () => {
-    const s = ["m1 |1  |2  |3  ||", "0  |1"];
-    expect(writeCase(s, systemOf(s, 1)!, 1, caseAt(s[0], 12)!, "8").lines.get(1)).toBe("0  |1  |   |8");
+    const lines = ["m1 |1  |2  |3  ||", "0  |1"];
+    expect(writeCase(lines, systemOf(lines, 1)!, 1, caseAt(lines[0], 12)!, "8").lines.get(1)).toBe("0  |1  |   |8");
   });
 
   it("prolonge la règle, ses traits et ses lignes de notes", () => {
-    const s = ["m1 |1  |2  |", "───┼───┼───┼", "0  |1  |3  |", "@   p"];
-    expect(rulerSuffixes(s[0], 3).map((x) => x.text)).toEqual(["3  |", "3  *  |", "3  *  *  |", "|"]);
-    const out = apply(s, extendRuler(s, systemOf(s, 0)!, "3  ||".slice(0, 4)));
+    const lines = ["m1 |1  |2  |", "───┼───┼───┼", "0  |1  |3  |", "@   p"];
+    expect(rulerSuffixes(lines[0], 3).map((suffix) => suffix.text)).toEqual(["3  |", "3  *  |", "3  *  *  |", "|"]);
+    const out = apply(lines, extendRuler(lines, systemOf(lines, 0)!, "3  ||".slice(0, 4)));
     expect(out).toEqual(["m1 |1  |2  |3  |", "───┼───┼───┼───┼", "0  |1  |3  |   |", "@   p"]);
-    const end = apply(s, extendRuler(s, systemOf(s, 0)!, "|"));
+    const end = apply(lines, extendRuler(lines, systemOf(lines, 0)!, "|"));
     expect(end.slice(0, 3)).toEqual(["m1 |1  |2  ||", "───┼───┼───┼┼", "0  |1  |3  ||"]);
     expect(rulerSuffixes("m1 |1  |2  ||", 3)[0].text).toBe("1  |");
   });
@@ -69,7 +69,7 @@ describe("écrire dans un système", () => {
   });
 
   it("ne coupe jamais un texte de plusieurs mots d'une ligne @", () => {
-    const s = [
+    const lines = [
       "@   Andante très expressif",
       "m1 |1   *  *  |2  |3  ||1  *  *  |2  ||",
       "───┼──────────┼───┼───┼┼─────────┼───┼┼",
@@ -77,7 +77,7 @@ describe("écrire dans un système", () => {
       "0  |          |   |   ||   11    |11 ||",
       "@                       (----------)",
     ];
-    const out = apply(s, writeCase(s, systemOf(s, 3)!, 3, caseAt(s[1], 11)!, "9_5"));
+    const out = apply(lines, writeCase(lines, systemOf(lines, 3)!, 3, caseAt(lines[1], 11)!, "9_5"));
     expect(out[0]).toBe("@   Andante très expressif");
     expect(out[3]).toBe("+1 |       9_5 |-  |6  ||-  4  6  |4  ||");
     expect(out[5]).toBe("@                        (----------)");
@@ -85,17 +85,17 @@ describe("écrire dans un système", () => {
   });
 
   it("n'offre que les octaves possibles pour une nouvelle ligne", () => {
-    const s = ["m1 |1  ||", "───┼───┼┼", "+1 |1  ||", "", "-1 |5  ||", "───┼───┼┼", "-2 |1  ||", "", "@   p"];
-    const sys = systemOf(s, 3)!;
+    const lines = ["m1 |1  ||", "───┼───┼┼", "+1 |1  ||", "", "-1 |5  ||", "───┼───┼┼", "-2 |1  ||", "", "@   p"];
+    const sys = systemOf(lines, 3)!;
     // entre +1 et -1 : la même octave, 0
-    expect(octaveRoom(s, sys, 3)).toEqual({ same: true, octaves: [0] });
+    expect(octaveRoom(lines, sys, 3)).toEqual({ same: true, octaves: [0] });
     // sous -2 : les octaves plus graves
-    expect(octaveRoom(s, sys, 7)).toEqual({ same: true, octaves: [-3, -4] });
+    expect(octaveRoom(lines, sys, 7)).toEqual({ same: true, octaves: [-3, -4] });
     // sous une ligne @ : aucune
-    expect(octaveRoom([...s, ""], sys, 9).octaves).toEqual([]);
+    expect(octaveRoom([...lines, ""], sys, 9).octaves).toEqual([]);
     // au-dessus d'une ligne sans numéro : seulement la même octave
-    const t = ["m1 |1  ||", "0  |1  ||", "", "   |3  ||"];
-    expect(octaveRoom(t, systemOf(t, 2)!, 2)).toEqual({ same: true, octaves: [] });
+    const below = ["m1 |1  ||", "0  |1  ||", "", "   |3  ||"];
+    expect(octaveRoom(below, systemOf(below, 2)!, 2)).toEqual({ same: true, octaves: [] });
   });
 });
 
@@ -116,7 +116,7 @@ describe("l'accord qui sonne dans une colonne", () => {
 
 describe("écrire un accord sur la ligne @c", () => {
   const lines = ["@c  x02210  8", "m1 |1  |2  |3  |4  ||", "───┼─ Guitare ────┼┼", "1  |0  |   |   |   ||"];
-  const text = (l: string[]) => `---\nparts: Guitare\n---\n\n${l.join("\n")}\n`;
+  const text = (lines: string[]) => `---\nparts: Guitare\n---\n\n${lines.join("\n")}\n`;
   const sys = { first: 0, last: 3, ruler: 1 };
 
   it("élargit la case d'un accord trop long, comme celle d'une note ; les accords suivants gardent la leur", () => {

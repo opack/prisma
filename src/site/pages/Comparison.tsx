@@ -191,19 +191,19 @@ export function Comparison() {
               </tr>
             </thead>
             <tbody className="phone:block">
-              {ROWS.map((r) => (
-                <tr key={r.what} className="phone:block phone:py-3 phone:border-b phone:border-line">
+              {ROWS.map((row) => (
+                <tr key={row.what} className="phone:block phone:py-3 phone:border-b phone:border-line">
                   <th
                     scope="row"
                     className="w-[16%] px-4 py-3.5 text-left align-top font-bold border-b border-line phone:block phone:w-auto phone:border-0 phone:px-0 phone:py-1"
                   >
-                    {r.what}
+                    {row.what}
                   </th>
                   <td className="px-4 py-3.5 align-top border-b border-line phone:block phone:border-0 phone:px-0 phone:py-1 phone:before:block phone:before:text-[0.85rem] phone:before:text-muted phone:before:content-['Partition_classique']">
-                    {r.classic}
+                    {row.classic}
                   </td>
                   <td className="px-4 py-3.5 align-top border-b border-line bg-accent-5 phone:block phone:border-0 phone:px-2.5 phone:py-2 phone:rounded-md phone:before:block phone:before:text-[0.85rem] phone:before:text-muted phone:before:content-['Prisma']">
-                    {r.prisma}
+                    {row.prisma}
                   </td>
                 </tr>
               ))}
@@ -319,10 +319,10 @@ export function Comparison() {
           <h2>Ce que Prisma perd</h2>
           <p>Ce choix a un prix. Le voici, sans détour.</p>
           <dl className="m-0 grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-x-10 gap-y-6">
-            {LOSSES.map((l) => (
-              <div key={l.what}>
-                <dt className="font-bold mb-1">{l.what}</dt>
-                <dd className="m-0 text-[#303437]">{l.why}</dd>
+            {LOSSES.map((loss) => (
+              <div key={loss.what}>
+                <dt className="font-bold mb-1">{loss.what}</dt>
+                <dd className="m-0 text-[#303437]">{loss.why}</dd>
               </div>
             ))}
           </dl>

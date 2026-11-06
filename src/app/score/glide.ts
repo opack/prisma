@@ -64,9 +64,9 @@ class Glide {
       for (const axis of ["left", "top"] as Axis[]) {
         const run = this.runs[axis];
         if (!run) continue;
-        const p = Math.max(0, Math.min(1, run.progress()));
-        pos[axis] = run.from + (run.to - run.from) * ease(p);
-        if (p >= 1) delete this.runs[axis];
+        const progress = Math.max(0, Math.min(1, run.progress()));
+        pos[axis] = run.from + (run.to - run.from) * ease(progress);
+        if (progress >= 1) delete this.runs[axis];
       }
       this.pane.scrollTo(pos);
       if (this.runs.left || this.runs.top) this.frame = requestAnimationFrame(step);
@@ -80,7 +80,7 @@ const glides = new WeakMap<HTMLElement, Glide>();
 
 /** La course de défilement d'un panneau. */
 export function glide(pane: HTMLElement): Glide {
-  let g = glides.get(pane);
-  if (!g) glides.set(pane, (g = new Glide(pane)));
-  return g;
+  let paneGlide = glides.get(pane);
+  if (!paneGlide) glides.set(pane, (paneGlide = new Glide(pane)));
+  return paneGlide;
 }

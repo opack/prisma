@@ -15,13 +15,13 @@ export function OnThisPage({ parts }: { parts: PagePart[] }) {
           Sur cette page
         </p>
         <ul className="flex flex-wrap gap-2 m-0 p-0 list-none">
-          {parts.map((p) => (
-            <li key={p.id}>
+          {parts.map((pagePart) => (
+            <li key={pagePart.id}>
               <a
                 className="inline-block px-3 py-1 border border-line rounded-full bg-white text-[0.95rem] text-ink no-underline hover:border-accent hover:text-accent"
-                href={`#${p.id}`}
+                href={`#${pagePart.id}`}
               >
-                {p.label}
+                {pagePart.label}
               </a>
             </li>
           ))}

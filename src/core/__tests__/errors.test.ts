@@ -18,13 +18,13 @@ describe("toutes les erreurs en une passe", () => {
 
   it("pas d'erreur en cascade autour d'un système mis de côté", () => {
     // la tenue du 5 continue dans le système suivant (« -5 ») : sans lui, elle n'aurait plus d'origine
-    const a = [`m1 |1  |2  ||`, "───┼───┼───┼┼", `0  |5  |-  ||`, "───┼───┼───┼┼", "-1 |1  |13 ||"].join("\n");
-    const b = [`m2 |1  |2  ||`, "───┼───┼───┼┼", `0  |-5 |-  ||`, "───┼───┼───┼┼", "-1 |1  |   ||"].join("\n");
-    expect(at(parseErrors(text(a, b)))).toEqual(["9:case invalide « 13 »"]);
+    const first = [`m1 |1  |2  ||`, "───┼───┼───┼┼", `0  |5  |-  ||`, "───┼───┼───┼┼", "-1 |1  |13 ||"].join("\n");
+    const second = [`m2 |1  |2  ||`, "───┼───┼───┼┼", `0  |-5 |-  ||`, "───┼───┼───┼┼", "-1 |1  |   ||"].join("\n");
+    expect(at(parseErrors(text(first, second)))).toEqual(["9:case invalide « 13 »"]);
     // une mesure à finir, dans le système suivant d'un système mis de côté : rien de plus
-    const cell = [`m1 |1  ||1  |`, "───┼───┼┼───┼", `0  |13 ||   |`, "───┼───┼┼───┼", "-1 |1  ||   |"].join("\n");
-    const d = [`m2 |2  ||`, "───┼───┼┼", `0  |5  ||`, "───┼───┼┼", "-1 |   ||"].join("\n");
-    expect(at(parseErrors(text(cell, d)))).toEqual(["7:case invalide « 13 »"]);
+    const unfinished = [`m1 |1  ||1  |`, "───┼───┼┼───┼", `0  |13 ||   |`, "───┼───┼┼───┼", "-1 |1  ||   |"].join("\n");
+    const next = [`m2 |2  ||`, "───┼───┼┼", `0  |5  ||`, "───┼───┼┼", "-1 |   ||"].join("\n");
+    expect(at(parseErrors(text(unfinished, next)))).toEqual(["7:case invalide « 13 »"]);
   });
 
   it("une erreur de l'en-tête arrête tout", () => {

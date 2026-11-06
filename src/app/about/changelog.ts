@@ -23,17 +23,17 @@ const marked = new Marked();
 /** Les versions, de la plus récente à la plus ancienne, comme dans le fichier ; ce qui précède la première est l'en-tête. */
 export function releases(markdown: string): Release[] {
   const titles = [...markdown.matchAll(TITLE)];
-  return titles.map((t, i) => {
-    const body = markdown.slice(t.index + t[0].length, titles[i + 1]?.index ?? markdown.length);
-    const html = CLASSES.reduce((h, [tag, open]) => h.replace(tag, open), marked.parse(body.trim(), { async: false }));
-    return { version: t[1], date: t[2].trim(), html };
+  return titles.map((match, index) => {
+    const body = markdown.slice(match.index + match[0].length, titles[index + 1]?.index ?? markdown.length);
+    const html = CLASSES.reduce((result, [tag, open]) => result.replace(tag, open), marked.parse(body.trim(), { async: false }));
+    return { version: match[1], date: match[2].trim(), html };
   });
 }
 
 /** Compare deux versions semver (sans étiquette) : négatif si a est plus ancienne que b. */
-export function compareVersions(a: string, b: string) {
-  const [x, y] = [a, b].map((v) => v.split(".").map(Number));
-  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return (x[i] ?? 0) - (y[i] ?? 0);
+export function compareVersions(first: string, second: string) {
+  const [firstParts, secondParts] = [first, second].map((version) => version.split(".").map(Number));
+  for (let index = 0; index < 3; index++) if (firstParts[index] !== secondParts[index]) return (firstParts[index] ?? 0) - (secondParts[index] ?? 0);
   return 0;
 }
 

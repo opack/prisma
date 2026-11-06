@@ -45,7 +45,7 @@ describe("liens du site vers la référence", () => {
     const titles = readFileSync("REFERENCE.md", "utf8")
       .split("\n")
       .filter((line) => line.startsWith("#"))
-      .map((l) => l.replace(/^#+\s*/, ""));
+      .map((line) => line.replace(/^#+\s*/, ""));
     for (const text of Object.values(REFERENCE_PARTS)) expect(titles).toContain(text);
   });
 });

@@ -23,8 +23,8 @@ import { exportMusicXml, importMusicXml, parsePrisma, writePrisma, DEFAULT_WIDTH
 
 const [cmd, file, ...rest] = process.argv.slice(2);
 const opt = (name: string) => {
-  const i = rest.indexOf(name);
-  return i >= 0 ? rest[i + 1] : undefined;
+  const index = rest.indexOf(name);
+  return index >= 0 ? rest[index + 1] : undefined;
 };
 const usage = () => {
   console.error("Usage : prisma import|format|export|check <fichier> [-o sortie] [--largeur N] [--reprises [--sans-lettres]]");
@@ -38,7 +38,7 @@ if (!Number.isInteger(width) || width < 20) {
   process.exit(1);
 }
 const out = opt("-o");
-const emit = (s: string) => (out ? writeFileSync(out, s, "utf8") : process.stdout.write(s));
+const emit = (text: string) => (out ? writeFileSync(out, text, "utf8") : process.stdout.write(text));
 
 try {
   const src = readFileSync(file, "utf8");
@@ -52,11 +52,11 @@ try {
       }),
     );
   else if (cmd === "check") {
-    const s = parsePrisma(src);
-    const bars = new Set(s.beats.map((b) => b.barIndex)).size;
-    console.log(`OK : ${bars} mesure${bars > 1 ? "s" : ""}, ${s.notes.length} note${s.notes.length > 1 ? "s" : ""}.`);
+    const score = parsePrisma(src);
+    const bars = new Set(score.beats.map((beat) => beat.barIndex)).size;
+    console.log(`OK : ${bars} mesure${bars > 1 ? "s" : ""}, ${score.notes.length} note${score.notes.length > 1 ? "s" : ""}.`);
   } else usage();
-} catch (e) {
-  console.error((e as Error).message);
+} catch (error) {
+  console.error((error as Error).message);
   process.exit(2);
 }

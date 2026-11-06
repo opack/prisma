@@ -28,7 +28,7 @@ const REPEATS: { value: Repeats; label: string; hint: string }[] = [
 export const loadExportOptions = (): ExportOptions => {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? "{}");
-    return { repeats: REPEATS.some((r) => r.value === raw.repeats) ? raw.repeats : "sections", letters: raw.letters !== false };
+    return { repeats: REPEATS.some((choice) => choice.value === raw.repeats) ? raw.repeats : "sections", letters: raw.letters !== false };
   } catch {
     return { repeats: "sections", letters: true };
   }

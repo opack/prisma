@@ -27,26 +27,26 @@ import { SourceText } from "../examples/SourceText.tsx";
  */
 function asciiTab(text: string): string {
   const score = parsePrisma(text);
-  const strs = score.parts[0].strings!;
-  const notes = score.notes.filter((n) => n.staff === 0);
-  const starts = [...new Set(notes.map((n) => n.start))].sort((a, b) => a - b);
-  const bar = (t: number) => score.beats[Math.floor(t / TICKS_PER_BEAT)].barIndex;
+  const strings = score.parts[0].strings!;
+  const notes = score.notes.filter((note) => note.staff === 0);
+  const starts = [...new Set(notes.map((note) => note.start))].sort((first, second) => first - second);
+  const bar = (tick: number) => score.beats[Math.floor(tick / TICKS_PER_BEAT)].barIndex;
   // la corde la plus aiguë s'écrit en minuscule quand elle a le nom de la plus grave
-  const names = strs.open.map((m) => pitchClass(((m + strs.capo) % 12) + 1, "english"));
-  const labels = names.map((n, k) => (k === 0 && n === names[names.length - 1] ? n.toLowerCase() : n));
-  const width = Math.max(...labels.map((l) => l.length));
-  const lines = labels.map((l) => l.padEnd(width) + "|");
-  starts.forEach((t, i) => {
-    if (i > 0 && bar(t) !== bar(starts[i - 1])) lines.forEach((_, k) => (lines[k] += "-|"));
-    const here = notes.filter((n) => n.start === t);
-    const cells = lines.map((_, k) => {
-      const n = here.find((x) => x.string === k + 1);
-      return n ? String(fretOf(strs, k + 1, n.midi)) : "";
+  const names = strings.open.map((midi) => pitchClass(((midi + strings.capo) % 12) + 1, "english"));
+  const labels = names.map((name, index) => (index === 0 && name === names[names.length - 1] ? name.toLowerCase() : name));
+  const width = Math.max(...labels.map((line) => line.length));
+  const lines = labels.map((label) => label.padEnd(width) + "|");
+  starts.forEach((start, index) => {
+    if (index > 0 && bar(start) !== bar(starts[index - 1])) lines.forEach((_, lineIndex) => (lines[lineIndex] += "-|"));
+    const here = notes.filter((note) => note.start === start);
+    const cells = lines.map((_, stringIndex) => {
+      const note = here.find((candidate) => candidate.string === stringIndex + 1);
+      return note ? String(fretOf(strings, stringIndex + 1, note.midi)) : "";
     });
-    const w = Math.max(1, ...cells.map((c) => c.length));
-    lines.forEach((_, k) => (lines[k] += "-" + cells[k].padEnd(w, "-") + "-"));
+    const cellWidth = Math.max(1, ...cells.map((cell) => cell.length));
+    lines.forEach((_, stringIndex) => (lines[stringIndex] += "-" + cells[stringIndex].padEnd(cellWidth, "-") + "-"));
   });
-  return lines.map((l) => l + "-|").join("\n");
+  return lines.map((line) => line + "-|").join("\n");
 }
 
 /** Une idée de la page : son texte, et son exemple à côté. */

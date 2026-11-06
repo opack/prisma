@@ -6,30 +6,30 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  */
 function fakePcloud(initial: Record<string, string>) {
   const files = new Map(
-    Object.entries(initial).map(([p, t], index) => [p, { text: t, id: index + 1, modified: Date.UTC(2026, 9, 1 + index) }]),
+    Object.entries(initial).map(([path, text], index) => [path, { text, id: index + 1, modified: Date.UTC(2026, 9, 1 + index) }]),
   );
   let nextId = 100;
   const calls: string[] = [];
-  const meta = (path: string, f: { id: number; modified: number }) => ({
+  const meta = (path: string, file: { id: number; modified: number }) => ({
     name: path.split("/").pop(),
     isfolder: false,
-    fileid: f.id,
-    modified: new Date(f.modified).toUTCString(),
+    fileid: file.id,
+    modified: new Date(file.modified).toUTCString(),
   });
   const folderOf = (path: string): Record<string, unknown> => {
     const prefix = path === "/" ? "/" : `${path}/`;
     const names = new Set<string>();
     const contents: unknown[] = [];
-    for (const [p, f] of files) {
-      if (!p.startsWith(prefix)) continue;
-      const rest = p.slice(prefix.length);
-      if (!rest.includes("/")) contents.push(meta(p, f));
+    for (const [filePath, file] of files) {
+      if (!filePath.startsWith(prefix)) continue;
+      const rest = filePath.slice(prefix.length);
+      if (!rest.includes("/")) contents.push(meta(filePath, file));
       else names.add(rest.split("/")[0]);
     }
-    for (const n of names) contents.push(folderOf(prefix + n));
+    for (const folderName of names) contents.push(folderOf(prefix + folderName));
     return { name: path === "/" ? "Prisma" : path.split("/").pop(), isfolder: true, folderid: 0, modified: "", contents };
   };
-  const answer = (o: unknown) => new Response(JSON.stringify(o), { headers: { "content-type": "application/json" } });
+  const answer = (body: unknown) => new Response(JSON.stringify(body), { headers: { "content-type": "application/json" } });
   const fetch = async (input: string, init?: RequestInit): Promise<Response> => {
     // le relais du site : il fait ce que fera la fonction (src/server/pcloudFile.ts), sur ce faux pCloud
     if (input.startsWith("/api/pcloud-file")) {
@@ -39,7 +39,7 @@ function fakePcloud(initial: Record<string, string>) {
       return pcloudFile(new Request(`https://prisma.test${input}`, { headers: init?.headers }));
     }
     const url = new URL(input);
-    if (url.host === "dl.pcloud.test") return new Response([...files.values()].find((f) => `/dl/${f.id}` === url.pathname)!.text);
+    if (url.host === "dl.pcloud.test") return new Response([...files.values()].find((file) => `/dl/${file.id}` === url.pathname)!.text);
     const method = url.pathname.slice(1);
     calls.push(method);
     if (url.searchParams.get("access_token") !== "jeton") return answer({ result: 2094, error: "Invalid 'access_token' provided." });
@@ -48,8 +48,8 @@ function fakePcloud(initial: Record<string, string>) {
       case "listfolder":
         return answer({ result: 0, metadata: folderOf(path) });
       case "stat": {
-        const f = files.get(path);
-        return f ? answer({ result: 0, metadata: meta(path, f) }) : answer({ result: 2009, error: "File not found." });
+        const file = files.get(path);
+        return file ? answer({ result: 0, metadata: meta(path, file) }) : answer({ result: 2009, error: "File not found." });
       }
       case "getfilelink": {
         const id = Number(url.searchParams.get("fileid"));
@@ -59,9 +59,9 @@ function fakePcloud(initial: Record<string, string>) {
         const name = url.searchParams.get("filename")!;
         const full = `${path === "/" ? "" : path}/${name}`;
         const text = await ((init!.body as FormData).get("file") as Blob).text();
-        const f = { text, id: files.get(full)?.id ?? nextId++, modified: Date.UTC(2026, 9, 28) };
-        files.set(full, f);
-        return answer({ result: 0, metadata: [meta(full, f)] });
+        const file = { text, id: files.get(full)?.id ?? nextId++, modified: Date.UTC(2026, 9, 28) };
+        files.set(full, file);
+        return answer({ result: 0, metadata: [meta(full, file)] });
       }
       case "deletefile":
         return files.delete(path) ? answer({ result: 0 }) : answer({ result: 2009, error: "File not found." });
@@ -78,8 +78,8 @@ beforeEach(() => {
   store.clear();
   vi.stubGlobal("localStorage", {
     getItem: (key: string) => store.get(key) ?? null,
-    setItem: (k: string, v: string) => store.set(k, v),
-    removeItem: (k: string) => store.delete(k),
+    setItem: (key: string, value: string) => store.set(key, value),
+    removeItem: (key: string) => store.delete(key),
   });
   store.set("prisma:pcloud", JSON.stringify({ token: "jeton", host: "eapi.pcloud.com" }));
 });
@@ -113,11 +113,11 @@ describe("la bibliothèque sur pCloud", () => {
     const cloud = fakePcloud({ "/Satie/Gnossienne.prisma": CLAIR });
     vi.stubGlobal("fetch", cloud.fetch);
     const { pcloudLibrary } = await import("../pcloudLibrary.ts");
-    const [f] = await pcloudLibrary().files();
-    await f.file.write(CLAIR + "\n");
+    const [entry] = await pcloudLibrary().files();
+    await entry.file.write(CLAIR + "\n");
     expect(cloud.files.get("/Satie/Gnossienne.prisma")!.text).toBe(CLAIR + "\n");
     const before = cloud.calls.length;
-    expect(await f.file.text()).toBe(CLAIR + "\n");
+    expect(await entry.file.text()).toBe(CLAIR + "\n");
     expect(cloud.calls.length).toBe(before);
   });
 
@@ -139,15 +139,15 @@ describe("la bibliothèque sur pCloud", () => {
     const cloud = fakePcloud({ "/Au clair.prisma": CLAIR });
     vi.stubGlobal("fetch", cloud.fetch);
     const { pcloudLibrary } = await import("../pcloudLibrary.ts");
-    const [f] = await pcloudLibrary().files();
-    expect(await f.file.text()).toBe(CLAIR);
+    const [entry] = await pcloudLibrary().files();
+    expect(await entry.file.text()).toBe(CLAIR);
     expect(cloud.calls).toEqual(["listfolder", "relais", "getfilelink"]);
   });
 
   it("le relais ne joint que pCloud, et rend ses erreurs telles quelles", async () => {
     const { pcloudFile } = await import("../../../server/pcloudFile.ts");
-    const asked = (q: string, token = "jeton") =>
-      pcloudFile(new Request(`https://prisma.test/api/pcloud-file?${q}`, { headers: { "x-pcloud-token": token } }));
+    const asked = (query: string, token = "jeton") =>
+      pcloudFile(new Request(`https://prisma.test/api/pcloud-file?${query}`, { headers: { "x-pcloud-token": token } }));
     expect((await asked("host=evil.example&fileid=1")).status).toBe(400);
     expect((await asked("host=eapi.pcloud.com&fileid=../1")).status).toBe(400);
     expect((await asked("host=eapi.pcloud.com&fileid=1", "")).status).toBe(400);

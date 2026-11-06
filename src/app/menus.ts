@@ -29,26 +29,26 @@ type Ctx = {
   guide: { shown: boolean; toggle: () => void };
 };
 
-export function appMenus(c: Ctx): MenuDef[] {
-  const { view } = c;
+export function appMenus(ctx: Ctx): MenuDef[] {
+  const { view } = ctx;
   const focused = view.fit === "focus";
   return [
     {
       label: "Fichier",
       items: [
-        { label: "Nouveau…", onSelect: c.newFile },
-        { label: "Ouvrir…", onSelect: c.openFile, shortcut: "Ctrl+O" },
-        { label: "Bibliothèque", onSelect: c.library.toggle, checked: c.library.shown, shortcut: "Ctrl+B" },
+        { label: "Nouveau…", onSelect: ctx.newFile },
+        { label: "Ouvrir…", onSelect: ctx.openFile, shortcut: "Ctrl+O" },
+        { label: "Bibliothèque", onSelect: ctx.library.toggle, checked: ctx.library.shown, shortcut: "Ctrl+B" },
         "separator",
-        { label: "Enregistrer", onSelect: () => c.save(false), shortcut: "Ctrl+S" },
-        { label: "Enregistrer sous…", onSelect: () => c.save(true), shortcut: "Ctrl+Maj+S" },
-        { label: "Enregistrer dans la bibliothèque", onSelect: c.saveToLibrary },
-        { label: "Exporter en MusicXML…", onSelect: c.exportFile },
+        { label: "Enregistrer", onSelect: () => ctx.save(false), shortcut: "Ctrl+S" },
+        { label: "Enregistrer sous…", onSelect: () => ctx.save(true), shortcut: "Ctrl+Maj+S" },
+        { label: "Enregistrer dans la bibliothèque", onSelect: ctx.saveToLibrary },
+        { label: "Exporter en MusicXML…", onSelect: ctx.exportFile },
         "separator",
-        { label: "Partager par un lien", onSelect: c.share },
-        { label: "Importer un lien…", onSelect: c.importLink },
+        { label: "Partager par un lien", onSelect: ctx.share },
+        { label: "Importer un lien…", onSelect: ctx.importLink },
         "separator",
-        { label: "Recharger", onSelect: () => c.reload?.(), disabled: !c.reload },
+        { label: "Recharger", onSelect: () => ctx.reload?.(), disabled: !ctx.reload },
         "separator",
         // le site qui présente Prisma, autour de l'application (app/) ; le navigateur prévient
         // avant de quitter un morceau aux modifications non enregistrées
@@ -58,50 +58,50 @@ export function appMenus(c: Ctx): MenuDef[] {
     {
       label: "Partition",
       items: [
-        { label: "Mettre en page", onSelect: c.engrave, shortcut: "Ctrl+Entrée" },
-        { label: "Mettre en page automatiquement", onSelect: c.autoEngrave.toggle, checked: c.autoEngrave.on },
-        { label: "Options", onSelect: c.options.toggle, checked: c.options.shown },
+        { label: "Mettre en page", onSelect: ctx.engrave, shortcut: "Ctrl+Entrée" },
+        { label: "Mettre en page automatiquement", onSelect: ctx.autoEngrave.toggle, checked: ctx.autoEngrave.on },
+        { label: "Options", onSelect: ctx.options.toggle, checked: ctx.options.shown },
         "separator",
-        { label: "Convertir pour la guitare ou la basse…", onSelect: c.convert },
+        { label: "Convertir pour la guitare ou la basse…", onSelect: ctx.convert },
         "separator",
-        { label: "Imprimer…", onSelect: () => window.print(), shortcut: "Ctrl+P", disabled: !c.canPrint },
+        { label: "Imprimer…", onSelect: () => window.print(), shortcut: "Ctrl+P", disabled: !ctx.canPrint },
       ],
     },
     {
       label: "Affichage",
       items: [
-        { label: "Éditeur", onSelect: c.editor.toggle, checked: c.editor.on, shortcut: "Ctrl+E" },
-        { label: "Piste de lecture", onSelect: () => c.setView({ progress: !view.progress }), checked: view.progress },
-        { label: "Plein écran", onSelect: c.fullScreen.toggle, checked: c.fullScreen.on, shortcut: "F11" },
+        { label: "Éditeur", onSelect: ctx.editor.toggle, checked: ctx.editor.on, shortcut: "Ctrl+E" },
+        { label: "Piste de lecture", onSelect: () => ctx.setView({ progress: !view.progress }), checked: view.progress },
+        { label: "Plein écran", onSelect: ctx.fullScreen.toggle, checked: ctx.fullScreen.on, shortcut: "F11" },
         "separator",
-        { label: "Zoom avant", onSelect: () => c.zoomBy(1), shortcut: "Ctrl++", disabled: view.zoom >= ZOOMS[ZOOMS.length - 1] || focused },
-        { label: "Zoom arrière", onSelect: () => c.zoomBy(-1), shortcut: "Ctrl+−", disabled: view.zoom <= ZOOMS[0] || focused },
+        { label: "Zoom avant", onSelect: () => ctx.zoomBy(1), shortcut: "Ctrl++", disabled: view.zoom >= ZOOMS[ZOOMS.length - 1] || focused },
+        { label: "Zoom arrière", onSelect: () => ctx.zoomBy(-1), shortcut: "Ctrl+−", disabled: view.zoom <= ZOOMS[0] || focused },
         {
           label: `Taille normale${view.zoom !== 1 ? ` (zoom ${Math.round(view.zoom * 100)} %)` : ""}`,
-          onSelect: () => c.setView({ zoom: 1 }),
+          onSelect: () => ctx.setView({ zoom: 1 }),
           shortcut: "Ctrl+0",
           disabled: view.zoom === 1 || focused,
         },
         "separator",
         {
           label: "Ajuster à la hauteur",
-          onSelect: () => c.setView({ fit: "height", zoom: 1 }),
+          onSelect: () => ctx.setView({ fit: "height", zoom: 1 }),
           checked: view.fit === "height" && view.zoom === 1,
         },
         {
           label: "Ajuster à la largeur",
-          onSelect: () => c.setView({ fit: "width", zoom: 1 }),
+          onSelect: () => ctx.setView({ fit: "width", zoom: 1 }),
           checked: view.fit === "width" && view.zoom === 1,
         },
-        { label: "Lecture focalisée : deux systèmes", onSelect: () => c.setView({ fit: "focus", zoom: 1 }), checked: view.fit === "focus" },
+        { label: "Lecture focalisée : deux systèmes", onSelect: () => ctx.setView({ fit: "focus", zoom: 1 }), checked: view.fit === "focus" },
       ],
     },
     {
       label: "Aide",
       items: [
-        { label: "Référence", onSelect: c.guide.toggle, checked: c.guide.shown },
+        { label: "Référence", onSelect: ctx.guide.toggle, checked: ctx.guide.shown },
         "separator",
-        { label: "À propos…", onSelect: c.about },
+        { label: "À propos…", onSelect: ctx.about },
       ],
     },
   ];

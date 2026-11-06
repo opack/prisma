@@ -35,13 +35,13 @@ const isRuleLine = (line: string) => {
 /** Les barres d'une règle de comptage. */
 export function separators(ruler: string): Sep[] {
   const seps: Sep[] = [];
-  for (let i = ruler.indexOf("|"); i >= 0 && i < ruler.length;) {
-    if (ruler[i] === "|" || (ruler[i] === ":" && ruler[i + 1] === "|")) {
-      let j = i;
-      while (j < ruler.length && (ruler[j] === "|" || ruler[j] === ":")) j++;
-      seps.push({ from: i, to: j, text: ruler.slice(i, j) });
-      i = j;
-    } else i++;
+  for (let index = ruler.indexOf("|"); index >= 0 && index < ruler.length;) {
+    if (ruler[index] === "|" || (ruler[index] === ":" && ruler[index + 1] === "|")) {
+      let innerIndex = index;
+      while (innerIndex < ruler.length && (ruler[innerIndex] === "|" || ruler[innerIndex] === ":")) innerIndex++;
+      seps.push({ from: index, to: innerIndex, text: ruler.slice(index, innerIndex) });
+      index = innerIndex;
+    } else index++;
   }
   return seps;
 }
@@ -50,42 +50,42 @@ export function separators(ruler: string): Sep[] {
 export function cases(ruler: string): Case[] {
   const seps = separators(ruler);
   const out: Case[] = [];
-  for (let k = 0; k + 1 < seps.length; k++) {
-    const from = seps[k].to,
-      to = seps[k + 1].from;
-    const labels = [...ruler.slice(from, to).matchAll(/\S+/g)].map((m) => from + m.index);
+  for (let separator = 0; separator + 1 < seps.length; separator++) {
+    const from = seps[separator].to,
+      to = seps[separator + 1].from;
+    const labels = [...ruler.slice(from, to).matchAll(/\S+/g)].map((match) => from + match.index);
     if (!labels.length) continue;
     labels[0] = from;
-    labels.forEach((start, i) => out.push({ start, end: i + 1 < labels.length ? labels[i + 1] : to, bar: i + 1 === labels.length }));
+    labels.forEach((start, index) => out.push({ start, end: index + 1 < labels.length ? labels[index + 1] : to, bar: index + 1 === labels.length }));
   }
   return out;
 }
 
 /** La case d'une colonne. */
-export const caseAt = (ruler: string, col: number) => cases(ruler).find((c) => col >= c.start && col < c.end);
+export const caseAt = (ruler: string, col: number) => cases(ruler).find((candidate) => col >= candidate.start && col < candidate.end);
 
 /**
  * Le système de la ligne L : les lignes non vides autour d'elle, dont une règle de comptage. Une
  * ligne vide qu'on vient d'ouvrir sous une ligne du système en fait partie (sinon elle le coupe).
  */
-export function systemOf(lines: string[], L: number, body = 0): System | undefined {
-  const blank = (k: number) => !lines[k]?.trim();
-  let top = L,
-    bottom = L;
-  if (blank(L)) {
-    if (L === 0 || blank(L - 1)) return undefined;
-    top = L - 1;
+export function systemOf(lines: string[], lineIndex: number, body = 0): System | undefined {
+  const blank = (index: number) => !lines[index]?.trim();
+  let top = lineIndex,
+    bottom = lineIndex;
+  if (blank(lineIndex)) {
+    if (lineIndex === 0 || blank(lineIndex - 1)) return undefined;
+    top = lineIndex - 1;
   }
   while (top > body && !blank(top - 1)) top--;
   while (bottom + 1 < lines.length && !blank(bottom + 1)) bottom++;
-  for (let k = top; k <= bottom; k++) if (isRuler(lines[k])) return { first: top, last: bottom, ruler: k };
+  for (let index = top; index <= bottom; index++) if (isRuler(lines[index])) return { first: top, last: bottom, ruler: index };
   return undefined;
 }
 
 /** Une ligne prolongée jusqu'à la colonne col, avec les barres de la règle là où elle en a. */
 function padTo(line: string, col: number, ruler: string) {
   let out = line;
-  for (let c = line.length; c < col; c++) out += ruler[c] === "|" ? "|" : " ";
+  for (let column = line.length; column < col; column++) out += ruler[column] === "|" ? "|" : " ";
   return out;
 }
 
@@ -98,7 +98,7 @@ const ruleChar = (line: string) => line.match(/[─━\-=═]/)?.[0] ?? "─";
  * à part.
  */
 function marksOf(line: string) {
-  if (/^@[lc](\s|$)/.test(line)) return [...line.matchAll(/\S+/g)].filter((m) => m.index > 0).map((m) => ({ col: m.index, text: m[0] }));
+  if (/^@[lc](\s|$)/.test(line)) return [...line.matchAll(/\S+/g)].filter((match) => match.index > 0).map((match) => ({ col: match.index, text: match[0] }));
   return markTokens(line);
 }
 
@@ -107,46 +107,46 @@ function marksOf(line: string) {
  * indication à cheval sur x n'est jamais coupée : un soufflet, une liaison ou un trait de
  * prolongation s'allonge ; un texte garde son début et l'espace va après lui.
  */
-function widen(line: string, x: number, n: number): string {
-  if (line.length <= x) return line;
+function widen(line: string, column: number, count: number): string {
+  if (line.length <= column) return line;
   if (isRuleLine(line)) {
     // au milieu du nom d'une partie, écrit sur le trait : le trait s'allonge après le nom
-    const h = ruleChar(line);
-    let at = x;
-    if (/[^─━=═\-┼╪+|]/.test(line[x - 1] ?? "") && /[^─━=═\-┼╪+|]/.test(line[x]))
+    const ruleCharacter = ruleChar(line);
+    let at = column;
+    if (/[^─━=═\-┼╪+|]/.test(line[column - 1] ?? "") && /[^─━=═\-┼╪+|]/.test(line[column]))
       while (at < line.length && /[^─━=═\-┼╪+|]/.test(line[at])) at++;
-    return line.slice(0, at) + h.repeat(n) + line.slice(at);
+    return line.slice(0, at) + ruleCharacter.repeat(count) + line.slice(at);
   }
   if (line.startsWith("@")) {
-    const t = marksOf(line).find((m) => m.col < x && x < m.col + m.text.length);
-    if (t) {
-      if (line[x - 1] === "-" || line[x] === "-") return line.slice(0, x) + "-".repeat(n) + line.slice(x);
-      const end = t.col + t.text.length;
-      return (line.slice(0, end) + " ".repeat(n) + line.slice(end)).trimEnd();
+    const straddling = marksOf(line).find((candidate) => candidate.col < column && column < candidate.col + candidate.text.length);
+    if (straddling) {
+      if (line[column - 1] === "-" || line[column] === "-") return line.slice(0, column) + "-".repeat(count) + line.slice(column);
+      const end = straddling.col + straddling.text.length;
+      return (line.slice(0, end) + " ".repeat(count) + line.slice(end)).trimEnd();
     }
   }
-  return line.slice(0, x) + " ".repeat(n) + line.slice(x);
+  return line.slice(0, column) + " ".repeat(count) + line.slice(column);
 }
 
 /**
  * Écrit content dans la case c de la ligne L : il remplace ce que la case contenait, une espace au
  * moins le sépare de la case suivante ; la case s'élargit sur tout le système s'il le faut.
  */
-export function writeCase(lines: string[], sys: System, L: number, c: Case, content: string): Rewrite {
+export function writeCase(lines: string[], sys: System, lineIndex: number, target: Case, content: string): Rewrite {
   const ruler = lines[sys.ruler];
-  const span = c.end - c.start;
+  const span = target.end - target.start;
   const extra = Math.max(0, content.length + 1 - span);
   const out = new Map<number, string>();
-  for (let k = sys.first; k <= sys.last; k++) {
-    if (k === L || !extra) continue;
-    const w = widen(lines[k], c.end, extra);
-    if (w !== lines[k]) out.set(k, w);
+  for (let index = sys.first; index <= sys.last; index++) {
+    if (index === lineIndex || !extra) continue;
+    const widened = widen(lines[index], target.end, extra);
+    if (widened !== lines[index]) out.set(index, widened);
   }
-  const line = padTo(lines[L], c.start, ruler);
-  const rest = line.slice(c.end);
+  const line = padTo(lines[lineIndex], target.start, ruler);
+  const rest = line.slice(target.end);
   const cell = rest ? content.padEnd(span + extra) : content;
-  out.set(L, (line.slice(0, c.start) + cell + rest).trimEnd());
-  return { lines: out, caret: { line: L, col: c.start + content.length } };
+  out.set(lineIndex, (line.slice(0, target.start) + cell + rest).trimEnd());
+  return { lines: out, caret: { line: lineIndex, col: target.start + content.length } };
 }
 
 /**
@@ -154,21 +154,21 @@ export function writeCase(lines: string[], sys: System, L: number, c: Case, cont
  * mot de old caractères qui s'y trouvait. Comme une note, l'accord tient dans sa case : trop long,
  * la case s'élargit sur tout le système, et les accords suivants restent sur la leur.
  */
-export function writeChord(lines: string[], sys: System, L: number, start: number, old: number, chord: string): Rewrite {
-  const c = caseAt(lines[sys.ruler], start)!;
+export function writeChord(lines: string[], sys: System, lineIndex: number, start: number, old: number, chord: string): Rewrite {
+  const target = caseAt(lines[sys.ruler], start)!;
   // le mot d'avant s'efface (même s'il débordait de sa case), puis l'accord s'écrit
-  const blank = lines[L].padEnd(Math.max(c.end, start + old));
+  const blank = lines[lineIndex].padEnd(Math.max(target.end, start + old));
   const line = blank.slice(0, start) + " ".repeat(old) + blank.slice(start + old);
-  const span = c.end - c.start;
+  const span = target.end - target.start;
   const extra = Math.max(0, chord.length + 1 - span);
   const out = new Map<number, string>();
-  for (let i = sys.first; i <= sys.last && extra; i++) {
-    if (i === L) continue;
-    const w = widen(lines[i], c.end, extra);
-    if (w !== lines[i]) out.set(i, w);
+  for (let index = sys.first; index <= sys.last && extra; index++) {
+    if (index === lineIndex) continue;
+    const widened = widen(lines[index], target.end, extra);
+    if (widened !== lines[index]) out.set(index, widened);
   }
-  out.set(L, (line.slice(0, start) + chord.padEnd(span + extra) + line.slice(c.end)).trimEnd());
-  return { lines: out, caret: { line: L, col: start + chord.length } };
+  out.set(lineIndex, (line.slice(0, start) + chord.padEnd(span + extra) + line.slice(target.end)).trimEnd());
+  return { lines: out, caret: { line: lineIndex, col: start + chord.length } };
 }
 
 /**
@@ -179,17 +179,17 @@ export function writeChord(lines: string[], sys: System, L: number, start: numbe
 export function extendRuler(lines: string[], sys: System, text: string): Rewrite {
   const ruler = lines[sys.ruler].trimEnd();
   const out = new Map<number, string>();
-  for (let k = sys.ruler + 1; k <= sys.last; k++) {
-    const l = lines[k].trimEnd();
-    if (l.length < ruler.length || l.trimStart().startsWith("@")) continue;
+  for (let index = sys.ruler + 1; index <= sys.last; index++) {
+    const line = lines[index].trimEnd();
+    if (line.length < ruler.length || line.trimStart().startsWith("@")) continue;
     let add = "";
-    if (isRuleLine(l)) {
-      const h = ruleChar(l);
+    if (isRuleLine(line)) {
+      const ruleCharacter = ruleChar(line);
       // le croisement sous une barre : celui que le trait emploie déjà
-      const cross = l.match(/[┼╪+|]/)?.[0] ?? (/[═=]/.test(l) ? "╪" : "┼");
-      for (const ch of text) add += ch === "|" || ch === ":" ? cross : h;
-    } else for (const ch of text) add += ch === "|" ? "|" : " ";
-    out.set(k, l + add);
+      const cross = line.match(/[┼╪+|]/)?.[0] ?? (/[═=]/.test(line) ? "╪" : "┼");
+      for (const character of text) add += character === "|" || character === ":" ? cross : ruleCharacter;
+    } else for (const character of text) add += character === "|" ? "|" : " ";
+    out.set(index, line + add);
   }
   out.set(sys.ruler, ruler + text);
   return { lines: out, caret: { line: sys.ruler, col: ruler.length + text.length } };
@@ -204,10 +204,10 @@ export function rulerSuffixes(ruler: string, cell: number) {
   let beat = 1;
   if (last.text === "|" && seps.length > 1) {
     const prev = seps[seps.length - 2];
-    const n = Number(ruler.slice(prev.to, last.from).trim().split(/\s+/)[0]);
-    if (Number.isInteger(n)) beat = n + 1;
+    const previous = Number(ruler.slice(prev.to, last.from).trim().split(/\s+/)[0]);
+    if (Number.isInteger(previous)) beat = previous + 1;
   }
-  const pad = (s: string) => s.padEnd(cell);
+  const pad = (text: string) => text.padEnd(cell);
   const one = String(beat);
   const out = [
     { text: pad(one) + "|", label: one, detail: "temps suivant" },
@@ -225,25 +225,25 @@ export function rulerSuffixes(ruler: string, cell: number) {
  * un numéro. Sous une ligne @, aucune ligne de notes ne s'écrit ; au-dessus d'une ligne sans
  * numéro, seule l'octave du dessus convient (un numéro lui volerait cette ligne).
  */
-export function octaveRoom(lines: string[], sys: System, L: number): { same: boolean; octaves: number[] } {
+export function octaveRoom(lines: string[], sys: System, lineIndex: number): { same: boolean; octaves: number[] } {
   const none = { same: false, octaves: [] };
-  const isNote = (l: string) => !!l && !l.startsWith("@") && !l.startsWith("#") && l.includes("|") && !isRuleLine(l) && !isRuler(l);
-  const label = (l: string) => parseOctaveLabel(l.slice(0, l.indexOf("|")).trim());
-  const up = lines[L - 1] ?? "";
+  const isNote = (line: string) => !!line && !line.startsWith("@") && !line.startsWith("#") && line.includes("|") && !isRuleLine(line) && !isRuler(line);
+  const label = (line: string) => parseOctaveLabel(line.slice(0, line.indexOf("|")).trim());
+  const up = lines[lineIndex - 1] ?? "";
   if (up.startsWith("@")) return none;
   let above: number | undefined;
   const same = isNote(up);
-  for (let k = L - 1; k > sys.ruler && isNote(lines[k]); k--) {
-    above = label(lines[k]);
+  for (let index = lineIndex - 1; index > sys.ruler && isNote(lines[index]); index--) {
+    above = label(lines[index]);
     if (above !== undefined) break;
   }
-  const down = L + 1 <= sys.last ? lines[L + 1] : "";
+  const down = lineIndex + 1 <= sys.last ? lines[lineIndex + 1] : "";
   if (isNote(down) && label(down) === undefined) return { same, octaves: [] };
   const below = isNote(down) ? label(down) : undefined;
   const octaves: number[] = [];
-  for (let o = 4; o >= -4; o--) {
-    const abs = o + CENTRAL_OCTAVE;
-    if ((above === undefined || abs < above) && (below === undefined || abs > below)) octaves.push(o);
+  for (let offset = 4; offset >= -4; offset--) {
+    const abs = offset + CENTRAL_OCTAVE;
+    if ((above === undefined || abs < above) && (below === undefined || abs > below)) octaves.push(offset);
   }
   return { same, octaves };
 }
@@ -252,7 +252,7 @@ export function octaveRoom(lines: string[], sys: System, L: number): { same: boo
 export function noteLine(ruler: string, label: string) {
   const pipe = ruler.indexOf("|");
   let out = label.padEnd(pipe);
-  for (let c = pipe; c < ruler.trimEnd().length; c++) out += ruler[c] === "|" ? "|" : " ";
+  for (let column = pipe; column < ruler.trimEnd().length; column++) out += ruler[column] === "|" ? "|" : " ";
   return out;
 }
 
@@ -260,13 +260,13 @@ export function noteLine(ruler: string, label: string) {
  * Les notes qui sonnent dans une colonne d'un système : sur chaque ligne de notes, celle de la case
  * (ou celle qu'une tenue prolonge), à sa hauteur ; de la plus grave à la plus aiguë.
  */
-export function soundingAt(lines: string[], sys: { ruler: number; last: number }, C: number): number[] {
+export function soundingAt(lines: string[], sys: { ruler: number; last: number }, targetColumn: number): number[] {
   const ruler = lines[sys.ruler];
   const first = ruler.indexOf("|");
   const midis: number[] = [];
   let octave: number | undefined;
-  for (let k = sys.ruler + 1; k <= sys.last; k++) {
-    const line = lines[k];
+  for (let index = sys.ruler + 1; index <= sys.last; index++) {
+    const line = lines[index];
     const bar = line.indexOf("|");
     if (line.startsWith("@") || bar < 0 || /^[─━\-=═+┼╪|\s]+$/.test(line.trim())) {
       if (/^[─━\-=═+┼╪|\s]+$/.test(line.trim())) octave = undefined; // un trait : une autre portée
@@ -276,26 +276,26 @@ export function soundingAt(lines: string[], sys: { ruler: number; last: number }
     if (label) octave = parseOctaveLabel(label);
     if (octave === undefined) continue;
     // la case de la colonne, ou, pour une tenue, la case de la note qu'elle prolonge
-    for (let col = C; col > first;) {
-      const c = caseAt(ruler, col);
-      if (!c) break;
+    for (let col = targetColumn; col > first;) {
+      const target = caseAt(ruler, col);
+      if (!target) break;
       const content = line
-        .slice(c.start, c.end)
+        .slice(target.start, target.end)
         .trim()
         .replace(/^(\d+')+/, "");
-      const n = content.match(/^-?(\d+)/);
-      if (n) {
-        const v = Number(n[1]);
-        if (v >= 1 && v <= 12) midis.push(midiOf(octave, v));
+      const match = content.match(/^-?(\d+)/);
+      if (match) {
+        const number = Number(match[1]);
+        if (number >= 1 && number <= 12) midis.push(midiOf(octave, number));
         break;
       }
       if (!content.startsWith("-")) break;
       // la case d'avant, de l'autre côté de sa barre (simple ou double)
-      col = c.start - 1;
+      col = target.start - 1;
       while (col > first && !caseAt(ruler, col)) col--;
     }
   }
-  return midis.sort((a, b) => a - b);
+  return midis.sort((lower, higher) => lower - higher);
 }
 
 /**
@@ -310,15 +310,15 @@ export function soundingAt(lines: string[], sys: { ruler: number; last: number }
 export function writeMark(
   lines: string[],
   sys: System,
-  L: number,
+  lineIndex: number,
   start: number,
   old: number,
   mark: { head: string; fill?: string; tail?: string },
 ): Rewrite {
   const all = cases(lines[sys.ruler]);
-  const k = all.findIndex((x) => start >= x.start && start < x.end);
-  const next = all[k + 1];
-  const line = lines[L].padEnd(start + old);
+  const startIndex = all.findIndex((candidate) => start >= candidate.start && start < candidate.end);
+  const next = all[startIndex + 1];
+  const line = lines[lineIndex].padEnd(start + old);
   const erased = line.slice(0, start) + " ".repeat(old) + line.slice(start + old);
   if (mark.fill === undefined) {
     const word = mark.head;
@@ -329,25 +329,25 @@ export function writeMark(
       // l'indication suivante est trop près : les cases s'élargissent juste avant elle, sur tout le système
       const at = start + busy;
       // à la barre qui ferme la case d'avant (comme pour une note), pour que les temps restent alignés
-      const j = all.findIndex((x) => at >= x.start && at < x.end);
-      const b = j > k ? all[j - 1].end : all[k].end;
+      const atIndex = all.findIndex((candidate) => at >= candidate.start && at < candidate.end);
+      const barEnd = atIndex > startIndex ? all[atIndex - 1].end : all[startIndex].end;
       const extra = word.length + 1 - (at - start);
-      for (let i = sys.first; i <= sys.last; i++) {
-        if (i === L) continue;
-        const w = widen(lines[i], b, extra);
-        if (w !== lines[i]) out.set(i, w);
+      for (let index = sys.first; index <= sys.last; index++) {
+        if (index === lineIndex) continue;
+        const widened = widen(lines[index], barEnd, extra);
+        if (widened !== lines[index]) out.set(index, widened);
       }
-      target = erased.slice(0, b) + " ".repeat(extra) + erased.slice(b);
+      target = erased.slice(0, barEnd) + " ".repeat(extra) + erased.slice(barEnd);
     }
-    out.set(L, (target.padEnd(start).slice(0, start) + word + target.slice(start + word.length)).trimEnd());
-    return { lines: out, caret: { line: L, col: start + word.length } };
+    out.set(lineIndex, (target.padEnd(start).slice(0, start) + word + target.slice(start + word.length)).trimEnd());
+    return { lines: out, caret: { line: lineIndex, col: start + word.length } };
   }
   // jusqu'à la case suivante (sa première colonne pour une fin, sa dernière sinon), sans toucher au mot suivant
-  let end = next ? (mark.tail ? next.start + 1 : next.end - 1) : all[k].end - 1;
+  let end = next ? (mark.tail ? next.start + 1 : next.end - 1) : all[startIndex].end - 1;
   const busy = erased.slice(start).search(/\S/);
   if (busy >= 0) end = Math.min(end, start + busy - 1);
   const room = Math.max(end - start, mark.head.length + (mark.tail?.length ?? 0) + 1);
   const body = mark.head + mark.fill.repeat(Math.max(1, room - mark.head.length - (mark.tail?.length ?? 0))) + (mark.tail ?? "");
-  const out = new Map<number, string>([[L, (erased.padEnd(start).slice(0, start) + body + erased.slice(start + body.length)).trimEnd()]]);
-  return { lines: out, caret: { line: L, col: start + body.length } };
+  const out = new Map<number, string>([[lineIndex, (erased.padEnd(start).slice(0, start) + body + erased.slice(start + body.length)).trimEnd()]]);
+  return { lines: out, caret: { line: lineIndex, col: start + body.length } };
 }

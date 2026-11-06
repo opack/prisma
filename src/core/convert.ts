@@ -32,43 +32,43 @@ const DROPPED_COST = 8;
  */
 export function convertToStrings(score: Score, part: number, options: ConversionOptions): { score: Score; report: ConversionReport } {
   const { instrument, tuning = "standard", capo = 0 } = options;
-  const strs = stringsOf(instrument, tuning, capo);
-  if (!strs) throw new Error(`accordage « ${tuning} » inconnu pour ${instrument}`);
-  if (options.octave !== undefined) return convertAt(score, part, instrument, strs, options.octave).result;
-  const tries = ([0, -1] as const).map((o) => convertAt(score, part, instrument, strs, o));
-  return tries.reduce((a, b) => (b.cost < a.cost ? b : a)).result;
+  const strings = stringsOf(instrument, tuning, capo);
+  if (!strings) throw new Error(`accordage « ${tuning} » inconnu pour ${instrument}`);
+  if (options.octave !== undefined) return convertAt(score, part, instrument, strings, options.octave).result;
+  const tries = ([0, -1] as const).map((octave) => convertAt(score, part, instrument, strings, octave));
+  return tries.reduce((first, second) => (second.cost < first.cost ? second : first)).result;
 }
 
-function convertAt(score: Score, part: number, instrument: InstrumentName, strs: Strings, octave: 0 | -1) {
+function convertAt(score: Score, part: number, instrument: InstrumentName, strings: Strings, octave: 0 | -1) {
   const first = firstStaves(score.parts)[part];
   const count = score.parts[part].staves;
   // les portées de la partie n'en font qu'une ; celles qui suivent remontent d'autant
-  const staff = (s: Staff) => (s < first ? s : s < first + count ? first : s - (count - 1));
-  const mine = (s: Staff) => s >= first && s < first + count;
-  const low = strs.open[strs.open.length - 1] + strs.capo;
-  const high = strs.open[0] + strs.capo + MAX_FRET;
+  const staff = (staffIndex: Staff) => (staffIndex < first ? staffIndex : staffIndex < first + count ? first : staffIndex - (count - 1));
+  const mine = (staffIndex: Staff) => staffIndex >= first && staffIndex < first + count;
+  const low = strings.open[strings.open.length - 1] + strings.capo;
+  const high = strings.open[0] + strings.capo + MAX_FRET;
   // une note hors de la tessiture passe à l'octave voisine
   const fold = (midi: number) => {
-    let m = midi + 12 * octave;
-    while (m < low) m += 12;
-    while (m > high) m -= 12;
-    return m;
+    let folded = midi + 12 * octave;
+    while (folded < low) folded += 12;
+    while (folded > high) folded -= 12;
+    return folded;
   };
   let moved = 0;
   let dropped = 0;
   const notes: Note[] = [];
-  for (const n of score.notes) {
-    if (!mine(n.staff)) {
-      notes.push({ ...n, staff: staff(n.staff) });
+  for (const original of score.notes) {
+    if (!mine(original.staff)) {
+      notes.push({ ...original, staff: staff(original.staff) });
       continue;
     }
-    const midi = fold(n.midi);
-    if (midi !== n.midi + 12 * octave) moved++;
-    const { string: _, ...rest } = n;
+    const midi = fold(original.midi);
+    if (midi !== original.midi + 12 * octave) moved++;
+    const { string: _, ...rest } = original;
     // la voisine de trille suit sa note
-    const note: Note = { ...rest, staff: first, midi, ...(n.trill !== undefined ? { trill: n.trill + midi - n.midi } : {}) };
+    const note: Note = { ...rest, staff: first, midi, ...(original.trill !== undefined ? { trill: original.trill + midi - original.midi } : {}) };
     // la même note jouée par les deux mains (ou ramenée à la même octave) : une seule fois
-    const twin = notes.find((m) => m.staff === first && m.midi === midi && m.start === note.start);
+    const twin = notes.find((other) => other.staff === first && other.midi === midi && other.start === note.start);
     if (twin) {
       twin.end = Math.max(twin.end, note.end);
       dropped++;
@@ -77,56 +77,56 @@ function convertAt(score: Score, part: number, instrument: InstrumentName, strs:
     notes.push(note);
   }
   const fingering = fingerStrings(
-    notes.filter((n) => n.staff === first),
-    strs,
+    notes.filter((note) => note.staff === first),
+    strings,
   );
   const lost = new Set(fingering.dropped);
   dropped += lost.size;
-  const kept = notes.filter((n) => !lost.has(n));
+  const kept = notes.filter((note) => !lost.has(note));
   // petites notes : sur la corde de leur note, sinon sur la plus aiguë qui les joue
-  const plays = (s: number, midi: number) => fretOf(strs, s, midi) >= 0 && fretOf(strs, s, midi) <= MAX_FRET;
-  const graces = score.graces.flatMap((g) => {
-    if (!mine(g.staff)) return [{ ...g, staff: staff(g.staff) }];
-    const midi = fold(g.midi);
-    const main = kept.find((n) => n.staff === first && n.start === g.t && plays(n.string!, midi));
-    const string = main?.string ?? strs.open.findIndex((_, k) => plays(k + 1, midi)) + 1;
-    return string > 0 ? [{ ...g, staff: first, midi, string }] : [];
+  const plays = (string: number, midi: number) => fretOf(strings, string, midi) >= 0 && fretOf(strings, string, midi) <= MAX_FRET;
+  const graces = score.graces.flatMap((grace) => {
+    if (!mine(grace.staff)) return [{ ...grace, staff: staff(grace.staff) }];
+    const midi = fold(grace.midi);
+    const main = kept.find((note) => note.staff === first && note.start === grace.t && plays(note.string!, midi));
+    const string = main?.string ?? strings.open.findIndex((_, index) => plays(index + 1, midi)) + 1;
+    return string > 0 ? [{ ...grace, staff: first, midi, string }] : [];
   });
   // ce qui est attaché à une portée suit sa portée ; une fois par instant dans la partie réunie
-  const unique = <T extends { staff: Staff }>(list: T[], key: (x: T) => string) => {
+  const unique = <T extends { staff: Staff }>(list: T[], key: (item: T) => string) => {
     const seen = new Set<string>();
-    return list.flatMap((x) => {
-      const y = { ...x, staff: staff(x.staff) };
-      const k = y.staff + "|" + key(y);
-      if (seen.has(k)) return [];
-      seen.add(k);
-      return [y];
+    return list.flatMap((item) => {
+      const restaffed = { ...item, staff: staff(item.staff) };
+      const seenKey = restaffed.staff + "|" + key(restaffed);
+      if (seen.has(seenKey)) return [];
+      seen.add(seenKey);
+      return [restaffed];
     });
   };
   const name = score.parts[part].name;
   // la partie prend le nom de l'instrument, sauf si le sien le dit déjà
   const named = name && guessInstrument(name) === instrument ? name : instrument === "guitar" ? "Guitare" : "Basse";
-  const parts = score.parts.map((p, i) =>
-    i === part ? { name: named, staves: 1, ...(guessInstrument(named) !== instrument ? { instrument } : {}), strings: strs } : p,
+  const parts = score.parts.map((other, index) =>
+    index === part ? { name: named, staves: 1, ...(guessInstrument(named) !== instrument ? { instrument } : {}), strings } : other,
   );
   const converted: Score = {
     ...score,
     parts,
     notes: settleSlides(sortNotes(kept)),
-    graces: unique(graces, (g) => `${g.t}|${g.slot}|${g.midi}`),
-    expressions: unique(score.expressions, (e) => `${e.t}|${e.text}`),
-    hairpins: unique(score.hairpins, (h) => `${h.start}|${h.kind}`),
-    effects: unique(score.effects, (e) => `${e.start}|${e.kind}`),
-    slurs: unique(score.slurs, (s) => `${s.start}|${s.end}`),
-    lyrics: unique(score.lyrics, (l) => `${l.t}|${l.verse}`),
-    articulations: unique(score.articulations, (a) => `${a.t}|${a.kind}`),
+    graces: unique(graces, (grace) => `${grace.t}|${grace.slot}|${grace.midi}`),
+    expressions: unique(score.expressions, (expression) => `${expression.t}|${expression.text}`),
+    hairpins: unique(score.hairpins, (hairpin) => `${hairpin.start}|${hairpin.kind}`),
+    effects: unique(score.effects, (effect) => `${effect.start}|${effect.kind}`),
+    slurs: unique(score.slurs, (slur) => `${slur.start}|${slur.end}`),
+    lyrics: unique(score.lyrics, (lyric) => `${lyric.t}|${lyric.verse}`),
+    articulations: unique(score.articulations, (articulation) => `${articulation.t}|${articulation.kind}`),
     arpeggios: score.arpeggios
-      .map((a) => (a.staff === undefined ? a : { ...a, staff: staff(a.staff) }))
-      .filter((a, i, all) => all.findIndex((b) => b.t === a.t && b.staff === a.staff) === i),
+      .map((arpeggio) => (arpeggio.staff === undefined ? arpeggio : { ...arpeggio, staff: staff(arpeggio.staff) }))
+      .filter((arpeggio, index, all) => all.findIndex((other) => other.t === arpeggio.t && other.staff === arpeggio.staff) === index),
     // la pédale de résonance est celle du piano : la guitare laisse sonner par la tenue
-    pedals: score.pedals.filter((p) => !mine(p.staff)).map((p) => ({ ...p, staff: staff(p.staff) })),
-    pedalTexts: score.pedalTexts.filter((p) => !mine(p.staff)).map((p) => ({ ...p, staff: staff(p.staff) })),
+    pedals: score.pedals.filter((pedal) => !mine(pedal.staff)).map((pedal) => ({ ...pedal, staff: staff(pedal.staff) })),
+    pedalTexts: score.pedalTexts.filter((pedalText) => !mine(pedalText.staff)).map((text) => ({ ...text, staff: staff(text.staff) })),
   };
-  const report: ConversionReport = { octave, moved, dropped, notes: kept.filter((n) => n.staff === first).length };
+  const report: ConversionReport = { octave, moved, dropped, notes: kept.filter((note) => note.staff === first).length };
   return { result: { score: converted, report }, cost: fingering.cost + moved * MOVED_COST + dropped * DROPPED_COST };
 }

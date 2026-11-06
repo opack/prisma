@@ -23,8 +23,8 @@ function pcloudFile(folder: string, name: string, known?: Known, written?: (id: 
     where: "sur pCloud",
     text: async () => {
       if (!id) {
-        const r = await call<{ metadata: PcloudItem }>("stat", { path: join(folder, name) });
-        id = { fileid: r.metadata.fileid!, modified: Date.parse(r.metadata.modified) };
+        const response = await call<{ metadata: PcloudItem }>("stat", { path: join(folder, name) });
+        id = { fileid: response.metadata.fileid!, modified: Date.parse(response.metadata.modified) };
       }
       const key = `${id.fileid}:${id.modified}`;
       const cached = texts.get(key);
@@ -53,20 +53,20 @@ function pcloudFolder(path: string, children?: Map<string, Known>): StoredFolder
         return known ? pcloudFile(path, name, known) : null;
       }
       try {
-        const r = await call<{ metadata: PcloudItem }>("stat", { path: join(path, name) });
-        return r.metadata.isfolder
+        const response = await call<{ metadata: PcloudItem }>("stat", { path: join(path, name) });
+        return response.metadata.isfolder
           ? null
-          : pcloudFile(path, name, { fileid: r.metadata.fileid!, modified: Date.parse(r.metadata.modified) });
-      } catch (e) {
-        if (e instanceof PcloudError && NOT_FOUND.has(e.code)) return null;
-        throw e;
+          : pcloudFile(path, name, { fileid: response.metadata.fileid!, modified: Date.parse(response.metadata.modified) });
+      } catch (error) {
+        if (error instanceof PcloudError && NOT_FOUND.has(error.code)) return null;
+        throw error;
       }
     },
     // un fichier créé, une fois écrit : le dossier le compte, pour qu'on le retrouve sans le redemander
     create: async (name) => pcloudFile(path, name, children?.get(name), (id) => children?.set(name, id)),
     remove: async (name) => {
-      await call("deletefile", { path: join(path, name) }).catch((e) => {
-        if (!(e instanceof PcloudError && NOT_FOUND.has(e.code))) throw e;
+      await call("deletefile", { path: join(path, name) }).catch((error) => {
+        if (!(error instanceof PcloudError && NOT_FOUND.has(error.code))) throw error;
       });
       children?.delete(name);
     },
@@ -90,31 +90,31 @@ export function pcloudLibrary(): LibrarySource {
       return false;
     },
     files: async () => {
-      const r = await call<{ metadata: PcloudItem }>("listfolder", { path: "/", recursive: 1 });
+      const response = await call<{ metadata: PcloudItem }>("listfolder", { path: "/", recursive: 1 });
       const out: SourceFile[] = [];
       const walk = (item: PcloudItem, folder: string, path: string) => {
         const items = item.contents ?? [];
         const children = new Map(
-          items.filter((c) => !c.isfolder).map((c) => [c.name, { fileid: c.fileid!, modified: Date.parse(c.modified) }]),
+          items.filter((child) => !child.isfolder).map((child) => [child.name, { fileid: child.fileid!, modified: Date.parse(child.modified) }]),
         );
         const dir = pcloudFolder(path, children);
-        for (const c of items) {
-          if (c.name.startsWith(".")) continue;
-          if (c.isfolder) walk(c, folder ? `${folder}/${c.name}` : c.name, `${path}/${c.name}`);
-          else if (kindOf(c.name)) {
-            const known = children.get(c.name)!;
+        for (const child of items) {
+          if (child.name.startsWith(".")) continue;
+          if (child.isfolder) walk(child, folder ? `${folder}/${child.name}` : child.name, `${path}/${child.name}`);
+          else if (kindOf(child.name)) {
+            const known = children.get(child.name)!;
             out.push({
-              path: folder ? `${folder}/${c.name}` : c.name,
+              path: folder ? `${folder}/${child.name}` : child.name,
               folder,
-              name: c.name,
+              name: child.name,
               modified: known.modified,
-              file: pcloudFile(path, c.name, known),
+              file: pcloudFile(path, child.name, known),
               dir,
             });
           }
         }
       };
-      walk(r.metadata, "", "");
+      walk(response.metadata, "", "");
       return out;
     },
   };

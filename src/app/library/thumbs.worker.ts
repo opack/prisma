@@ -7,8 +7,8 @@ import type { EngraveOptions } from "../score/render.ts";
 
 export type ThumbRequest = { id: number; text: string; kind: "prisma" | "musicxml"; name: string; options: EngraveOptions };
 
-self.onmessage = (e: MessageEvent<ThumbRequest>) => {
-  const { id, text, kind, name, options } = e.data;
+self.onmessage = (messageEvent: MessageEvent<ThumbRequest>) => {
+  const { id, text, kind, name, options } = messageEvent.data;
   try {
     const score = scoreOf(text, kind, name);
     const pages = engravePages(score, options);

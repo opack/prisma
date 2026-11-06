@@ -12,7 +12,7 @@ export type Fit = "height" | "width" | "focus";
 const FITS: Fit[] = ["height", "width", "focus"];
 /** La largeur de l'éditeur, en part de la largeur de l'écran : par défaut, et ses bornes. */
 export const EDITOR_WIDTH = 0.42;
-export const clampWidth = (w: number) => Math.round(Math.min(0.8, Math.max(0.2, w)) * 1000) / 1000;
+export const clampWidth = (width: number) => Math.round(Math.min(0.8, Math.max(0.2, width)) * 1000) / 1000;
 
 export type View = { zoom: number; fit: Fit; editorWidth: number; progress: boolean };
 
@@ -44,7 +44,7 @@ function save(view: View) {
 
 /** Le cran de zoom voisin, plus grand ou plus petit. */
 const step = (zoom: number, dir: 1 | -1) =>
-  dir > 0 ? (ZOOMS.find((z) => z > zoom + 1e-6) ?? zoom) : ([...ZOOMS].reverse().find((z) => z < zoom - 1e-6) ?? zoom);
+  dir > 0 ? (ZOOMS.find((level) => level > zoom + 1e-6) ?? zoom) : ([...ZOOMS].reverse().find((level) => level < zoom - 1e-6) ?? zoom);
 
 export function useView() {
   const [view, setState] = useState(load);

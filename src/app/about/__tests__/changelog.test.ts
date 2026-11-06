@@ -19,10 +19,10 @@ describe("nouveautés", () => {
   });
 
   it("lisent le Markdown d'une version, avec ses classes", () => {
-    const [r] = releases("# Nouveautés\n\n## 1.2.0 — 3 mars 2027\n\n- Un `7` de plus.\n\n## 1.1.0 — 1 mars 2027\n\n- Avant.\n");
-    expect(r).toMatchObject({ version: "1.2.0", date: "3 mars 2027" });
-    expect(r.html).toContain('<code class="font-mono');
-    expect(r.html).not.toContain("Avant");
+    const [release] = releases("# Nouveautés\n\n## 1.2.0 — 3 mars 2027\n\n- Un `7` de plus.\n\n## 1.1.0 — 1 mars 2027\n\n- Avant.\n");
+    expect(release).toMatchObject({ version: "1.2.0", date: "3 mars 2027" });
+    expect(release.html).toContain('<code class="font-mono');
+    expect(release.html).not.toContain("Avant");
   });
 });
 

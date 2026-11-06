@@ -27,7 +27,7 @@ import type { Align, Part, RulerDetail, Score, Shape, System, Voice } from "../.
 export const PAGE = { w: 210, h: 297, marginX: 15, marginTop: 14, marginBottom: 16 };
 export const CONTENT_W = PAGE.w - 2 * PAGE.marginX;
 
-export const G = {
+export const METRICS = {
   cell: 5.2, // largeur naturelle d'une case
   compactCell: 4.1, // largeur d'une case en espacement compact (élargie là où un « 12 » ne tient pas)
   prefix: 7, // colonne des numéros d'octave
@@ -76,15 +76,15 @@ export const G = {
 };
 
 /** Largeur d'une syllabe gravée, depuis le début de sa note. */
-export const lyricTextW = (text: string) => [...text].length * G.lyricChar;
+export const lyricTextW = (text: string) => [...text].length * METRICS.lyricChar;
 /** Largeur que demande une syllabe : son texte, puis un trait d'union ou un peu d'air. */
-const lyricW = (text: string, hyphen: boolean) => 0.5 + lyricTextW(text) + (hyphen ? G.hyphenW : 0.9);
+const lyricW = (text: string, hyphen: boolean) => 0.5 + lyricTextW(text) + (hyphen ? METRICS.hyphenW : 0.9);
 /** Place ajoutée à une case par une syllabe trop longue pour elle (le couplet qui en demande le plus). */
-const lyricExtra = (sys: System, a: number, cellW: number) =>
+const lyricExtra = (sys: System, anchor: number, cellW: number) =>
   Math.max(
     0,
-    ...sys.staves.flatMap((p) =>
-      p.voice.lyrics.flatMap((l) => l.syllables.filter((x) => x.anchor === a).map((x) => lyricW(x.text, x.hyphen) - cellW)),
+    ...sys.staves.flatMap((systemStaff) =>
+      systemStaff.voice.lyrics.flatMap((lyricLine) => lyricLine.syllables.filter((syllable) => syllable.anchor === anchor).map((syllable) => lyricW(syllable.text, syllable.hyphen) - cellW)),
     ),
   );
 
@@ -107,37 +107,37 @@ export function chordGrid(text: string, parts: Part[]): Shape | undefined {
   const { shape } = splitShape(text);
   const notes = chordNotes(text);
   if (shape !== undefined) return parseShape(shape);
-  return notes && chordShape(notes, gridStrings(parts.map((p) => p.strings)));
+  return notes && chordShape(notes, gridStrings(parts.map((part) => part.strings)));
 }
 /** La grille gravée : ses cordes, et la place de la case de départ à sa droite. */
-export const gridW = (strings = 6) => (strings - 1) * G.gridString + 0.6 + G.gridLabel;
-export const gridH = () => G.gridMarks + G.gridFrets * G.gridFret + 1;
+export const gridW = (strings = 6) => (strings - 1) * METRICS.gridString + 0.6 + METRICS.gridLabel;
+export const gridH = () => METRICS.gridMarks + METRICS.gridFrets * METRICS.gridFret + 1;
 
 const showName = (style: ChordStyle, name?: string) => !!name && style !== "notes";
 // sans nom reconnu, les notes s'affichent toujours (sauf avec une grille, qui les montre sur le manche)
 const showNotes = (style: ChordStyle, name?: string) => (style !== "name" && style !== "grid" ? true : !name);
 
 /** Hauteur de la bande des accords d'un système : le nom, et/ou les notes empilées, ou la grille. */
-const chordH = (s: System, style: ChordStyle) => {
-  if (!s.chords.length) return 0;
-  const chords = s.chords.map((c) => ({ ...splitChord(c.text), grid: style === "grid" ? chordGrid(c.text, s.parts) : undefined }));
-  const named = chords.some((p) => showName(style, p.name));
-  const stack = Math.max(0, ...chords.filter((p) => !p.grid && showNotes(style, p.name)).map((p) => p.notes.length));
-  const grid = chords.some((p) => p.grid) ? gridH() : 0;
-  return (named ? G.chordNameH : 0.8) + Math.max(stack * G.chordNoteH, grid);
+const chordH = (system: System, style: ChordStyle) => {
+  if (!system.chords.length) return 0;
+  const chords = system.chords.map((chord) => ({ ...splitChord(chord.text), grid: style === "grid" ? chordGrid(chord.text, system.parts) : undefined }));
+  const named = chords.some((chord) => showName(style, chord.name));
+  const stack = Math.max(0, ...chords.filter((chord) => !chord.grid && showNotes(style, chord.name)).map((chord) => chord.notes.length));
+  const grid = chords.some((chord) => chord.grid) ? gridH() : 0;
+  return (named ? METRICS.chordNameH : 0.8) + Math.max(stack * METRICS.chordNoteH, grid);
 };
 /** Largeur que demande un accord : son nom, ou sa grille ; ses notes empilées tiennent dans une case. */
 const chordW = (text: string, style: ChordStyle, names: ChordNames) => {
-  const p = splitChord(text, names);
-  const name = showName(style, p.name) ? 0.5 + p.name!.length * G.chordChar + 0.6 : 0;
+  const parts = splitChord(text, names);
+  const name = showName(style, parts.name) ? 0.5 + parts.name!.length * METRICS.chordChar + 0.6 : 0;
   return style === "grid" ? Math.max(name, 0.5 + gridW() + 0.6) : name;
 };
 
 /** Bande des paroles d'une portée : une ligne par couplet, un peu d'air au-dessus. */
-const lyricH = (v: Voice) => (v.lyrics.length ? 0.4 + v.lyrics.length * G.lyricH : 0);
+const lyricH = (voice: Voice) => (voice.lyrics.length ? 0.4 + voice.lyrics.length * METRICS.lyricH : 0);
 
 /** Bande des liaisons d'une portée, juste sous ses lignes : un étage par niveau d'imbrication. */
-export const slurH = (v: Voice) => (v.slurs.length ? 1 + (Math.max(...v.slurs.map((s) => s.level)) + 1) * G.slurLevel : 0);
+export const slurH = (voice: Voice) => (voice.slurs.length ? 1 + (Math.max(...voice.slurs.map((slurSpan) => slurSpan.level)) + 1) * METRICS.slurLevel : 0);
 
 /**
  * Doigté gravé : un chiffre blanc sur une pastille sombre, en bas à droite de la note. Le
@@ -150,7 +150,7 @@ export const FINGER = { r: 1.2, gap: 0.55 };
  * Une technique des cordes dans une case (« x », « <12> », « 7/ », « 7// », « //7 », « 7b9r »,
  * suivis ou non d'un doigt) : ce qu'elle grave. Undefined pour une autre case.
  */
-export const techniqueOf = (c: string) => stringCell(c);
+export const techniqueOf = (cell: string) => stringCell(cell);
 
 /** La place d'un trait de glissé, à côté de sa case. */
 export const SLIDE_W = 2.6;
@@ -162,24 +162,24 @@ export const isPickSign = (text: string) => text === ARTICULATION_SIGNS.down || 
 export const bendLabel = (frets: number) => (frets === 2 ? "full" : frets % 2 ? `${frets > 1 ? (frets - 1) / 2 : ""}½` : String(frets / 2));
 
 /** La largeur d'une case de corde écrite, avant son bend : ses chiffres, et le trait d'un glissé. */
-function fretW(c: string | undefined) {
-  if (!c || c.startsWith("-")) return 0;
-  const t = techniqueOf(c);
-  return t
-    ? t.label.length * G.noteDigit * (t.harmonic ? 0.8 : 1) + (t.slideIn ? SLIDE_W : 0) + (t.slide || t.slideOut ? SLIDE_W : 0)
-    : splitNote(c).main.length * G.noteDigit;
+function fretW(cell: string | undefined) {
+  if (!cell || cell.startsWith("-")) return 0;
+  const technique = techniqueOf(cell);
+  return technique
+    ? technique.label.length * METRICS.noteDigit * (technique.harmonic ? 0.8 : 1) + (technique.slideIn ? SLIDE_W : 0) + (technique.slide || technique.slideOut ? SLIDE_W : 0)
+    : splitNote(cell).main.length * METRICS.noteDigit;
 }
 
 /**
  * Où part un bend, depuis la gauche de sa case : après la case la plus large de sa colonne, sur
  * les cordes de la portée, pour que la flèche ne coupe pas un chiffre d'une autre corde.
  */
-export const bendStart = (rows: { string?: number; cells: string[] }[], a: number) =>
-  0.5 + Math.max(0, ...rows.map((r) => (r.string === undefined ? 0 : fretW(r.cells[a])))) + 0.2;
+export const bendStart = (rows: { string?: number; cells: string[] }[], anchor: number) =>
+  0.5 + Math.max(0, ...rows.map((row) => (row.string === undefined ? 0 : fretW(row.cells[anchor])))) + 0.2;
 
 /** Morceaux d'une attaque : la note, la voisine d'une trille, le doigt. */
-export function splitNote(c: string) {
-  const [body, finger] = c.split(FINGER_MARK);
+export function splitNote(cell: string) {
+  const [body, finger] = cell.split(FINGER_MARK);
   const [main, aux] = body.split(TRILL_MARK);
   return { main, aux, finger };
 }
@@ -188,45 +188,45 @@ export function splitNote(c: string) {
  * Largeur ajoutée à une case par une note annotée trop longue pour elle : la note, sa
  * voisine de trille en petit, son doigt, puis un peu de trait ondulé pour une trille.
  */
-function noteW(c: string, cellW: number, reminders = true, bendAt = 0) {
-  if (!c || c === "-") return 0;
+function noteW(cell: string, cellW: number, reminders = true, bendAt = 0) {
+  if (!cell || cell === "-") return 0;
   // un bend : sa flèche, relâchée ou non, puis le doigt
-  const tech = bendAt ? techniqueOf(c) : undefined;
+  const tech = bendAt ? techniqueOf(cell) : undefined;
   if (tech?.bend !== undefined)
     return Math.max(0, bendAt + 2.2 + (tech.release ? 2.6 : 0) + 0.8 + (tech.finger ? FINGER.gap + 2 * FINGER.r : 0) + 0.3 - cellW);
   // une autre technique : la case et ses glissés, puis le doigt
-  if (tech) return Math.max(0, 0.5 + fretW(c) + (tech.finger ? FINGER.gap + 2 * FINGER.r : 0) + 0.45 - cellW);
+  if (tech) return Math.max(0, 0.5 + fretW(cell) + (tech.finger ? FINGER.gap + 2 * FINGER.r : 0) + 0.45 - cellW);
   // rappel d'une note tenue en début de système : le trait de tenue, puis ses chiffres en petit
-  if (c.startsWith("-")) return reminders ? Math.max(0, 0.5 + G.holdW + 0.6 + (c.length - 1) * G.noteDigit * 0.82 + 0.45 - cellW) : 0;
-  const { main, aux, finger } = splitNote(c);
+  if (cell.startsWith("-")) return reminders ? Math.max(0, 0.5 + METRICS.holdW + 0.6 + (cell.length - 1) * METRICS.noteDigit * 0.82 + 0.45 - cellW) : 0;
+  const { main, aux, finger } = splitNote(cell);
   // une note seule : ses chiffres, puis assez d'air pour ne pas se coller à la case suivante
   // (« 12 » puis « 8 » ne doit pas se lire « 128 »)
-  if (aux === undefined && finger === undefined) return Math.max(0, 0.5 + main.length * G.noteDigit + 0.45 - cellW);
-  const w =
+  if (aux === undefined && finger === undefined) return Math.max(0, 0.5 + main.length * METRICS.noteDigit + 0.45 - cellW);
+  const width =
     0.5 +
-    main.length * G.noteDigit +
-    (aux ? 0.35 + aux.length * G.graceDigit : 0) +
+    main.length * METRICS.noteDigit +
+    (aux ? 0.35 + aux.length * METRICS.graceDigit : 0) +
     (finger ? FINGER.gap + 2 * FINGER.r : 0) +
     (aux ? 1 : 0.3);
-  return Math.max(0, w - cellW);
+  return Math.max(0, width - cellW);
 }
 /** Place ajoutée par les notes d'une case trop larges pour elle, sur la ligne qui en demande le plus. */
-export const noteExtra = (sys: System, a: number, cellW: number, reminders = true) =>
+export const noteExtra = (sys: System, anchor: number, cellW: number, reminders = true) =>
   Math.max(
     0,
-    ...sys.staves.flatMap((p) => p.rows.map((r) => noteW(r.cells[a], cellW, reminders, r.string !== undefined ? bendStart(p.rows, a) : 0))),
+    ...sys.staves.flatMap((systemStaff) => systemStaff.rows.map((systemRow) => noteW(systemRow.cells[anchor], cellW, reminders, systemRow.string !== undefined ? bendStart(systemStaff.rows, anchor) : 0))),
   );
 
 /** Hauteur de l'en-tête de la première page : titre, sous-titre éventuel, compositeur. */
-export const headerHeight = (meta: Score["meta"]) => G.headerH + (meta.subtitle ? G.subtitleH : 0);
+export const headerHeight = (meta: Score["meta"]) => METRICS.headerH + (meta.subtitle ? METRICS.subtitleH : 0);
 
 /** Largeur des rangs de petites notes d'une portée, dans une case. */
-export const graceSlotW = (d: number) => d * G.graceDigit + G.graceGap;
-const graceW = (digits: number[]) => digits.reduce((w, d) => w + graceSlotW(d), 0);
+export const graceSlotW = (digits: number) => digits * METRICS.graceDigit + METRICS.graceGap;
+const graceW = (digits: number[]) => digits.reduce((total, digitCount) => total + graceSlotW(digitCount), 0);
 /** Place ajoutée en tête d'une case par ses petites notes (la portée qui en a le plus). */
-export const graceExtra = (sys: System, a: number) => Math.max(0, ...sys.staves.map((p) => graceW(p.graceDigits[a])));
+export const graceExtra = (sys: System, anchor: number) => Math.max(0, ...sys.staves.map((systemStaff) => graceW(systemStaff.graceDigits[anchor])));
 /** Place ajoutée en tête d'une case : ses petites notes, puis la vaguelette d'un arpège. */
-export const leadExtra = (sys: System, a: number) => graceExtra(sys, a) + (sys.arpeggios.some((x) => x.anchor === a) ? G.arpeggioW : 0);
+export const leadExtra = (sys: System, anchor: number) => graceExtra(sys, anchor) + (sys.arpeggios.some((arpeggio) => arpeggio.anchor === anchor) ? METRICS.arpeggioW : 0);
 
 export type PlacedSystem = {
   sys: System;
@@ -283,8 +283,8 @@ export type Page = { index: number; systems: PlacedSystem[]; header: boolean; or
 
 // l'arpège se dessine devant l'accord, pas dans la bande des nuances
 // l'arpège et les articulations se dessinent sur la note, pas dans la bande des nuances
-const voiceH = (v: Voice) =>
-  v.marks.some((m) => m.kind !== "arpeggio" && m.kind !== "articulation") || v.hairpins.length || v.effects.length ? G.voiceH : 0;
+const voiceH = (voice: Voice) =>
+  voice.marks.some((voiceMark) => voiceMark.kind !== "arpeggio" && voiceMark.kind !== "articulation") || voice.hairpins.length || voice.effects.length ? METRICS.voiceH : 0;
 
 /**
  * Disposition verticale d'un système dont le haut est à y : au-dessus de la règle, les bandes
@@ -292,34 +292,34 @@ const voiceH = (v: Voice) =>
  * chaque portée. Deux portées d'une partie sont séparées par un trait épais, deux
  * parties par un espace ; la pédale d'une partie passe sous sa dernière portée.
  */
-export function geometry(s: System, chords: ChordStyle, y: number, rowH: number = G.rowH) {
-  const textBand = s.marks.some((m) => m.kind === "text") ? G.markH : 0;
-  const structBand = s.marks.some((m) => m.kind === "times" || m.kind === "marker" || m.kind === "fermata") ? G.markH : 0;
-  const chordBand = chordH(s, chords);
+export function geometry(system: System, chords: ChordStyle, y: number, rowH: number = METRICS.rowH) {
+  const textBand = system.marks.some((mark) => mark.kind === "text") ? METRICS.markH : 0;
+  const structBand = system.marks.some((mark) => mark.kind === "times" || mark.kind === "marker" || mark.kind === "fermata") ? METRICS.markH : 0;
+  const chordBand = chordH(system, chords);
   const rulerTop = y + textBand + structBand + chordBand;
-  const firsts = firstStaves(s.parts);
-  let cur = rulerTop + G.rulerH;
-  const staves: StaffPlace[] = s.staves.map((p, k) => {
+  const firsts = firstStaves(system.parts);
+  let cur = rulerTop + METRICS.rulerH;
+  const staves: StaffPlace[] = system.staves.map((systemStaff, staffIndex) => {
     let separator: number | undefined;
-    if (k > 0 && firsts.includes(k)) cur += G.partGap;
-    else if (k > 0) {
-      separator = cur + G.staffGap;
-      cur = separator + G.staffGap;
+    if (staffIndex > 0 && firsts.includes(staffIndex)) cur += METRICS.partGap;
+    else if (staffIndex > 0) {
+      separator = cur + METRICS.staffGap;
+      cur = separator + METRICS.staffGap;
     }
     // sur une corde, sous les liaisons, la lettre du legato (H, P)
-    const legato = p.voice.slurs.length && p.rows.some((r) => r.string !== undefined) ? G.legatoH : 0;
-    const slurBand = slurH(p.voice) + legato,
-      lyricBand = lyricH(p.voice),
-      voiceBand = voiceH(p.voice);
-    const pedalBand = p.pedal.spans.length || p.pedal.texts.length ? G.pedalH : 0;
+    const legato = systemStaff.voice.slurs.length && systemStaff.rows.some((systemRow) => systemRow.string !== undefined) ? METRICS.legatoH : 0;
+    const slurBand = slurH(systemStaff.voice) + legato,
+      lyricBand = lyricH(systemStaff.voice),
+      voiceBand = voiceH(systemStaff.voice);
+    const pedalBand = systemStaff.pedal.spans.length || systemStaff.pedal.texts.length ? METRICS.pedalH : 0;
     // au-dessus des cordes, le sens du médiator et l'écart des bends, en grand, comme en tablature
     const tech =
-      p.rows.some((r) => r.string !== undefined) &&
-      (p.voice.marks.some((m) => m.kind === "articulation" && isPickSign(m.text)) ||
-        p.rows.some((r) => r.cells.some((c) => techniqueOf(c)?.bend !== undefined)));
+      systemStaff.rows.some((row) => row.string !== undefined) &&
+      (systemStaff.voice.marks.some((voiceMark) => voiceMark.kind === "articulation" && isPickSign(voiceMark.text)) ||
+        systemStaff.rows.some((row) => row.cells.some((cell) => techniqueOf(cell)?.bend !== undefined)));
     const techTop = cur;
-    const rowsTop = cur + (tech ? G.techH : 0);
-    const slurTop = rowsTop + p.rows.length * rowH;
+    const rowsTop = cur + (tech ? METRICS.techH : 0);
+    const slurTop = rowsTop + systemStaff.rows.length * rowH;
     const lyricTop = slurTop + slurBand;
     const voiceTop = lyricTop + lyricBand;
     const pedalTop = voiceTop + voiceBand;
@@ -339,30 +339,30 @@ export function geometry(s: System, chords: ChordStyle, y: number, rowH: number 
       pedalBand,
     };
   });
-  const parts = s.parts.map((x, i) => {
-    const first = firsts[i],
-      last = first + x.staves - 1;
+  const parts = system.parts.map((part, index) => {
+    const first = firsts[index],
+      last = first + part.staves - 1;
     return {
-      top: i === 0 ? rulerTop : staves[first].rowsTop,
+      top: index === 0 ? rulerTop : staves[first].rowsTop,
       bottom: staves[last].bottom,
       first,
       last,
-      ...(x.name ? { name: x.name } : {}),
+      ...(part.name ? { name: part.name } : {}),
     };
   });
   return { textBand, structBand, chordBand, rulerTop, staves, parts, height: cur - y + 1, rowH };
 }
 
-export const systemHeight = (s: System, chords: ChordStyle = "both", rowH: number = G.rowH) => geometry(s, chords, 0, rowH).height;
+export const systemHeight = (system: System, chords: ChordStyle = "both", rowH: number = METRICS.rowH) => geometry(system, chords, 0, rowH).height;
 
 /** Largeur d'une barre de mesure, selon ses signes de reprise (identique au calcul du moteur). */
-const barSepWidth = (c: Extract<System["columns"][number], { kind: "barSep" }>) =>
-  c.lead
-    ? G.repeatDots + G.beatSep
-    : c.spaced
+const barSepWidth = (column: Extract<System["columns"][number], { kind: "barSep" }>) =>
+  column.lead
+    ? METRICS.repeatDots + METRICS.beatSep
+    : column.spaced
       ? // fin de section, blanc, puis début de la suivante, ouvert comme un début de ligne
-        G.barSep + (c.endRepeat ? G.repeatDots : 0) + G.sectionSep + (c.startRepeat ? G.repeatDots + G.beatSep : 0)
-      : G.barSep + (c.endRepeat ? G.repeatDots : 0) + (c.startRepeat ? G.repeatDots : 0);
+        METRICS.barSep + (column.endRepeat ? METRICS.repeatDots : 0) + METRICS.sectionSep + (column.startRepeat ? METRICS.repeatDots + METRICS.beatSep : 0)
+      : METRICS.barSep + (column.endRepeat ? METRICS.repeatDots : 0) + (column.startRepeat ? METRICS.repeatDots : 0);
 
 /**
  * prevStretch : étirement de la ligne précédente de la même section, s'il y en a une. La
@@ -378,33 +378,33 @@ function place(
   names: ChordNames,
   prevStretch?: number,
   reminders = true,
-  rowH: number = G.rowH,
+  rowH: number = METRICS.rowH,
 ): PlacedSystem {
-  const chordAt = new Map(sys.chords.map((c) => [c.anchor, chordW(c.text, chords, names)]));
+  const chordAt = new Map(sys.chords.map((chord) => [chord.anchor, chordW(chord.text, chords, names)]));
   const anchorOf = (ci: number) => sys.anchors.indexOf(ci);
   const cells = sys.anchors.length;
   const fixed = sys.width - cells * cellW;
   let stretch = (CONTENT_W - fixed) / (cells * cellW);
   if ((isLast || sys.endsSection) && prevStretch !== undefined) stretch = Math.min(stretch, prevStretch);
-  stretch = Math.max(0.5, Math.min(stretch, G.maxStretch));
+  stretch = Math.max(0.5, Math.min(stretch, METRICS.maxStretch));
   const xs: number[] = [];
   const ws: number[] = [];
-  let x = PAGE.marginX + G.prefix;
-  for (const c of sys.columns) {
+  let x = PAGE.marginX + METRICS.prefix;
+  for (const column of sys.columns) {
     // les petites notes s'ajoutent en tête de case, sans étirement
-    const a = anchorOf(xs.length);
-    const w =
-      c.kind === "anchor"
+    const anchor = anchorOf(xs.length);
+    const width =
+      column.kind === "anchor"
         ? Math.max(
-            cellW * stretch + leadExtra(sys, a) + Math.max(noteExtra(sys, a, cellW, reminders), lyricExtra(sys, a, cellW)),
-            chordAt.get(a) ?? 0,
+            cellW * stretch + leadExtra(sys, anchor) + Math.max(noteExtra(sys, anchor, cellW, reminders), lyricExtra(sys, anchor, cellW)),
+            chordAt.get(anchor) ?? 0,
           )
-        : c.kind === "barSep"
-          ? barSepWidth(c)
-          : G.beatSep;
+        : column.kind === "barSep"
+          ? barSepWidth(column)
+          : METRICS.beatSep;
     xs.push(x);
-    ws.push(w);
-    x += w;
+    ws.push(width);
+    x += width;
   }
   return { sys, stretch, y, xs, ws, ...geometry(sys, chords, 0, rowH) };
 }
@@ -417,32 +417,32 @@ function place(
 export function chordChart(score: Score, names: ChordNames, top: number) {
   const seen = new Set<string>();
   const found: { name: string; shape: Shape }[] = [];
-  for (const c of [...score.chords].sort((a, b) => a.t - b.t)) {
-    const name = splitChord(c.text, names).name ?? chordOf(c.text);
-    const shape = chordGrid(c.text, score.parts);
+  for (const textMark of [...score.chords].sort((first, second) => first.t - second.t)) {
+    const name = splitChord(textMark.text, names).name ?? chordOf(textMark.text);
+    const shape = chordGrid(textMark.text, score.parts);
     const key = name + "=" + shape?.join(",");
     if (!shape || seen.has(key)) continue;
     seen.add(key);
     found.push({ name, shape });
   }
-  const w = (name: string) => Math.max(name.length * G.chordChar, gridW()) + G.chartGap;
-  const rowH = G.chordNameH + gridH() + 1.5;
+  const widthOf = (name: string) => Math.max(name.length * METRICS.chordChar, gridW()) + METRICS.chartGap;
+  const rowH = METRICS.chordNameH + gridH() + 1.5;
   // en rangées : autant qu'il en tient sur la largeur, chaque rangée centrée
   const rows: { name: string; shape: Shape }[][] = [[]];
   let used = 0;
-  for (const f of found) {
-    if (used + w(f.name) > CONTENT_W && rows[rows.length - 1].length) {
+  for (const chord of found) {
+    if (used + widthOf(chord.name) > CONTENT_W && rows[rows.length - 1].length) {
       rows.push([]);
       used = 0;
     }
-    rows[rows.length - 1].push(f);
-    used += w(f.name);
+    rows[rows.length - 1].push(chord);
+    used += widthOf(chord.name);
   }
-  const items: ChartItem[] = rows.flatMap((row, r) => {
-    let x = PAGE.marginX + (CONTENT_W - row.reduce((n, f) => n + w(f.name), 0) + G.chartGap) / 2;
-    return row.map((f) => {
-      const item = { ...f, x, y: top + r * rowH };
-      x += w(f.name);
+  const items: ChartItem[] = rows.flatMap((row, rowIndex) => {
+    let x = PAGE.marginX + (CONTENT_W - row.reduce((total, chord) => total + widthOf(chord.name), 0) + METRICS.chartGap) / 2;
+    return row.map((chord) => {
+      const item = { ...chord, x, y: top + rowIndex * rowH };
+      x += widthOf(chord.name);
       return item;
     });
   });
@@ -469,60 +469,60 @@ export function engrave(
     detail = "written" as RulerDetail,
   } = {},
 ): Page[] {
-  const cellW = compact ? G.compactCell : G.cell;
-  const rowH = compact ? G.compactRowH : G.rowH;
+  const cellW = compact ? METRICS.compactCell : METRICS.cell;
+  const rowH = compact ? METRICS.compactRowH : METRICS.rowH;
   const systems = layout(score, {
     width: CONTENT_W,
-    prefix: G.prefix,
+    prefix: METRICS.prefix,
     cell: cellW,
-    cellAt: (t) =>
+    cellAt: (tick) =>
       cellW +
-      Math.max(...Array.from({ length: staffCount(score.parts) }, (_, k) => graceW(graceDigits(score.graces, k, t, score.parts)))) +
-      (score.arpeggios.some((x) => x.t === t) ? G.arpeggioW : 0) +
+      Math.max(...Array.from({ length: staffCount(score.parts) }, (_, staff) => graceW(graceDigits(score.graces, staff, tick, score.parts)))) +
+      (score.arpeggios.some((arpeggio) => arpeggio.t === tick) ? METRICS.arpeggioW : 0) +
       // une note annotée ou une syllabe trop longue élargit sa case (l'une sous l'autre : la plus large compte)
       Math.max(
         0,
-        ...score.notes.filter((n) => n.start === t).map((n) => noteW(noteText(n, score.parts), cellW)),
-        ...score.lyrics.filter((l) => l.t === t).map((l) => lyricW(l.text, !!l.hyphen) - cellW),
+        ...score.notes.filter((note) => note.start === tick).map((note) => noteW(noteText(note, score.parts), cellW)),
+        ...score.lyrics.filter((lyric) => lyric.t === tick).map((lyric) => lyricW(lyric.text, !!lyric.hyphen) - cellW),
       ) +
       // un nom d'accord trop long élargit sa case
-      Math.max(0, ...score.chords.filter((c) => c.t === t).map((c) => chordW(c.text, chords, chordNames) - cellW)),
-    beatSep: G.beatSep,
-    barSep: G.barSep,
-    repeatDots: G.repeatDots,
+      Math.max(0, ...score.chords.filter((textMark) => textMark.t === tick).map((textMark) => chordW(textMark.text, chords, chordNames) - cellW)),
+    beatSep: METRICS.beatSep,
+    barSep: METRICS.barSep,
+    repeatDots: METRICS.repeatDots,
     allStrings: true,
     align,
-    sectionSep: inlineSections ? G.sectionSep : undefined,
+    sectionSep: inlineSections ? METRICS.sectionSep : undefined,
     detail,
   });
   const pages: Page[] = [];
   const order = score.order;
-  const orderH = order.length ? G.orderH : 0;
+  const orderH = order.length ? METRICS.orderH : 0;
   let page: Page = { index: 0, systems: [], header: true, order };
   let y = PAGE.marginTop + headerHeight(score.meta) + orderH;
   if (chart) {
-    const c = chordChart(score, chordNames, y);
-    if (c.items.length) {
-      page.chart = c.items;
-      y += c.height + G.systemGap;
+    const chordChartPlaced = chordChart(score, chordNames, y);
+    if (chordChartPlaced.items.length) {
+      page.chart = chordChartPlaced.items;
+      y += chordChartPlaced.height + METRICS.systemGap;
     }
   }
   const bottom = PAGE.h - PAGE.marginBottom;
   let lastStretch: number | undefined;
-  systems.forEach((sys, i) => {
-    const h = systemHeight(sys, chords, rowH);
-    if (sys.section && page.systems.length) y += compact ? G.compactSectionGap : G.sectionGap;
-    if (y + h > bottom && page.systems.length) {
+  systems.forEach((sys, index) => {
+    const height = systemHeight(sys, chords, rowH);
+    if (sys.section && page.systems.length) y += compact ? METRICS.compactSectionGap : METRICS.sectionGap;
+    if (y + height > bottom && page.systems.length) {
       pages.push(page);
       page = { index: pages.length, systems: [], header: false, order };
       y = PAGE.marginTop + orderH;
     }
     // la ligne précédente, si elle est de la même section
-    const prev = i > 0 && !sys.section && !systems[i - 1].endsSection ? lastStretch : undefined;
-    const placed = place(sys, i === systems.length - 1, y, cellW, chords, chordNames, prev, reminders, rowH);
+    const prev = index > 0 && !sys.section && !systems[index - 1].endsSection ? lastStretch : undefined;
+    const placed = place(sys, index === systems.length - 1, y, cellW, chords, chordNames, prev, reminders, rowH);
     lastStretch = placed.stretch;
     page.systems.push(placed);
-    y += h + (compact ? G.compactSystemGap : G.systemGap);
+    y += height + (compact ? METRICS.compactSystemGap : METRICS.systemGap);
   });
   pages.push(page);
   return pages;

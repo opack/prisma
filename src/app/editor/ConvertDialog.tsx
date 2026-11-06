@@ -33,7 +33,7 @@ const OCTAVES: { value: ConversionOptions["octave"]; label: string; hint: string
 const openNames = (instrument: Instrument, tuning: string, names: NoteNames) =>
   [...stringsOf(instrument, tuning, 0)!.open]
     .reverse()
-    .map((m) => pitchClass((m % 12) + 1, names))
+    .map((midi) => pitchClass((midi % 12) + 1, names))
     .join(" ");
 
 export function ConvertDialog({
@@ -51,14 +51,14 @@ export function ConvertDialog({
   const [part, setPart] = useState(() =>
     Math.max(
       0,
-      parts.findIndex((p) => !p.strings),
+      parts.findIndex((part) => !part.strings),
     ),
   );
   const [instrument, setInstrument] = useState<Instrument>("guitar");
   const [tuning, setTuning] = useState("standard");
   const [capo, setCapo] = useState(0);
   const [octave, setOctave] = useState<ConversionOptions["octave"]>(undefined);
-  const name = (p: Part, i: number) => p.name ?? `Partie ${i + 1}`;
+  const name = (part: Part, index: number) => part.name ?? `Partie ${index + 1}`;
   return (
     <Dialog
       title="Convertir pour la guitare ou la basse"
@@ -69,10 +69,10 @@ export function ConvertDialog({
     >
       <Fields>
         {parts.length > 1 && (
-          <SelectField label="Partie" value={part} onChange={(v) => setPart(Number(v))}>
-            {parts.map((p, i) => (
-              <option key={i} value={i}>
-                {name(p, i)}
+          <SelectField label="Partie" value={part} onChange={(value) => setPart(Number(value))}>
+            {parts.map((part, index) => (
+              <option key={index} value={index}>
+                {name(part, index)}
               </option>
             ))}
           </SelectField>
@@ -80,21 +80,21 @@ export function ConvertDialog({
         <SelectField
           label="Instrument"
           value={instrument}
-          onChange={(v) => {
-            setInstrument(v as Instrument);
+          onChange={(value) => {
+            setInstrument(value as Instrument);
             setTuning("standard");
           }}
         >
-          {INSTRUMENTS.map((x) => (
-            <option key={x.value} value={x.value}>
-              {x.label}
+          {INSTRUMENTS.map((choice) => (
+            <option key={choice.value} value={choice.value}>
+              {choice.label}
             </option>
           ))}
         </SelectField>
         <SelectField label="Accordage" value={tuning} onChange={setTuning}>
-          {tuningsOf(instrument).map((t) => (
-            <option key={t} value={t}>
-              {t} ({openNames(instrument, t, noteNames)})
+          {tuningsOf(instrument).map((text) => (
+            <option key={text} value={text}>
+              {text} ({openNames(instrument, text, noteNames)})
             </option>
           ))}
         </SelectField>
@@ -103,7 +103,7 @@ export function ConvertDialog({
           min={0}
           max={MAX_CAPO}
           value={capo}
-          onChange={(v) => setCapo(Math.min(MAX_CAPO, Math.max(0, Math.round(v || 0))))}
+          onChange={(value) => setCapo(Math.min(MAX_CAPO, Math.max(0, Math.round(value || 0))))}
         />
       </Fields>
       <Choices legend="L'octave" name="octave" options={OCTAVES} value={octave} onChange={setOctave} />
