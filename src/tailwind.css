@@ -4,10 +4,7 @@
  * style définit ; les classes s'y réfèrent (text-ink, border-line, bg-panel, font-mono…).
  * Le preflight de Tailwind remet les éléments à zéro ; les titres y gardent leur gras.
  */
-@layer theme, base, components, utilities;
-@import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/preflight.css" layer(base);
-@import "tailwindcss/utilities.css" layer(utilities);
+@import "tailwindcss";
 
 /* les écrans étroits du site : une colonne (narrow), un téléphone (phone) */
 @custom-variant narrow (@media (max-width: 900px));

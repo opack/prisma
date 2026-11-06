@@ -11,6 +11,7 @@
     "skipLibCheck": true,
     "types": ["node", "vite-plugin-pwa/client"],
     "jsx": "react-jsx",
+    "paths": { "@/*": ["./src/*"] },
     "lib": ["ES2022", "DOM", "DOM.Iterable"]
   },
   "include": ["src", "netlify", "tests", "vite.config.ts"]
