@@ -1,0 +1,3 @@
+# Des fins de ligne LF partout, à l'extraction aussi, quel que soit le réglage de git (core.autocrlf
+# sous Windows) : les tests lisent les fichiers tels qu'ils sont écrits (REFERENCE.md…).
+* text=auto eol=lf

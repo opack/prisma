@@ -153,6 +153,6 @@ Sous PowerShell : `$env:VISUAL_ROOT = "../prisma-reference"; pnpm visual:referen
 - Un changement du format se reporte dans [FORMAT.md](FORMAT.md) (la grammaire exacte) et dans [REFERENCE.md](REFERENCE.md) (pour le musicien), avec un exemple quand c'est utile : le test de la référence le vérifiera.
 - Le code, ses commentaires et la documentation sont en français ; les clés de l'en-tête et les noms d'instruments sont en anglais, comme les noms d'accords.
 - Les messages de commit sont en anglais, au format conventionnel : `feat(editor): …`, `fix(app): …`, avec si besoin une liste de tirets.
-- Les fichiers sont en UTF-8, avec des fins de ligne LF.
+- Les fichiers sont en UTF-8, avec des fins de ligne LF, imposées à l'extraction par `.gitattributes`.
 - Les textes destinés à l'utilisateur, dans l'application comme sur le site, le vouvoient.
 - Un changement que l'utilisateur voit monte la version dans `package.json` (semver : le dernier nombre pour une correction, celui du milieu pour une nouveauté) et ajoute ses lignes dans [CHANGELOG.md](CHANGELOG.md), pour le musicien, sous un titre `## 0.4.0 — 6 novembre 2026`.
