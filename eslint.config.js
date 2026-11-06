@@ -1,15 +1,13 @@
 /**
  * Les règles du code (ESLint) : les recommandations de JavaScript et de TypeScript, les deux règles
- * classiques des hooks de React, et des noms qui disent ce qu'ils désignent (au moins deux lettres,
- * sauf x et y pour des coordonnées). La mise en forme est l'affaire de Prettier : ses règles sont
- * retirées d'ESLint.
- *
- * Les noms d'une lettre ne sont encore qu'un avertissement : ils seront renommés à l'étape suivante
- * de la migration vers Vue, et la règle passera alors en erreur.
+ * classiques des hooks de React, celles de Vue pour ses composants (.vue, lus avec TypeScript), et
+ * des noms qui disent ce qu'ils désignent (au moins deux lettres, sauf x et y pour des coordonnées).
+ * La mise en forme est l'affaire de Prettier : ses règles sont retirées d'ESLint.
  */
 import js from "@eslint/js";
 import prettier from "eslint-config-prettier";
 import reactHooks from "eslint-plugin-react-hooks";
+import pluginVue from "eslint-plugin-vue";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
@@ -17,15 +15,28 @@ export default tseslint.config(
   { ignores: ["dist", "node_modules", "test-results", "dev-dist"] },
   js.configs.recommended,
   tseslint.configs.recommended,
+  pluginVue.configs["flat/recommended"],
+  {
+    // TypeScript vérifie déjà les noms et les propriétés facultatives ; un composant peut tenir en un
+    // mot (App, Button)
+    files: ["**/*.vue"],
+    languageOptions: { parserOptions: { parser: tseslint.parser } },
+    rules: { "no-undef": "off", "vue/multi-word-component-names": "off", "vue/require-default-prop": "off" },
+  },
+  {
+    files: ["**/*.{ts,tsx,vue}"],
+    languageOptions: { globals: { ...globals.browser, ...globals.node } },
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["error", { ignoreRestSiblings: true }],
+      "id-length": ["error", { min: 2, exceptions: ["x", "y", "_"], properties: "never" }],
+    },
+  },
   {
     files: ["**/*.{ts,tsx}"],
-    languageOptions: { globals: { ...globals.browser, ...globals.node } },
     plugins: { "react-hooks": reactHooks },
     rules: {
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",
-      "@typescript-eslint/no-unused-vars": ["error", { ignoreRestSiblings: true }],
-      "id-length": ["error", { min: 2, exceptions: ["x", "y", "_"], properties: "never" }],
     },
   },
   {
