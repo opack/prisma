@@ -25,100 +25,109 @@ import {
   settle,
 } from "../support/app.ts";
 
-// le site : chaque page, entière, au bureau et sur un téléphone
-for (const [name, size] of [
-  ["bureau", DESKTOP],
-  ["telephone", PHONE],
-] as const)
-  for (const pagePath of ["index", "apprendre", "reference", "guitare", "comparaison"])
-    test(`site ${pagePath} ${name}`, async ({ page }) => {
+// le site, en React et en Vue (en construction, dans vue/) : les mêmes scènes, aux mêmes références.
+// Deux écarts compris, tolérés pour Vue seulement : le texte, que Vue et React coupent en nœuds
+// différemment, s'y lisse autrement de quelques pixels ; et un sommaire ouvert y tombe au pixel
+// entier, quand React Aria le pose au demi-pixel sous son bouton.
+for (const [site, root, textTolerance, menuTolerance] of [
+  ["site", "/", {}, {}],
+  ["site vue", "/vue/", { maxDiffPixels: 50 }, { maxDiffPixels: 5000 }],
+] as const) {
+  // chaque page, entière, au bureau et sur un téléphone
+  for (const [name, size] of [
+    ["bureau", DESKTOP],
+    ["telephone", PHONE],
+  ] as const)
+    for (const pagePath of ["index", "apprendre", "reference", "guitare", "comparaison"])
+      test(`${site} ${pagePath} ${name}`, async ({ page }) => {
+        await page.setViewportSize(size);
+        await page.goto(`${root}${pagePath}.html`);
+        await settle(page);
+        await expect(page).toHaveScreenshot(`site-${pagePath}-${name}.png`, { fullPage: true, ...textTolerance });
+      });
+
+  // sur un téléphone, les pages du site sous le bouton du haut
+  test(`${site} menu telephone`, async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await page.goto(`${root}apprendre.html`);
+    await settle(page);
+    await page.getByRole("button", { name: "Pages du site" }).click();
+    await expect(page).toHaveScreenshot("site-menu-telephone.png");
+    // un clic ailleurs le ferme
+    await page.mouse.click(20, 600);
+    await expect(page.getByRole("menu")).toHaveCount(0);
+  });
+
+  // l'accueil, plus bas que son haut : ses parties sous le bouton fixé en haut, et le retour en haut
+  for (const [name, size] of [
+    ["bureau", DESKTOP],
+    ["telephone", PHONE],
+  ] as const)
+    test(`${site} parties ${name}`, async ({ page }) => {
       await page.setViewportSize(size);
-      await page.goto(`/${pagePath}.html`);
+      await page.goto(`${root}index.html`);
       await settle(page);
-      await expect(page).toHaveScreenshot(`site-${pagePath}-${name}.png`, { fullPage: true });
+      await page.locator("#temps").evaluate((el) => el.scrollIntoView({ behavior: "instant" }));
+      await settle(page);
+      await page.getByRole("button", { name: /^Sur cette page/ }).click();
+      await expect(page).toHaveScreenshot(`site-parties-${name}.png`, menuTolerance);
     });
 
-// sur un téléphone, les pages du site sous le bouton du haut
-test("site menu telephone", async ({ page }) => {
-  await page.setViewportSize(PHONE);
-  await page.goto("/apprendre.html");
-  await settle(page);
-  await page.getByRole("button", { name: "Pages du site" }).click();
-  await expect(page).toHaveScreenshot("site-menu-telephone.png");
-  // un clic ailleurs le ferme
-  await page.mouse.click(20, 600);
-  await expect(page.getByRole("menu")).toHaveCount(0);
-});
-
-// l'accueil, plus bas que son haut : ses parties sous le bouton fixé en haut, et le retour en haut
-for (const [name, size] of [
-  ["bureau", DESKTOP],
-  ["telephone", PHONE],
-] as const)
-  test(`site parties ${name}`, async ({ page }) => {
-    await page.setViewportSize(size);
-    await page.goto("/index.html");
+  // la référence sur un téléphone : son sommaire, sous le bouton collé en haut, ouvert plus bas dans la page
+  test(`${site} sommaire telephone`, async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await page.goto(`${root}reference.html`);
     await settle(page);
-    await page.locator("#temps").evaluate((el) => el.scrollIntoView({ behavior: "instant" }));
+    await page.locator('[id="3-le-temps"]').evaluate((heading) => heading.scrollIntoView({ behavior: "instant" }));
     await settle(page);
-    await page.getByRole("button", { name: /^Sur cette page/ }).click();
-    await expect(page).toHaveScreenshot(`site-parties-${name}.png`);
+    await page.getByRole("button", { name: /^Sommaire/ }).click();
+    await expect(page).toHaveScreenshot("site-sommaire-telephone.png", menuTolerance);
   });
 
-// la référence sur un téléphone : son sommaire, sous le bouton collé en haut, ouvert plus bas dans la page
-test("site sommaire telephone", async ({ page }) => {
-  await page.setViewportSize(PHONE);
-  await page.goto("/reference.html");
-  await settle(page);
-  await page.locator('[id="3-le-temps"]').evaluate((heading) => heading.scrollIntoView({ behavior: "instant" }));
-  await settle(page);
-  await page.getByRole("button", { name: /^Sommaire/ }).click();
-  await expect(page).toHaveScreenshot("site-sommaire-telephone.png");
-});
+  // le clavier de l'accueil, une touche noire puis une blanche survolées : la même dans les deux octaves
+  for (const digit of ["2", "5"])
+    test(`${site} clavier ${digit}`, async ({ page }) => {
+      await page.setViewportSize(DESKTOP);
+      await page.goto(`${root}index.html`);
+      await settle(page);
+      const keyboard = page.getByRole("img", { name: /Deux octaves du clavier/ });
+      await keyboard
+        .locator("text", { hasText: new RegExp(`^${digit}$`) })
+        .first()
+        .locator("..")
+        .hover();
+      await expect(keyboard).toHaveScreenshot(`site-clavier-${digit}.png`);
+    });
 
-// le clavier de l'accueil, une touche noire puis une blanche survolées : la même dans les deux octaves
-for (const digit of ["2", "5"])
-  test(`site clavier ${digit}`, async ({ page }) => {
+  // plus bas sur la page, le bouton qui ramène à « Sur cette page »
+  test(`${site} retour aux parties`, async ({ page }) => {
     await page.setViewportSize(DESKTOP);
-    await page.goto("/index.html");
+    await page.goto(`${root}guitare.html`);
     await settle(page);
-    const keyboard = page.getByRole("img", { name: /Deux octaves du clavier/ });
-    await keyboard
-      .locator("text", { hasText: new RegExp(`^${digit}$`) })
-      .first()
-      .locator("..")
-      .hover();
-    await expect(keyboard).toHaveScreenshot(`site-clavier-${digit}.png`);
+    await page.mouse.wheel(0, 2400);
+    await settle(page);
+    await expect(page.getByRole("button", { name: "Retour aux parties de la page" })).toHaveScreenshot("site-retour.png");
+    await page.getByRole("button", { name: "Retour aux parties de la page" }).click();
+    await settle(page);
+    await expect(page.getByRole("navigation", { name: "Sur cette page" })).toBeInViewport();
+    await expect(page.getByRole("button", { name: "Retour aux parties de la page" })).toHaveCount(0);
   });
 
-// plus bas sur la page, le bouton qui ramène à « Sur cette page »
-test("site retour aux parties", async ({ page }) => {
-  await page.setViewportSize(DESKTOP);
-  await page.goto("/guitare.html");
-  await settle(page);
-  await page.mouse.wheel(0, 2400);
-  await settle(page);
-  await expect(page.getByRole("button", { name: "Retour aux parties de la page" })).toHaveScreenshot("site-retour.png");
-  await page.getByRole("button", { name: "Retour aux parties de la page" }).click();
-  await settle(page);
-  await expect(page.getByRole("navigation", { name: "Sur cette page" })).toBeInViewport();
-  await expect(page.getByRole("button", { name: "Retour aux parties de la page" })).toHaveCount(0);
-});
-
-// la référence, plus bas : le bouton qui ramène en haut
-test("site retour en haut de la référence", async ({ page }) => {
-  await page.setViewportSize(DESKTOP);
-  await page.goto("/reference.html");
-  await settle(page);
-  await page.mouse.wheel(0, 3000);
-  await settle(page);
-  const back = page.getByRole("button", { name: "Retour en haut de la référence" });
-  await expect(back).toHaveScreenshot("site-retour-reference.png");
-  await back.click();
-  await settle(page);
-  await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
-  await expect(back).toHaveCount(0);
-});
+  // la référence, plus bas : le bouton qui ramène en haut
+  test(`${site} retour en haut de la référence`, async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await page.goto(`${root}reference.html`);
+    await settle(page);
+    await page.mouse.wheel(0, 3000);
+    await settle(page);
+    const back = page.getByRole("button", { name: "Retour en haut de la référence" });
+    await expect(back).toHaveScreenshot("site-retour-reference.png");
+    await back.click();
+    await settle(page);
+    await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+    await expect(back).toHaveCount(0);
+  });
+}
 
 // l'application : ses écrans et ses panneaux
 test("app éditeur et partition", async ({ page }) => {
