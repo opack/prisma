@@ -21,23 +21,31 @@ export function StaffChords() {
       role="img"
       aria-label="Sur une portée en clé de sol, do mi sol et mi sol si : trois notes sur trois lignes voisines, la même forme."
     >
-      {[0, 1, 2, 3, 4].map((i) => (
-        <line key={i} x1={6} x2={214} y1={BOTTOM - i * GAP} y2={BOTTOM - i * GAP} stroke="#1b1d1f" strokeWidth={1} />
+      {[0, 1, 2, 3, 4].map((index) => (
+        <line key={index} x1={6} x2={214} y1={BOTTOM - index * GAP} y2={BOTTOM - index * GAP} stroke="#1b1d1f" strokeWidth={1} />
       ))}
       <text x={8} y={BOTTOM + 8} className="font-['Noto_Music','Segoe_UI_Symbol','Apple_Symbols','Bravura',serif] text-[58px]">
         𝄞
       </text>
-      {CHORDS.map((c) => (
-        <g key={c.x}>
-          {c.steps.includes(-2) && <line x1={c.x - 11} x2={c.x + 11} y1={y(-2)} y2={y(-2)} stroke="#1b1d1f" strokeWidth={1} />}
-          {c.steps.map((s) => (
-            <ellipse key={s} cx={c.x} cy={y(s)} rx={6.4} ry={4.6} transform={`rotate(-20 ${c.x} ${y(s)})`} fill="#1b1d1f" />
+      {CHORDS.map((chord) => (
+        <g key={chord.x}>
+          {chord.steps.includes(-2) && <line x1={chord.x - 11} x2={chord.x + 11} y1={y(-2)} y2={y(-2)} stroke="#1b1d1f" strokeWidth={1} />}
+          {chord.steps.map((step) => (
+            <ellipse
+              key={step}
+              cx={chord.x}
+              cy={y(step)}
+              rx={6.4}
+              ry={4.6}
+              transform={`rotate(-20 ${chord.x} ${y(step)})`}
+              fill="#1b1d1f"
+            />
           ))}
-          <text x={c.x} y={112} textAnchor="middle" className="font-ui text-[11px] fill-ink" fontStyle="italic">
-            {c.name}
+          <text x={chord.x} y={112} textAnchor="middle" className="font-ui text-[11px] fill-ink" fontStyle="italic">
+            {chord.name}
           </text>
-          <text x={c.x} y={127} textAnchor="middle" className="font-ui text-[10px] fill-muted">
-            {c.kind}
+          <text x={chord.x} y={127} textAnchor="middle" className="font-ui text-[10px] fill-muted">
+            {chord.kind}
           </text>
         </g>
       ))}

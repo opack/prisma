@@ -27,7 +27,7 @@ export function Progress({ bpm }: { bpm: number }) {
   const [dragged, setDragged] = useState<number | null>(null);
   if (!bars.length) return null;
 
-  const n = bars.length;
+  const barCount = bars.length;
   const current = played === null ? null : barAt(bars, played);
   const shown = dragged ?? current;
   // la place du curseur, en mesures : la mesure jouée, et ce qui en est passé
@@ -37,49 +37,50 @@ export function Progress({ bpm }: { bpm: number }) {
       : current === null
         ? 0
         : current + Math.min(1, (played! - bars[current].at) / (bars[current].end - bars[current].at));
-  const sectionOf = (k: number) => sections.find((s) => k >= s.first && k < s.first + s.count);
-  const label = (k: number) => {
-    const s = sectionOf(k);
-    return `mesure ${k + 1} sur ${n}${s?.label ? `, section ${s.label}` : ""}`;
+  const sectionOf = (bar: number) =>
+    sections.find((playedSection) => bar >= playedSection.first && bar < playedSection.first + playedSection.count);
+  const label = (bar: number) => {
+    const section = sectionOf(bar);
+    return `mesure ${bar + 1} sur ${barCount}${section?.label ? `, section ${section.label}` : ""}`;
   };
-  const percent = (bar: number) => `${(bar / n) * 100}%`;
+  const percent = (bar: number) => `${(bar / barCount) * 100}%`;
   // le temps, d'un instant joué : au tempo de l'écoute, les points d'orgue tenus
   const time = (at: number) => clock(stretched(holds, at) * secondsPerTick(bpm));
-  const total = time(bars[n - 1].end);
+  const total = time(bars[barCount - 1].end);
   const elapsed = dragged !== null ? time(bars[dragged].at) : played === null ? null : time(played);
 
-  const seek = (k: number) => {
+  const seek = (bar: number) => {
     follow.release();
-    player.seekPlayed(bars[Math.max(0, Math.min(n - 1, k))].at);
+    player.seekPlayed(bars[Math.max(0, Math.min(barCount - 1, bar))].at);
   };
   /** La mesure sous le pointeur ; près d'un début de section, ce début. */
   const barFromX = (x: number) => {
-    const r = track.current!.getBoundingClientRect();
-    const near = sections.find((s) => Math.abs(r.left + (s.first / n) * r.width - x) <= MAGNET);
-    return near ? near.first : Math.max(0, Math.min(n - 1, Math.floor(((x - r.left) / r.width) * n)));
+    const bounds = track.current!.getBoundingClientRect();
+    const near = sections.find((playedSection) => Math.abs(bounds.left + (playedSection.first / barCount) * bounds.width - x) <= MAGNET);
+    return near ? near.first : Math.max(0, Math.min(barCount - 1, Math.floor(((x - bounds.left) / bounds.width) * barCount)));
   };
-  const key = (e: React.KeyboardEvent) => {
-    const k = current ?? 0;
-    const s = sectionOf(k);
-    const at = s ? sections.indexOf(s) : 0;
+  const key = (event: React.KeyboardEvent) => {
+    const bar = current ?? 0;
+    const section = sectionOf(bar);
+    const at = section ? sections.indexOf(section) : 0;
     const to = {
-      ArrowRight: k + 1,
-      ArrowUp: k + 1,
-      ArrowLeft: k - 1,
-      ArrowDown: k - 1,
+      ArrowRight: bar + 1,
+      ArrowUp: bar + 1,
+      ArrowLeft: bar - 1,
+      ArrowDown: bar - 1,
       Home: 0,
-      End: n - 1,
-      PageDown: sections[at + 1]?.first ?? n - 1,
-      PageUp: s && k > s.first ? s.first : (sections[at - 1]?.first ?? 0),
-    }[e.key];
+      End: barCount - 1,
+      PageDown: sections[at + 1]?.first ?? barCount - 1,
+      PageUp: section && bar > section.first ? section.first : (sections[at - 1]?.first ?? 0),
+    }[event.key];
     if (to === undefined) return;
-    e.preventDefault();
+    event.preventDefault();
     seek(to);
   };
 
   return (
     <span className="flex items-center gap-4 w-full">
-      <Counter bar={shown} count={n} section={shown === null ? undefined : sectionOf(shown)} />
+      <Counter bar={shown} count={barCount} section={shown === null ? undefined : sectionOf(shown)} />
       <div
         ref={track}
         className="relative flex-1 h-5 cursor-pointer touch-none rounded focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
@@ -87,18 +88,18 @@ export function Progress({ bpm }: { bpm: number }) {
         tabIndex={0}
         aria-label="Position dans le morceau"
         aria-valuemin={1}
-        aria-valuemax={n}
+        aria-valuemax={barCount}
         aria-valuenow={(shown ?? 0) + 1}
         aria-valuetext={label(shown ?? 0)}
         onKeyDown={key}
-        onPointerDown={(e) => {
-          e.currentTarget.setPointerCapture(e.pointerId);
-          setDragged(barFromX(e.clientX));
+        onPointerDown={(pointer) => {
+          pointer.currentTarget.setPointerCapture(pointer.pointerId);
+          setDragged(barFromX(pointer.clientX));
         }}
-        onPointerMove={(e) => {
-          const k = barFromX(e.clientX);
-          setHovered(k);
-          if (dragged !== null) setDragged(k);
+        onPointerMove={(pointer) => {
+          const bar = barFromX(pointer.clientX);
+          setHovered(bar);
+          if (dragged !== null) setDragged(bar);
         }}
         onPointerUp={() => {
           if (dragged !== null) seek(dragged);
@@ -112,11 +113,11 @@ export function Progress({ bpm }: { bpm: number }) {
           <span className="absolute inset-y-0 left-0 rounded-full bg-accent" style={{ width: percent(position) }} />
         </span>
         {/* le début de chaque section, sauf la première : une coupure de la barre, à la couleur du fond */}
-        {sections.slice(1).map((s) => (
+        {sections.slice(1).map((section) => (
           <span
-            key={s.first}
+            key={section.first}
             className="absolute top-1/2 h-1.5 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-panel"
-            style={{ left: percent(s.first) }}
+            style={{ left: percent(section.first) }}
           />
         ))}
         {(played !== null || dragged !== null) && (

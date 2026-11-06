@@ -22,13 +22,13 @@ async function through(bytes: Uint8Array, stream: CompressionStream | Decompress
 
 // en base64 sans « + », « / » ni « = », qui se transmettent mal dans une adresse
 function toBase64(bytes: Uint8Array) {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 function fromBase64(text: string) {
-  const s = atob(text.replace(/-/g, "+").replace(/_/g, "/"));
-  return Uint8Array.from(s, (c) => c.charCodeAt(0));
+  const binary = atob(text.replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
 /** Le nom d'un fichier reçu : sans dossier ni signe qu'un système refuse, en .prisma. */
@@ -51,8 +51,13 @@ export function shareName(fileName: string, title?: string) {
 }
 
 /** Le morceau, écrit pour le fragment d'un lien. */
-export async function encodeShare(s: Shared): Promise<string> {
-  const data = { v: VERSION, n: s.name, t: s.text, ...(isEmpty(s.settings) ? {} : { s: JSON.parse(writeSettings(s.settings)) }) };
+export async function encodeShare(shared: Shared): Promise<string> {
+  const data = {
+    v: VERSION,
+    n: shared.name,
+    t: shared.text,
+    ...(isEmpty(shared.settings) ? {} : { s: JSON.parse(writeSettings(shared.settings)) }),
+  };
   return toBase64(await through(new TextEncoder().encode(JSON.stringify(data)), new CompressionStream("deflate-raw")));
 }
 
@@ -84,6 +89,6 @@ export function sharedIn(hash: string): string | null {
  * qui suit « #p= » (espaces et retours à la ligne compris).
  */
 export function sharedInLink(link: string): string | null {
-  const s = link.replace(/\s+/g, "");
-  return s.match(new RegExp(`#?${PARAM}=([\\w-]+)$`))?.[1] ?? (/^[\w-]{16,}$/.test(s) ? s : null);
+  const compact = link.replace(/\s+/g, "");
+  return compact.match(new RegExp(`#?${PARAM}=([\\w-]+)$`))?.[1] ?? (/^[\w-]{16,}$/.test(compact) ? compact : null);
 }

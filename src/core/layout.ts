@@ -74,7 +74,7 @@ export type RulerDetail = "written" | "division" | "subdivision";
 export type Align = "replayed" | "pitch";
 
 export type Column =
-  | { kind: "anchor"; t: number; label: string; beatIndex: number; k: number; n: number }
+  | { kind: "anchor"; t: number; label: string; beatIndex: number; cellIndex: number; cellCount: number }
   | { kind: "beatSep" }
   /**
    * Barre de mesure. endRepeat : « :|| » (la mesure précédente termine une reprise) ;
@@ -128,7 +128,7 @@ export type Mark = {
 };
 
 /** Position d'une indication dans l'ordre des colonnes du système, pour les trier. */
-export const markColumn = (sys: { anchors: number[] }, m: Mark) => (m.anchor !== undefined ? sys.anchors[m.anchor] : m.column!);
+export const markColumn = (sys: { anchors: number[] }, mark: Mark) => (mark.anchor !== undefined ? sys.anchors[mark.anchor] : mark.column!);
 
 /** Indication d'une voix (nuance ou texte), sur une ancre. */
 export type VoiceMark = { anchor: number; text: string; kind: "dynamic" | "text" | "arpeggio" | "articulation" };
@@ -224,43 +224,43 @@ export type System = {
  * existe toujours : au pire, une ancre par tick.
  */
 function resolution(offsets: number[]): number {
-  for (let n = 1; ; n++) {
-    if (TICKS_PER_BEAT % n) continue;
-    const step = TICKS_PER_BEAT / n;
-    if (offsets.every((o) => o % step === 0)) return n;
+  for (let count = 1; ; count++) {
+    if (TICKS_PER_BEAT % count) continue;
+    const step = TICKS_PER_BEAT / count;
+    if (offsets.every((offset) => offset % step === 0)) return count;
   }
 }
 
 /** Découpage effectif d'un temps, pour nommer ses ancres. */
-function baseDivision(n: number, def: Division, attacks: number[]): Division {
-  if (n % 6 === 0) {
+function baseDivision(count: number, def: Division, attacks: number[]): Division {
+  if (count % 6 === 0) {
     // découpages binaire et ternaire possibles : on regarde où tombent les attaques
     const third = TICKS_PER_BEAT / 3,
       half = TICKS_PER_BEAT / 2;
-    const onThirds = attacks.some((o) => o > 0 && o % third === 0 && o % half !== 0);
+    const onThirds = attacks.some((offset) => offset > 0 && offset % third === 0 && offset % half !== 0);
     const onHalf = attacks.includes(half);
     if (onThirds && !onHalf) return 3;
     if (onHalf && !onThirds) return 2;
     return def;
   }
-  if (n % 3 === 0) return 3;
-  if (n % 2 === 0) return 2;
+  if (count % 3 === 0) return 3;
+  if (count % 2 === 0) return 2;
   return def;
 }
 
 /** Nom d'une ancre : chiffre du temps, « * » premier découpage, « . » second, « , » au-delà. */
-export function anchorLabel(k: number, n: number, base: Division, beatLabel: number): string {
-  if (k === 0) return String(beatLabel);
-  if ((k * base) % n === 0) return "*";
-  if ((k * base * 2) % n === 0) return ".";
+export function anchorLabel(index: number, count: number, base: Division, beatLabel: number): string {
+  if (index === 0) return String(beatLabel);
+  if ((index * base) % count === 0) return "*";
+  if ((index * base * 2) % count === 0) return ".";
   return ",";
 }
 
 /** Les cases d'un temps : leur nombre, et le nom de chacune (chiffre du temps, « * », « . », « , »). */
-export type BeatGrid = { n: number; labels: string[] };
+export type BeatGrid = { count: number; labels: string[] };
 
-const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
-const lcm = (a: number, b: number) => (a / gcd(a, b)) * b;
+const gcd = (first: number, second: number): number => (second ? gcd(second, first % second) : first);
+const lcm = (first: number, second: number) => (first / gcd(first, second)) * second;
 
 /**
  * Les cases de chaque temps, telles que les montrent le texte et la gravure : les cases écrites, ou
@@ -268,123 +268,124 @@ const lcm = (a: number, b: number) => (a / gcd(a, b)) * b;
  * du temps : un triolet reste en 3 (puis 6), sans mélange de demis et de tiers.
  */
 export function beatGrids(score: Score, detail: RulerDetail = "written"): BeatGrid[] {
-  const T = TICKS_PER_BEAT;
+  const beatTicks = TICKS_PER_BEAT;
   const offsets: number[][] = score.beats.map(() => []);
   const attacks: number[][] = score.beats.map(() => []);
-  const add = (t: number, isAttack: boolean) => {
-    const i = Math.floor(t / T);
-    if (i < 0 || i >= score.beats.length) return;
-    const o = t - i * T;
-    if (o) offsets[i].push(o);
-    if (isAttack) attacks[i].push(o);
+  const add = (tick: number, isAttack: boolean) => {
+    const index = Math.floor(tick / beatTicks);
+    if (index < 0 || index >= score.beats.length) return;
+    const offset = tick - index * beatTicks;
+    if (offset) offsets[index].push(offset);
+    if (isAttack) attacks[index].push(offset);
   };
-  for (const n of score.notes) {
-    add(n.start, true);
-    add(n.end, false);
+  for (const note of score.notes) {
+    add(note.start, true);
+    add(note.end, false);
   }
-  for (const m of score.texts) add(m.t, false);
-  for (const t of score.fermatas) add(t, false);
-  for (const g of score.graces) add(g.t, false);
-  for (const x of score.arpeggios) add(x.t, false);
-  for (const x of score.articulations) add(x.t, false);
-  for (const c of score.chords) add(c.t, false);
-  for (const l of score.lyrics) {
-    add(l.t, false);
-    if (l.extend !== undefined) add(l.extend, false);
+  for (const textMark of score.texts) add(textMark.t, false);
+  for (const tick of score.fermatas) add(tick, false);
+  for (const grace of score.graces) add(grace.t, false);
+  for (const arpeggio of score.arpeggios) add(arpeggio.t, false);
+  for (const articulation of score.articulations) add(articulation.t, false);
+  for (const textMark of score.chords) add(textMark.t, false);
+  for (const lyric of score.lyrics) {
+    add(lyric.t, false);
+    if (lyric.extend !== undefined) add(lyric.extend, false);
   }
-  for (const s of score.slurs) {
-    add(s.start, false);
-    add(s.end, false);
+  for (const slur of score.slurs) {
+    add(slur.start, false);
+    add(slur.end, false);
   }
-  for (const e of score.expressions) add(e.t, false);
-  for (const h of [...score.hairpins, ...score.effects]) {
-    add(h.start, false);
-    add(h.end, false);
+  for (const expression of score.expressions) add(expression.t, false);
+  for (const span of [...score.hairpins, ...score.effects]) {
+    add(span.start, false);
+    add(span.end, false);
   }
-  for (const p of score.pedals) {
-    add(p.start, false);
-    add(p.end, false);
+  for (const pedal of score.pedals) {
+    add(pedal.start, false);
+    add(pedal.end, false);
   }
-  return score.beats.map((b, i) => {
-    const written = resolution(offsets[i]);
-    const own = baseDivision(written, b.division, attacks[i]);
-    const n = detail === "written" ? written : lcm(written, detail === "division" ? own : own * 2);
-    const base = baseDivision(n, own, attacks[i]);
-    return { n, labels: Array.from({ length: n }, (_, k) => anchorLabel(k, n, base, b.label)) };
+  return score.beats.map((beat, index) => {
+    const written = resolution(offsets[index]);
+    const own = baseDivision(written, beat.division, attacks[index]);
+    const count = detail === "written" ? written : lcm(written, detail === "division" ? own : own * 2);
+    const base = baseDivision(count, own, attacks[index]);
+    return { count, labels: Array.from({ length: count }, (_, cellIndex) => anchorLabel(cellIndex, count, base, beat.label)) };
   });
 }
 
 /** Largeur des cases d'un temps. */
-function cellsWidth(beat: number, n: number, m: Metrics): number {
-  if (!m.cellAt) return n * m.cell;
-  let w = 0;
-  for (let k = 0; k < n; k++) w += m.cellAt(beatStart(beat) + (k * TICKS_PER_BEAT) / n);
-  return w;
+function cellsWidth(beat: number, count: number, metrics: Metrics): number {
+  if (!metrics.cellAt) return count * metrics.cell;
+  let width = 0;
+  for (let index = 0; index < count; index++) width += metrics.cellAt(beatStart(beat) + (index * TICKS_PER_BEAT) / count);
+  return width;
 }
 
 /** Regroupe les temps par mesure (rang dans le morceau). */
 function barsOf(beats: Beat[]): number[][] {
   const bars: number[][] = [];
-  beats.forEach((b, i) => {
+  beats.forEach((beat, index) => {
     const last = bars[bars.length - 1];
-    if (last && beats[last[0]].barIndex === b.barIndex) last.push(i);
-    else bars.push([i]);
+    if (last && beats[last[0]].barIndex === beat.barIndex) last.push(index);
+    else bars.push([index]);
   });
   return bars;
 }
 
 /** Répartit les temps en systèmes (listes d'index de temps), sans couper une mesure si possible. */
-function breakSystems(score: Score, grids: BeatGrid[], m: Metrics): number[][] {
+function breakSystems(score: Score, grids: BeatGrid[], metrics: Metrics): number[][] {
   const bars = barsOf(score.beats);
-  const avail = m.width - m.prefix;
+  const avail = metrics.width - metrics.prefix;
   const sectionStarts = new Set(score.markers.map((mk) => mk.barIndex));
   const barEndW = (barIndex: number) => {
-    const r = repeatOf(score, barIndex);
+    const repeat = repeatOf(score, barIndex);
     const next = repeatOf(score, barIndex + 1);
     return (
-      m.barSep +
-      (r?.end ? m.repeatDots : 0) +
-      (next?.start ? m.repeatDots : 0) +
-      (sectionStarts.has(barIndex + 1) ? (m.sectionSep ?? 0) : 0)
+      metrics.barSep +
+      (repeat?.end ? metrics.repeatDots : 0) +
+      (next?.start ? metrics.repeatDots : 0) +
+      (sectionStarts.has(barIndex + 1) ? (metrics.sectionSep ?? 0) : 0)
     );
   };
-  const beatW = (i: number, last: boolean) => cellsWidth(i, grids[i].n, m) + (last ? barEndW(score.beats[i].barIndex) : m.beatSep);
-  const barW = (bar: number[]) => bar.reduce((s, i, j) => s + beatW(i, j === bar.length - 1), 0);
+  const beatW = (index: number, last: boolean) =>
+    cellsWidth(index, grids[index].count, metrics) + (last ? barEndW(score.beats[index].barIndex) : metrics.beatSep);
+  const barW = (bar: number[]) => bar.reduce((total, index, innerIndex) => total + beatW(index, innerIndex === bar.length - 1), 0);
   // une reprise en début de système ajoute « |: » après la barre de gauche
-  const leadW = (bar: number[]) => (repeatOf(score, score.beats[bar[0]].barIndex)?.start ? m.repeatDots + m.beatSep : 0);
+  const leadW = (bar: number[]) => (repeatOf(score, score.beats[bar[0]].barIndex)?.start ? metrics.repeatDots + metrics.beatSep : 0);
 
   const systems: number[][] = [];
-  let cur: number[] = [];
+  let current: number[] = [];
   let used = 0;
   const flush = () => {
-    if (cur.length) systems.push(cur);
-    cur = [];
+    if (current.length) systems.push(current);
+    current = [];
     used = 0;
   };
   // par défaut, chaque section commence un nouveau système, comme les couplets d'une chanson
   for (const bar of bars) {
-    if (m.sectionSep === undefined && sectionStarts.has(score.beats[bar[0]].barIndex)) flush();
-    const w = barW(bar);
-    if (cur.length && used + w <= avail) {
-      cur.push(...bar);
-      used += w;
+    if (metrics.sectionSep === undefined && sectionStarts.has(score.beats[bar[0]].barIndex)) flush();
+    const width = barW(bar);
+    if (current.length && used + width <= avail) {
+      current.push(...bar);
+      used += width;
       continue;
     }
-    const lw = leadW(bar);
-    if (w + lw <= avail) {
+    const leadWidth = leadW(bar);
+    if (width + leadWidth <= avail) {
       flush();
-      cur.push(...bar);
-      used = w + lw;
+      current.push(...bar);
+      used = width + leadWidth;
       continue;
     }
     // mesure plus large qu'un système : on la coupe sur un temps
     flush();
-    used = lw;
-    bar.forEach((i, j) => {
-      const bw = beatW(i, j === bar.length - 1);
-      if (used + bw > avail && cur.length) flush();
-      cur.push(i);
-      used += bw;
+    used = leadWidth;
+    bar.forEach((index, position) => {
+      const beatWidth = beatW(index, position === bar.length - 1);
+      if (used + beatWidth > avail && current.length) flush();
+      current.push(index);
+      used += beatWidth;
     });
   }
   flush();
@@ -411,12 +412,12 @@ type Group = { staff: Staff; octave: number; lanes: Lane[]; blocks: Block[]; str
  * Dans chaque bloc, les notes sont rangées de haut en bas, la plus aiguë en premier :
  * une note seule est toujours sur la ligne du haut, quel que soit le reste du couloir.
  */
-function groups(notes: Note[], t0: number, align?: Align, barOf?: (t: number) => number, strs?: Strings): Group[] {
-  if (strs) {
+function groups(notes: Note[], t0: number, align?: Align, barOf?: (tick: number) => number, strings?: Strings): Group[] {
+  if (strings) {
     // une ligne par corde, de l'aiguë à la plus grave
-    const used = [...new Set(notes.map((n) => n.string!))].sort((a, b) => a - b);
+    const used = [...new Set(notes.map((note) => note.string!))].sort((first, second) => first - second);
     return used.map((string) => {
-      const list = notes.filter((n) => n.string === string).sort((a, b) => a.start - b.start);
+      const list = notes.filter((note) => note.string === string).sort((first, second) => first.start - second.start);
       return {
         staff: list[0].staff,
         octave: CENTRAL_OCTAVE,
@@ -427,19 +428,19 @@ function groups(notes: Note[], t0: number, align?: Align, barOf?: (t: number) =>
     });
   }
   const byKey = new Map<string, Note[]>();
-  for (const n of notes) {
-    const key = n.staff + ":" + octaveOf(n.midi);
+  for (const note of notes) {
+    const key = note.staff + ":" + octaveOf(note.midi);
     if (!byKey.has(key)) byKey.set(key, []);
-    byKey.get(key)!.push(n);
+    byKey.get(key)!.push(note);
   }
   const out: Group[] = [];
   for (const list of byKey.values()) {
-    const s = (n: Note) => Math.max(n.start, t0);
-    const sorted = [...list].sort((a, b) => s(a) - s(b) || b.midi - a.midi);
-    const g: Group = { staff: sorted[0].staff, octave: octaveOf(sorted[0].midi), lanes: [], blocks: [] };
+    const startOf = (note: Note) => Math.max(note.start, t0);
+    const sorted = [...list].sort((first, second) => startOf(first) - startOf(second) || second.midi - first.midi);
+    const group: Group = { staff: sorted[0].staff, octave: octaveOf(sorted[0].midi), lanes: [], blocks: [] };
     if (align) {
-      g.lanes = alignedLanes(list, t0, g.staff, g.octave, align === "pitch" ? barOf : undefined);
-      out.push(g);
+      group.lanes = alignedLanes(list, t0, group.staff, group.octave, align === "pitch" ? barOf : undefined);
+      out.push(group);
       continue;
     }
     let local: Note[][] = [];
@@ -447,27 +448,27 @@ function groups(notes: Note[], t0: number, align?: Align, barOf?: (t: number) =>
     const flush = () => {
       if (!block) return;
       block.size = local.length;
-      g.blocks.push(block);
-      local.forEach((notes, i) => {
-        if (!g.lanes[i]) g.lanes[i] = { staff: g.staff, octave: g.octave, notes: [] };
-        g.lanes[i].notes.push(...notes);
+      group.blocks.push(block);
+      local.forEach((notes, index) => {
+        if (!group.lanes[index]) group.lanes[index] = { staff: group.staff, octave: group.octave, notes: [] };
+        group.lanes[index].notes.push(...notes);
       });
     };
-    for (const n of sorted) {
-      if (!block || s(n) >= block.end) {
+    for (const current of sorted) {
+      if (!block || startOf(current) >= block.end) {
         flush();
-        block = { start: s(n), end: n.end, size: 0 };
+        block = { start: startOf(current), end: current.end, size: 0 };
         local = [];
       }
-      block.end = Math.max(block.end, n.end);
-      const lane = local.find((l) => l.every((m) => m.end <= s(n)));
-      if (lane) lane.push(n);
-      else local.push([n]);
+      block.end = Math.max(block.end, current.end);
+      const lane = local.find((candidate) => candidate.every((note) => note.end <= startOf(current)));
+      if (lane) lane.push(current);
+      else local.push([current]);
     }
     flush();
-    out.push(g);
+    out.push(group);
   }
-  return out.sort((a, b) => b.octave - a.octave);
+  return out.sort((first, second) => second.octave - first.octave);
 }
 
 /** Silence le plus long entre deux notes de même hauteur qui restent sur la même ligne (notes alignées). */
@@ -482,42 +483,44 @@ const ALIGN_GAP = TICKS_PER_BEAT;
  * lignes restent vides par endroits.
  */
 function alignedLanes(list: Note[], t0: number, staff: Staff, octave: number, barOf?: (t: number) => number): Lane[] {
-  const s = (n: Note) => Math.max(n.start, t0);
+  const startOf = (note: Note) => Math.max(note.start, t0);
   const chains: { midi: number; notes: Note[] }[] = [];
   const last = new Map<number, { midi: number; notes: Note[] }>();
-  for (const n of [...list].sort((a, b) => s(a) - s(b) || b.midi - a.midi)) {
-    const c = last.get(n.midi);
-    const prev = c?.notes[c.notes.length - 1];
-    if (c && prev && s(n) >= prev.end && s(n) - prev.end <= ALIGN_GAP) c.notes.push(n);
+  for (const note of [...list].sort((first, second) => startOf(first) - startOf(second) || second.midi - first.midi)) {
+    const known = last.get(note.midi);
+    const prev = known?.notes[known.notes.length - 1];
+    if (known && prev && startOf(note) >= prev.end && startOf(note) - prev.end <= ALIGN_GAP) known.notes.push(note);
     else {
-      const chain = { midi: n.midi, notes: [n] };
+      const chain = { midi: note.midi, notes: [note] };
       chains.push(chain);
-      last.set(n.midi, chain);
+      last.set(note.midi, chain);
     }
   }
   // les mesures où sonne une note : de celle de son attaque à celle où elle s'arrête
-  const bars = (x: Note) => [barOf!(s(x)), barOf!(Math.max(s(x), x.end - 1))];
+  const bars = (note: Note) => [barOf!(startOf(note)), barOf!(Math.max(startOf(note), note.end - 1))];
   const overlap = barOf
-    ? (a: Note[], b: Note[]) => a.some((x) => b.some((y) => bars(x)[0] <= bars(y)[1] && bars(y)[0] <= bars(x)[1]))
-    : (a: Note[], b: Note[]) => a.some((x) => b.some((y) => s(x) < y.end && s(y) < x.end));
+    ? (firstNotes: Note[], notes: Note[]) =>
+        firstNotes.some((note) => notes.some((other) => bars(note)[0] <= bars(other)[1] && bars(other)[0] <= bars(note)[1]))
+    : (notes: Note[], secondNotes: Note[]) =>
+        notes.some((note) => secondNotes.some((other) => startOf(note) < other.end && startOf(other) < note.end));
   // de l'aigu au grave : toutes les chaînes à ranger au-dessus d'une chaîne sont déjà placées
-  const sorted = [...chains].sort((a, b) => b.midi - a.midi);
+  const sorted = [...chains].sort((first, second) => second.midi - first.midi);
   const lane = new Map<(typeof chains)[number], number>();
-  for (const c of sorted) {
-    let k = 0;
+  for (const chain of sorted) {
+    let level = 0;
     for (const above of sorted) {
-      if (above.midi <= c.midi) break;
-      if (overlap(above.notes, c.notes)) k = Math.max(k, lane.get(above)! + 1);
+      if (above.midi <= chain.midi) break;
+      if (overlap(above.notes, chain.notes)) level = Math.max(level, lane.get(above)! + 1);
     }
-    lane.set(c, k);
+    lane.set(chain, level);
   }
   const lanes: Lane[] = [];
-  for (const c of sorted) {
-    const k = lane.get(c)!;
-    for (let i = lanes.length; i <= k; i++) lanes.push({ staff, octave, notes: [] });
-    lanes[k].notes.push(...c.notes);
+  for (const chain of sorted) {
+    const level = lane.get(chain)!;
+    for (let index = lanes.length; index <= level; index++) lanes.push({ staff, octave, notes: [] });
+    lanes[level].notes.push(...chain.notes);
   }
-  for (const l of lanes) l.notes.sort((a, b) => a.start - b.start);
+  for (const row of lanes) row.notes.sort((first, second) => first.start - second.start);
   return lanes;
 }
 
@@ -525,123 +528,134 @@ function alignedLanes(list: Note[], t0: number, staff: Staff, octave: number, ba
  * Le nombre d'une hauteur sur sa ligne : son numéro dans l'octave, ou sur une corde (strs
  * donné), sa case.
  */
-const numberOn = (midi: number, strs?: Strings, string?: number) =>
-  strs && string !== undefined ? fretOf(strs, string, midi) : numberOf(midi);
+const numberOn = (midi: number, strings?: Strings, string?: number) =>
+  strings && string !== undefined ? fretOf(strings, string, midi) : numberOf(midi);
 
 /**
  * Texte d'une attaque : le numéro, puis la voisine d'une trille (« 5~7 ») et le doigt (« 5_3 ») ;
  * avec les parties (parts), la case d'une note jouée sur une corde.
  */
-export const noteText = (n: Note, parts?: Part[]) => {
-  const strs = parts && n.string !== undefined ? stringsOfStaff(parts, n.staff) : undefined;
-  const k = (midi: number) => numberOn(midi, strs, n.string);
-  const finger = n.finger ? FINGER_MARK + n.finger : "";
+export const noteText = (note: Note, parts?: Part[]) => {
+  const strings = parts && note.string !== undefined ? stringsOfStaff(parts, note.staff) : undefined;
+  const written = (midi: number) => numberOn(midi, strings, note.string);
+  const finger = note.finger ? FINGER_MARK + note.finger : "";
   // les techniques des cordes : étouffée, harmonique, glissé, bend
-  if (n.dead) return DEAD_MARK + finger;
-  if (n.harmonic) return `<${k(n.midi)}>` + finger;
+  if (note.dead) return DEAD_MARK + finger;
+  if (note.harmonic) return `<${written(note.midi)}>` + finger;
   // le glissé d'entrée avant la case ; après elle, le glissé vers la note suivante, ou vers rien
-  const into = n.slideIn ? slideText(n.slideIn, true) : "";
-  if (n.slide || n.slideOut) return into + k(n.midi) + (n.slide ? slideText(n.slide, false) : slideText(n.slideOut!, true)) + finger;
-  if (n.bend !== undefined) return into + k(n.midi) + BEND_MARK + k(n.bend) + (n.release ? RELEASE_MARK : "") + finger;
-  if (into) return into + k(n.midi) + finger;
-  return String(k(n.midi)) + (n.trill !== undefined ? TRILL_MARK + k(n.trill) : "") + finger;
+  const into = note.slideIn ? slideText(note.slideIn, true) : "";
+  if (note.slide || note.slideOut)
+    return into + written(note.midi) + (note.slide ? slideText(note.slide, false) : slideText(note.slideOut!, true)) + finger;
+  if (note.bend !== undefined)
+    return into + written(note.midi) + BEND_MARK + written(note.bend) + (note.release ? RELEASE_MARK : "") + finger;
+  if (into) return into + written(note.midi) + finger;
+  return String(written(note.midi)) + (note.trill !== undefined ? TRILL_MARK + written(note.trill) : "") + finger;
 };
 
-function cell(lane: Lane, t: number, t0: number, parts: Part[]): string {
-  const attack = lane.notes.find((n) => n.start === t);
+function cell(lane: Lane, tick: number, t0: number, parts: Part[]): string {
+  const attack = lane.notes.find((note) => note.start === tick);
   if (attack) return noteText(attack, parts);
   // sur une corde, la dernière note attaquée est celle qui sonne
-  const held = lane.notes.filter((n) => n.start < t && n.end > t).at(-1);
+  const held = lane.notes.filter((note) => note.start < tick && note.end > tick).at(-1);
   if (!held) return "";
-  return t === t0 ? "-" + numberOn(held.midi, stringsOfStaff(parts, held.staff), held.string) : "-";
+  return tick === t0 ? "-" + numberOn(held.midi, stringsOfStaff(parts, held.staff), held.string) : "-";
 }
 
-export function layout(score: Score, m: Metrics): System[] {
-  const grids = beatGrids(score, m.detail);
-  const T = TICKS_PER_BEAT;
-  return breakSystems(score, grids, m).map((beatIdx) => {
-    const t0 = beatStart(beatIdx[0]);
-    const t1 = beatStart(beatIdx[beatIdx.length - 1] + 1);
+export function layout(score: Score, metrics: Metrics): System[] {
+  const grids = beatGrids(score, metrics.detail);
+  const beatTicks = TICKS_PER_BEAT;
+  return breakSystems(score, grids, metrics).map((beatIndexes) => {
+    const t0 = beatStart(beatIndexes[0]);
+    const t1 = beatStart(beatIndexes[beatIndexes.length - 1] + 1);
     const columns: Column[] = [];
     const anchors: number[] = [];
-    let width = m.prefix;
-    const firstBeat = score.beats[beatIdx[0]];
-    const startsBar = beatIdx[0] === 0 || score.beats[beatIdx[0] - 1].barIndex !== firstBeat.barIndex;
+    let width = metrics.prefix;
+    const firstBeat = score.beats[beatIndexes[0]];
+    const startsBar = beatIndexes[0] === 0 || score.beats[beatIndexes[0] - 1].barIndex !== firstBeat.barIndex;
     if (startsBar && repeatOf(score, firstBeat.barIndex)?.start) {
       columns.push({ kind: "barSep", lead: true, startRepeat: true });
-      width += m.repeatDots + m.beatSep;
+      width += metrics.repeatDots + metrics.beatSep;
     }
-    beatIdx.forEach((bi, j) => {
-      const g = grids[bi];
-      for (let k = 0; k < g.n; k++) {
+    beatIndexes.forEach((beatIndex, innerIndex) => {
+      const beatGrid = grids[beatIndex];
+      for (let cellIndex = 0; cellIndex < beatGrid.count; cellIndex++) {
         anchors.push(columns.length);
-        const t = beatStart(bi) + (k * T) / g.n;
-        columns.push({ kind: "anchor", t, label: g.labels[k], beatIndex: bi, k, n: g.n });
-        width += m.cellAt ? m.cellAt(t) : m.cell;
+        const tick = beatStart(beatIndex) + (cellIndex * beatTicks) / beatGrid.count;
+        columns.push({ kind: "anchor", t: tick, label: beatGrid.labels[cellIndex], beatIndex, cellIndex, cellCount: beatGrid.count });
+        width += metrics.cellAt ? metrics.cellAt(tick) : metrics.cell;
       }
-      const barIndex = score.beats[bi].barIndex;
-      const barEnd = score.beats[bi + 1]?.barIndex !== barIndex;
+      const barIndex = score.beats[beatIndex].barIndex;
+      const barEnd = score.beats[beatIndex + 1]?.barIndex !== barIndex;
       if (!barEnd) {
         columns.push({ kind: "beatSep" });
-        width += m.beatSep;
+        width += metrics.beatSep;
         return;
       }
-      const lastOfSystem = j === beatIdx.length - 1;
+      const lastOfSystem = innerIndex === beatIndexes.length - 1;
       const endRepeat = !!repeatOf(score, barIndex)?.end;
       // « ||: » de la mesure suivante : en fin de système, il passe au début du système suivant
       const startRepeat = !lastOfSystem && !!repeatOf(score, barIndex + 1)?.start;
-      const col: Column = { kind: "barSep" };
-      if (endRepeat) col.endRepeat = true;
-      if (startRepeat) col.startRepeat = true;
-      if (bi === score.beats.length - 1) col.final = true;
+      const separator: Column = { kind: "barSep" };
+      if (endRepeat) separator.endRepeat = true;
+      if (startRepeat) separator.startRepeat = true;
+      if (beatIndex === score.beats.length - 1) separator.final = true;
       // fin de section : double barre
-      else if (!endRepeat && !startRepeat && score.markers.some((mk) => mk.barIndex === barIndex + 1)) col.section = true;
+      else if (!endRepeat && !startRepeat && score.markers.some((mk) => mk.barIndex === barIndex + 1)) separator.section = true;
       // une section qui suit sur la même ligne : un blanc la sépare de la précédente
-      const spaced = m.sectionSep !== undefined && !lastOfSystem && score.markers.some((mk) => mk.barIndex === barIndex + 1);
-      if (spaced) col.spaced = true;
-      columns.push(col);
-      width += m.barSep + (endRepeat ? m.repeatDots : 0) + (startRepeat ? m.repeatDots : 0) + (spaced ? m.sectionSep! : 0);
+      const spaced = metrics.sectionSep !== undefined && !lastOfSystem && score.markers.some((mk) => mk.barIndex === barIndex + 1);
+      if (spaced) separator.spaced = true;
+      columns.push(separator);
+      width +=
+        metrics.barSep + (endRepeat ? metrics.repeatDots : 0) + (startRepeat ? metrics.repeatDots : 0) + (spaced ? metrics.sectionSep! : 0);
     });
 
-    const inSystem = score.notes.filter((n) => n.start < t1 && n.end > t0);
-    const anchorT = anchors.map((ci) => (columns[ci] as { t: number }).t);
-    const digits = (staff: Staff) => anchorT.map((t) => graceDigits(score.graces, staff, t, score.parts));
-    const barOf = (t: number) => score.beats[Math.min(score.beats.length - 1, Math.floor(t / T))].barIndex;
+    const inSystem = score.notes.filter((note) => note.start < t1 && note.end > t0);
+    const anchorTicks = anchors.map((columnIndex) => (columns[columnIndex] as { t: number }).t);
+    const digits = (staff: Staff) => anchorTicks.map((tick) => graceDigits(score.graces, staff, tick, score.parts));
+    const barOf = (tick: number) => score.beats[Math.min(score.beats.length - 1, Math.floor(tick / beatTicks))].barIndex;
     const toRows = (staff: Staff): SystemRow[] => {
-      const strs = stringsOfStaff(score.parts, staff);
-      const gs = groups(
-        inSystem.filter((n) => n.staff === staff),
+      const strings = stringsOfStaff(score.parts, staff);
+      const staffGroups = groups(
+        inSystem.filter((note) => note.staff === staff),
         t0,
-        m.align,
+        metrics.align,
         barOf,
-        strs,
+        strings,
       );
       // toutes les cordes, à la gravure : une tablature se lit sur une grille fixe
-      if (strs && m.allStrings) {
-        for (let string = 1; string <= strs.open.length; string++) {
-          if (!gs.some((g) => g.string === string))
-            gs.push({ staff, octave: CENTRAL_OCTAVE, string, lanes: [{ staff, octave: CENTRAL_OCTAVE, string, notes: [] }], blocks: [] });
+      if (strings && metrics.allStrings) {
+        for (let string = 1; string <= strings.open.length; string++) {
+          if (!staffGroups.some((group) => group.string === string))
+            staffGroups.push({
+              staff,
+              octave: CENTRAL_OCTAVE,
+              string,
+              lanes: [{ staff, octave: CENTRAL_OCTAVE, string, notes: [] }],
+              blocks: [],
+            });
         }
-        gs.sort((a, b) => a.string! - b.string!);
+        staffGroups.sort((first, second) => first.string! - second.string!);
       }
       // petites notes : sur la première ligne libre de leur couloir d'octave (créé au besoin)
-      const graces = score.graces.filter((g) => g.staff === staff && g.t >= t0 && g.t < t1);
+      const graces = score.graces.filter((grace) => grace.staff === staff && grace.t >= t0 && grace.t < t1);
       const slotsAt = digits(staff);
       const placed = new Map<Lane, string[][]>();
-      for (const g of graces) {
-        const octave = strs ? CENTRAL_OCTAVE : octaveOf(g.midi);
+      for (const grace of graces) {
+        const octave = strings ? CENTRAL_OCTAVE : octaveOf(grace.midi);
         // sur une corde : la ligne de sa corde
-        let group = strs ? gs.find((x) => x.string === g.string) : gs.find((x) => x.octave === octave);
+        let group = strings
+          ? staffGroups.find((candidate) => candidate.string === grace.string)
+          : staffGroups.find((candidate) => candidate.octave === octave);
         if (!group) {
-          group = strs
-            ? { staff, octave, string: g.string, lanes: [{ staff, octave, string: g.string, notes: [] }], blocks: [] }
+          group = strings
+            ? { staff, octave, string: grace.string, lanes: [{ staff, octave, string: grace.string, notes: [] }], blocks: [] }
             : { staff, octave, lanes: [], blocks: [] };
-          gs.push(group);
-          gs.sort((x, y) => (strs ? x.string! - y.string! : y.octave - x.octave));
+          staffGroups.push(group);
+          staffGroups.sort((first, second) => (strings ? first.string! - second.string! : second.octave - first.octave));
         }
-        const a = anchorT.indexOf(g.t);
-        let lane = group.lanes.find((l) => !placed.get(l)?.[a]?.[g.slot]);
-        if (!lane && strs) continue; // une corde ne joue qu'une petite note à la fois
+        const anchor = anchorTicks.indexOf(grace.t);
+        let lane = group.lanes.find((candidate) => !placed.get(candidate)?.[anchor]?.[grace.slot]);
+        if (!lane && strings) continue; // une corde ne joue qu'une petite note à la fois
         if (!lane) {
           lane = { staff, octave, notes: [] };
           group.lanes.push(lane);
@@ -649,26 +663,26 @@ export function layout(score: Score, m: Metrics): System[] {
         if (!placed.has(lane))
           placed.set(
             lane,
-            anchorT.map(() => []),
+            anchorTicks.map(() => []),
           );
-        const cellGraces = placed.get(lane)![a];
-        while (cellGraces.length < slotsAt[a].length) cellGraces.push("");
-        cellGraces[g.slot] = String(numberOn(g.midi, strs, g.string));
+        const cellGraces = placed.get(lane)![anchor];
+        while (cellGraces.length < slotsAt[anchor].length) cellGraces.push("");
+        cellGraces[grace.slot] = String(numberOn(grace.midi, strings, grace.string));
       }
-      return gs.flatMap((g) =>
-        g.lanes.map((lane, i) => ({
+      return staffGroups.flatMap((group) =>
+        group.lanes.map((lane, index) => ({
           staff,
-          octave: g.octave,
-          ...(g.string !== undefined ? { string: g.string } : {}),
-          showOctave: i === 0,
-          cells: anchorT.map((t) => cell(lane, t, t0, score.parts)),
-          trill: anchorT.map((t) => lane.notes.some((n) => n.trill !== undefined && n.start <= t && n.end > t)),
-          graces: placed.get(lane) ?? anchorT.map(() => []),
+          octave: group.octave,
+          ...(group.string !== undefined ? { string: group.string } : {}),
+          showOctave: index === 0,
+          cells: anchorTicks.map((tick) => cell(lane, tick, t0, score.parts)),
+          trill: anchorTicks.map((tick) => lane.notes.some((note) => note.trill !== undefined && note.start <= tick && note.end > tick)),
+          graces: placed.get(lane) ?? anchorTicks.map(() => []),
           // décalage pour centrer chaque bloc dans son couloir (rendu graphique, option)
-          center: anchors.map((ci) => {
-            const t = (columns[ci] as { t: number }).t;
-            const b = g.blocks.find((x) => x.start <= t && t < x.end);
-            return b ? (g.lanes.length - b.size) / 2 : 0;
+          center: anchors.map((columnIndex) => {
+            const tick = (columns[columnIndex] as { t: number }).t;
+            const block = group.blocks.find((candidate) => candidate.start <= tick && tick < candidate.end);
+            return block ? (group.lanes.length - block.size) / 2 : 0;
           }),
         })),
       );
@@ -676,189 +690,205 @@ export function layout(score: Score, m: Metrics): System[] {
 
     // ancres de chaque mesure du système
     const barAnchors = new Map<number, number[]>();
-    anchors.forEach((ci, a) => {
-      const bi = (columns[ci] as { beatIndex: number }).beatIndex;
-      const bar = score.beats[bi].barIndex;
+    anchors.forEach((columnIndex, anchor) => {
+      const beatIndex = (columns[columnIndex] as { beatIndex: number }).beatIndex;
+      const bar = score.beats[beatIndex].barIndex;
       if (!barAnchors.has(bar)) barAnchors.set(bar, []);
-      barAnchors.get(bar)!.push(a);
+      barAnchors.get(bar)!.push(anchor);
     });
     const firstAnchorOfBar = (bar: number) => {
       const list = barAnchors.get(bar);
       if (!list) return undefined;
       // seulement si la mesure commence bien dans ce système
-      const ci = anchors[list[0]];
-      const col = columns[ci] as { k: number; beatIndex: number };
-      const b = score.beats[col.beatIndex];
-      const prev = score.beats[col.beatIndex - 1];
-      return col.k === 0 && (!prev || prev.barIndex !== b.barIndex) ? list[0] : undefined;
+      const columnIndex = anchors[list[0]];
+      const column = columns[columnIndex] as { cellIndex: number; beatIndex: number };
+      const beat = score.beats[column.beatIndex];
+      const prev = score.beats[column.beatIndex - 1];
+      return column.cellIndex === 0 && (!prev || prev.barIndex !== beat.barIndex) ? list[0] : undefined;
     };
     const lastAnchorOfBar = (bar: number) => {
       const list = barAnchors.get(bar);
       if (!list) return undefined;
-      const a = list[list.length - 1];
-      const bi = (columns[anchors[a]] as { beatIndex: number }).beatIndex;
-      return score.beats[bi + 1]?.barIndex !== bar ? a : undefined; // la mesure se termine dans ce système
+      const anchor = list[list.length - 1];
+      const beatIndex = (columns[anchors[anchor]] as { beatIndex: number }).beatIndex;
+      return score.beats[beatIndex + 1]?.barIndex !== bar ? anchor : undefined; // la mesure se termine dans ce système
     };
 
     const marks: Mark[] = [];
-    for (const r of score.repeats) {
-      if (!r.end || !r.times || r.times === 2) continue;
-      const a = lastAnchorOfBar(r.barIndex);
-      if (a !== undefined) marks.push({ anchor: a, text: `${r.times}×`, kind: "times" });
+    for (const repeat of score.repeats) {
+      if (!repeat.end || !repeat.times || repeat.times === 2) continue;
+      const anchor = lastAnchorOfBar(repeat.barIndex);
+      if (anchor !== undefined) marks.push({ anchor, text: `${repeat.times}×`, kind: "times" });
     }
     // début de section : sa lettre en tête du système, ou contre la barre qui l'ouvre en cours de ligne
     const section = score.markers.find((mk) => firstAnchorOfBar(mk.barIndex) === 0);
     if (section) marks.push({ column: -1, text: `[${section.label}]`, kind: "marker", label: section.label });
     for (const mk of score.markers) {
-      const a = firstAnchorOfBar(mk.barIndex);
-      if (a === undefined || a === 0) continue;
-      let column = anchors[a] - 1;
+      const anchor = firstAnchorOfBar(mk.barIndex);
+      if (anchor === undefined || anchor === 0) continue;
+      let column = anchors[anchor] - 1;
       while (column > 0 && columns[column].kind !== "barSep") column--;
       marks.push({ column, text: `[${mk.label}]`, kind: "marker", label: mk.label });
     }
-    for (const t of score.fermatas) {
-      const a = anchors.findIndex((ci) => (columns[ci] as { t: number }).t === t);
-      if (a >= 0) marks.push({ anchor: a, text: "^", kind: "fermata" });
+    for (const tick of score.fermatas) {
+      const anchor = anchors.findIndex((columnIndex) => (columns[columnIndex] as { t: number }).t === tick);
+      if (anchor >= 0) marks.push({ anchor, text: "^", kind: "fermata" });
     }
     const arpeggios: System["arpeggios"] = [];
-    for (const x of score.arpeggios) {
-      const a = anchorT.indexOf(x.t);
-      if (a < 0) continue;
-      arpeggios.push({ anchor: a, ...(x.staff !== undefined ? { staff: x.staff } : {}), down: !!x.down });
-      if (x.staff === undefined) marks.push({ anchor: a, text: x.down ? ARPEGGIO_DOWN : ARPEGGIO_UP, kind: "arpeggio" });
+    for (const arpeggio of score.arpeggios) {
+      const anchor = anchorTicks.indexOf(arpeggio.t);
+      if (anchor < 0) continue;
+      arpeggios.push({ anchor, ...(arpeggio.staff !== undefined ? { staff: arpeggio.staff } : {}), down: !!arpeggio.down });
+      if (arpeggio.staff === undefined) marks.push({ anchor, text: arpeggio.down ? ARPEGGIO_DOWN : ARPEGGIO_UP, kind: "arpeggio" });
     }
-    for (const tm of score.texts) {
-      const a = anchors.findIndex((ci) => (columns[ci] as { t: number }).t === tm.t);
-      if (a >= 0) marks.push({ anchor: a, text: tm.text, kind: "text" });
+    for (const textMark of score.texts) {
+      const anchor = anchors.findIndex((columnIndex) => (columns[columnIndex] as { t: number }).t === textMark.t);
+      if (anchor >= 0) marks.push({ anchor, text: textMark.text, kind: "text" });
     }
-    marks.sort((x, y) => markColumn({ anchors }, x) - markColumn({ anchors }, y));
+    marks.sort((first, second) => markColumn({ anchors }, first) - markColumn({ anchors }, second));
 
-    const anchorAt = (t: number) => anchors.findIndex((ci) => (columns[ci] as { t: number }).t === t);
-    const lastAnchorBefore = (t: number) => {
-      let a = -1;
-      anchors.forEach((ci, i) => {
-        if ((columns[ci] as { t: number }).t < t) a = i;
+    const anchorAt = (tick: number) => anchors.findIndex((columnIndex) => (columns[columnIndex] as { t: number }).t === tick);
+    const lastAnchorBefore = (tick: number) => {
+      let anchor = -1;
+      anchors.forEach((columnIndex, index) => {
+        if ((columns[columnIndex] as { t: number }).t < tick) anchor = index;
       });
-      return a;
+      return anchor;
     };
     // liaisons : les plus courtes d'abord, chacune au premier étage où elle ne touche aucune autre
     const slurSpans = (staff: Staff): SlurSpan[] => {
       const spans = score.slurs
-        .filter((s) => s.staff === staff && s.start < t1 && s.end >= t0)
-        .map((s) => ({
-          fromAnchor: anchorAt(Math.max(s.start, t0)),
-          toAnchor: s.end < t1 ? anchorAt(s.end) : anchors.length - 1,
-          opens: s.start >= t0,
-          closes: s.end < t1,
+        .filter((slur) => slur.staff === staff && slur.start < t1 && slur.end >= t0)
+        .map((slur) => ({
+          fromAnchor: anchorAt(Math.max(slur.start, t0)),
+          toAnchor: slur.end < t1 ? anchorAt(slur.end) : anchors.length - 1,
+          opens: slur.start >= t0,
+          closes: slur.end < t1,
           level: 0,
         }))
-        .filter((s) => s.fromAnchor >= 0 && s.toAnchor >= s.fromAnchor);
+        .filter((span) => span.fromAnchor >= 0 && span.toAnchor >= span.fromAnchor);
       const placed: SlurSpan[] = [];
-      for (const s of [...spans].sort((a, b) => a.toAnchor - a.fromAnchor - (b.toAnchor - b.fromAnchor))) {
+      for (const span of [...spans].sort((first, second) => first.toAnchor - first.fromAnchor - (second.toAnchor - second.fromAnchor))) {
         // deux liaisons qui se touchent seulement (l'une finit sur la note où l'autre commence) restent au même étage
-        while (placed.some((p) => p.level === s.level && p.fromAnchor < s.toAnchor && s.fromAnchor < p.toAnchor)) s.level++;
-        placed.push(s);
+        while (
+          placed.some(
+            (slurSpan) => slurSpan.level === span.level && slurSpan.fromAnchor < span.toAnchor && span.fromAnchor < slurSpan.toAnchor,
+          )
+        )
+          span.level++;
+        placed.push(span);
       }
       return spans;
     };
     // paroles : autant de lignes que le plus haut couplet présent dans le système
     const lyricLines = (staff: Staff): LyricLine[] => {
       const here = score.lyrics.filter(
-        (l) => l.staff === staff && ((l.t >= t0 && l.t < t1) || (l.t < t0 && l.extend !== undefined && l.extend > t0)),
+        (lyric) =>
+          lyric.staff === staff && ((lyric.t >= t0 && lyric.t < t1) || (lyric.t < t0 && lyric.extend !== undefined && lyric.extend > t0)),
       );
-      const verses = Math.max(0, ...here.map((l) => l.verse));
-      return Array.from({ length: verses }, (_, v) => {
-        const mine = here.filter((l) => l.verse === v + 1);
+      const verses = Math.max(0, ...here.map((lyric) => lyric.verse));
+      return Array.from({ length: verses }, (_, verseIndex) => {
+        const mine = here.filter((lyric) => lyric.verse === verseIndex + 1);
         return {
-          syllables: mine.filter((l) => l.t >= t0).map((l) => ({ anchor: anchorAt(l.t), text: l.text, hyphen: !!l.hyphen })),
+          syllables: mine
+            .filter((lyric) => lyric.t >= t0)
+            .map((lyric) => ({ anchor: anchorAt(lyric.t), text: lyric.text, hyphen: !!lyric.hyphen })),
           extenders: mine
-            .filter((l) => l.extend !== undefined)
-            .map((l) => ({
-              fromAnchor: l.t >= t0 ? anchorAt(l.t) : 0,
-              toAnchor: l.extend! < t1 ? lastAnchorBefore(l.extend!) : anchors.length - 1,
-              opens: l.t >= t0,
-              closes: l.extend! <= t1,
+            .filter((lyric) => lyric.extend !== undefined)
+            .map((lyric) => ({
+              fromAnchor: lyric.t >= t0 ? anchorAt(lyric.t) : 0,
+              toAnchor: lyric.extend! < t1 ? lastAnchorBefore(lyric.extend!) : anchors.length - 1,
+              opens: lyric.t >= t0,
+              closes: lyric.extend! <= t1,
             })),
         };
       });
     };
     const voice = (staff: Staff): Voice => ({
       marks: score.expressions
-        .filter((e) => e.staff === staff)
-        .map((e): VoiceMark => ({ anchor: anchorAt(e.t), text: e.text, kind: e.kind }))
+        .filter((expression) => expression.staff === staff)
+        .map((expression): VoiceMark => ({ anchor: anchorAt(expression.t), text: expression.text, kind: expression.kind }))
         .concat(
           score.arpeggios
-            .filter((x) => x.staff === staff)
-            .map((x) => ({ anchor: anchorAt(x.t), text: x.down ? ARPEGGIO_DOWN : ARPEGGIO_UP, kind: "arpeggio" as const })),
+            .filter((arpeggio) => arpeggio.staff === staff)
+            .map((arpeggio) => ({
+              anchor: anchorAt(arpeggio.t),
+              text: arpeggio.down ? ARPEGGIO_DOWN : ARPEGGIO_UP,
+              kind: "arpeggio" as const,
+            })),
           score.articulations
-            .filter((x) => x.staff === staff)
-            .map((x) => ({ anchor: anchorAt(x.t), text: ARTICULATION_SIGNS[x.kind], kind: "articulation" as const })),
+            .filter((articulation) => articulation.staff === staff)
+            .map((articulation) => ({
+              anchor: anchorAt(articulation.t),
+              text: ARTICULATION_SIGNS[articulation.kind],
+              kind: "articulation" as const,
+            })),
         )
-        .filter((m) => m.anchor >= 0)
-        .sort((x, y) => x.anchor - y.anchor),
+        .filter((voiceMark) => voiceMark.anchor >= 0)
+        .sort((first, second) => first.anchor - second.anchor),
       hairpins: score.hairpins
-        .filter((h) => h.staff === staff && h.start < t1 && h.end > t0 && h.end > h.start)
-        .map((h) => {
-          const s = Math.max(h.start, t0),
-            e = Math.min(h.end, t1);
+        .filter((hairpin) => hairpin.staff === staff && hairpin.start < t1 && hairpin.end > t0 && hairpin.end > hairpin.start)
+        .map((hairpin) => {
+          const start = Math.max(hairpin.start, t0),
+            end = Math.min(hairpin.end, t1);
           return {
-            kind: h.kind,
-            fromAnchor: anchorAt(s),
-            toAnchor: lastAnchorBefore(e),
-            from: (s - h.start) / (h.end - h.start),
-            to: (e - h.start) / (h.end - h.start),
+            kind: hairpin.kind,
+            fromAnchor: anchorAt(start),
+            toAnchor: lastAnchorBefore(end),
+            from: (start - hairpin.start) / (hairpin.end - hairpin.start),
+            to: (end - hairpin.start) / (hairpin.end - hairpin.start),
           };
         })
-        .filter((h) => h.fromAnchor >= 0 && h.toAnchor >= h.fromAnchor),
+        .filter((span) => span.fromAnchor >= 0 && span.toAnchor >= span.fromAnchor),
       effects: score.effects
-        .filter((e) => e.staff === staff && e.start < t1 && e.end > t0 && e.end > e.start)
-        .map((e) => ({
-          kind: e.kind,
-          fromAnchor: anchorAt(Math.max(e.start, t0)),
-          toAnchor: lastAnchorBefore(Math.min(e.end, t1)),
-          opens: e.start >= t0,
-          closes: e.end <= t1,
+        .filter((effect) => effect.staff === staff && effect.start < t1 && effect.end > t0 && effect.end > effect.start)
+        .map((effect) => ({
+          kind: effect.kind,
+          fromAnchor: anchorAt(Math.max(effect.start, t0)),
+          toAnchor: lastAnchorBefore(Math.min(effect.end, t1)),
+          opens: effect.start >= t0,
+          closes: effect.end <= t1,
         }))
-        .filter((e) => e.fromAnchor >= 0 && e.toAnchor >= e.fromAnchor),
+        .filter((span) => span.fromAnchor >= 0 && span.toAnchor >= span.fromAnchor),
       slurs: slurSpans(staff),
       lyrics: lyricLines(staff),
     });
 
     // pédale d'une portée : ses signes (pour le texte .prisma) et ses traits (pour la gravure)
     const pedalLine = (staff: Staff): PedalLine => {
-      const pedals = score.pedals.filter((p) => p.staff === staff);
+      const pedals = score.pedals.filter((pedal) => pedal.staff === staff);
       const signs: PedalLine["signs"] = [];
       const spans: PedalLine["spans"] = [];
-      for (const p of pedals) {
-        const change = (t: number) => pedals.some((q) => q !== p && (q.end === t || q.start === t));
-        if (p.start >= t0 && p.start < t1) {
-          const a = anchorAt(p.start);
-          if (a >= 0) signs.push({ anchor: a, text: pedals.some((q) => q.end === p.start) ? PEDAL_CHANGE : PEDAL_DOWN });
+      for (const current of pedals) {
+        const change = (tick: number) => pedals.some((pedal) => pedal !== current && (pedal.end === tick || pedal.start === tick));
+        if (current.start >= t0 && current.start < t1) {
+          const anchor = anchorAt(current.start);
+          if (anchor >= 0) signs.push({ anchor, text: pedals.some((pedal) => pedal.end === current.start) ? PEDAL_CHANGE : PEDAL_DOWN });
         }
         // relâchée à un instant où une autre pédale s'enfonce : c'est ce changement qui l'écrit
-        if (p.end >= t0 && p.end < t1 && !pedals.some((q) => q.start === p.end)) {
-          const a = anchorAt(p.end);
-          if (a >= 0) signs.push({ anchor: a, text: PEDAL_UP });
+        if (current.end >= t0 && current.end < t1 && !pedals.some((pedal) => pedal.start === current.end)) {
+          const anchor = anchorAt(current.end);
+          if (anchor >= 0) signs.push({ anchor, text: PEDAL_UP });
         }
-        if (p.start < t1 && p.end > t0) {
-          const opens = p.start >= t0,
-            closes = p.end <= t1;
+        if (current.start < t1 && current.end > t0) {
+          const opens = current.start >= t0,
+            closes = current.end <= t1;
           spans.push({
-            fromAnchor: opens ? anchorAt(p.start) : -1,
-            toAnchor: p.end < t1 ? anchorAt(p.end) : -1,
+            fromAnchor: opens ? anchorAt(current.start) : -1,
+            toAnchor: current.end < t1 ? anchorAt(current.end) : -1,
             opens,
             closes,
-            changeStart: opens && change(p.start),
-            changeEnd: closes && change(p.end),
-            ...(p.implied ? { implied: true } : {}),
+            changeStart: opens && change(current.start),
+            changeEnd: closes && change(current.end),
+            ...(current.implied ? { implied: true } : {}),
           });
         }
       }
-      signs.sort((a, b) => a.anchor - b.anchor);
+      signs.sort((first, second) => first.anchor - second.anchor);
       const texts = score.pedalTexts
-        .filter((p) => p.staff === staff)
-        .map((p) => ({ anchor: anchorAt(p.t), text: p.text }))
-        .filter((p) => p.anchor >= 0);
+        .filter((pedalText) => pedalText.staff === staff)
+        .map((pedalText) => ({ anchor: anchorAt(pedalText.t), text: pedalText.text }))
+        .filter((text) => text.anchor >= 0);
       return { signs, spans, texts };
     };
 
@@ -879,7 +909,9 @@ export function layout(score: Score, m: Metrics): System[] {
       section: section?.label,
       endsSection: score.markers.some((mk) => mk.barIndex > 0 && lastAnchorOfBar(mk.barIndex - 1) === anchors.length - 1),
       arpeggios,
-      chords: score.chords.map((c) => ({ anchor: anchorT.indexOf(c.t), text: c.text })).filter((c) => c.anchor >= 0),
+      chords: score.chords
+        .map((textMark) => ({ anchor: anchorTicks.indexOf(textMark.t), text: textMark.text }))
+        .filter((chord) => chord.anchor >= 0),
       width,
     };
   });

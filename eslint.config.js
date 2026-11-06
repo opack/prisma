@@ -25,7 +25,7 @@ export default tseslint.config(
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",
       "@typescript-eslint/no-unused-vars": ["error", { ignoreRestSiblings: true }],
-      "id-length": ["warn", { min: 2, exceptions: ["x", "y"], properties: "never" }],
+      "id-length": ["error", { min: 2, exceptions: ["x", "y", "_"], properties: "never" }],
     },
   },
   {

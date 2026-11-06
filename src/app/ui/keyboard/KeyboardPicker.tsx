@@ -19,26 +19,26 @@ export function KeyboardPicker({
   title,
 }: {
   current?: string;
-  onPick: (n: string) => void;
+  onPick: (name: string) => void;
   title?: (n: number) => string;
 }) {
-  const key = (n: number, black: boolean, style: React.CSSProperties) => (
+  const key = (note: number, black: boolean, style: React.CSSProperties) => (
     <button
-      key={n}
-      className={pianoKey(black, String(n) === current)}
+      key={note}
+      className={pianoKey(black, String(note) === current)}
       style={style}
-      onClick={() => onPick(String(n))}
-      title={title?.(n)}
-      aria-label={`note ${n}`}
+      onClick={() => onPick(String(note))}
+      title={title?.(note)}
+      aria-label={`note ${note}`}
     >
-      {n}
+      {note}
     </button>
   );
   const unit = 100 / WHITE.length;
   return (
     <div className="relative h-[84px]">
-      {WHITE.map((n, i) => key(n, false, { left: `${i * unit}%`, width: `${unit}%` }))}
-      {BLACK.map(([n, at]) => key(n, true, { left: `${(at - 0.32) * unit}%`, width: `${unit * 0.64}%` }))}
+      {WHITE.map((note, index) => key(note, false, { left: `${index * unit}%`, width: `${unit}%` }))}
+      {BLACK.map(([note, at]) => key(note, true, { left: `${(at - 0.32) * unit}%`, width: `${unit * 0.64}%` }))}
     </div>
   );
 }

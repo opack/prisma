@@ -14,9 +14,9 @@ type Listener = (at: ScorePlace, where: ScreenPoint, kind: PickKind) => void;
 const listeners = new Set<Listener>();
 
 export const pick = {
-  emit: (at: ScorePlace, where: ScreenPoint, kind: PickKind) => listeners.forEach((l) => l(at, where, kind)),
-  subscribe(l: Listener) {
-    listeners.add(l);
-    return () => void listeners.delete(l);
+  emit: (at: ScorePlace, where: ScreenPoint, kind: PickKind) => listeners.forEach((listener) => listener(at, where, kind)),
+  subscribe(listener: Listener) {
+    listeners.add(listener);
+    return () => void listeners.delete(listener);
   },
 };

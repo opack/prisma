@@ -21,7 +21,7 @@ export const STRING_LANE = 100;
 /** Le couloir que nomme le début d'une ligne : une octave (« 0 », « +1 »), ou une corde (« 1 » à « 6 »). */
 export const laneOf = (label: string) => parseOctaveLabel(label) ?? (/^[1-9]$/.test(label) ? STRING_LANE + Number(label) : undefined);
 /** Le couloir d'une ligne gravée. */
-export const rowLane = (r: { octave: number; string?: number }) => (r.string !== undefined ? STRING_LANE + r.string : r.octave);
+export const rowLane = (row: { octave: number; string?: number }) => (row.string !== undefined ? STRING_LANE + row.string : row.octave);
 
 const isRule = (line: string) => {
   try {
@@ -34,62 +34,62 @@ const isRule = (line: string) => {
 /** Les temps d'une règle : pour chacun, ses cases (colonne de début, de fin). */
 function beatsOf(ruler: string) {
   const seps: { from: number; to: number }[] = [];
-  for (let i = ruler.indexOf("|"); i >= 0 && i < ruler.length;) {
-    if (ruler[i] === "|" || (ruler[i] === ":" && ruler[i + 1] === "|")) {
-      let j = i;
-      while (j < ruler.length && (ruler[j] === "|" || ruler[j] === ":")) j++;
-      seps.push({ from: i, to: j });
-      i = j;
-    } else i++;
+  for (let index = ruler.indexOf("|"); index >= 0 && index < ruler.length;) {
+    if (ruler[index] === "|" || (ruler[index] === ":" && ruler[index + 1] === "|")) {
+      let innerIndex = index;
+      while (innerIndex < ruler.length && (ruler[innerIndex] === "|" || ruler[innerIndex] === ":")) innerIndex++;
+      seps.push({ from: index, to: innerIndex });
+      index = innerIndex;
+    } else index++;
   }
   const beats: { start: number; end: number }[][] = [];
-  for (let k = 0; k + 1 < seps.length; k++) {
-    const from = seps[k].to,
-      to = seps[k + 1].from;
-    const labels = [...ruler.slice(from, to).matchAll(/\S+/g)].map((m) => from + m.index);
+  for (let separator = 0; separator + 1 < seps.length; separator++) {
+    const from = seps[separator].to,
+      to = seps[separator + 1].from;
+    const labels = [...ruler.slice(from, to).matchAll(/\S+/g)].map((match) => from + match.index);
     if (!labels.length) continue;
     labels[0] = from;
-    beats.push(labels.map((start, i) => ({ start, end: i + 1 < labels.length ? labels[i + 1] : to })));
+    beats.push(labels.map((start, index) => ({ start, end: index + 1 < labels.length ? labels[index + 1] : to })));
   }
   return beats;
 }
 
 /** Le contenu principal d'une case : le numéro de sa note (sans petites notes ni ajouts), « - » pour une tenue. */
 export const mainOf = (cell: string) => {
-  const c = cell.trim().replace(/\d+'/g, "");
-  return c.startsWith("-") ? "-" : (c.match(/^\d+/)?.[0] ?? "");
+  const cleaned = cell.trim().replace(/\d+'/g, "");
+  return cleaned.startsWith("-") ? "-" : (cleaned.match(/^\d+/)?.[0] ?? "");
 };
 /** Le même, et pour une tenue nommée (« -7 »), la note qu'elle prolonge. */
 const signOf = (cell: string) => {
-  const c = cell.trim();
-  return /^-\d+/.test(c) ? c.match(/^-\d+/)![0] : mainOf(c);
+  const trimmed = cell.trim();
+  return /^-\d+/.test(trimmed) ? trimmed.match(/^-\d+/)![0] : mainOf(trimmed);
 };
 
 /** Les systèmes du texte : leurs lignes (de first à last), leur règle, ses temps, et le rang de leur premier temps. */
 function systems(lines: string[]) {
   // l'en-tête
-  let i = 0;
-  while (i < lines.length && !lines[i].trim()) i++;
-  if (lines[i]?.trim() === "---") {
-    const close = lines.findIndex((l, k) => k > i && l.trim() === "---");
-    i = close < 0 ? lines.length : close + 1;
-  } else i = 0;
-  const out: { first: number; last: number; R: number; beats: { start: number; end: number }[][]; beat0: number }[] = [];
+  let index = 0;
+  while (index < lines.length && !lines[index].trim()) index++;
+  if (lines[index]?.trim() === "---") {
+    const close = lines.findIndex((line, lineIndex) => lineIndex > index && line.trim() === "---");
+    index = close < 0 ? lines.length : close + 1;
+  } else index = 0;
+  const out: { first: number; last: number; ruler: number; beats: { start: number; end: number }[][]; beat0: number }[] = [];
   let beat = 0;
-  while (i < lines.length) {
-    if (!lines[i].trim()) {
-      i++;
+  while (index < lines.length) {
+    if (!lines[index].trim()) {
+      index++;
       continue;
     }
-    let end = i;
+    let end = index;
     while (end + 1 < lines.length && lines[end + 1].trim()) end++;
-    const r = lines.slice(i, end + 1).findIndex(isRuler);
-    if (r >= 0) {
-      const beats = beatsOf(lines[i + r]);
-      out.push({ first: i, last: end, R: i + r, beats, beat0: beat });
+    const rulerOffset = lines.slice(index, end + 1).findIndex(isRuler);
+    if (rulerOffset >= 0) {
+      const beats = beatsOf(lines[index + rulerOffset]);
+      out.push({ first: index, last: end, ruler: index + rulerOffset, beats, beat0: beat });
       beat += beats.length;
     }
-    i = end + 1;
+    index = end + 1;
   }
   return out;
 }
@@ -98,8 +98,8 @@ const split = (text: string) => text.replace(/\t/g, "    ").split(/\r?\n/);
 
 /** La ligne et la colonne (à partir de 1) d'un signe de la partition, ou rien s'il n'est pas trouvé. */
 export function locate(text: string, at: ScorePlace): { line: number; column: number } | undefined {
-  const r = findRow(text, at);
-  return r && { line: r.line, column: r.column };
+  const found = findRow(text, at);
+  return found && { line: found.line, column: found.column };
 }
 
 /**
@@ -108,12 +108,12 @@ export function locate(text: string, at: ScorePlace): { line: number; column: nu
  */
 export function findRow(text: string, at: ScorePlace): { line: number; column: number; octave?: number } | undefined {
   const lines = split(text);
-  for (const s of systems(lines)) {
-    const first = s.beat0 * TICKS_PER_BEAT;
-    if (at.t < first || at.t >= (s.beat0 + s.beats.length) * TICKS_PER_BEAT) continue;
-    const b = s.beats[Math.floor(at.t / TICKS_PER_BEAT) - s.beat0];
-    const k = Math.min(b.length - 1, Math.floor(((at.t % TICKS_PER_BEAT) * b.length) / TICKS_PER_BEAT));
-    return place(lines, s.R, s.last, b[k], s.beats.flat(), at);
+  for (const system of systems(lines)) {
+    const first = system.beat0 * TICKS_PER_BEAT;
+    if (at.t < first || at.t >= (system.beat0 + system.beats.length) * TICKS_PER_BEAT) continue;
+    const beat = system.beats[Math.floor(at.t / TICKS_PER_BEAT) - system.beat0];
+    const cellIndex = Math.min(beat.length - 1, Math.floor(((at.t % TICKS_PER_BEAT) * beat.length) / TICKS_PER_BEAT));
+    return place(lines, system.ruler, system.last, beat[cellIndex], system.beats.flat(), at);
   }
   return undefined;
 }
@@ -122,113 +122,120 @@ export function findRow(text: string, at: ScorePlace): { line: number; column: n
  * Vrai si une case du texte commence à l'instant t. Faux pour une case que la règle détaillée
  * ajoute à la gravure : le texte ne l'a pas, rien ne peut s'y écrire.
  */
-export function isWrittenCase(text: string, t: number): boolean {
-  const s = systems(split(text)).find((x) => t >= x.beat0 * TICKS_PER_BEAT && t < (x.beat0 + x.beats.length) * TICKS_PER_BEAT);
-  if (!s) return false;
-  const n = s.beats[Math.floor(t / TICKS_PER_BEAT) - s.beat0].length;
-  return ((t % TICKS_PER_BEAT) * n) % TICKS_PER_BEAT === 0;
+export function isWrittenCase(text: string, tick: number): boolean {
+  const system = systems(split(text)).find(
+    (candidate) => tick >= candidate.beat0 * TICKS_PER_BEAT && tick < (candidate.beat0 + candidate.beats.length) * TICKS_PER_BEAT,
+  );
+  if (!system) return false;
+  const cellCount = system.beats[Math.floor(tick / TICKS_PER_BEAT) - system.beat0].length;
+  return ((tick % TICKS_PER_BEAT) * cellCount) % TICKS_PER_BEAT === 0;
 }
 
 /**
- * Le chemin inverse : ce que désigne, sur la partition, la ligne L et la colonne C (à partir de 1)
+ * Le chemin inverse : ce que désigne, sur la partition, la ligne et la colonne (à partir de 1)
  * du texte. Sur une ligne de notes : l'instant de sa case, sa portée, son octave, son contenu ; sur
  * une ligne @ ou un trait d'une portée : l'instant et la portée ; sur la règle ou au-dessus d'elle :
  * l'instant seul (toute la hauteur du système). Rien hors d'un système.
  */
-export function textPlace(text: string, L: number, C: number): ScorePlace | undefined {
+export function textPlace(text: string, lineNumber: number, columnNumber: number): ScorePlace | undefined {
   const lines = split(text);
-  const k = L - 1,
-    c = C - 1;
-  const s = systems(lines).find((x) => k >= x.first && k <= x.last);
-  if (!s) return undefined;
-  const cases = s.beats.flatMap((b, bi) =>
-    b.map((x, ci) => ({ ...x, t: (s.beat0 + bi) * TICKS_PER_BEAT + (ci * TICKS_PER_BEAT) / b.length })),
+  const lineIndex = lineNumber - 1,
+    columnIndex = columnNumber - 1;
+  const system = systems(lines).find((candidate) => lineIndex >= candidate.first && lineIndex <= candidate.last);
+  if (!system) return undefined;
+  const cases = system.beats.flatMap((beat, beatIndex) =>
+    beat.map((cell, cellIndex) => ({
+      ...cell,
+      t: (system.beat0 + beatIndex) * TICKS_PER_BEAT + (cellIndex * TICKS_PER_BEAT) / beat.length,
+    })),
   );
   if (!cases.length) return undefined;
-  const at = cases.find((x) => c >= x.start && c < x.end) ?? (c < cases[0].start ? cases[0] : cases[cases.length - 1]);
-  if (k <= s.R) return { t: at.t, staff: -1 };
+  const at =
+    cases.find((cell) => columnIndex >= cell.start && columnIndex < cell.end) ??
+    (columnIndex < cases[0].start ? cases[0] : cases[cases.length - 1]);
+  if (lineIndex <= system.ruler) return { t: at.t, staff: -1 };
   let staff = -1;
   let octave: number | undefined;
-  for (let i = s.R + 1; i <= k; i++) {
-    const l = lines[i];
-    if (l.startsWith("#")) continue;
-    if (isRule(l)) {
-      staff = i === s.R + 1 ? 0 : staff + 1;
+  for (let index = system.ruler + 1; index <= lineIndex; index++) {
+    const lineText = lines[index];
+    if (lineText.startsWith("#")) continue;
+    if (isRule(lineText)) {
+      staff = index === system.ruler + 1 ? 0 : staff + 1;
       octave = undefined;
       continue;
     }
     if (staff < 0) staff = 0;
-    if (l.startsWith("@") || !l.includes("|")) continue;
-    const label = l.slice(0, l.indexOf("|")).trim();
+    if (lineText.startsWith("@") || !lineText.includes("|")) continue;
+    const label = lineText.slice(0, lineText.indexOf("|")).trim();
     if (label) octave = laneOf(label);
   }
-  const line = lines[k];
+  const line = lines[lineIndex];
   if (isRule(line)) return { t: at.t, staff: Math.max(0, staff) };
   if (line.startsWith("@") || !line.includes("|")) return { t: at.t, staff: Math.max(0, staff) };
   return { t: at.t, staff: Math.max(0, staff), octave, content: line.slice(at.start, at.end) };
 }
 
-/** Dans le système de règle R, la ligne du signe, et la colonne de son contenu dans la case c. */
+/** Dans le système de règle `ruler`, la ligne du signe, et la colonne de son contenu dans la case `target`. */
 function place(
   lines: string[],
-  R: number,
+  ruler: number,
   end: number,
-  c: { start: number; end: number },
+  target: { start: number; end: number },
   all: { start: number; end: number }[],
   at: ScorePlace,
 ) {
   const rows: { line: number; content: string; sign: string; octave?: number }[] = [];
   // la note qu'une tenue prolonge sur sa ligne : la dernière attaque avant elle (« -7 » la nomme)
   const held = (line: string) => {
-    for (let k = all.findIndex((x) => x.start === c.start); k >= 0; k--) {
-      const cell = line.slice(all[k].start, all[k].end).trim().replace(/\d+'/g, "");
-      const n = cell.match(/^-?(\d+)/)?.[1];
-      if (n) return n;
+    for (let index = all.findIndex((cell) => cell.start === target.start); index >= 0; index--) {
+      const cell = line.slice(all[index].start, all[index].end).trim().replace(/\d+'/g, "");
+      const name = cell.match(/^-?(\d+)/)?.[1];
+      if (name) return name;
       if (!cell.startsWith("-")) return undefined;
     }
     return undefined;
   };
   let staff = -1;
   let octave: number | undefined;
-  for (let k = R + 1; k <= end; k++) {
-    const l = lines[k];
-    if (l.startsWith("#")) continue;
-    if (isRule(l)) {
-      staff = k === R + 1 ? 0 : staff + 1;
+  for (let lineIndex = ruler + 1; lineIndex <= end; lineIndex++) {
+    const line = lines[lineIndex];
+    if (line.startsWith("#")) continue;
+    if (isRule(line)) {
+      staff = lineIndex === ruler + 1 ? 0 : staff + 1;
       octave = undefined;
       continue;
     }
     if (staff < 0) staff = 0;
-    if (l.startsWith("@") || !l.includes("|")) continue;
-    const label = l.slice(0, l.indexOf("|")).trim();
+    if (line.startsWith("@") || !line.includes("|")) continue;
+    const label = line.slice(0, line.indexOf("|")).trim();
     if (label) octave = laneOf(label);
     if (staff === at.staff) {
-      const content = l.slice(c.start, c.end);
+      const content = line.slice(target.start, target.end);
       // une tenue se reconnaît à la note qu'elle prolonge
-      const hold = mainOf(content) === "-" ? held(l) : undefined;
-      rows.push({ line: k, content, sign: hold ? "-" + hold : signOf(content), octave });
+      const hold = mainOf(content) === "-" ? held(line) : undefined;
+      rows.push({ line: lineIndex, content, sign: hold ? "-" + hold : signOf(content), octave });
     }
   }
   // les lignes de l'octave cliquée ; sans elles (la gravure montre un couloir que ce système du
   // texte n'a pas encore), celles de l'octave la plus proche dans la portée
-  const gap = (o?: number) => (at.octave === undefined || o === undefined ? 0 : Math.abs(o - at.octave));
-  const best = Math.min(...rows.map((x) => gap(x.octave)));
-  const near = rows.filter((x) => gap(x.octave) === best);
+  const gap = (lane?: number) => (at.octave === undefined || lane === undefined ? 0 : Math.abs(lane - at.octave));
+  const best = Math.min(...rows.map((candidate) => gap(candidate.octave)));
+  const near = rows.filter((candidate) => gap(candidate.octave) === best);
   if (!near.length) return undefined;
-  if (best > 0) return { ...column(near[0], c), octave: near[0].octave };
+  if (best > 0) return { ...column(near[0], target), octave: near[0].octave };
   rows.splice(0, rows.length, ...near);
   const want = at.content === undefined ? undefined : signOf(at.content);
   // la ligne qui porte ce contenu ; à défaut, une case vide, puis la première ligne de l'octave
   const row =
-    (want ? rows.find((x) => x.sign === want) : undefined) ??
-    (want?.startsWith("-") ? rows.find((x) => mainOf(x.content) === "-") : undefined) ??
-    rows.find((x) => !x.content.trim()) ??
+    (want ? rows.find((candidate) => candidate.sign === want) : undefined) ??
+    (want?.startsWith("-") ? rows.find((candidate) => mainOf(candidate.content) === "-") : undefined) ??
+    rows.find((candidate) => !candidate.content.trim()) ??
     rows[0];
-  return { ...column(row, c), octave: row.octave };
+  return { ...column(row, target), octave: row.octave };
 }
 
 /** La place du contenu d'une case sur sa ligne (son début, ou celui de la case vide). */
-function column(row: { line: number; content: string }, c: { start: number }) {
+function column(row: { line: number; content: string }, target: { start: number }) {
   const lead = row.content.length - row.content.trimStart().length;
-  return { line: row.line + 1, column: c.start + (row.content.trim() ? lead : 0) + 1 };
+  return { line: row.line + 1, column: target.start + (row.content.trim() ? lead : 0) + 1 };
 }

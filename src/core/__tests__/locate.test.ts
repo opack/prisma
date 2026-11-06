@@ -22,13 +22,13 @@ const text = [
   "-1 |8  |   ||",
 ].join("\n");
 const lines = text.split("\n");
-const at = (p?: { line: number; column: number }) => p && lines[p.line - 1].slice(p.column - 1, p.column + 2).trim();
+const at = (place?: { line: number; column: number }) => place && lines[place.line - 1].slice(place.column - 1, place.column + 2).trim();
 
 describe("de la partition au texte", () => {
   it("retrouve chaque note dans le texte", () => {
     for (const note of parsePrisma(text).notes) {
-      const p = locate(text, { t: note.start, staff: note.staff, octave: octaveOf(note.midi), content: String((note.midi % 12) + 1) });
-      expect(at(p)).toMatch(new RegExp(`^(\\d+')*${(note.midi % 12) + 1}`));
+      const place = locate(text, { t: note.start, staff: note.staff, octave: octaveOf(note.midi), content: String((note.midi % 12) + 1) });
+      expect(at(place)).toMatch(new RegExp(`^(\\d+')*${(note.midi % 12) + 1}`));
     }
   });
 
@@ -44,9 +44,9 @@ describe("de la partition au texte", () => {
   });
 
   it("et du texte à la partition : chaque note retrouve son instant, sa portée et son octave", () => {
-    for (const n of parsePrisma(text).notes) {
-      const p = locate(text, { t: n.start, staff: n.staff, octave: octaveOf(n.midi), content: String((n.midi % 12) + 1) })!;
-      expect(textPlace(text, p.line, p.column)).toMatchObject({ t: n.start, staff: n.staff, octave: octaveOf(n.midi) });
+    for (const note of parsePrisma(text).notes) {
+      const place = locate(text, { t: note.start, staff: note.staff, octave: octaveOf(note.midi), content: String((note.midi % 12) + 1) })!;
+      expect(textPlace(text, place.line, place.column)).toMatchObject({ t: note.start, staff: note.staff, octave: octaveOf(note.midi) });
     }
     // la règle : tout le système ; une ligne @ : sa portée
     expect(textPlace(text, 5, 12)).toEqual({ t: TICKS_PER_BEAT, staff: -1 });

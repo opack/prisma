@@ -43,9 +43,9 @@ export function diskFolder(dir: FileSystemDirectoryHandle): StoredFolder {
     file: async (name) => {
       try {
         return diskFile(await dir.getFileHandle(name));
-      } catch (e) {
-        if ((e as Error)?.name === "NotFoundError") return null;
-        throw e;
+      } catch (error) {
+        if ((error as Error)?.name === "NotFoundError") return null;
+        throw error;
       }
     },
     create: async (name) => diskFile(await dir.getFileHandle(name, { create: true })),

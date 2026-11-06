@@ -75,8 +75,8 @@ export function noteName(midi: number, names: NoteNames): string {
   return flat ? `${main} (${flat}${oct})` : main;
 }
 /** Nom d'une classe de hauteur, sans octave : « mi », « F♯ ». */
-export const pitchClass = (n: number, names: NoteNames) =>
-  names === "none" ? String(n) : (names === "latin" ? LATIN : ENGLISH)[(n - 1) % 12];
+export const pitchClass = (number: number, names: NoteNames) =>
+  names === "none" ? String(number) : (names === "latin" ? LATIN : ENGLISH)[(number - 1) % 12];
 
 const FINGERS = ["", "pouce", "index", "majeur", "annulaire", "auriculaire"];
 
@@ -138,7 +138,7 @@ const TERMS: [RegExp, string][] = [
   [/^vivace$/i, "vivace : vif, animé"],
   [/^presto$/i, "presto : très vif"],
 ];
-const term = (t: string) => TERMS.find(([re]) => re.test(t))?.[1];
+const term = (text: string) => TERMS.find(([re]) => re.test(text))?.[1];
 
 /** Un morceau de règle : les barres et, entre deux, les cases d'un temps. */
 type Cell = { start: number; end: number; label: string; index: number; count: number };
@@ -151,46 +151,46 @@ const nextBar = (bar: string) => (/^\d+$/.test(bar) ? String(Number(bar) + 1) : 
 function readRuler(ruler: string) {
   const pipe = ruler.indexOf("|");
   const seps: Sep[] = [];
-  for (let i = pipe; i >= 0 && i < ruler.length;) {
-    if (ruler[i] === "|" || (ruler[i] === ":" && ruler[i + 1] === "|")) {
-      let j = i;
-      while (j < ruler.length && (ruler[j] === "|" || ruler[j] === ":")) j++;
-      seps.push({ from: i, to: j, text: ruler.slice(i, j) });
-      i = j;
-    } else i++;
+  for (let index = pipe; index >= 0 && index < ruler.length;) {
+    if (ruler[index] === "|" || (ruler[index] === ":" && ruler[index + 1] === "|")) {
+      let innerIndex = index;
+      while (innerIndex < ruler.length && (ruler[innerIndex] === "|" || ruler[innerIndex] === ":")) innerIndex++;
+      seps.push({ from: index, to: innerIndex, text: ruler.slice(index, innerIndex) });
+      index = innerIndex;
+    } else index++;
   }
   let bar = ruler.slice(1, pipe).trim() || "?";
   const beats: Beat[] = [];
-  for (let k = 0; k + 1 < seps.length; k++) {
-    const from = seps[k].to,
-      to = seps[k + 1].from;
+  for (let separatorIndex = 0; separatorIndex + 1 < seps.length; separatorIndex++) {
+    const from = seps[separatorIndex].to,
+      to = seps[separatorIndex + 1].from;
     const labels = [...ruler.slice(from, to).matchAll(/\S+/g)];
-    const cells = labels.map((m, i) => ({
-      start: from + m.index!,
-      end: i + 1 < labels.length ? from + labels[i + 1].index! : to,
-      label: m[0],
-      index: i + 1,
+    const cells = labels.map((match, index) => ({
+      start: from + match.index!,
+      end: index + 1 < labels.length ? from + labels[index + 1].index! : to,
+      label: match[0],
+      index: index + 1,
       count: labels.length,
     }));
     if (cells.length) cells[0].start = from;
-    const n = Number(labels[0]?.[0]);
-    beats.push({ from, to, bar, beat: Number.isInteger(n) && n > 0 ? n : undefined, cells });
-    if (seps[k + 1].text !== "|") bar = nextBar(bar);
+    const firstLabel = Number(labels[0]?.[0]);
+    beats.push({ from, to, bar, beat: Number.isInteger(firstLabel) && firstLabel > 0 ? firstLabel : undefined, cells });
+    if (seps[separatorIndex + 1].text !== "|") bar = nextBar(bar);
   }
   return { pipe, seps, beats };
 }
 
 /** La mesure, le temps et la case d'une colonne, d'après la règle du système. */
-function placeOf(r: ReturnType<typeof readRuler>, col: number) {
-  const b = r.beats.find((x) => col >= x.from && col < x.to);
-  if (!b) return undefined;
-  const cell = [...b.cells].reverse().find((c) => c.start <= col) ?? b.cells[0];
-  return { beat: b, cell };
+function placeOf(ruler: ReturnType<typeof readRuler>, col: number) {
+  const beat = ruler.beats.find((candidate) => col >= candidate.from && col < candidate.to);
+  if (!beat) return undefined;
+  const cell = [...beat.cells].reverse().find((candidate) => candidate.start <= col) ?? beat.cells[0];
+  return { beat, cell };
 }
 
 /** Le texte sous la colonne col d'une ligne @ : une indication entière (« a tempo », « <---- »). */
 function markAt(line: string, col: number) {
-  return markTokens(line).find((t) => col >= t.col && col < t.col + t.text.length);
+  return markTokens(line).find((token) => col >= token.col && col < token.col + token.text.length);
 }
 
 const isRule = (line: string) => {
@@ -204,35 +204,35 @@ const isRule = (line: string) => {
 export function inspect(text: string, offset: number, names: NoteNames = "latin"): Inspection {
   const lines = text.split("\n");
   const before = text.slice(0, offset).split("\n");
-  const L = before.length - 1;
-  const C = before[before.length - 1].length;
-  const out: Inspection = { line: L + 1, column: C + 1 };
-  const line = lines[L] ?? "";
-  const symbol = (t: string, meaning: string, keys?: Pick<NonNullable<Inspection["symbol"]>, "keys" | "trill" | "graces">) =>
-    (out.symbol = { text: t, meaning, ...keys });
+  const cursorLine = before.length - 1;
+  const cursorColumn = before[before.length - 1].length;
+  const out: Inspection = { line: cursorLine + 1, column: cursorColumn + 1 };
+  const line = lines[cursorLine] ?? "";
+  const symbol = (sign: string, meaning: string, keys?: Pick<NonNullable<Inspection["symbol"]>, "keys" | "trill" | "graces">) =>
+    (out.symbol = { text: sign, meaning, ...keys });
   // le nom d'une note, ou, sans noms, son numéro
   const named = (midi: number) => noteName(midi, names) || String((midi % 12) + 1);
 
   // l'en-tête
-  let i = 0;
-  while (i < lines.length && !lines[i].trim()) i++;
+  let index = 0;
+  while (index < lines.length && !lines[index].trim()) index++;
   let body = 0;
   const meta: Record<string, string> = {};
-  if (lines[i]?.trim() === "---") {
-    const close = lines.findIndex((l, k) => k > i && l.trim() === "---");
+  if (lines[index]?.trim() === "---") {
+    const close = lines.findIndex((candidate, headerIndex) => headerIndex > index && candidate.trim() === "---");
     const end = close < 0 ? lines.length : close;
-    for (let k = i + 1; k < end; k++) {
-      const m = lines[k].match(/^\s*([\wÀ-ÿ-]+)\s*:\s*(.*)$/);
-      if (m) meta[m[1]] = m[2].trim().replace(/^(["'])(.*)\1$/, "$2");
+    for (let headerIndex = index + 1; headerIndex < end; headerIndex++) {
+      const match = lines[headerIndex].match(/^\s*([\wÀ-ÿ-]+)\s*:\s*(.*)$/);
+      if (match) meta[match[1]] = match[2].trim().replace(/^(["'])(.*)\1$/, "$2");
     }
     body = end + 1;
-    if (L === i || L === close) {
+    if (cursorLine === index || cursorLine === close) {
       symbol("---", "délimite l'en-tête du morceau");
       return out;
     }
-    if (L > i && L < end) {
-      const m = line.match(/^\s*([\wÀ-ÿ-]+)\s*:\s*(.*)$/);
-      if (m) symbol(m[1], keyMeaning(m[1], m[2].trim()));
+    if (cursorLine > index && cursorLine < end) {
+      const match = line.match(/^\s*([\wÀ-ÿ-]+)\s*:\s*(.*)$/);
+      if (match) symbol(match[1], keyMeaning(match[1], match[2].trim()));
       return out;
     }
   }
@@ -240,33 +240,33 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
     symbol("#", "commentaire : ignoré à la lecture");
     return out;
   }
-  if (L < body || !line.trim()) return out;
+  if (cursorLine < body || !line.trim()) return out;
 
   // le système du curseur : les lignes non vides autour de lui
-  let top = L,
-    bottom = L;
+  let top = cursorLine,
+    bottom = cursorLine;
   while (top > body && lines[top - 1].trim()) top--;
   while (bottom + 1 < lines.length && lines[bottom + 1].trim()) bottom++;
   const block = lines.slice(top, bottom + 1);
-  const at = L - top;
-  const rulerAt = block.findIndex((l) => isRuler(l));
+  const at = cursorLine - top;
+  const rulerAt = block.findIndex((blockLine) => isRuler(blockLine));
 
   // la section : la dernière lettre posée jusqu'à ce système
-  for (let k = body; k <= bottom; k++) {
-    const l = lines[k];
-    if (!l.startsWith("@") || l.startsWith(CHORD_LINE)) continue;
+  for (let lineIndex = body; lineIndex <= bottom; lineIndex++) {
+    const lineText = lines[lineIndex];
+    if (!lineText.startsWith("@") || lineText.startsWith(CHORD_LINE)) continue;
     // seules les lignes du haut d'un système portent les sections : avant sa règle
-    let r = k;
-    while (r <= bottom && lines[r].trim() && !isRuler(lines[r])) r++;
-    if (r > bottom || !isRuler(lines[r])) continue;
-    for (const t of markTokens(l)) {
-      const m = t.text.match(MARKER_SIGN);
-      if (m) out.section = m[1];
+    let rulerIndex = lineIndex;
+    while (rulerIndex <= bottom && lines[rulerIndex].trim() && !isRuler(lines[rulerIndex])) rulerIndex++;
+    if (rulerIndex > bottom || !isRuler(lines[rulerIndex])) continue;
+    for (const token of markTokens(lineText)) {
+      const match = token.text.match(MARKER_SIGN);
+      if (match) out.section = match[1];
     }
   }
   if (rulerAt < 0) return out;
   const ruler = readRuler(block[rulerAt]);
-  const place = placeOf(ruler, C);
+  const place = placeOf(ruler, cursorColumn);
   if (place) {
     out.bar = place.beat.bar;
     out.beat = place.beat.beat;
@@ -276,33 +276,35 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
   // au-dessus de la règle : indications du système et accords
   if (at < rulerAt) {
     if (line.startsWith(CHORD_LINE)) {
-      const word = [...line.matchAll(/\S+/g)].find((m) => m.index! > 0 && C >= m.index! && C < m.index! + m[0].length);
+      const word = [...line.matchAll(/\S+/g)].find(
+        (match) => match.index! > 0 && cursorColumn >= match.index! && cursorColumn < match.index! + match[0].length,
+      );
       if (word) chord(word[0]);
-      else if (C < CHORD_LINE.length) symbol(CHORD_LINE, "ligne des accords d'accompagnement");
+      else if (cursorColumn < CHORD_LINE.length) symbol(CHORD_LINE, "ligne des accords d'accompagnement");
       return out;
     }
     if (line.startsWith("@")) {
-      if (C === 0) return (symbol("@", "ligne d'indications pour tout le système"), out);
-      const t = markAt(line, C);
-      if (t) symbol(t.text, topMeaning(t.text));
+      if (cursorColumn === 0) return (symbol("@", "ligne d'indications pour tout le système"), out);
+      const token = markAt(line, cursorColumn);
+      if (token) symbol(token.text, topMeaning(token.text));
     }
     return out;
   }
   if (at === rulerAt) {
-    if (C < ruler.pipe) {
+    if (cursorColumn < ruler.pipe) {
       symbol(line.slice(0, ruler.pipe).trim(), `règle de comptage : le système commence à la mesure ${line.slice(1, ruler.pipe).trim()}`);
       return out;
     }
-    const sep = ruler.seps.find((s) => C >= s.from && C < s.to);
+    const sep = ruler.seps.find((separator) => cursorColumn >= separator.from && cursorColumn < separator.to);
     if (sep) return (symbol(sep.text, barMeaning(sep.text, sep === ruler.seps[0])), out);
     if (place) {
       const label = place.cell.label;
-      const n = place.cell.count;
+      const count = place.cell.count;
       symbol(
         label,
         /^\d+$/.test(label)
-          ? `début du temps ${label}${n > 1 ? `, coupé en ${n} cases` : ""}`
-          : `case ${place.cell.index} sur ${n} du temps ${place.beat.beat ?? ""}`.trim(),
+          ? `début du temps ${label}${count > 1 ? `, coupé en ${count} cases` : ""}`
+          : `case ${place.cell.index} sur ${count} du temps ${place.beat.beat ?? ""}`.trim(),
       );
     }
     return out;
@@ -313,33 +315,33 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
   // une autre portée de la même partie.
   const entries = splitParts(meta.parts ?? "")
     .map(splitPartEntry)
-    .filter((e) => e.name);
-  const declared = entries.map((e) => e.name);
+    .filter((entry) => entry.name);
+  const declared = entries.map((entry) => entry.name);
   // les cordes de chaque partie déclarée (instrument à cordes) ; une entrée fautive n'en a pas
-  const stringsOfPart = entries.map((e) => {
+  const stringsOfPart = entries.map((entry) => {
     try {
-      return partExtras(e.name, e.extras, 0).strings;
+      return partExtras(entry.name, entry.extras, 0).strings;
     } catch {
       return undefined;
     }
   });
-  let strs: Strings | undefined;
+  let strings: Strings | undefined;
   const parts: { name?: string; staves: number }[] = [];
   let staff = -1;
   let octave: number | undefined;
   let lastOctave: number | undefined;
-  for (let k = rulerAt + 1; k < block.length; k++) {
-    const l = block[k];
-    const rule = isRule(l);
+  for (let blockIndex = rulerAt + 1; blockIndex < block.length; blockIndex++) {
+    const blockLine = block[blockIndex];
+    const rule = isRule(blockLine);
     if (rule) {
-      if (k === rulerAt + 1 || rule.double || !parts.length) parts.push({ staves: 0 });
+      if (blockIndex === rulerAt + 1 || rule.double || !parts.length) parts.push({ staves: 0 });
       parts[parts.length - 1].staves++;
       lastOctave = undefined;
-      if (k === at) {
+      if (blockIndex === at) {
         const name = rule.name ? ` ; il porte le nom de la partie « ${rule.name} »` : "";
         symbol(
-          l.trim().slice(0, 3),
-          (k === rulerAt + 1
+          blockLine.trim().slice(0, 3),
+          (blockIndex === rulerAt + 1
             ? "trait sous la règle de comptage"
             : rule.double
               ? "trait double : sépare deux parties"
@@ -347,26 +349,26 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
         );
       }
     } else if (!parts.length) parts.push({ staves: 1 });
-    if (k <= at) staff = parts.reduce((n, x) => n + x.staves, 0) - 1;
-    if (!rule && !l.startsWith("@")) {
-      const pipe = l.indexOf("|");
-      const label = pipe > 0 ? l.slice(0, pipe).trim() : "";
+    if (blockIndex <= at) staff = parts.reduce((total, part) => total + part.staves, 0) - 1;
+    if (!rule && !blockLine.startsWith("@")) {
+      const pipe = blockLine.indexOf("|");
+      const label = pipe > 0 ? blockLine.slice(0, pipe).trim() : "";
       const here = stringsOfPart[parts.length - 1];
-      const o = here
+      const lane = here
         ? /^\d+$/.test(label) && Number(label) >= 1 && Number(label) <= here.open.length
           ? Number(label)
           : undefined
         : label
           ? parseOctaveLabel(label)
           : undefined;
-      if (o !== undefined || here) lastOctave = o;
-      if (k === at) {
+      if (lane !== undefined || here) lastOctave = lane;
+      if (blockIndex === at) {
         octave = lastOctave;
-        strs = here;
+        strings = here;
       }
     }
   }
-  parts.forEach((x, n) => declared[n] && (x.name = declared[n]));
+  parts.forEach((part, partIndex) => declared[partIndex] && (part.name = declared[partIndex]));
   if (staff >= 0) {
     out.staff = staff;
     out.parts = parts;
@@ -374,7 +376,9 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
   if (out.symbol) return out;
 
   if (line.startsWith("@l")) {
-    const word = [...line.matchAll(/\S+/g)].find((m) => m.index! > 0 && C >= m.index! && C < m.index! + m[0].length);
+    const word = [...line.matchAll(/\S+/g)].find(
+      (match) => match.index! > 0 && cursorColumn >= match.index! && cursorColumn < match.index! + match[0].length,
+    );
     if (word)
       symbol(
         word[0],
@@ -384,29 +388,29 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
             ? "syllabe : le mot continue sur la syllabe suivante"
             : "syllabe des paroles",
       );
-    else if (C < 2) symbol("@l", "ligne de paroles d'un couplet");
+    else if (cursorColumn < 2) symbol("@l", "ligne de paroles d'un couplet");
     return out;
   }
   if (line.startsWith("@")) {
-    if (C === 0) return (symbol("@", "ligne des nuances, articulations et pédale de la portée"), out);
-    const t = markAt(line, C);
-    if (t) symbol(t.text, staffMeaning(t.text));
+    if (cursorColumn === 0) return (symbol("@", "ligne des nuances, articulations et pédale de la portée"), out);
+    const token = markAt(line, cursorColumn);
+    if (token) symbol(token.text, staffMeaning(token.text));
     return out;
   }
 
   // ligne de notes : un couloir d'octave, ou une corde
-  if (!strs) out.octave = octave;
+  if (!strings) out.octave = octave;
   else if (octave !== undefined) out.string = octave;
-  const pitchOf = (k: number) => (strs ? soundingOf(strs, octave!, k) : midiOf(octave!, k));
+  const pitchOf = (number: number) => (strings ? soundingOf(strings, octave!, number) : midiOf(octave!, number));
   const pipe = line.indexOf("|");
-  if (C < pipe) {
+  if (cursorColumn < pipe) {
     const label = line.slice(0, pipe).trim();
-    if (label && octave !== undefined && strs)
+    if (label && octave !== undefined && strings)
       symbol(
         label,
         names === "none"
           ? `corde ${label}`
-          : `corde ${label} : ${noteName(strs.open[octave - 1], names)} à vide${strs.capo ? `, capo ${strs.capo}` : ""}`,
+          : `corde ${label} : ${noteName(strings.open[octave - 1], names)} à vide${strings.capo ? `, capo ${strings.capo}` : ""}`,
       );
     else if (label && octave !== undefined)
       symbol(
@@ -417,7 +421,7 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
       );
     return out;
   }
-  const sep = ruler.seps.find((s) => C >= s.from && C < s.to);
+  const sep = ruler.seps.find((separator) => cursorColumn >= separator.from && cursorColumn < separator.to);
   if (sep) return (symbol(sep.text, barMeaning(sep.text, sep === ruler.seps[0])), out);
   if (!place || octave === undefined) return out;
   const content = line.slice(place.cell.start, place.cell.end).trim();
@@ -427,7 +431,7 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
   function chord(word: string) {
     const notes = chordNotes(word);
     if (!notes) return void symbol(word, "accord inconnu");
-    const list = notes.map((n) => pitchClass(n, names)).join(" ");
+    const list = notes.map((note) => pitchClass(note, names)).join(" ");
     // au plus près du signe, ses autres écritures : son nom Prisma, son nom anglais, ses notes Prisma ; puis ses notes
     const writing = chordWriting(word);
     const others = [
@@ -437,33 +441,33 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
     ].filter(Boolean);
     const { shape } = splitShape(word);
     symbol(word, `${others.length ? `(${others.join(", ")}) ` : ""}accord ${list}${shape ? `, grille ${shape}` : ""}`, {
-      keys: notes.map((n) => ((n - 1) % 12) + 1),
+      keys: notes.map((note) => ((note - 1) % 12) + 1),
     });
   }
 
-  function noteMeaning(content: string, row: string, p: NonNullable<ReturnType<typeof placeOf>>): string {
+  function noteMeaning(content: string, row: string, cellPlace: NonNullable<ReturnType<typeof placeOf>>): string {
     const graces = content.match(/^(\d+')+/)?.[0] ?? "";
     const rest = content.slice(graces.length);
     const staves: string[] = [];
     if (graces) {
-      const g = graces
+      const graceNames = graces
         .split(GRACE_MARK)
         .filter(Boolean)
-        .map((n) => named(pitchOf(Number(n))));
-      staves.push(`${g.length > 1 ? "petites notes" : "petite note"} : ${g.join(", ")}${rest ? ", puis" : ""}`);
+        .map((name) => named(pitchOf(Number(name))));
+      staves.push(`${graceNames.length > 1 ? "petites notes" : "petite note"} : ${graceNames.join(", ")}${rest ? ", puis" : ""}`);
     }
-    if (rest === "-") staves.push(held(row, p) ?? "la note continue");
+    if (rest === "-") staves.push(held(row, cellPlace) ?? "la note continue");
     else if (/^-\d+$/.test(rest)) staves.push(`${named(pitchOf(Number(rest.slice(1))))}, commencé plus tôt, qui continue`);
     else {
-      const m = rest.match(new RegExp(`^(\\d+)(?:\\${TRILL_MARK}(\\d+))?(?:${FINGER_MARK}(\\d))?$`));
-      if (m) {
-        const midi = pitchOf(Number(m[1]));
-        let s = noteName(midi, names) || "note";
-        if (strs) s = `case ${m[1]}${s === "note" ? "" : ` : ${s}`}`;
-        if (m[2]) s += `, en trille avec ${named(strs ? pitchOf(Number(m[2])) : trillAux(midi, Number(m[2])))}`;
-        if (m[3]) s += `, doigt ${m[3]}${FINGERS[Number(m[3])] ? ` (${FINGERS[Number(m[3])]})` : ""}`;
-        staves.push(s);
-      } else if (strs && rest) staves.push(techniqueMeaning(rest) ?? "signe inconnu");
+      const match = rest.match(new RegExp(`^(\\d+)(?:\\${TRILL_MARK}(\\d+))?(?:${FINGER_MARK}(\\d))?$`));
+      if (match) {
+        const midi = pitchOf(Number(match[1]));
+        let description = noteName(midi, names) || "note";
+        if (strings) description = `case ${match[1]}${description === "note" ? "" : ` : ${description}`}`;
+        if (match[2]) description += `, en trille avec ${named(strings ? pitchOf(Number(match[2])) : trillAux(midi, Number(match[2])))}`;
+        if (match[3]) description += `, doigt ${match[3]}${FINGERS[Number(match[3])] ? ` (${FINGERS[Number(match[3])]})` : ""}`;
+        staves.push(description);
+      } else if (strings && rest) staves.push(techniqueMeaning(rest) ?? "signe inconnu");
       else if (rest) staves.push("signe inconnu");
     }
     return staves.join(" ");
@@ -471,36 +475,38 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
 
   /** Une technique des cordes dans une case (« x », « <12> », « 7/ », « 7// », « //7 », « 7b9r ») : ce qu'elle fait jouer. */
   function techniqueMeaning(rest: string): string | undefined {
-    const m = stringCell(rest);
-    if (!m) return undefined;
-    const at = (k: number) => `case ${k}${names === "none" ? "" : ` (${noteName(pitchOf(k), names)})`}`;
-    const way = (d: Direction) => (d === "up" ? "vers l'aigu" : "vers le grave");
-    const from = (d: Direction) => (d === "up" ? "d'en dessous" : "d'au-dessus");
-    let s = m.dead
+    const technique = stringCell(rest);
+    if (!technique) return undefined;
+    const at = (fret: number) => `case ${fret}${names === "none" ? "" : ` (${noteName(pitchOf(fret), names)})`}`;
+    const way = (direction: Direction) => (direction === "up" ? "vers l'aigu" : "vers le grave");
+    const from = (direction: Direction) => (direction === "up" ? "d'en dessous" : "d'au-dessus");
+    let description = technique.dead
       ? "note étouffée : la main touche la corde sans appuyer, un son sec"
-      : m.harmonic
-        ? `harmonique naturelle : effleurer la corde au-dessus de la case ${m.fret}${names === "none" ? "" : `, elle sonne ${noteName(pitchOf(0) + HARMONICS[m.fret], names)}`}`
-        : (m.slideIn ? `arriver en glissant ${from(m.slideIn)} sur la ${at(m.fret)}` : at(m.fret)) +
-          (m.slide ? `, puis glisser ${way(m.slide)} jusqu'à la note suivante de la corde, sans la rejouer` : "") +
-          (m.slideOut ? `, puis glisser ${way(m.slideOut)} en laissant la note s'éteindre` : "") +
-          (m.bend !== undefined ? ` tirée jusqu'à sonner comme la ${at(m.bend)}${m.release ? ", puis relâchée" : ""}` : "");
-    if (m.finger) s += `, doigt ${m.finger}`;
-    return s;
+      : technique.harmonic
+        ? `harmonique naturelle : effleurer la corde au-dessus de la case ${technique.fret}${names === "none" ? "" : `, elle sonne ${noteName(pitchOf(0) + HARMONICS[technique.fret], names)}`}`
+        : (technique.slideIn ? `arriver en glissant ${from(technique.slideIn)} sur la ${at(technique.fret)}` : at(technique.fret)) +
+          (technique.slide ? `, puis glisser ${way(technique.slide)} jusqu'à la note suivante de la corde, sans la rejouer` : "") +
+          (technique.slideOut ? `, puis glisser ${way(technique.slideOut)} en laissant la note s'éteindre` : "") +
+          (technique.bend !== undefined
+            ? ` tirée jusqu'à sonner comme la ${at(technique.bend)}${technique.release ? ", puis relâchée" : ""}`
+            : "");
+    if (technique.finger) description += `, doigt ${technique.finger}`;
+    return description;
   }
 
   /** Les numéros d'une case, pour un clavier : sa note (celle que prolonge une tenue), sa voisine de trille, ses petites notes. */
-  function keysOf(content: string, row: string, p: NonNullable<ReturnType<typeof placeOf>>) {
+  function keysOf(content: string, row: string, cellPlace: NonNullable<ReturnType<typeof placeOf>>) {
     // sur une corde, la case devient la touche de la note qui sonne
-    const key = (n: number) => (strs ? numberOf(pitchOf(n)) : n);
-    const valid = (n: number) => (strs ? n >= 0 && n <= MAX_FRET : n >= 1 && n <= 12);
+    const key = (number: number) => (strings ? numberOf(pitchOf(number)) : number);
+    const valid = (number: number) => (strings ? number >= 0 && number <= MAX_FRET : number >= 1 && number <= 12);
     const graces = (content.match(/^(\d+')+/)?.[0] ?? "").split("'").filter(Boolean).map(Number).filter(valid).map(key);
     // le glissé d'entrée (« //7 ») ne change pas la case
     const rest = content.replace(/^(\d+')+/, "").replace(/^(?:\/\/|\\\\)/, "");
-    const m = rest.match(/^-?(\d+)(?:~(\d+))?/);
-    const h = rest === "-" ? held(row, p)?.match(/^(\d+)/)?.[1] : undefined;
-    const main = m ? Number(m[1]) : h ? Number(h) : undefined;
+    const match = rest.match(/^-?(\d+)(?:~(\d+))?/);
+    const heldNumber = rest === "-" ? held(row, cellPlace)?.match(/^(\d+)/)?.[1] : undefined;
+    const main = match ? Number(match[1]) : heldNumber ? Number(heldNumber) : undefined;
     if (main === undefined && !graces.length) return undefined;
-    const trill = m?.[2] ? Number(m[2]) : undefined;
+    const trill = match?.[2] ? Number(match[2]) : undefined;
     return {
       keys: main !== undefined && valid(main) ? [key(main)] : [],
       ...(trill !== undefined && valid(trill) ? { trill: key(trill) } : {}),
@@ -509,23 +515,23 @@ export function inspect(text: string, offset: number, names: NoteNames = "latin"
   }
 
   /** La note qu'une tenue prolonge : la dernière attaque à sa gauche, sur la même ligne. */
-  function held(row: string, p: NonNullable<ReturnType<typeof placeOf>>): string | undefined {
-    const cells = ruler.beats.flatMap((b) => b.cells);
-    for (let k = cells.indexOf(p.cell) - 1; k >= 0; k--) {
-      const c = row
-        .slice(cells[k].start, cells[k].end)
+  function held(row: string, cellPlace: NonNullable<ReturnType<typeof placeOf>>): string | undefined {
+    const cells = ruler.beats.flatMap((beat) => beat.cells);
+    for (let cellIndex = cells.indexOf(cellPlace.cell) - 1; cellIndex >= 0; cellIndex--) {
+      const cellText = row
+        .slice(cells[cellIndex].start, cells[cellIndex].end)
         .trim()
         .replace(/^(\d+')+/, "");
-      if (!c || c === "-") {
-        if (!c) return undefined;
+      if (!cellText || cellText === "-") {
+        if (!cellText) return undefined;
         continue;
       }
-      const n = c.match(/^-?(\d+)/);
+      const match = cellText.match(/^-?(\d+)/);
       // la tenue ne montre pas sa note : son numéro, puis son nom
-      return n
+      return match
         ? names === "none"
-          ? `${n[1]} qui continue`
-          : `${n[1]} (${noteName(pitchOf(Number(n[1])), names)}) qui continue`
+          ? `${match[1]} qui continue`
+          : `${match[1]} (${noteName(pitchOf(Number(match[1])), names)}) qui continue`
         : undefined;
     }
     return undefined;
@@ -551,8 +557,8 @@ function valueOf(key: string, value: string): string | undefined {
   if (key === "format") return `la version ${value}`;
   if (key === "bpm") return `${value} temps par minute`;
   if (key === "key") {
-    const k = parseKey(value);
-    return k && keyName(k, "latin");
+    const parsedKey = parseKey(value);
+    return parsedKey && keyName(parsedKey, "latin");
   }
   if (key === "cell") return `${value} caractères`;
   if (key === "division") return value === "3" ? "ternaire, chaque temps en 3" : value === "2" ? "binaire, chaque temps en 2" : undefined;
@@ -574,39 +580,39 @@ function barMeaning(sep: string, lead: boolean): string {
 }
 
 /** Le sens d'une indication d'une ligne @ : celle du système (au-dessus de la règle), ou celle d'une portée. */
-export const markMeaning = (t: string, system: boolean) => (system ? topMeaning(t) : staffMeaning(t));
+export const markMeaning = (text: string, system: boolean) => (system ? topMeaning(text) : staffMeaning(text));
 
-function topMeaning(t: string): string {
-  const m = t.match(MARKER_SIGN);
-  if (m) return `début de la section ${m[1]}`;
-  if (t === FERMATA) return "point d'orgue : tenir plus longtemps que la valeur écrite";
-  if (t === "/") return "arpège de toutes les portées, du grave à l'aigu";
-  if (t === ARPEGGIO_DOWN) return "arpège de toutes les portées, de l'aigu au grave";
-  const times = t.match(/^(\d+)[×x]$/);
+function topMeaning(text: string): string {
+  const match = text.match(MARKER_SIGN);
+  if (match) return `début de la section ${match[1]}`;
+  if (text === FERMATA) return "point d'orgue : tenir plus longtemps que la valeur écrite";
+  if (text === "/") return "arpège de toutes les portées, du grave à l'aigu";
+  if (text === ARPEGGIO_DOWN) return "arpège de toutes les portées, de l'aigu au grave";
+  const times = text.match(/^(\d+)[×x]$/);
   if (times) return `le passage se joue ${times[1]} fois`;
-  return term(t) ?? "indication pour tout le système";
+  return term(text) ?? "indication pour tout le système";
 }
 
-function staffMeaning(t: string): string {
-  if (isDynamic(t)) {
-    const d = t.replace(/^\((.+)\)$/, "$1");
-    return `${DYNAMICS[d] ?? "nuance"}${d !== t ? " (ajoutée par l'éditeur)" : ""}`;
+function staffMeaning(text: string): string {
+  if (isDynamic(text)) {
+    const dynamic = text.replace(/^\((.+)\)$/, "$1");
+    return `${DYNAMICS[dynamic] ?? "nuance"}${dynamic !== text ? " (ajoutée par l'éditeur)" : ""}`;
   }
-  if (isHairpin(t)) return t.startsWith("<") ? "crescendo : de plus en plus fort" : "decrescendo : de moins en moins fort";
-  if (isSlur(t)) return "liaison d'expression : notes jouées liées";
-  if (t === "/") return "arpège de l'accord de cette portée, du grave à l'aigu";
-  if (t === ARPEGGIO_DOWN) return "arpège de l'accord de cette portée, de l'aigu au grave";
-  if (t === ".") return "staccato : détaché, plus court";
-  if (t === "!") return "accent : attaque plus forte";
-  if (t === "!!") return "marcato : accent plus fort et plus sec";
-  if (t === "d") return "médiator vers le bas (⊓)";
-  if (t === "u") return "médiator vers le haut (V)";
-  if (effectOf(t) === "palmMute")
+  if (isHairpin(text)) return text.startsWith("<") ? "crescendo : de plus en plus fort" : "decrescendo : de moins en moins fort";
+  if (isSlur(text)) return "liaison d'expression : notes jouées liées";
+  if (text === "/") return "arpège de l'accord de cette portée, du grave à l'aigu";
+  if (text === ARPEGGIO_DOWN) return "arpège de l'accord de cette portée, de l'aigu au grave";
+  if (text === ".") return "staccato : détaché, plus court";
+  if (text === "!") return "accent : attaque plus forte";
+  if (text === "!!") return "marcato : accent plus fort et plus sec";
+  if (text === "d") return "médiator vers le bas (⊓)";
+  if (text === "u") return "médiator vers le haut (V)";
+  if (effectOf(text) === "palmMute")
     return "étouffé de la paume (P.M.) : la tranche de la main sur les cordes, près du chevalet, jusqu'au bout du trait";
-  if (effectOf(t) === "vibrato") return "vibrato : la note ondule, jusqu'au bout des vagues";
-  if (t === PEDAL_DOWN) return "enfoncer la pédale";
-  if (t === PEDAL_UP) return "relâcher la pédale";
-  if (t === PEDAL_CHANGE) return "changer de pédale : relâcher et enfoncer au même instant";
-  if (isPedalText(t)) return /simile/i.test(t) ? "continuer à pédaler de même" : "consigne de pédale";
-  return term(t) ?? "indication pour cette portée";
+  if (effectOf(text) === "vibrato") return "vibrato : la note ondule, jusqu'au bout des vagues";
+  if (text === PEDAL_DOWN) return "enfoncer la pédale";
+  if (text === PEDAL_UP) return "relâcher la pédale";
+  if (text === PEDAL_CHANGE) return "changer de pédale : relâcher et enfoncer au même instant";
+  if (isPedalText(text)) return /simile/i.test(text) ? "continuer à pédaler de même" : "consigne de pédale";
+  return term(text) ?? "indication pour cette portée";
 }

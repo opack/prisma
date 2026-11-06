@@ -5,43 +5,43 @@ import { BLACK, WHITE } from "./keys.ts";
  * de trille et les petites notes (celles de la coloration du texte).
  */
 export function MiniKeyboard({ keys, trill, graces = [], title }: { keys: number[]; trill?: number; graces?: number[]; title?: string }) {
-  const w = 7,
-    h = 18,
-    bw = 4.4,
-    bh = 11;
+  const whiteWidth = 7,
+    whiteHeight = 18,
+    blackWidth = 4.4,
+    blackHeight = 11;
   // la note : le jaune de la case en surbrillance ; la trille et les petites notes, les couleurs de la coloration du texte
-  const kind = (n: number) =>
-    keys.includes(n) ? "fill-[#ffc53d]" : n === trill ? "fill-[#0f7b6c]" : graces.includes(n) ? "fill-[#7a4fb0]" : undefined;
+  const kind = (note: number) =>
+    keys.includes(note) ? "fill-[#ffc53d]" : note === trill ? "fill-[#0f7b6c]" : graces.includes(note) ? "fill-[#7a4fb0]" : undefined;
   return (
     <svg
       className="inline align-[-5px] mr-1 ml-1.5"
-      viewBox={`0 0 ${WHITE.length * w + 1} ${h + 1}`}
-      width={WHITE.length * w + 1}
-      height={h + 1}
+      viewBox={`0 0 ${WHITE.length * whiteWidth + 1} ${whiteHeight + 1}`}
+      width={WHITE.length * whiteWidth + 1}
+      height={whiteHeight + 1}
       role="img"
       aria-label={title ?? `touches ${keys.join(", ")}`}
     >
       {title && <title>{title}</title>}
-      {WHITE.map((n, i) => (
+      {WHITE.map((note, index) => (
         <rect
-          key={n}
-          x={i * w + 0.5}
+          key={note}
+          x={index * whiteWidth + 0.5}
           y={0.5}
-          width={w}
-          height={h}
+          width={whiteWidth}
+          height={whiteHeight}
           rx={1}
-          className={`stroke-[#8a8d87] [stroke-width:0.7] ${kind(n) ?? "fill-white"}`}
+          className={`stroke-[#8a8d87] [stroke-width:0.7] ${kind(note) ?? "fill-white"}`}
         />
       ))}
-      {BLACK.map(([n, at]) => (
+      {BLACK.map(([note, at]) => (
         <rect
-          key={n}
-          x={at * w + 0.5 - bw / 2}
+          key={note}
+          x={at * whiteWidth + 0.5 - blackWidth / 2}
           y={0.5}
-          width={bw}
-          height={bh}
+          width={blackWidth}
+          height={blackHeight}
           rx={0.8}
-          className={`stroke-[#1f2123] [stroke-width:0.7] ${kind(n) ?? "fill-[#3a3d40]"}`}
+          className={`stroke-[#1f2123] [stroke-width:0.7] ${kind(note) ?? "fill-[#3a3d40]"}`}
         />
       ))}
     </svg>

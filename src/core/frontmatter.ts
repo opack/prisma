@@ -43,47 +43,47 @@ const NUMERIC_KEYS = new Set(["cell", "division"]);
 
 export function parseFrontmatter(lines: string[]): FrontmatterResult {
   const meta: Meta = {};
-  let i = 0;
-  while (i < lines.length && lines[i].trim() === "") i++;
-  if (lines[i]?.trim() !== "---") return { meta, bodyStartLine: 0 };
-  i++;
-  for (; i < lines.length; i++) {
-    const raw = lines[i];
-    if (raw.trim() === "---") return { meta, bodyStartLine: i + 1 };
+  let index = 0;
+  while (index < lines.length && lines[index].trim() === "") index++;
+  if (lines[index]?.trim() !== "---") return { meta, bodyStartLine: 0 };
+  index++;
+  for (; index < lines.length; index++) {
+    const raw = lines[index];
+    if (raw.trim() === "---") return { meta, bodyStartLine: index + 1 };
     if (raw.trim() === "" || raw.trim().startsWith("#")) continue;
-    const m = raw.match(/^\s*([A-Za-zÀ-ÿ_][\wÀ-ÿ-]*)\s*:\s*(.*)$/);
-    if (!m) throw new PrismaError("ligne de frontmatter attendue sous la forme « clé: valeur »", i + 1);
-    const key = m[1];
-    let value = m[2].trim();
+    const match = raw.match(/^\s*([A-Za-zÀ-ÿ_][\wÀ-ÿ-]*)\s*:\s*(.*)$/);
+    if (!match) throw new PrismaError("ligne de frontmatter attendue sous la forme « clé: valeur »", index + 1);
+    const key = match[1];
+    let value = match[2].trim();
     if (/^(["']).*\1$/.test(value)) value = value.slice(1, -1);
     if (key === "format") {
-      const n = Number(value);
-      if (!Number.isInteger(n) || n < 0)
-        throw new PrismaError("« format » est le numéro de version du format Prisma : un entier, par exemple « format: 1 »", i + 1);
-      if (n > FORMAT_VERSION) {
+      const number = Number(value);
+      if (!Number.isInteger(number) || number < 0)
+        throw new PrismaError("« format » est le numéro de version du format Prisma : un entier, par exemple « format: 1 »", index + 1);
+      if (number > FORMAT_VERSION) {
         throw new PrismaError(
-          `ce fichier utilise la version ${n} du format Prisma, plus récente que celle de cette application (${FORMAT_VERSION}) : mettez l'application à jour`,
-          i + 1,
+          `ce fichier utilise la version ${number} du format Prisma, plus récente que celle de cette application (${FORMAT_VERSION}) : mettez l'application à jour`,
+          index + 1,
         );
       }
-      if (n < FORMAT_VERSION) {
+      if (number < FORMAT_VERSION) {
         throw new PrismaError(
-          `ce fichier utilise l'ancienne version ${n} du format Prisma ; cette application lit la version ${FORMAT_VERSION} (voir FORMAT.md)`,
-          i + 1,
+          `ce fichier utilise l'ancienne version ${number} du format Prisma ; cette application lit la version ${FORMAT_VERSION} (voir FORMAT.md)`,
+          index + 1,
         );
       }
       continue; // la version n'est pas une information du morceau : l'écriture la remet toujours
     }
     if (key === "bpm") {
       // en temps par minute : le temps est celui de la règle de comptage (la noire pointée d'un 6/8)
-      const n = Number(value);
-      if (!value || !(n > 0)) {
+      const number = Number(value);
+      if (!value || !(number > 0)) {
         throw new PrismaError(
           "« bpm » est un nombre de temps par minute, par exemple « bpm: 78 » ; une indication comme « Andante » se place sur la ligne @ au-dessus de la règle",
-          i + 1,
+          index + 1,
         );
       }
-      meta.bpm = n;
+      meta.bpm = number;
       continue;
     }
     if (key === "key") {
@@ -91,17 +91,18 @@ export function parseFrontmatter(lines: string[]): FrontmatterResult {
       if (!parseKey(value)) {
         throw new PrismaError(
           "« key » est la tonalité du morceau : un nombre de 1 à 12, suivi de « :m » pour une tonalité mineure (« key: 8 », « key: 5:m »), ou son nom anglais (« key: G », « key: Em »)",
-          i + 1,
+          index + 1,
         );
       }
       meta.key = value;
       continue;
     }
     if (NUMERIC_KEYS.has(key)) {
-      const n = Number(value);
-      if (!Number.isInteger(n) || n < 2) throw new PrismaError(`« ${key} » doit être un entier ≥ 2`, i + 1);
-      if (key === "division" && n !== 2 && n !== 3) throw new PrismaError("« division » vaut 2 (binaire) ou 3 (ternaire)", i + 1);
-      meta[key] = n;
+      const number = Number(value);
+      if (!Number.isInteger(number) || number < 2) throw new PrismaError(`« ${key} » doit être un entier ≥ 2`, index + 1);
+      if (key === "division" && number !== 2 && number !== 3)
+        throw new PrismaError("« division » vaut 2 (binaire) ou 3 (ternaire)", index + 1);
+      meta[key] = number;
     } else {
       meta[key] = value;
     }
@@ -114,16 +115,16 @@ const ORDER = ["format", "title", "subtitle", "composer", "bpm", "key", "parts",
 /** Frontmatter d'un fichier écrit : toujours avec la version du format, en tête. */
 export function writeFrontmatter(meta: Meta): string[] {
   meta = { ...meta, format: FORMAT_VERSION };
-  const keys = Object.keys(meta).filter((k) => meta[k] !== undefined && meta[k] !== "");
-  keys.sort((a, b) => {
-    const ia = ORDER.indexOf(a),
-      ib = ORDER.indexOf(b);
-    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+  const keys = Object.keys(meta).filter((key) => meta[key] !== undefined && meta[key] !== "");
+  keys.sort((first, second) => {
+    const firstRank = ORDER.indexOf(first),
+      secondRank = ORDER.indexOf(second);
+    return (firstRank < 0 ? 99 : firstRank) - (secondRank < 0 ? 99 : secondRank) || first.localeCompare(second);
   });
-  const quote = (v: string | number) => {
-    const s = String(v);
+  const quote = (value: string | number) => {
+    const text = String(value);
     // comme en YAML : seuls « : » suivi d'une espace et « # » précédé d'une espace couperaient la valeur
-    return /^[\s"']|: |\s#|\s$/.test(s) ? JSON.stringify(s) : s;
+    return /^[\s"']|: |\s#|\s$/.test(text) ? JSON.stringify(text) : text;
   };
-  return ["---", ...keys.map((k) => `${k}: ${quote(meta[k]!)}`), "---", ""];
+  return ["---", ...keys.map((key) => `${key}: ${quote(meta[key]!)}`), "---", ""];
 }

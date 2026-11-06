@@ -30,21 +30,22 @@ export type Part = { name?: string; staves: number; instrument?: InstrumentName;
 /** Partie de chaque portée : son rang dans la liste des parties. */
 export function partOf(parts: Part[], staff: Staff): number {
   let first = 0;
-  for (let i = 0; i < parts.length; i++) {
-    first += parts[i].staves;
-    if (staff < first) return i;
+  for (let index = 0; index < parts.length; index++) {
+    first += parts[index].staves;
+    if (staff < first) return index;
   }
   return parts.length - 1;
 }
 
 /** Première portée de chaque partie. */
-export const firstStaves = (parts: Part[]) => parts.map((_, i) => parts.slice(0, i).reduce((n, x) => n + x.staves, 0));
+export const firstStaves = (parts: Part[]) =>
+  parts.map((_, index) => parts.slice(0, index).reduce((total, part) => total + part.staves, 0));
 
 /** Les cordes d'une portée, quand elle est celle d'un instrument à cordes. */
 export const stringsOfStaff = (parts: Part[], staff: Staff): Strings | undefined => parts[partOf(parts, staff)]?.strings;
 
 /** Nombre total de portées. */
-export const staffCount = (parts: Part[]) => parts.reduce((n, x) => n + x.staves, 0);
+export const staffCount = (parts: Part[]) => parts.reduce((total, part) => total + part.staves, 0);
 
 /** Découpage de premier niveau d'un temps : en 2 (binaire) ou en 3 (ternaire). */
 export type Division = 2 | 3;
@@ -118,16 +119,16 @@ export type StringCell = {
 };
 
 const STRING_CELL = /^(?:(x)|<(\d{1,2})>|(\/\/|\\\\)?(\d{1,2})(\/\/|\\\\|\/|\\|b(\d{1,2})(r)?)?)(?:_(\d))?$/;
-const direction = (s: string): Direction => (s[0] === "/" ? "up" : "down");
+const direction = (text: string): Direction => (text[0] === "/" ? "up" : "down");
 
 /**
  * Lit une case de corde qui porte une technique (« x », « <12> », « 7/ », « 7\\ », « //7 »,
  * « 7b9r », suivie ou non d'un doigt). Undefined pour une autre case, une case simple comprise.
  */
-export function stringCell(c: string): StringCell | undefined {
-  const m = c.match(STRING_CELL);
-  if (!m) return undefined;
-  const [, dead, harmonic, into, fret, after, bend, release, finger] = m;
+export function stringCell(text: string): StringCell | undefined {
+  const match = text.match(STRING_CELL);
+  if (!match) return undefined;
+  const [, dead, harmonic, into, fret, after, bend, release, finger] = match;
   if (fret !== undefined && !into && !after) return undefined;
   const out = after?.length === 2 && after[0] === after[1];
   return {
@@ -145,7 +146,7 @@ export function stringCell(c: string): StringCell | undefined {
 }
 
 /** Le texte d'un glissé dans une case : avant la case, il vient de rien ; après, il va vers la note suivante, ou, doublé, vers rien. */
-export const slideText = (d: Direction, double: boolean) => SLIDE_MARKS[d].repeat(double ? 2 : 1);
+export const slideText = (way: Direction, double: boolean) => SLIDE_MARKS[way].repeat(double ? 2 : 1);
 
 /**
  * Harmoniques naturelles : la case effleurée, et ce dont la note monte au-dessus de la corde à
@@ -178,7 +179,7 @@ export type Arpeggio = { t: number; staff?: Staff; down?: boolean };
 /** Arpège sur une ligne @ : « / » du grave à l'aigu, « \ » de l'aigu au grave. */
 export const ARPEGGIO_UP = "/";
 export const ARPEGGIO_DOWN = "\\";
-export const isArpeggioSign = (t: string) => t === ARPEGGIO_UP || t === ARPEGGIO_DOWN;
+export const isArpeggioSign = (text: string) => text === ARPEGGIO_UP || text === ARPEGGIO_DOWN;
 
 /**
  * Articulation : la manière d'attaquer ce que la portée joue à l'instant t (une note, ou
@@ -194,10 +195,10 @@ export type ArticulationKind = "staccato" | "accent" | "marcato" | "down" | "up"
  */
 export const ARTICULATION_SIGNS: Record<ArticulationKind, string> = { staccato: ".", accent: "!", marcato: "!!", down: "d", up: "u" };
 /** Le sens du médiator (ou de l'archet), propre aux instruments à cordes. */
-export const isPick = (k: ArticulationKind) => k === "down" || k === "up";
-export const articulationOf = (t: string) =>
-  (Object.keys(ARTICULATION_SIGNS) as ArticulationKind[]).find((k) => ARTICULATION_SIGNS[k] === t);
-export const isArticulationSign = (t: string) => articulationOf(t) !== undefined;
+export const isPick = (articulationKind: ArticulationKind) => articulationKind === "down" || articulationKind === "up";
+export const articulationOf = (text: string) =>
+  (Object.keys(ARTICULATION_SIGNS) as ArticulationKind[]).find((articulationKind) => ARTICULATION_SIGNS[articulationKind] === text);
+export const isArticulationSign = (text: string) => articulationOf(text) !== undefined;
 
 /**
  * Petite note : jouée très vite juste avant l'instant t, sans compter dans le temps.
@@ -245,7 +246,7 @@ export type TextMark = { t: number; text: string };
 export const DYNAMICS = ["ppp", "pp", "p", "mp", "mf", "f", "ff", "fff", "sf", "sfz", "sfp", "fp", "fz", "rfz"];
 
 /** Nuance, éventuellement entre parenthèses (nuance ajoutée par l'éditeur : « (mp) »). */
-export const isDynamic = (t: string) => DYNAMICS.includes(t.replace(/^\((.+)\)$/, "$1"));
+export const isDynamic = (text: string) => DYNAMICS.includes(text.replace(/^\((.+)\)$/, "$1"));
 
 /** Nuances écrites en toutes lettres dans un texte, et leur signe. */
 const DYNAMIC_WORDS: Record<string, string> = {
@@ -275,7 +276,7 @@ export type Expression = { staff: Staff; t: number; text: string; kind: "dynamic
 export type Hairpin = { staff: Staff; kind: "<" | ">"; start: number; end: number };
 
 /** Soufflet écrit sur une ligne @ de voix : « <---- » (crescendo) ou « >---- » (decrescendo). */
-export const isHairpin = (t: string) => /^[<>][-|]*$/.test(t);
+export const isHairpin = (text: string) => /^[<>][-|]*$/.test(text);
 
 /**
  * Jeu d'un instrument à cordes qui dure, sur une voix, de start à end (fin exclue) : l'étouffé
@@ -285,9 +286,9 @@ export type Effect = { staff: Staff; kind: EffectKind; start: number; end: numbe
 export type EffectKind = "palmMute" | "vibrato";
 /** Le signe d'un jeu qui dure, sur une ligne @ de voix, et sa suite (des traits, ou des vagues). */
 export const EFFECT_SIGNS: Record<EffectKind, string> = { palmMute: "P.M.", vibrato: "~" };
-export const effectOf = (t: string): EffectKind | undefined =>
-  /^P\.M\.[-|]*$/.test(t) ? "palmMute" : /^~+\|?$/.test(t) ? "vibrato" : undefined;
-export const isEffect = (t: string) => effectOf(t) !== undefined;
+export const effectOf = (text: string): EffectKind | undefined =>
+  /^P\.M\.[-|]*$/.test(text) ? "palmMute" : /^~+\|?$/.test(text) ? "vibrato" : undefined;
+export const isEffect = (text: string) => effectOf(text) !== undefined;
 
 /**
  * Liaison d'expression d'une voix : les notes de start à end se jouent liées. end est
@@ -300,7 +301,7 @@ export type Slur = { staff: Staff; start: number; end: number };
  * celle de la dernière. Coupée par un changement de système : « (----- » puis « ----) »
  * (« ------ » pour un système qu'elle traverse tout entier).
  */
-export const isSlur = (t: string) => /^\([-|]*\)?$/.test(t) || /^-[-|]*\)?$/.test(t);
+export const isSlur = (text: string) => /^\([-|]*\)?$/.test(text) || /^-[-|]*\)?$/.test(text);
 // plusieurs liaisons d'une portée qui continuent : leurs suites se lisent de haut en bas, dans
 // l'ordre où les liaisons ont commencé
 
@@ -319,9 +320,9 @@ export type PedalText = TextMark & { staff: Staff };
 export const PEDAL_DOWN = "Ped.";
 export const PEDAL_UP = "*";
 export const PEDAL_CHANGE = "*Ped.";
-export const isPedalSign = (t: string) => t === PEDAL_DOWN || t === PEDAL_UP || t === PEDAL_CHANGE;
+export const isPedalSign = (text: string) => text === PEDAL_DOWN || text === PEDAL_UP || text === PEDAL_CHANGE;
 /** Consigne de pédale (« Ped. simile », « Ped. sempre ») : un texte, écrit sur la ligne de pédale. */
-export const isPedalText = (t: string) => /^Ped\.\s+\S/.test(t);
+export const isPedalText = (text: string) => /^Ped\.\s+\S/.test(text);
 
 /**
  * Début de section (« [A] », comme l'étiquette gravée : la lettre dans un cadre) : une lettre posée au début d'une mesure. La section va
@@ -335,18 +336,18 @@ export const FERMATA = "^";
 
 /** Signe d'un début de section, sur la ligne @ du haut. */
 export const MARKER_SIGN = /^\[([A-Z])\]$/;
-export const isStructureSign = (t: string) => MARKER_SIGN.test(t);
+export const isStructureSign = (text: string) => MARKER_SIGN.test(text);
 
 /** Signe toujours lu à part sur une ligne @ : soufflet, signe de pédale, début de section. */
-export const isSign = (t: string) =>
-  isHairpin(t) ||
-  isEffect(t) ||
-  isSlur(t) ||
-  isPedalSign(t) ||
-  isStructureSign(t) ||
-  t === FERMATA ||
-  isArpeggioSign(t) ||
-  isArticulationSign(t);
+export const isSign = (text: string) =>
+  isHairpin(text) ||
+  isEffect(text) ||
+  isSlur(text) ||
+  isPedalSign(text) ||
+  isStructureSign(text) ||
+  text === FERMATA ||
+  isArpeggioSign(text) ||
+  isArticulationSign(text);
 
 /**
  * Deux mots d'une ligne @ séparés par une seule espace forment un seul texte (« a tempo »,
@@ -375,7 +376,7 @@ export const LYRIC_LINE = "@l";
 /** Fin de syllabe : le mot continue sur la syllabe suivante (« lu- »). */
 export const HYPHEN = "-";
 /** Prolongation d'une syllabe sur les notes suivantes (« ne ---- »), comme une tenue. */
-export const isExtender = (t: string) => /^-[-|]*$/.test(t);
+export const isExtender = (text: string) => /^-[-|]*$/.test(text);
 
 export type Score = {
   meta: Meta;
@@ -412,43 +413,51 @@ export type Score = {
 };
 
 /** Reprise portée par une mesure, s'il y en a une. */
-export const repeatOf = (score: Score, barIndex: number) => score.repeats.find((r) => r.barIndex === barIndex);
+export const repeatOf = (score: Score, barIndex: number) => score.repeats.find((repeat) => repeat.barIndex === barIndex);
 
-export const beatStart = (i: number) => i * TICKS_PER_BEAT;
+export const beatStart = (index: number) => index * TICKS_PER_BEAT;
 
 /** Trie les notes de façon stable : par début, portée du haut d'abord, de l'aigu au grave. */
 export function sortNotes(notes: Note[]): Note[] {
-  return [...notes].sort((a, b) => a.start - b.start || a.staff - b.staff || b.midi - a.midi || a.end - b.end);
+  return [...notes].sort(
+    (first, second) => first.start - second.start || first.staff - second.staff || second.midi - first.midi || first.end - second.end,
+  );
 }
 
 /** Trie les petites notes : par instant, portée du haut d'abord, par rang, de l'aigu au grave. */
 const ARTICULATION_ORDER: ArticulationKind[] = ["staccato", "accent", "marcato", "down", "up"];
 /** Trie les articulations : par instant, portée, puis staccato, accent, marcato. */
 export function sortArticulations(xs: Articulation[]): Articulation[] {
-  return [...xs].sort((a, b) => a.t - b.t || a.staff - b.staff || ARTICULATION_ORDER.indexOf(a.kind) - ARTICULATION_ORDER.indexOf(b.kind));
+  return [...xs].sort(
+    (first, second) =>
+      first.t - second.t || first.staff - second.staff || ARTICULATION_ORDER.indexOf(first.kind) - ARTICULATION_ORDER.indexOf(second.kind),
+  );
 }
 
 /** Trie les paroles : par instant, portée du haut d'abord, par couplet. */
 export function sortLyrics(lyrics: Lyric[]): Lyric[] {
-  return [...lyrics].sort((a, b) => a.t - b.t || a.staff - b.staff || a.verse - b.verse);
+  return [...lyrics].sort((first, second) => first.t - second.t || first.staff - second.staff || first.verse - second.verse);
 }
 
 export function sortGraces(graces: Grace[]): Grace[] {
-  return [...graces].sort((a, b) => a.t - b.t || a.staff - b.staff || a.slot - b.slot || b.midi - a.midi);
+  return [...graces].sort(
+    (first, second) => first.t - second.t || first.staff - second.staff || first.slot - second.slot || second.midi - first.midi,
+  );
 }
 
 /**
  * Rangs des petites notes d'une portée à un instant : pour chaque rang, le nombre de
  * chiffres le plus grand (1 ou 2), qui fixe sa largeur. Vide s'il n'y en a pas.
  */
-export function graceDigits(graces: Grace[], staff: Staff, t: number, parts?: Part[]): number[] {
+export function graceDigits(graces: Grace[], staff: Staff, tick: number, parts?: Part[]): number[] {
   const out: number[] = [];
-  const strs = parts && stringsOfStaff(parts, staff);
-  for (const g of graces) {
-    if (g.staff !== staff || g.t !== t) continue;
+  const strings = parts && stringsOfStaff(parts, staff);
+  for (const grace of graces) {
+    if (grace.staff !== staff || grace.t !== tick) continue;
     // sur une corde, le nombre est la case
-    const k = strs && g.string !== undefined ? g.midi - strs.open[g.string - 1] - strs.capo : (g.midi % 12) + 1;
-    out[g.slot] = Math.max(out[g.slot] ?? 1, String(k).length);
+    const number =
+      strings && grace.string !== undefined ? grace.midi - strings.open[grace.string - 1] - strings.capo : (grace.midi % 12) + 1;
+    out[grace.slot] = Math.max(out[grace.slot] ?? 1, String(number).length);
   }
-  return Array.from(out, (d) => d ?? 1);
+  return Array.from(out, (digits) => digits ?? 1);
 }

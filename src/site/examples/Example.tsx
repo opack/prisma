@@ -27,24 +27,24 @@ type Engraved = { text: string; options?: Partial<RenderOptions>; scale?: number
 
 /** La gravure seule. */
 function Score({ text, options = {}, scale = 1.5 }: Omit<Engraved, "label" | "guide">) {
-  const o = { ...DEFAULT_OPTIONS, ...options };
+  const merged = { ...DEFAULT_OPTIONS, ...options };
   const result = useMemo(() => {
     try {
       return {
         pages: engrave(parsePrisma(text), {
-          compact: o.density === "compact",
-          chords: o.chords,
-          chordNames: o.chordNames,
-          align: alignOf(o.notePosition),
-          reminders: o.holdReminders,
-          inlineSections: o.sections === "inline",
+          compact: merged.density === "compact",
+          chords: merged.chords,
+          chordNames: merged.chordNames,
+          align: alignOf(merged.notePosition),
+          reminders: merged.holdReminders,
+          inlineSections: merged.sections === "inline",
         }),
       };
-    } catch (e) {
-      return { error: (e as Error).message };
+    } catch (error) {
+      return { error: (error as Error).message };
     }
-  }, [text, o.density, o.chords, o.chordNames, o.notePosition, o.holdReminders, o.sections]);
-  return result.pages ? <Excerpt pages={result.pages} options={o} scale={scale} /> : <Caption>{result.error}</Caption>;
+  }, [text, merged.density, merged.chords, merged.chordNames, merged.notePosition, merged.holdReminders, merged.sections]);
+  return result.pages ? <Excerpt pages={result.pages} options={merged} scale={scale} /> : <Caption>{result.error}</Caption>;
 }
 
 /** La gravure dans son cadre, sans son texte. */
@@ -96,13 +96,13 @@ export function Source({ text, header = true }: { text: string; header?: boolean
 /** Un exemple : sa partition, ou son texte, au choix. */
 export function Example({ label, text, guide, ...rest }: Engraved) {
   const [view, setView] = useState<"score" | "text">("score");
-  const tab = (v: typeof view, name: ReactNode) => (
+  const tab = (target: typeof view, name: ReactNode) => (
     <button
       type="button"
       role="tab"
-      aria-selected={view === v}
-      className={`text-[0.85rem] px-2.5 py-[3px] border-0 rounded-[5px] cursor-pointer ${view === v ? "bg-panel text-ink font-bold" : "bg-transparent text-muted"}`}
-      onClick={() => setView(v)}
+      aria-selected={view === target}
+      className={`text-[0.85rem] px-2.5 py-[3px] border-0 rounded-[5px] cursor-pointer ${view === target ? "bg-panel text-ink font-bold" : "bg-transparent text-muted"}`}
+      onClick={() => setView(target)}
     >
       {name}
     </button>

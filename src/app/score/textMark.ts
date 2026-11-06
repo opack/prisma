@@ -12,14 +12,23 @@ const listeners = new Set<() => void>();
 export const textMark = {
   get: () => current,
   set(next: TextMark) {
-    const a = current?.place,
-      b = next?.place;
-    if (a === b || (a && b && a.t === b.t && a.staff === b.staff && a.octave === b.octave && a.content === b.content)) return;
+    const before = current?.place,
+      after = next?.place;
+    if (
+      before === after ||
+      (before &&
+        after &&
+        before.t === after.t &&
+        before.staff === after.staff &&
+        before.octave === after.octave &&
+        before.content === after.content)
+    )
+      return;
     current = next;
-    listeners.forEach((l) => l());
+    listeners.forEach((listener) => listener());
   },
-  subscribe(l: () => void) {
-    listeners.add(l);
-    return () => void listeners.delete(l);
+  subscribe(listener: () => void) {
+    listeners.add(listener);
+    return () => void listeners.delete(listener);
   },
 };

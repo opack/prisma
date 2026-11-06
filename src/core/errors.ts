@@ -21,19 +21,19 @@ export function parseErrors(text: string): PrismaError[] {
   let body: number;
   try {
     body = parseFrontmatter(lines).bodyStartLine;
-  } catch (e) {
-    return e instanceof PrismaError ? [e] : [];
+  } catch (error) {
+    return error instanceof PrismaError ? [error] : [];
   }
   // les groupes de lignes, séparés par des lignes vides : les systèmes (et leurs indications)
   const groups: [number, number][] = [];
-  for (let i = body; i < lines.length; i++) {
-    if (!lines[i].trim()) continue;
-    let end = i;
+  for (let index = body; index < lines.length; index++) {
+    if (!lines[index].trim()) continue;
+    let end = index;
     while (end + 1 < lines.length && lines[end + 1].trim()) end++;
-    groups.push([i, end]);
-    i = end;
+    groups.push([index, end]);
+    index = end;
   }
-  const groupOf = (line: number) => groups.findIndex(([a, b]) => line - 1 >= a && line - 1 <= b);
+  const groupOf = (line: number) => groups.findIndex(([first, last]) => line - 1 >= first && line - 1 <= last);
   const aside = new Set<number>();
   const errors: PrismaError[] = [];
   const work = [...lines];
@@ -41,26 +41,27 @@ export function parseErrors(text: string): PrismaError[] {
     try {
       parsePrisma(work.join("\n"));
       break;
-    } catch (e) {
-      if (!(e instanceof PrismaError)) break;
-      const g = groupOf(e.line);
+    } catch (error) {
+      if (!(error instanceof PrismaError)) break;
+      const group = groupOf(error.line);
       // une erreur du morceau entier, ou hors des systèmes : on ne peut pas aller plus loin
-      if (e.global || g < 0) {
-        if (!aside.size) errors.push(e);
+      if (error.global || group < 0) {
+        if (!aside.size) errors.push(error);
         break;
       }
-      const near = aside.has(g - 1) || aside.has(g + 1) || (aside.size > 0 && e.cascade && g === firstKept(groups.length, aside));
-      if (!(e.cascade && near)) errors.push(e);
-      if (aside.has(g)) break; // déjà de côté : l'erreur ne vient pas de ce système
-      aside.add(g);
-      for (let k = groups[g][0]; k <= groups[g][1]; k++) work[k] = "";
+      const near =
+        aside.has(group - 1) || aside.has(group + 1) || (aside.size > 0 && error.cascade && group === firstKept(groups.length, aside));
+      if (!(error.cascade && near)) errors.push(error);
+      if (aside.has(group)) break; // déjà de côté : l'erreur ne vient pas de ce système
+      aside.add(group);
+      for (let lineIndex = groups[group][0]; lineIndex <= groups[group][1]; lineIndex++) work[lineIndex] = "";
     }
   }
-  return errors.sort((a, b) => a.line - b.line || a.column - b.column);
+  return errors.sort((first, second) => first.line - second.line || first.column - second.column);
 }
 
 /** Le premier système gardé : il prend la place du premier, dont dépendent les portées. */
 function firstKept(count: number, aside: Set<number>) {
-  for (let g = 0; g < count; g++) if (!aside.has(g)) return g;
+  for (let group = 0; group < count; group++) if (!aside.has(group)) return group;
   return -1;
 }

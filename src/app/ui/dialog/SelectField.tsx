@@ -16,7 +16,7 @@ export function SelectField({
   return (
     <label className={FIELD_LABEL}>
       {label}
-      <select className={FIELD} value={value} onChange={(e) => onChange(e.target.value)}>
+      <select className={FIELD} value={value} onChange={(changeEvent) => onChange(changeEvent.target.value)}>
         {children}
       </select>
     </label>

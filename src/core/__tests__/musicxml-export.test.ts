@@ -5,20 +5,20 @@ import type { Score } from "../index.ts";
 
 const notes = (ns: { staff: number; midi: number; start: number; end: number }[]) =>
   ns
-    .map((n) => `${n.staff}:${n.midi}@${n.start}-${n.end}`)
+    .map((note) => `${note.staff}:${note.midi}@${note.start}-${note.end}`)
     .sort()
     .join(" ");
-const again = (s: Score) => importMusicXml(exportMusicXml(s));
+const again = (score: Score) => importMusicXml(exportMusicXml(score));
 
 /** Exemples ```prisma de la référence. */
 function examples(markdown: string): string[] {
   const out: string[] = [];
   const re = /^( *)```prisma\n([\s\S]*?)^\1```/gm;
-  for (let m = re.exec(markdown); m; m = re.exec(markdown))
+  for (let match = re.exec(markdown); match; match = re.exec(markdown))
     out.push(
-      m[2]
+      match[2]
         .split("\n")
-        .map((line) => line.slice(m![1].length))
+        .map((line) => line.slice(match![1].length))
         .join("\n"),
     );
   return out;
@@ -35,14 +35,14 @@ describe("export MusicXML", () => {
     expect(back.meta.key).toBe(score.meta.key);
   });
 
-  it.each(examples(readFileSync(new URL("../../../REFERENCE.md", import.meta.url), "utf8")).map((t, index) => [index + 1, t]))(
+  it.each(examples(readFileSync(new URL("../../../REFERENCE.md", import.meta.url), "utf8")).map((text, index) => [index + 1, text]))(
     "redonne l'exemple %i de la référence à l'import, indications comprises",
     (_, text) => {
       const score = parsePrisma(text as string);
       const back = again(score);
       // un ordre de jeu est déroulé à l'export, puis retrouvé à l'import par ses repères
       expect(notes(back.notes)).toBe(notes(score.notes));
-      for (const k of [
+      for (const key of [
         "order",
         "markers",
         "graces",
@@ -57,14 +57,14 @@ describe("export MusicXML", () => {
         "arpeggios",
         "repeats",
       ] as const)
-        expect(back[k]).toEqual(score[k]);
-      expect(back.notes.map((note) => [note.trill, note.finger])).toEqual(score.notes.map((n) => [n.trill, n.finger]));
+        expect(back[key]).toEqual(score[key]);
+      expect(back.notes.map((note) => [note.trill, note.finger])).toEqual(score.notes.map((note) => [note.trill, note.finger]));
     },
   );
 
   it("nomme les notes d'après la tonalité : fa♯ en sol majeur, si♭ en fa majeur, sol♯ en la mineur", () => {
-    const step = (key: string, n: number) => {
-      const xml = exportMusicXml(parsePrisma(`---\nkey: ${key}\n---\n\nm1 |1  ||\n0  |${String(n).padEnd(3)}||\n`));
+    const step = (key: string, note: number) => {
+      const xml = exportMusicXml(parsePrisma(`---\nkey: ${key}\n---\n\nm1 |1  ||\n0  |${String(note).padEnd(3)}||\n`));
       return xml
         .match(/<step>(\w)<\/step>(?:<alter>(-?1)<\/alter>)?/)!
         .slice(1)

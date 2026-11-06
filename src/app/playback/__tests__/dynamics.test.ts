@@ -5,10 +5,10 @@ import type { Score } from "../../../core/index.ts";
 
 describe("écoute : nuances", () => {
   /** Un morceau d'une note par temps, sur une portée (ou deux, la seconde sans indication). */
-  const piece = (n: number, more: Partial<Score> = {}, staves = 1): Score => ({
+  const piece = (beats: number, more: Partial<Score> = {}, staves = 1): Score => ({
     ...parsePrisma("m1 |1  ||\n0  |1  ||\n"),
     parts: [{ staves }],
-    notes: Array.from({ length: n * staves }, (_, index) => ({
+    notes: Array.from({ length: beats * staves }, (_, index) => ({
       staff: index % staves,
       midi: 60,
       start: Math.floor(index / staves) * TICKS_PER_BEAT,
@@ -16,7 +16,7 @@ describe("écoute : nuances", () => {
     })),
     ...more,
   });
-  const dyn = (t: number, text: string, staff = 0) => ({ staff, t: t * TICKS_PER_BEAT, text, kind: "dynamic" as const });
+  const dyn = (beat: number, text: string, staff = 0) => ({ staff, t: beat * TICKS_PER_BEAT, text, kind: "dynamic" as const });
 
   it("joue chaque nuance à son intensité, mf par défaut", () => {
     expect(velocities(piece(3, { expressions: [dyn(1, "p"), dyn(2, "(ff)")] }))).toEqual([70, 42, 100]);

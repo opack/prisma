@@ -23,7 +23,7 @@ type Action = Exclude<MenuItem, "separator">;
 type Group = { separated: boolean; actions: Action[] };
 
 /** Une action se coche-t-elle. */
-const checkable = (a: Action) => a.checked !== undefined;
+const checkable = (action: Action) => action.checked !== undefined;
 
 /**
  * Les actions, en groupes : un trait en commence un nouveau, et, sans rien dessiner, le passage
@@ -55,24 +55,31 @@ const ITEM =
 
 /** Les actions d'un menu, par groupes, séparés d'un trait. */
 function Actions({ items }: { items: MenuItem[] }) {
-  return groups(items).map((g, i) => (
-    <Fragment key={i}>
-      {g.separated && <Separator id={`trait-${i}`} className="mx-1.5 my-1 border-0 border-t border-line" />}
+  return groups(items).map((group, index) => (
+    <Fragment key={index}>
+      {group.separated && <Separator id={`trait-${index}`} className="mx-1.5 my-1 border-0 border-t border-line" />}
       <MenuSection
-        id={`groupe-${i}`}
+        id={`groupe-${index}`}
         className="grid"
-        {...(checkable(g.actions[0]) && {
+        {...(checkable(group.actions[0]) && {
           selectionMode: "multiple" as const,
-          selectedKeys: g.actions.filter((a) => a.checked).map((a) => a.label),
+          selectedKeys: group.actions.filter((action) => action.checked).map((action) => action.label),
         })}
       >
-        {g.actions.map((a) => (
-          <Item key={a.label} id={a.label} textValue={a.label} isDisabled={a.disabled} onAction={a.onSelect} className={ITEM}>
+        {group.actions.map((action) => (
+          <Item
+            key={action.label}
+            id={action.label}
+            textValue={action.label}
+            isDisabled={action.disabled}
+            onAction={action.onSelect}
+            className={ITEM}
+          >
             {({ isSelected }) => (
               <>
                 <span className="text-accent">{isSelected ? "✓" : ""}</span>
-                <span>{a.label}</span>
-                {a.shortcut && <Keyboard className="text-muted text-[12px] font-[inherit] phone:hidden">{a.shortcut}</Keyboard>}
+                <span>{action.label}</span>
+                {action.shortcut && <Keyboard className="text-muted text-[12px] font-[inherit] phone:hidden">{action.shortcut}</Keyboard>}
               </>
             )}
           </Item>
@@ -102,49 +109,49 @@ function Bar({ menus }: { menus: MenuDef[] }) {
   // le dernier menu fermé, et quand : un clic sur son titre le ferme (le focus, en quittant le menu,
   // l'a déjà fermé), il ne le rouvre pas
   const closed = useRef({ menu: -1, at: 0 });
-  const change = (i: number) => (isOpen: boolean) => {
+  const change = (index: number) => (isOpen: boolean) => {
     if (!isOpen) {
-      closed.current = { menu: i, at: performance.now() };
-      setOpen((current) => (current === i ? null : current));
-    } else if (!(closed.current.menu === i && performance.now() - closed.current.at < 300)) setOpen(i);
+      closed.current = { menu: index, at: performance.now() };
+      setOpen((current) => (current === index ? null : current));
+    } else if (!(closed.current.menu === index && performance.now() - closed.current.at < 300)) setOpen(index);
   };
 
   // un menu ouvert : un clic hors de la barre et du menu le ferme (ses titres, eux, passent d'un menu à l'autre)
   useEffect(() => {
     if (open === null) return;
-    const away = (e: PointerEvent) =>
-      !bar.current?.contains(e.target as Node) && !panel.current?.contains(e.target as Node) && setOpen(null);
+    const away = (event: PointerEvent) =>
+      !bar.current?.contains(event.target as Node) && !panel.current?.contains(event.target as Node) && setOpen(null);
     addEventListener("pointerdown", away, true);
     return () => removeEventListener("pointerdown", away, true);
   }, [open]);
 
   // dans un menu ouvert, les flèches passent au menu voisin ; menus fermés, au titre voisin
-  const step = (i: number, key: string) => (i + (key === "ArrowRight" ? 1 : menus.length - 1)) % menus.length;
-  const inMenu = (i: number) => (e: KeyboardEvent) => {
-    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-    e.preventDefault();
-    e.stopPropagation();
-    setOpen(step(i, e.key));
+  const step = (index: number, key: string) => (index + (key === "ArrowRight" ? 1 : menus.length - 1)) % menus.length;
+  const inMenu = (index: number) => (event: KeyboardEvent) => {
+    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+    event.preventDefault();
+    event.stopPropagation();
+    setOpen(step(index, event.key));
   };
-  const onTitle = (i: number) => (e: KeyboardEvent) => {
-    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-    e.preventDefault();
-    bar.current?.querySelectorAll("button")[step(i, e.key)]?.focus();
+  const onTitle = (index: number) => (event: KeyboardEvent) => {
+    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+    event.preventDefault();
+    bar.current?.querySelectorAll("button")[step(index, event.key)]?.focus();
   };
 
   return (
     <div ref={bar} className="flex gap-2 compact:hidden" role="group" aria-label="Menus">
-      {menus.map((m, i) => (
-        <MenuTrigger key={m.label} isOpen={open === i} onOpenChange={change(i)}>
+      {menus.map((menuDef, index) => (
+        <MenuTrigger key={menuDef.label} isOpen={open === index} onOpenChange={change(index)}>
           <Pressable>
-            <Button kind="quiet" onPointerEnter={() => open !== null && open !== i && setOpen(i)} onKeyDown={onTitle(i)}>
-              {m.label}
+            <Button kind="quiet" onPointerEnter={() => open !== null && open !== index && setOpen(index)} onKeyDown={onTitle(index)}>
+              {menuDef.label}
             </Button>
           </Pressable>
-          <Popover ref={open === i ? panel : undefined} className={PANEL} placement="bottom start" offset={4} isNonModal>
-            <div onKeyDownCapture={inMenu(i)}>
-              <Menu className="grid outline-none" aria-label={m.label} shouldCloseOnSelect onAction={() => setOpen(null)}>
-                <Actions items={m.items} />
+          <Popover ref={open === index ? panel : undefined} className={PANEL} placement="bottom start" offset={4} isNonModal>
+            <div onKeyDownCapture={inMenu(index)}>
+              <Menu className="grid outline-none" aria-label={menuDef.label} shouldCloseOnSelect onAction={() => setOpen(null)}>
+                <Actions items={menuDef.items} />
               </Menu>
             </div>
           </Popover>
@@ -158,10 +165,10 @@ function Bar({ menus }: { menus: MenuDef[] }) {
 function useMedia(query: string) {
   const [matches, setMatches] = useState(() => matchMedia(query).matches);
   useEffect(() => {
-    const m = matchMedia(query);
-    const on = () => setMatches(m.matches);
-    m.addEventListener("change", on);
-    return () => m.removeEventListener("change", on);
+    const mediaQueryList = matchMedia(query);
+    const on = () => setMatches(mediaQueryList.matches);
+    mediaQueryList.addEventListener("change", on);
+    return () => mediaQueryList.removeEventListener("change", on);
   }, [query]);
   return matches;
 }
@@ -185,7 +192,7 @@ function CompactMenu({ menus, heading }: { menus: MenuDef[]; heading?: ReactNode
     if (!isOpen) setSection(null);
   };
   const menu = section === null ? null : menus[section];
-  const enter = (i: number) => i >= 0 && setSection(i);
+  const enter = (index: number) => index >= 0 && setSection(index);
   return (
     <span className="hidden compact:block">
       <MenuTrigger isOpen={open && compact} onOpenChange={change}>
@@ -199,7 +206,7 @@ function CompactMenu({ menus, heading }: { menus: MenuDef[]; heading?: ReactNode
         <Popover className={PANEL} placement="bottom start" offset={4}>
           {menu ? (
             // la flèche gauche revient aux titres, comme « ‹ Menu »
-            <div onKeyDownCapture={(e) => e.key === "ArrowLeft" && (e.preventDefault(), setSection(null))}>
+            <div onKeyDownCapture={(event) => event.key === "ArrowLeft" && (event.preventDefault(), setSection(null))}>
               <Menu key={menu.label} className="grid outline-none" aria-label={menu.label} autoFocus="first" shouldCloseOnSelect>
                 <MenuSection className="grid">
                   <Item
@@ -220,25 +227,29 @@ function CompactMenu({ menus, heading }: { menus: MenuDef[]; heading?: ReactNode
           ) : (
             // la flèche droite ouvre le titre, comme Entrée
             <div
-              onKeyDownCapture={(e) =>
-                e.key === "ArrowRight" &&
-                (e.preventDefault(),
-                enter(menus.findIndex((m) => m.label === (e.target as HTMLElement).closest<HTMLElement>("[data-key]")?.dataset.key)))
+              onKeyDownCapture={(event) =>
+                event.key === "ArrowRight" &&
+                (event.preventDefault(),
+                enter(
+                  menus.findIndex(
+                    (menuDef) => menuDef.label === (event.target as HTMLElement).closest<HTMLElement>("[data-key]")?.dataset.key,
+                  ),
+                ))
               }
             >
               {heading}
               <Menu key="titres" className="grid outline-none" aria-label="Menu" autoFocus="first">
-                {menus.map((m, i) => (
+                {menus.map((menuDef, index) => (
                   <Item
-                    key={m.label}
-                    id={m.label}
-                    textValue={m.label}
-                    onAction={() => setSection(i)}
+                    key={menuDef.label}
+                    id={menuDef.label}
+                    textValue={menuDef.label}
+                    onAction={() => setSection(index)}
                     shouldCloseOnSelect={false}
                     className={ITEM}
                   >
                     <span />
-                    <span>{m.label}</span>
+                    <span>{menuDef.label}</span>
                     <span className="text-muted" aria-hidden>
                       ›
                     </span>

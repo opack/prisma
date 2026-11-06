@@ -10,7 +10,7 @@ let on = true;
 let held = false;
 let timer: ReturnType<typeof setTimeout> | undefined;
 const listeners = new Set<() => void>();
-const notify = () => listeners.forEach((l) => l());
+const notify = () => listeners.forEach((listener) => listener());
 
 export const follow = {
   /** Le suivi voulu (le bouton). */

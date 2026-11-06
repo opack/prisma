@@ -20,15 +20,15 @@ type Session = { token: string; host: string };
 
 export function session(): Session | null {
   try {
-    const s = JSON.parse(localStorage.getItem(KEY) ?? "null");
-    return typeof s?.token === "string" && typeof s?.host === "string" ? s : null;
+    const stored = JSON.parse(localStorage.getItem(KEY) ?? "null");
+    return typeof stored?.token === "string" && typeof stored?.host === "string" ? stored : null;
   } catch {
     return null;
   }
 }
-function keep(s: Session | null) {
+function keep(session: Session | null) {
   try {
-    if (s) localStorage.setItem(KEY, JSON.stringify(s));
+    if (session) localStorage.setItem(KEY, JSON.stringify(session));
     else localStorage.removeItem(KEY);
   } catch {
     /* stockage indisponible : la connexion durera le temps de la page */
@@ -41,8 +41,8 @@ const back = () => location.origin + location.pathname;
 
 /** Va se connecter chez pCloud ; le retour se fait sur l'application (voir pcloudReturned). */
 export function connect() {
-  const q = new URLSearchParams({ client_id: CLIENT_ID ?? "", response_type: "token", redirect_uri: back() });
-  location.assign(`https://my.pcloud.com/oauth2/authorize?${q}`);
+  const query = new URLSearchParams({ client_id: CLIENT_ID ?? "", response_type: "token", redirect_uri: back() });
+  location.assign(`https://my.pcloud.com/oauth2/authorize?${query}`);
 }
 
 /**
@@ -51,9 +51,9 @@ export function connect() {
  */
 export function pcloudReturned(): boolean {
   if (typeof location === "undefined" || !location.hash.includes("access_token=")) return false;
-  const h = new URLSearchParams(location.hash.slice(1));
-  const token = h.get("access_token");
-  if (token) keep({ token, host: h.get("hostname") ?? (h.get("locationid") === "2" ? "eapi.pcloud.com" : "api.pcloud.com") });
+  const hash = new URLSearchParams(location.hash.slice(1));
+  const token = hash.get("access_token");
+  if (token) keep({ token, host: hash.get("hostname") ?? (hash.get("locationid") === "2" ? "eapi.pcloud.com" : "api.pcloud.com") });
   history.replaceState(null, "", location.pathname + location.search);
   return !!token;
 }
@@ -76,11 +76,11 @@ export class PcloudError extends Error {
 
 /** L'adresse d'un appel de l'API, jeton compris. */
 function address(method: string, params: Record<string, string | number>) {
-  const s = session();
-  if (!s) throw new PcloudAuthError("pas connecté à pCloud");
-  const q = new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)]));
-  q.set("access_token", s.token);
-  return `https://${s.host}/${method}?${q}`;
+  const current = session();
+  if (!current) throw new PcloudAuthError("pas connecté à pCloud");
+  const query = new URLSearchParams(Object.entries(params).map(([name, value]) => [name, String(value)]));
+  query.set("access_token", current.token);
+  return `https://${current.host}/${method}?${query}`;
 }
 
 /** Ce que pCloud dit d'une erreur : son message et son code. */
@@ -111,10 +111,10 @@ export const call = <T = Record<string, unknown>>(method: string, params: Record
  * site (/api/pcloud-file, src/server/pcloudFile.ts) le demande pour elle, et ne garde rien.
  */
 export async function download(fileid: number): Promise<string> {
-  const s = session();
-  if (!s) throw new PcloudAuthError("pas connecté à pCloud");
-  const res = await fetch(`/api/pcloud-file?${new URLSearchParams({ host: s.host, fileid: String(fileid) })}`, {
-    headers: { "X-Pcloud-Token": s.token },
+  const current = session();
+  if (!current) throw new PcloudAuthError("pas connecté à pCloud");
+  const res = await fetch(`/api/pcloud-file?${new URLSearchParams({ host: current.host, fileid: String(fileid) })}`, {
+    headers: { "X-Pcloud-Token": current.token },
   });
   if ((res.headers.get("content-type") ?? "").includes("json")) throw failure(await res.json());
   if (!res.ok) throw new Error(`pCloud : lecture impossible (${res.status})`);
@@ -125,8 +125,8 @@ export async function download(fileid: number): Promise<string> {
 export async function upload(folder: string, name: string, text: string): Promise<{ fileid: number; modified: number }> {
   const body = new FormData();
   body.append("file", new Blob([text], { type: "text/plain;charset=utf-8" }), name);
-  const r = await call<{ metadata: PcloudItem[] }>("uploadfile", { path: folder || "/", filename: name, nopartial: 1 }, body);
-  return { fileid: r.metadata[0].fileid!, modified: Date.parse(r.metadata[0].modified) || Date.now() };
+  const response = await call<{ metadata: PcloudItem[] }>("uploadfile", { path: folder || "/", filename: name, nopartial: 1 }, body);
+  return { fileid: response.metadata[0].fileid!, modified: Date.parse(response.metadata[0].modified) || Date.now() };
 }
 
 /** Un fichier ou un dossier, tel que pCloud le décrit. */

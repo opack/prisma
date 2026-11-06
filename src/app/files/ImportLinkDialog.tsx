@@ -26,8 +26,8 @@ export function ImportLinkDialog({ onImport, onClose }: Props) {
           id={id}
           className="min-h-[4.5em] px-2.5 py-[7px] bg-white border border-line rounded font-mono text-[12px] break-all resize-y"
           value={link}
-          onChange={(e) => {
-            setLink(e.target.value);
+          onChange={(changeEvent) => {
+            setLink(changeEvent.target.value);
             setProblem(null);
           }}
           placeholder="https://prisma.valdera.fr/app/#p=…"

@@ -61,17 +61,17 @@ const AT_ONCE = 6;
 
 /** Les morceaux d'une source : chaque partition, son titre, son compositeur, ses options (dans l'ordre de la source). */
 export async function scan(source: LibrarySource): Promise<LibraryEntry[]> {
-  const files = (await source.files()).filter((f) => kindOf(f.name));
+  const files = (await source.files()).filter((sourceFile) => kindOf(sourceFile.name));
   const out: LibraryEntry[] = new Array(files.length);
   let next = 0;
   const reader = async () => {
-    for (let i = next++; i < files.length; i = next++) {
-      const { head, ...f } = files[i];
-      const kind = kindOf(f.name)!;
-      const start = head ? await head() : await f.file.text();
+    for (let index = next++; index < files.length; index = next++) {
+      const { head, ...file } = files[index];
+      const kind = kindOf(file.name)!;
+      const start = head ? await head() : await file.file.text();
       // ses réglages, à côté d'elle : illisibles, la vignette prend les options générales
-      const own = kind === "prisma" ? ((await readSettings(f.dir, f.name).catch(() => null))?.options ?? undefined) : undefined;
-      out[i] = { ...f, kind, ...describe(start, kind), ...(own ? { own } : {}) };
+      const own = kind === "prisma" ? ((await readSettings(file.dir, file.name).catch(() => null))?.options ?? undefined) : undefined;
+      out[index] = { ...file, kind, ...describe(start, kind), ...(own ? { own } : {}) };
     }
   };
   await Promise.all(Array.from({ length: Math.min(AT_ONCE, files.length) }, reader));
@@ -88,17 +88,17 @@ function db(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB, 2);
     req.onupgradeneeded = () => {
-      for (const s of [STORE, THUMBS]) if (!req.result.objectStoreNames.contains(s)) req.result.createObjectStore(s);
+      for (const name of [STORE, THUMBS]) if (!req.result.objectStoreNames.contains(name)) req.result.createObjectStore(name);
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
 }
 
-export async function tx<T>(mode: IDBTransactionMode, run: (s: IDBObjectStore) => IDBRequest<T>, store = STORE): Promise<T> {
-  const d = await db();
+export async function tx<T>(mode: IDBTransactionMode, run: (objectStore: IDBObjectStore) => IDBRequest<T>, store = STORE): Promise<T> {
+  const database = await db();
   return new Promise((resolve, reject) => {
-    const req = run(d.transaction(store, mode).objectStore(store));
+    const req = run(database.transaction(store, mode).objectStore(store));
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
@@ -107,16 +107,16 @@ export async function tx<T>(mode: IDBTransactionMode, run: (s: IDBObjectStore) =
 /** Titre et compositeur, lus au début du fichier : l'en-tête d'un .prisma, les crédits d'un MusicXML. */
 export function describe(head: string, kind: LibraryEntry["kind"]): { title?: string; composer?: string } {
   if (kind === "prisma") {
-    const fm = head.match(/^\s*---\r?\n([\s\S]*?)\r?\n---/);
+    const frontmatter = head.match(/^\s*---\r?\n([\s\S]*?)\r?\n---/);
     const value = (key: string) => {
-      const m = fm?.[1].match(new RegExp(`^\\s*${key}\\s*:\\s*(.+?)\\s*$`, "m"));
-      return m ? m[1].replace(/^(["'])(.*)\1$/, "$2") || undefined : undefined;
+      const match = frontmatter?.[1].match(new RegExp(`^\\s*${key}\\s*:\\s*(.+?)\\s*$`, "m"));
+      return match ? match[1].replace(/^(["'])(.*)\1$/, "$2") || undefined : undefined;
     };
     return { title: value("title"), composer: value("composer") };
   }
   const text = (re: RegExp) => {
-    const m = head.match(re);
-    return m ? decode(m[1].trim()) || undefined : undefined;
+    const match = head.match(re);
+    return match ? decode(match[1].trim()) || undefined : undefined;
   };
   return {
     title: text(/<work-title>([^<]*)<\/work-title>/) ?? text(/<movement-title>([^<]*)<\/movement-title>/),
@@ -124,10 +124,10 @@ export function describe(head: string, kind: LibraryEntry["kind"]): { title?: st
   };
 }
 
-const decode = (s: string) =>
-  s.replace(
+const decode = (text: string) =>
+  text.replace(
     /&(amp|lt|gt|quot|apos|#\d+);/g,
-    (_, e: string) => ({ amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" })[e] ?? String.fromCharCode(Number(e.slice(1))),
+    (_, entity: string) => ({ amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" })[entity] ?? String.fromCharCode(Number(entity.slice(1))),
   );
 
 /** Dernière ouverture de chaque morceau, par chemin : pour les ranger du plus récent au plus ancien. */

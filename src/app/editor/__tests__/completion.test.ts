@@ -6,10 +6,10 @@ import { cases, systemOf, writeMark } from "../complete.ts";
 
 const source = completionSource(() => "latin");
 /** Les étiquettes proposées à la ligne L (à partir de 0), colonne C, sur Ctrl+Espace. */
-const labels = (doc: string, L: number, C: number) => {
+const labels = (doc: string, lineIndex: number, column: number) => {
   const state = EditorState.create({ doc });
-  const line = state.doc.line(L + 1);
-  const completionResult = source(new CompletionContext(state, Math.min(line.from + C, line.to), true));
+  const line = state.doc.line(lineIndex + 1);
+  const completionResult = source(new CompletionContext(state, Math.min(line.from + column, line.to), true));
   return completionResult ? completionResult.options.map((completion) => completion.label) : [];
 };
 
@@ -34,10 +34,10 @@ describe("complétion de la ligne @", () => {
   });
 
   it("propose au-dessus de la règle ce qui vaut pour le système", () => {
-    const l = labels(MARKS, 5, 8);
-    expect(l).toContain("[B]");
-    expect(l).toContain("rit.");
-    expect(l).not.toContain("mf");
+    const found = labels(MARKS, 5, 8);
+    expect(found).toContain("[B]");
+    expect(found).toContain("rit.");
+    expect(found).not.toContain("mf");
   });
 
   it("propose sous une portée ses nuances, soufflets, articulations ; la pédale au piano, le médiator à la guitare", () => {
@@ -61,8 +61,8 @@ describe("ordre de la liste sur une ligne @", () => {
     expect(labels(doc.replace("<---", ">---"), 9, 12)[0]).toBe("<---");
   });
   it("sur une portée à cordes, propose d'abord ses signes et l'arpège, puis les nuances", () => {
-    const l = labels(MARKS, 12, 12);
-    expect(l.slice(0, 6)).toEqual(["d", "u", "P.M.---", "~~~~", "/", "\\"]);
+    const found = labels(MARKS, 12, 12);
+    expect(found.slice(0, 6)).toEqual(["d", "u", "P.M.---", "~~~~", "/", "\\"]);
     expect(labels(MARKS, 9, 8)[0]).toBe("p");
   });
 });
@@ -82,9 +82,9 @@ describe("écriture d'une indication sur une ligne @", () => {
     expect(written(writeMark(lines, sys, 9, at(0), 0, { head: "a tempo" }))).toBe("@   a tempo");
     const withP = [...lines];
     withP[9] = "@       p";
-    const r = writeMark(withP, sys, 9, at(0), 0, { head: "dolce" });
-    expect(r.lines.get(9)).toBe("@   dolce p");
-    expect(r.lines.get(sys.ruler)).toBe("m1 |1    |2  |3  |4  ||");
+    const result = writeMark(withP, sys, 9, at(0), 0, { head: "dolce" });
+    expect(result.lines.get(9)).toBe("@   dolce p");
+    expect(result.lines.get(sys.ruler)).toBe("m1 |1    |2  |3  |4  ||");
   });
 
   it("ne recouvre pas l'indication suivante, et remplace celle de sa case", () => {
@@ -98,9 +98,9 @@ describe("écriture d'une indication sur une ligne @", () => {
 describe("complétion de parts:", () => {
   const doc = (parts: string) => `---\nformat: 1\nparts: ${parts}\n---\n`;
   it("propose pour une guitare ses accordages, les capos usuels, puis les instruments", () => {
-    const l = labels(doc("Guitare ("), 2, 16);
-    expect(l.slice(0, 5)).toEqual(["standard", "drop-d", "dadgad", "open-g", "open-d"]);
-    expect(l).toEqual(expect.arrayContaining(["capo 1", "capo 7", "piano"]));
+    const found = labels(doc("Guitare ("), 2, 16);
+    expect(found.slice(0, 5)).toEqual(["standard", "drop-d", "dadgad", "open-g", "open-d"]);
+    expect(found).toEqual(expect.arrayContaining(["capo 1", "capo 7", "piano"]));
     expect(labels(doc("Guitare (drop-d, "), 2, 24)).toEqual(["capo 1", "capo 2", "capo 3", "capo 4", "capo 5", "capo 6", "capo 7"]);
   });
   it("propose des parties toutes faites, Piano et Guitare en tête, sans celles déjà écrites", () => {

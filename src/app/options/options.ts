@@ -11,7 +11,7 @@ import type { Align, NoteNames, RulerDetail } from "../../core/index.ts";
 /** Comment nommer une note : par son nom (do ré mi, ou C D E), sur un petit clavier, ou pas du tout (le numéro suffit). */
 export type NameDisplay = NoteNames | "keyboard";
 /** Les noms à écrire : le clavier se dessine, il n'écrit pas de nom. */
-export const writtenNames = (n: NameDisplay): NoteNames => (n === "keyboard" ? "none" : n);
+export const writtenNames = (nameDisplay: NameDisplay): NoteNames => (nameDisplay === "keyboard" ? "none" : nameDisplay);
 
 export type OctaveStyle = "arrow" | "sign" | "triangle";
 export type OctavePosition = "top" | "center";
@@ -112,7 +112,8 @@ export const OCTAVE_POSITIONS: { value: OctavePosition; label: string }[] = [
 ];
 
 /** Les notes alignées à la gravure, selon la place des notes choisie. */
-export const alignOf = (p: NotePosition): Align | undefined => (p === "aligned" ? "replayed" : p === "pitch" ? "pitch" : undefined);
+export const alignOf = (position: NotePosition): Align | undefined =>
+  position === "aligned" ? "replayed" : position === "pitch" ? "pitch" : undefined;
 
 export const NOTE_POSITIONS: { value: NotePosition; label: string }[] = [
   { value: "top", label: "En haut" },
@@ -167,23 +168,27 @@ const KEY = "prisma:options";
 export function loadOptions(stored?: string | null): RenderOptions {
   try {
     const raw = JSON.parse((stored === undefined ? localStorage.getItem(KEY) : stored) ?? "{}");
-    const octaveStyle = OCTAVE_STYLES.some((s) => s.value === raw.octaveStyle) ? raw.octaveStyle : DEFAULT_OPTIONS.octaveStyle;
-    const octavePosition = OCTAVE_POSITIONS.some((p) => p.value === raw.octavePosition)
+    const octaveStyle = OCTAVE_STYLES.some((choice) => choice.value === raw.octaveStyle) ? raw.octaveStyle : DEFAULT_OPTIONS.octaveStyle;
+    const octavePosition = OCTAVE_POSITIONS.some((choice) => choice.value === raw.octavePosition)
       ? raw.octavePosition
       : DEFAULT_OPTIONS.octavePosition;
     const autoEngrave = typeof raw.autoEngrave === "boolean" ? raw.autoEngrave : DEFAULT_OPTIONS.autoEngrave;
-    const notePosition = NOTE_POSITIONS.some((p) => p.value === raw.notePosition) ? raw.notePosition : DEFAULT_OPTIONS.notePosition;
-    const density = DENSITIES.some((d) => d.value === raw.density) ? raw.density : DEFAULT_OPTIONS.density;
+    const notePosition = NOTE_POSITIONS.some((choice) => choice.value === raw.notePosition)
+      ? raw.notePosition
+      : DEFAULT_OPTIONS.notePosition;
+    const density = DENSITIES.some((choice) => choice.value === raw.density) ? raw.density : DEFAULT_OPTIONS.density;
     const rulerDetail = RULER_DETAILS.includes(raw.rulerDetail) ? raw.rulerDetail : DEFAULT_OPTIONS.rulerDetail;
     const fingerings = typeof raw.fingerings === "boolean" ? raw.fingerings : DEFAULT_OPTIONS.fingerings;
     const namesEverySystem = typeof raw.namesEverySystem === "boolean" ? raw.namesEverySystem : DEFAULT_OPTIONS.namesEverySystem;
     const holdReminders = typeof raw.holdReminders === "boolean" ? raw.holdReminders : DEFAULT_OPTIONS.holdReminders;
-    const octaveColors = OCTAVE_COLORS.some((c) => c.value === raw.octaveColors) ? raw.octaveColors : DEFAULT_OPTIONS.octaveColors;
-    const chords = CHORD_STYLES.some((c) => c.value === raw.chords) ? raw.chords : DEFAULT_OPTIONS.chords;
+    const octaveColors = OCTAVE_COLORS.some((choice) => choice.value === raw.octaveColors)
+      ? raw.octaveColors
+      : DEFAULT_OPTIONS.octaveColors;
+    const chords = CHORD_STYLES.some((choice) => choice.value === raw.chords) ? raw.chords : DEFAULT_OPTIONS.chords;
     const chordNames = raw.chordNames === "english" || raw.chordNames === "prisma" ? raw.chordNames : DEFAULT_OPTIONS.chordNames;
     const chordChart = typeof raw.chordChart === "boolean" ? raw.chordChart : DEFAULT_OPTIONS.chordChart;
-    const simile = SIMILE_DISPLAYS.some((d) => d.value === raw.simile) ? raw.simile : DEFAULT_OPTIONS.simile;
-    const sections = SECTION_LAYOUTS.some((d) => d.value === raw.sections) ? raw.sections : DEFAULT_OPTIONS.sections;
+    const simile = SIMILE_DISPLAYS.some((choice) => choice.value === raw.simile) ? raw.simile : DEFAULT_OPTIONS.simile;
+    const sections = SECTION_LAYOUTS.some((choice) => choice.value === raw.sections) ? raw.sections : DEFAULT_OPTIONS.sections;
     const noteNames = ["latin", "english", "keyboard", "none"].includes(raw.noteNames) ? raw.noteNames : DEFAULT_OPTIONS.noteNames;
     const sourceColors = ["octaves", "signs", "none"].includes(raw.sourceColors) ? raw.sourceColors : DEFAULT_OPTIONS.sourceColors;
     const scoreToText = typeof raw.scoreToText === "boolean" ? raw.scoreToText : DEFAULT_OPTIONS.scoreToText;
@@ -192,12 +197,12 @@ export function loadOptions(stored?: string | null): RenderOptions {
     const countIn = typeof raw.countIn === "boolean" ? raw.countIn : DEFAULT_OPTIONS.countIn;
     const clickVolume =
       typeof raw.clickVolume === "number" && raw.clickVolume >= 0 && raw.clickVolume <= 2 ? raw.clickVolume : DEFAULT_OPTIONS.clickVolume;
-    const clickGrid = CLICK_GRIDS.some((g) => g.value === raw.clickGrid) ? raw.clickGrid : DEFAULT_OPTIONS.clickGrid;
+    const clickGrid = CLICK_GRIDS.some((choice) => choice.value === raw.clickGrid) ? raw.clickGrid : DEFAULT_OPTIONS.clickGrid;
     const sounds = raw.clickSounds ?? {};
     const clickSounds = Object.fromEntries(
-      Object.entries(DEFAULT_CLICK_SOUNDS).map(([level, d]) => [
+      Object.entries(DEFAULT_CLICK_SOUNDS).map(([level, fallback]) => [
         level,
-        CLICK_SOUNDS.some((c) => c.value === sounds[level]) ? sounds[level] : d,
+        CLICK_SOUNDS.some((choice) => choice.value === sounds[level]) ? sounds[level] : fallback,
       ]),
     ) as ClickSounds;
     return {
@@ -232,9 +237,9 @@ export function loadOptions(stored?: string | null): RenderOptions {
   }
 }
 
-export function saveOptions(o: RenderOptions) {
+export function saveOptions(renderOptions: RenderOptions) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(o));
+    localStorage.setItem(KEY, JSON.stringify(renderOptions));
   } catch {
     /* stockage indisponible : sans conséquence */
   }

@@ -25,8 +25,14 @@ export function Choices<T>({
   return (
     <fieldset className="grid gap-2 m-0 p-0 border-0">
       <legend className="mb-1.5 p-0 font-semibold">{legend}</legend>
-      {options.map((o) => (
-        <Choice key={String(o.value)} name={name} option={o} checked={o.value === value} onChange={() => onChange(o.value)} />
+      {options.map((choiceOption) => (
+        <Choice
+          key={String(choiceOption.value)}
+          name={name}
+          option={choiceOption}
+          checked={choiceOption.value === value}
+          onChange={() => onChange(choiceOption.value)}
+        />
       ))}
       {children}
     </fieldset>

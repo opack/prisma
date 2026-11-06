@@ -106,18 +106,20 @@ const QUALITIES: [string[], number[]][] = [
 ];
 
 /** Suffixes, du plus long au plus court, pour lire « m7b5 » avant « m7 » et « m ». */
-const SUFFIXES = QUALITIES.flatMap(([names, iv]) => names.map((n) => ({ n, iv }))).sort((a, b) => b.n.length - a.n.length);
+const SUFFIXES = QUALITIES.flatMap(([names, intervals]) => names.map((name) => ({ name, intervals }))).sort(
+  (first, second) => second.name.length - first.name.length,
+);
 
-const pc = (s: number) => ((s % 12) + 12) % 12;
+const toPitchClass = (semitones: number) => ((semitones % 12) + 12) % 12;
 /** Numéro Prisma (1 à 12) d'une classe de hauteur (0 = do). */
-const numero = (p: number) => pc(p) + 1;
+const numero = (pitchClass: number) => toPitchClass(pitchClass) + 1;
 
 /** Fondamentale ou basse : une lettre, éventuellement suivie de « # » ou « b ». */
-function readNote(s: string): { pitch: number; rest: string } | undefined {
-  const m = s.match(/^([A-G])([#b♯♭]?)/);
-  if (!m) return undefined;
-  const alter = m[2] === "#" || m[2] === "♯" ? 1 : m[2] === "b" || m[2] === "♭" ? -1 : 0;
-  return { pitch: pc(STEP[m[1]] + alter), rest: s.slice(m[0].length) };
+function readNote(text: string): { pitch: number; rest: string } | undefined {
+  const match = text.match(/^([A-G])([#b♯♭]?)/);
+  if (!match) return undefined;
+  const alter = match[2] === "#" || match[2] === "♯" ? 1 : match[2] === "b" || match[2] === "♭" ? -1 : 0;
+  return { pitch: toPitchClass(STEP[match[1]] + alter), rest: text.slice(match[0].length) };
 }
 
 /** Notes (numéros Prisma) d'un accord écrit par son nom anglais, de la basse vers l'aigu ; undefined s'il est inconnu. */
@@ -151,9 +153,9 @@ export function prismaNameOf(english: string): string | undefined {
 
 /** Notes d'un accord écrit par son nom Prisma (« 10:m », « 8:7 », « 1/8 ») ; undefined s'il n'en est pas un. */
 export function chordPrismaNameNotes(name: string): number[] | undefined {
-  const m = name.match(/^(1[0-2]|[1-9])(.*)$/);
-  if (!m) return undefined;
-  let rest = m[2];
+  const match = name.match(/^(1[0-2]|[1-9])(.*)$/);
+  if (!match) return undefined;
+  let rest = match[2];
   let bass: number | undefined;
   // basse : « /8 » à la fin (sauf dans « :6/9 », qui est une sorte d'accord)
   const slash = rest.match(/^(.*)\/(1[0-2]|[1-9])$/);
@@ -165,18 +167,18 @@ export function chordPrismaNameNotes(name: string): number[] | undefined {
   if (rest && !rest.startsWith(CHORD_QUALITY_SEPARATOR)) return undefined;
   const quality = rest.slice(1);
   if (rest && !quality) return undefined;
-  return notesOf(Number(m[1]) - 1, quality, bass);
+  return notesOf(Number(match[1]) - 1, quality, bass);
 }
 
 /** Les notes d'une fondamentale (0 = do), d'une sorte d'accord et d'une basse éventuelle, de la basse vers l'aigu. */
 function notesOf(root: number, suffix: string, bass: number | undefined): number[] | undefined {
-  const quality = SUFFIXES.find((q) => q.n === suffix);
+  const quality = SUFFIXES.find((candidate) => candidate.name === suffix);
   if (!quality) return undefined;
-  const notes = [...new Set(quality.iv.map((i) => pc(root + i)))];
+  const notes = [...new Set(quality.intervals.map((interval) => toPitchClass(root + interval)))];
   // de la basse vers l'aigu : la basse (la fondamentale sans « / »), puis les autres notes
   // dans l'ordre où elles montent au-dessus d'elle, au plus serré
   const low = bass ?? root;
-  const above = notes.filter((n) => n !== low).sort((a, b) => pc(a - low) - pc(b - low));
+  const above = notes.filter((note) => note !== low).sort((first, second) => toPitchClass(first - low) - toPitchClass(second - low));
   return [low, ...above].map(numero);
 }
 
@@ -184,7 +186,7 @@ function notesOf(root: number, suffix: string, bass: number | undefined): number
 export function chordPrismaNotes(text: string): number[] | undefined {
   if (!/^\d{1,2}(,\d{1,2})+$/.test(text)) return undefined;
   const notes = text.split(CHORD_NOTE_SEPARATOR).map(Number);
-  if (notes.some((n) => n < 1 || n > 12) || new Set(notes).size !== notes.length) return undefined;
+  if (notes.some((note) => note < 1 || note > 12) || new Set(notes).size !== notes.length) return undefined;
   return notes;
 }
 
@@ -209,27 +211,31 @@ export const chordWriting = (word: string): "prisma" | "english" | "notes" => {
  * sinon l'accord est un renversement. Undefined si les notes ne forment aucun accord connu.
  */
 export function recognize(notes: number[]): { root: number; quality: string; bass: number } | undefined {
-  const set = new Set(notes.map((n) => n - 1));
+  const set = new Set(notes.map((note) => note - 1));
   const bass = notes[0] - 1;
-  const same = (iv: number[], root: number) => iv.length === set.size && iv.every((i) => set.has(pc(root + i)));
-  const roots = [bass, ...[...set].filter((p) => p !== bass)];
+  const same = (intervals: number[], root: number) =>
+    intervals.length === set.size && intervals.every((interval) => set.has(toPitchClass(root + interval)));
+  const roots = [bass, ...[...set].filter((pitchClass) => pitchClass !== bass)];
   for (const root of roots) {
-    const q = QUALITIES.find(([, iv]) => same(iv, root));
-    if (q) return { root, quality: q[0][0], bass };
+    const quality = QUALITIES.find(([, intervals]) => same(intervals, root));
+    if (quality) return { root, quality: quality[0][0], bass };
   }
   return undefined;
 }
 
 /** Nom anglais d'un accord donné par ses notes : « Am », « G/B ». */
 export function chordName(notes: number[]): string | undefined {
-  const r = recognize(notes);
-  return r && NAMES[r.root] + r.quality + (r.root === r.bass ? "" : "/" + NAMES[r.bass]);
+  const chord = recognize(notes);
+  return chord && NAMES[chord.root] + chord.quality + (chord.root === chord.bass ? "" : "/" + NAMES[chord.bass]);
 }
 
 /** Nom Prisma d'un accord donné par ses notes : « 10:m », « 8/12 ». */
 export function chordPrismaName(notes: number[]): string | undefined {
-  const r = recognize(notes);
-  return r && `${r.root + 1}${r.quality ? CHORD_QUALITY_SEPARATOR + r.quality : ""}${r.root === r.bass ? "" : "/" + (r.bass + 1)}`;
+  const chord = recognize(notes);
+  return (
+    chord &&
+    `${chord.root + 1}${chord.quality ? CHORD_QUALITY_SEPARATOR + chord.quality : ""}${chord.root === chord.bass ? "" : "/" + (chord.bass + 1)}`
+  );
 }
 
 /** Écriture d'un accord en notes Prisma : ses notes séparées par des virgules. */

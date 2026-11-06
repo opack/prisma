@@ -20,18 +20,19 @@ export function useShortcuts(actions: Actions) {
   const now = useRef(actions);
   now.current = actions;
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const a = now.current;
-      const ctrl = e.ctrlKey || e.metaKey;
-      const key = e.key.toLowerCase();
-      const run = (f: () => void) => (e.preventDefault(), f());
-      if (ctrl && e.key === "Enter") run(a.engrave);
-      else if (ctrl && key === "s") run(() => a.save(e.shiftKey));
-      else if (ctrl && key === "o") run(a.open);
-      else if (ctrl && key === "b") run(a.library);
-      else if (ctrl && key === "e") run(a.editor);
-      else if (ctrl && ["+", "=", "-", "0"].includes(e.key)) run(() => a.zoom(e.key === "0" ? 0 : e.key === "-" ? -1 : 1));
-      else if (e.key === "F11") run(a.fullScreen);
+    const onKey = (event: KeyboardEvent) => {
+      const actions = now.current;
+      const ctrl = event.ctrlKey || event.metaKey;
+      const key = event.key.toLowerCase();
+      const run = (action: () => void) => (event.preventDefault(), action());
+      if (ctrl && event.key === "Enter") run(actions.engrave);
+      else if (ctrl && key === "s") run(() => actions.save(event.shiftKey));
+      else if (ctrl && key === "o") run(actions.open);
+      else if (ctrl && key === "b") run(actions.library);
+      else if (ctrl && key === "e") run(actions.editor);
+      else if (ctrl && ["+", "=", "-", "0"].includes(event.key))
+        run(() => actions.zoom(event.key === "0" ? 0 : event.key === "-" ? -1 : 1));
+      else if (event.key === "F11") run(actions.fullScreen);
     };
     addEventListener("keydown", onKey);
     return () => removeEventListener("keydown", onKey);

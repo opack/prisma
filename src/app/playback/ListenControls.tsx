@@ -131,7 +131,7 @@ export function ListenControls({
         bpm={bpm}
         written={written}
         chosen={chosen !== null}
-        onTempo={(n) => setChosen(n === written ? null : n)}
+        onTempo={(picked) => setChosen(picked === written ? null : picked)}
       />
       {bar && (
         <ButtonGroup label="Lecture">
@@ -269,23 +269,24 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, 
   const names = score ? staffNames(score.parts) : [];
   // les portées de chaque partie, nommées sans le nom de la partie quand il les précède
   const groups: { name?: string; staves: { k: number; label: string }[] }[] = [];
-  let k = 0;
+  let staffIndex = 0;
   for (const part of score?.parts ?? []) {
     const staves = Array.from({ length: part.staves }, () => {
-      const full = names[k];
+      const full = names[staffIndex];
       const label = part.staves > 1 && full.includes(" — ") ? full.split(" — ")[1] : full;
-      return { k: k++, label: part.staves > 1 ? label[0].toUpperCase() + label.slice(1) : label };
+      return { k: staffIndex++, label: part.staves > 1 ? label[0].toUpperCase() + label.slice(1) : label };
     });
     groups.push({ name: part.name, staves });
   }
-  const all = names.map((_, k) => k);
+  const all = names.map((_, staff) => staff);
   const silent = names.length > 0 && muted.length >= names.length;
   const title = !muted.length
     ? "Musique : toutes les portées jouées"
     : silent
       ? "Musique : coupée (le métronome seul)"
       : `Musique : ${muted.length} portée${muted.length > 1 ? "s" : ""} muette${muted.length > 1 ? "s" : ""} sur ${names.length}`;
-  const toggle = (k: number) => onMuted(muted.includes(k) ? muted.filter((x) => x !== k) : [...muted, k].sort((a, b) => a - b));
+  const toggle = (staff: number) =>
+    onMuted(muted.includes(staff) ? muted.filter((other) => other !== staff) : [...muted, staff].sort((first, second) => first - second));
   if (!silent) before.current = muted;
   const music = () => onMuted(silent ? before.current : all);
   return (
@@ -305,33 +306,33 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, 
           </Button>
         </Pressable>
         <Popover label="Parties et instruments" title="Parties et instruments" className="w-min min-w-[300px]">
-          {groups.map((g, i) => {
+          {groups.map((group, index) => {
             // l'instrument de la partition (écrit après le nom de la partie, ou deviné) ; un autre choix se rétablit d'un clic
-            const fromScore = score ? scoreInstrument(score.parts[i]) : PIANO;
-            const chosen = (instruments[i] ?? PIANO) !== fromScore;
+            const fromScore = score ? scoreInstrument(score.parts[index]) : PIANO;
+            const chosen = (instruments[index] ?? PIANO) !== fromScore;
             const instrument = (
               <span className="inline-flex items-center gap-1">
                 <select
                   className="max-w-[11em] px-1 py-0.5 bg-white border border-line rounded"
-                  value={instruments[i] ?? PIANO}
-                  onChange={(e) => onInstrument(i, e.target.value)}
-                  aria-label={`Instrument${g.name ? ` : ${g.name}` : ""}`}
+                  value={instruments[index] ?? PIANO}
+                  onChange={(changeEvent) => onInstrument(index, changeEvent.target.value)}
+                  aria-label={`Instrument${group.name ? ` : ${group.name}` : ""}`}
                   title={
                     chosen
                       ? `Choisi pour ce morceau ; la partition donne : ${instrumentLabel(fromScore)}`
                       : "L'instrument de la partie, à l'écoute, tel que la partition le donne"
                   }
                 >
-                  {INSTRUMENTS.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.label}
+                  {INSTRUMENTS.map((choice) => (
+                    <option key={choice.id} value={choice.id}>
+                      {choice.label}
                     </option>
                   ))}
                 </select>
                 {chosen && (
                   <Button
                     size="small"
-                    onClick={() => onInstrument(i, fromScore)}
+                    onClick={() => onInstrument(index, fromScore)}
                     title={`Reprendre l'instrument de la partition (${instrumentLabel(fromScore)})`}
                     aria-label="Reprendre l'instrument de la partition"
                   >
@@ -341,7 +342,7 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, 
               </span>
             );
             // le volume de la partie : un réglage fin, pour équilibrer les parties (un double-clic le remet à 0)
-            const db = volumes[i] ?? 0;
+            const db = volumes[index] ?? 0;
             const volume = (
               <label
                 className="inline-flex items-center gap-1 text-muted text-[12px] cursor-pointer whitespace-nowrap"
@@ -354,34 +355,34 @@ function PartsMenu({ score, muted, onMuted, instruments, onInstrument, volumes, 
                   max={MAX_VOLUME}
                   step={1}
                   value={db}
-                  onChange={(e) => onVolume(i, Number(e.target.value))}
-                  onDoubleClick={() => onVolume(i, 0)}
-                  aria-label={`Volume${g.name ? ` : ${g.name}` : ""}`}
+                  onChange={(event) => onVolume(index, Number(event.target.value))}
+                  onDoubleClick={() => onVolume(index, 0)}
+                  aria-label={`Volume${group.name ? ` : ${group.name}` : ""}`}
                 />
                 <output className="min-w-[3.6em] text-right tabular-nums">{db > 0 ? `+${db}` : db < 0 ? `−${-db}` : "0"} dB</output>
               </label>
             );
             // une partie d'une portée : une seule ligne ; sinon son nom et son instrument, puis ses portées
-            if (g.staves.length === 1)
+            if (group.staves.length === 1)
               return (
-                <div key={i} className={ROW}>
-                  <PopoverCheck checked={!muted.includes(g.staves[0].k)} onChange={() => toggle(g.staves[0].k)}>
-                    {g.staves[0].label}
+                <div key={index} className={ROW}>
+                  <PopoverCheck checked={!muted.includes(group.staves[0].k)} onChange={() => toggle(group.staves[0].k)}>
+                    {group.staves[0].label}
                   </PopoverCheck>
                   {instrument}
                   {volume}
                 </div>
               );
             return (
-              <div key={i} className="grid gap-1">
+              <div key={index} className="grid gap-1">
                 <div className={ROW}>
-                  <span className="font-semibold">{g.name || "Partie"}</span>
+                  <span className="font-semibold">{group.name || "Partie"}</span>
                   {instrument}
                   {volume}
                 </div>
-                {g.staves.map((p) => (
-                  <PopoverCheck key={p.k} className="pl-3.5" checked={!muted.includes(p.k)} onChange={() => toggle(p.k)}>
-                    {p.label}
+                {group.staves.map((staff) => (
+                  <PopoverCheck key={staff.k} className="pl-3.5" checked={!muted.includes(staff.k)} onChange={() => toggle(staff.k)}>
+                    {staff.label}
                   </PopoverCheck>
                 ))}
               </div>
@@ -417,8 +418,8 @@ function useStep(step: (delta: number) => void, small: number, big: number) {
   const held = useRef(false);
   const stop = () => window.clearTimeout(timer.current);
   useEffect(() => stop, []);
-  const start = (e: PointerEvent) => {
-    if (e.button !== 0) return;
+  const start = (event: PointerEvent) => {
+    if (event.button !== 0) return;
     stop();
     held.current = false;
     const tick = () => {
@@ -433,7 +434,7 @@ function useStep(step: (delta: number) => void, small: number, big: number) {
   };
   return {
     onPointerDown: start,
-    onContextMenu: (e: MouseEvent) => e.preventDefault(),
+    onContextMenu: (event: MouseEvent) => event.preventDefault(),
     onClick: () => {
       if (held.current) held.current = false;
       else latest.current(small);
@@ -450,12 +451,12 @@ type TempoProps = { bpm: number; written: number; chosen: boolean; onTempo: (bpm
 
 function TempoControl({ bpm, written, chosen, onTempo, className = "" }: TempoProps) {
   const [draft, setDraft] = useState<string | null>(null); // saisie en cours, pas encore un tempo valable
-  const slower = useStep((d) => onTempo(stepTempo(bpm, -d)), 1, TEMPO_STEP);
-  const faster = useStep((d) => onTempo(stepTempo(bpm, d)), 1, TEMPO_STEP);
+  const slower = useStep((step) => onTempo(stepTempo(bpm, -step)), 1, TEMPO_STEP);
+  const faster = useStep((step) => onTempo(stepTempo(bpm, step)), 1, TEMPO_STEP);
   const edit = (text: string) => {
     setDraft(text);
-    const n = Number(text);
-    if (Number.isInteger(n) && n >= MIN_BPM && n <= MAX_BPM) onTempo(n);
+    const typed = Number(text);
+    if (Number.isInteger(typed) && typed >= MIN_BPM && typed <= MAX_BPM) onTempo(typed);
   };
   const hold = `appui long : de ${TEMPO_STEP} en ${TEMPO_STEP}`;
   return (
@@ -472,7 +473,7 @@ function TempoControl({ bpm, written, chosen, onTempo, className = "" }: TempoPr
           min={MIN_BPM}
           max={MAX_BPM}
           value={draft ?? bpm}
-          onChange={(e) => edit(e.target.value)}
+          onChange={(changeEvent) => edit(changeEvent.target.value)}
           onBlur={() => setDraft(null)}
           className="w-[2.6em] px-1 py-0 leading-none text-center text-[1.2em] font-semibold tabular-nums bg-transparent border-0 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           aria-label="Tempo de l'écoute"

@@ -14,11 +14,11 @@ export type ContentsEntry = { id: string; label: ReactNode; depth?: 2 | 3 };
 /** Le texte d'un nom de partie, sans sa mise en forme (« Le fa dièse »), pour la frappe d'une lettre. */
 function plain(node: ReactNode): string {
   return Children.toArray(node)
-    .map((n) =>
-      typeof n === "string" || typeof n === "number"
-        ? String(n)
-        : isValidElement<{ children?: ReactNode }>(n)
-          ? plain(n.props.children)
+    .map((child) =>
+      typeof child === "string" || typeof child === "number"
+        ? String(child)
+        : isValidElement<{ children?: ReactNode }>(child)
+          ? plain(child.props.children)
           : "",
     )
     .join("");
@@ -38,10 +38,10 @@ export function ContentsMenu({
   className?: string;
 }) {
   // la partie lue, ou, dans une sous-partie, la partie qui la contient
-  const at = entries.findIndex((e) => e.id === current);
+  const at = entries.findIndex((contentsEntry) => contentsEntry.id === current);
   const part = entries
     .slice(0, at + 1)
-    .filter((e) => (e.depth ?? 2) === 2)
+    .filter((entry) => (entry.depth ?? 2) === 2)
     .pop();
   return (
     <div className={`${className} px-4 py-2 bg-white border-b border-line`}>
@@ -65,16 +65,16 @@ export function ContentsMenu({
             offset={4}
           >
             <Menu className="grid outline-none" aria-label={title} onAction={(id) => onGo(String(id))}>
-              {entries.map((e) => {
-                const sub = e.depth === 3;
+              {entries.map((entry) => {
+                const sub = entry.depth === 3;
                 return (
                   <MenuItem
-                    key={e.id}
-                    id={e.id}
-                    textValue={plain(e.label)}
-                    className={`py-1.5 px-2.5 rounded outline-none cursor-pointer data-focused:bg-panel ${sub ? "pl-[22px]" : "font-semibold"} ${e.id === current ? "text-accent" : sub ? "text-muted" : "text-ink"}`}
+                    key={entry.id}
+                    id={entry.id}
+                    textValue={plain(entry.label)}
+                    className={`py-1.5 px-2.5 rounded outline-none cursor-pointer data-focused:bg-panel ${sub ? "pl-[22px]" : "font-semibold"} ${entry.id === current ? "text-accent" : sub ? "text-muted" : "text-ink"}`}
                   >
-                    {e.label}
+                    {entry.label}
                   </MenuItem>
                 );
               })}

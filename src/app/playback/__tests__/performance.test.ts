@@ -24,13 +24,18 @@ import type { Score } from "../../../core/index.ts";
 describe("écoute", () => {
   const two = ["---", "bpm: 120", "---", "m1 |1  |2  ||", "0  |1  |-  ||", "---", "-1 |8  |3  ||", ""].join("\n");
   /** Un morceau d'une mesure d'un temps par lettre, une note par mesure (1, 2, 3…), avec ses reprises et sections. */
-  const bars = (n: number, more: Partial<Score> = {}): Score => ({
+  const bars = (count: number, more: Partial<Score> = {}): Score => ({
     ...parsePrisma("m1 |1  ||\n0  |1  ||\n"),
     beats: Array.from(
-      { length: n },
+      { length: count },
       (_, index) => ({ bar: String(index + 1), barIndex: index, label: 1, division: 2 }) as Score["beats"][number],
     ),
-    notes: Array.from({ length: n }, (_, i) => ({ staff: 0, midi: 60 + i, start: i * TICKS_PER_BEAT, end: (i + 1) * TICKS_PER_BEAT })),
+    notes: Array.from({ length: count }, (_, index) => ({
+      staff: 0,
+      midi: 60 + index,
+      start: index * TICKS_PER_BEAT,
+      end: (index + 1) * TICKS_PER_BEAT,
+    })),
     ...more,
   });
   const order = (score: Score, ps: ReturnType<typeof passages>) =>
@@ -39,8 +44,8 @@ describe("écoute", () => {
       .join(" ");
 
   it("donne les notes en secondes, au tempo choisi", () => {
-    const s = parsePrisma(two);
-    expect(playNotes(playedNotes(s, passages(s)), 120)).toEqual([
+    const score = parsePrisma(two);
+    expect(playNotes(playedNotes(score, passages(score)), 120)).toEqual([
       { time: 0, midi: 55, duration: 0.5, velocity: 70, staff: 1 },
       { time: 0, midi: 60, duration: 1, velocity: 70, staff: 0 },
       { time: 0.5, midi: 50, duration: 0.5, velocity: 70, staff: 1 },
@@ -48,16 +53,16 @@ describe("écoute", () => {
   });
 
   it("reprend à un instant donné, en rejouant ce qui sonne encore", () => {
-    const s = parsePrisma(two);
-    expect(playNotes(playedNotes(s, passages(s)), 60, TICKS_PER_BEAT)).toEqual([
+    const score = parsePrisma(two);
+    expect(playNotes(playedNotes(score, passages(score)), 60, TICKS_PER_BEAT)).toEqual([
       { time: 0, midi: 50, duration: 1, velocity: 70, staff: 1 },
       { time: 0, midi: 60, duration: 1, velocity: 70, staff: 0 },
     ]);
   });
 
   it("déroule les reprises, au nombre de passages indiqué", () => {
-    const s = parsePrisma("m1 ||:1  |2  :||1  |2  ||\n0  ||:1  |-   ||5  |   ||\n---\n-1 || 1  |    ||1  |   ||\n");
-    expect(playedNotes(s, passages(s)).map((playedNote) => [playedNote.start / TICKS_PER_BEAT, playedNote.midi])).toEqual([
+    const score = parsePrisma("m1 ||:1  |2  :||1  |2  ||\n0  ||:1  |-   ||5  |   ||\n---\n-1 || 1  |    ||1  |   ||\n");
+    expect(playedNotes(score, passages(score)).map((playedNote) => [playedNote.start / TICKS_PER_BEAT, playedNote.midi])).toEqual([
       [0, 48],
       [0, 60],
       [2, 48],
@@ -73,18 +78,18 @@ describe("écoute", () => {
     });
     expect(order(three, passages(three))).toBe("1 2 3 2 3 2 3 4");
     // sans « ||: », on revient au début ; « :||: » enchaîne deux reprises
-    const r = bars(4, {
+    const repeated = bars(4, {
       repeats: [
         { barIndex: 0, end: true },
         { barIndex: 1, start: true },
         { barIndex: 2, end: true },
       ],
     });
-    expect(order(r, passages(r))).toBe("1 1 2 3 2 3 4");
+    expect(order(repeated, passages(repeated))).toBe("1 1 2 3 2 3 4");
   });
 
   it("suit l'ordre des sections, et chaque reprise reste dans la sienne", () => {
-    const s = bars(4, {
+    const score = bars(4, {
       markers: [
         { label: "A", barIndex: 0 },
         { label: "B", barIndex: 2 },
@@ -92,11 +97,11 @@ describe("écoute", () => {
       order: ["A", "B", "A"],
       repeats: [{ barIndex: 3, end: true }],
     });
-    expect(order(s, passages(s))).toBe("1 2 3 4 3 4 1 2");
+    expect(order(score, passages(score))).toBe("1 2 3 4 3 4 1 2");
   });
 
   it("compte les mesures dans l'ordre où elles se jouent, et les range par section (où en est la lecture)", () => {
-    const s = bars(4, {
+    const score = bars(4, {
       markers: [
         { label: "A", barIndex: 0 },
         { label: "B", barIndex: 2 },
@@ -104,7 +109,7 @@ describe("écoute", () => {
       order: ["A", "B", "A"],
       repeats: [{ barIndex: 3, end: true }],
     });
-    const played = playedBars(s, passages(s));
+    const played = playedBars(score, passages(score));
     // 1 2 | 3 4 3 4 | 1 2 : huit mesures jouées, une mesure d'un temps chacune
     expect(played.map((playedBar) => [playedBar.at / TICKS_PER_BEAT, playedBar.end / TICKS_PER_BEAT, playedBar.entry])).toEqual([
       [0, 1, 0],
@@ -116,30 +121,30 @@ describe("écoute", () => {
       [6, 7, 2],
       [7, 8, 2],
     ]);
-    expect(playedSections(s, played)).toEqual([
+    expect(playedSections(score, played)).toEqual([
       { entry: 0, label: "A", first: 0, count: 2 },
       { entry: 1, label: "B", first: 2, count: 4 },
       { entry: 2, label: "A", first: 6, count: 2 },
     ]);
-    expect([0, 0.5, 5.9, 7, 99].map((t) => barAt(played, t * TICKS_PER_BEAT))).toEqual([0, 0, 5, 7, 7]);
+    expect([0, 0.5, 5.9, 7, 99].map((beat) => barAt(played, beat * TICKS_PER_BEAT))).toEqual([0, 0, 5, 7, 7]);
     // sans sections : une seule, sans lettre
     const plain = bars(3);
     expect(playedSections(plain, playedBars(plain, passages(plain)))).toEqual([{ entry: 0, label: "", first: 0, count: 3 }]);
   });
 
   it("garde liée une note qui passe d'un passage à la suite du morceau", () => {
-    const s = bars(3, { repeats: [{ barIndex: 0, end: true }] });
-    s.notes = [{ staff: 0, midi: 60, start: 0, end: 3 * TICKS_PER_BEAT }];
+    const score = bars(3, { repeats: [{ barIndex: 0, end: true }] });
+    score.notes = [{ staff: 0, midi: 60, start: 0, end: 3 * TICKS_PER_BEAT }];
     // après le retour en arrière la note s'arrête ; au dernier passage elle tient jusqu'au bout
-    expect(playedNotes(s, passages(s))).toEqual([
+    expect(playedNotes(score, passages(score))).toEqual([
       { staff: 0, start: 0, end: TICKS_PER_BEAT, midi: 60, velocity: 70 },
       { staff: 0, start: TICKS_PER_BEAT, end: 4 * TICKS_PER_BEAT, midi: 60, velocity: 70 },
     ]);
   });
 
   it("place le curseur et le clic sur le bon passage d'une reprise", () => {
-    const s = bars(3, { repeats: [{ barIndex: 1, end: true }] }); // joué 1 2 1 2 3
-    const ps = passages(s);
+    const score = bars(3, { repeats: [{ barIndex: 1, end: true }] }); // joué 1 2 1 2 3
+    const ps = passages(score);
     expect(scoreTick(ps, 2.5 * TICKS_PER_BEAT)).toBe(0.5 * TICKS_PER_BEAT);
     expect(playedTick(ps, 0, 0)).toBe(0); // au début : le premier passage
     expect(playedTick(ps, 0, 3 * TICKS_PER_BEAT)).toBe(2 * TICKS_PER_BEAT); // pendant le second passage : on y reste
@@ -147,8 +152,8 @@ describe("écoute", () => {
   });
 
   it("sait ce qu'on jouera après un système : la suite, ou le retour d'une reprise", () => {
-    const s = bars(3, { repeats: [{ barIndex: 1, end: true }] }); // joué 1 2 1 2 3
-    const ps = passages(s);
+    const score = bars(3, { repeats: [{ barIndex: 1, end: true }] }); // joué 1 2 1 2 3
+    const ps = passages(score);
     expect(nextTick(ps, 0.5 * TICKS_PER_BEAT, TICKS_PER_BEAT)).toBe(TICKS_PER_BEAT); // dans la mesure 1 : la mesure 2
     expect(nextTick(ps, 1.5 * TICKS_PER_BEAT, 3 * TICKS_PER_BEAT)).toBe(0); // dans la mesure 2, la reprise : retour à la 1
     expect(nextTick(ps, 3.5 * TICKS_PER_BEAT, 3 * TICKS_PER_BEAT)).toBe(2 * TICKS_PER_BEAT); // la seconde fois : la mesure 3
@@ -156,8 +161,8 @@ describe("écoute", () => {
   });
 
   it("sait quel autre système on jouera ensuite, une reprise sur place passée", () => {
-    const s = bars(3, { repeats: [{ barIndex: 1, end: true }] }); // joué 1 2 1 2 3
-    const ps = passages(s);
+    const score = bars(3, { repeats: [{ barIndex: 1, end: true }] }); // joué 1 2 1 2 3
+    const ps = passages(score);
     // un système des mesures 1 et 2 : la reprise y reste, on en sort à la mesure 3
     expect(nextElsewhere(ps, 0.5 * TICKS_PER_BEAT, 0, 2 * TICKS_PER_BEAT)).toBe(2 * TICKS_PER_BEAT);
     expect(nextElsewhere(ps, 2.5 * TICKS_PER_BEAT, 0, 2 * TICKS_PER_BEAT)).toBe(2 * TICKS_PER_BEAT);
@@ -182,7 +187,7 @@ describe("écoute", () => {
 
   it("revient au passage le plus récent quand on clique en arrière, et va à une section par sa lettre", () => {
     // A B B B C, une mesure chacune : joué 1 2 2 2 3
-    const s = bars(3, {
+    const score = bars(3, {
       markers: [
         { label: "A", barIndex: 0 },
         { label: "B", barIndex: 1 },
@@ -190,7 +195,7 @@ describe("écoute", () => {
       ],
       order: ["A", "B", "B", "B", "C"],
     });
-    const ps = passages(s);
+    const ps = passages(score);
     expect(playedTick(ps, TICKS_PER_BEAT, 0)).toBe(TICKS_PER_BEAT); // à l'arrêt : le premier B
     expect(playedTick(ps, TICKS_PER_BEAT + TICKS_PER_BEAT / 2, 2.2 * TICKS_PER_BEAT)).toBe(2.5 * TICKS_PER_BEAT); // dans le 2e B : on y reste
     expect(playedTick(ps, TICKS_PER_BEAT, 4.5 * TICKS_PER_BEAT)).toBe(3 * TICKS_PER_BEAT); // depuis C : le 3e B, juste avant
@@ -232,8 +237,8 @@ describe("écoute : première mesure d'une section", () => {
       order: ["A", "B", "A"],
     };
     const ps = passages(score);
-    expect([0, 1.5, 2, 3].map((t) => inFirstBar(score, ps, t * TICKS_PER_BEAT))).toEqual([true, true, false, false]);
-    expect([4, 5.5, 6, 7.5, 8].map((t) => inFirstBar(score, ps, t * TICKS_PER_BEAT))).toEqual([true, true, true, true, false]);
+    expect([0, 1.5, 2, 3].map((beat) => inFirstBar(score, ps, beat * TICKS_PER_BEAT))).toEqual([true, true, false, false]);
+    expect([4, 5.5, 6, 7.5, 8].map((beat) => inFirstBar(score, ps, beat * TICKS_PER_BEAT))).toEqual([true, true, true, true, false]);
   });
 });
 
@@ -243,7 +248,7 @@ describe("écoute : trilles", () => {
     const notes = playNotes(playedNotes(score, passages(score)), 60).filter((playNote) => playNote.time < 1 - 1e-9);
     expect(notes.length % 2).toBe(1);
     expect(notes.length).toBeGreaterThan(9);
-    expect(notes.map((n) => n.midi)).toEqual(notes.map((_, index) => (index % 2 ? 66 : 64)));
+    expect(notes.map((playNote) => playNote.midi)).toEqual(notes.map((_, index) => (index % 2 ? 66 : 64)));
     const last = notes[notes.length - 1];
     expect(last.time + last.duration).toBeCloseTo(1);
   });
@@ -255,8 +260,10 @@ describe("écoute : arpèges", () => {
       ["m1 |1    |2    ||", "0  |8    |8    ||", "   |5    |5    ||", "   |1    |1    ||", "@   /     \\", ""].join("\n"),
     );
     const notes = playNotes(playedNotes(score, passages(score)), 60);
-    const at = (t: number) =>
-      notes.filter((playNote) => playNote.time >= t && playNote.time < t + 0.5).map((n) => [n.midi, +n.time.toFixed(2)]);
+    const at = (second: number) =>
+      notes
+        .filter((playNote) => playNote.time >= second && playNote.time < second + 0.5)
+        .map((playNote) => [playNote.midi, +playNote.time.toFixed(2)]);
     expect(at(0)).toEqual([
       [60, 0],
       [64, 0.04],
@@ -268,7 +275,9 @@ describe("écoute : arpèges", () => {
       [60, 1.08],
     ]);
     // toutes les notes s'arrêtent ensemble, à la fin de l'accord
-    expect(notes.filter((n) => n.time < 0.5).map((n) => +(n.time + n.duration).toFixed(2))).toEqual([1, 1, 1]);
+    expect(notes.filter((playNote) => playNote.time < 0.5).map((playNote) => +(playNote.time + playNote.duration).toFixed(2))).toEqual([
+      1, 1, 1,
+    ]);
   });
 });
 
@@ -284,7 +293,7 @@ describe("écoute : point d'orgue", () => {
       [67, 3, 1],
     ]);
     // le curseur reste sur la case du point d'orgue pendant qu'il dure
-    expect([0.5, 1.5, 2.5, 3.5].map((c) => unstretched(hs, c * TICKS_PER_BEAT) / TICKS_PER_BEAT)).toEqual([0.5, 1.25, 1.75, 2.5]);
+    expect([0.5, 1.5, 2.5, 3.5].map((beat) => unstretched(hs, beat * TICKS_PER_BEAT) / TICKS_PER_BEAT)).toEqual([0.5, 1.25, 1.75, 2.5]);
     expect(stretched(hs, 2.5 * TICKS_PER_BEAT) / TICKS_PER_BEAT).toBe(3.5);
   });
 });

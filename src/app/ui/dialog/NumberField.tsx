@@ -17,7 +17,14 @@ export function NumberField({
   return (
     <label className={FIELD_LABEL}>
       {label}
-      <input className={FIELD} type="number" min={min} max={max} value={value} onChange={(e) => onChange(Number(e.target.value))} />
+      <input
+        className={FIELD}
+        type="number"
+        min={min}
+        max={max}
+        value={value}
+        onChange={(changeEvent) => onChange(Number(changeEvent.target.value))}
+      />
     </label>
   );
 }

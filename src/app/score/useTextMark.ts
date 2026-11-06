@@ -16,11 +16,14 @@ export function useTextMark(linked: boolean, retouch: MutableRefObject<RetouchMa
   const linkedNow = useRef(linked);
   linkedNow.current = linked;
   const mark = useCallback((reveal: boolean) => {
-    const r = retouch.current;
-    if (r)
-      return textMark.set({ place: r.lane === undefined ? r.clicked : { ...r.at, octave: r.lane, content: undefined }, reveal: false });
-    const c = caret.current;
-    const place = linkedNow.current && c ? textPlace(c[2], c[0], c[1]) : undefined;
+    const retouching = retouch.current;
+    if (retouching)
+      return textMark.set({
+        place: retouching.lane === undefined ? retouching.clicked : { ...retouching.at, octave: retouching.lane, content: undefined },
+        reveal: false,
+      });
+    const caretAt = caret.current;
+    const place = linkedNow.current && caretAt ? textPlace(caretAt[2], caretAt[0], caretAt[1]) : undefined;
     textMark.set(place ? { place, reveal: reveal && player.getSnapshot().state !== "playing" } : null);
   }, []);
   useEffect(() => mark(false), [linked, mark, open, lane]);

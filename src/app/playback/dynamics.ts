@@ -26,23 +26,24 @@ type Mark =
   | { t: number; kind: "accent"; attack: number }
   | { t: number; kind: "ramp"; up: boolean; end?: number };
 
-const clamp = (v: number) => Math.max(1, Math.min(127, Math.round(v)));
+const clamp = (value: number) => Math.max(1, Math.min(127, Math.round(value)));
 
 /** Les indications d'intensité d'une portée, dans l'ordre. */
 function marksOf(score: Score, staff: Staff): Mark[] {
   const out: Mark[] = [];
-  for (const e of score.expressions) {
-    if (e.staff !== staff) continue;
-    const text = e.text.replace(/^\((.+)\)$/, "$1"); // une nuance ajoutée par l'éditeur se joue de même
-    if (e.kind === "dynamic" && isDynamic(text)) {
-      if (text in LEVELS) out.push({ t: e.t, kind: "set", level: LEVELS[text] });
-      else if (text in ACCENTS) out.push({ t: e.t, kind: "accent", attack: ACCENTS[text] });
-      else if (text in FORTE_PIANO) out.push({ t: e.t, kind: "set", level: FORTE_PIANO[text][1], attack: FORTE_PIANO[text][0] });
-    } else if (/^cresc/.test(text)) out.push({ t: e.t, kind: "ramp", up: true });
-    else if (/^(dim|decresc)/.test(text)) out.push({ t: e.t, kind: "ramp", up: false });
+  for (const expression of score.expressions) {
+    if (expression.staff !== staff) continue;
+    const text = expression.text.replace(/^\((.+)\)$/, "$1"); // une nuance ajoutée par l'éditeur se joue de même
+    if (expression.kind === "dynamic" && isDynamic(text)) {
+      if (text in LEVELS) out.push({ t: expression.t, kind: "set", level: LEVELS[text] });
+      else if (text in ACCENTS) out.push({ t: expression.t, kind: "accent", attack: ACCENTS[text] });
+      else if (text in FORTE_PIANO) out.push({ t: expression.t, kind: "set", level: FORTE_PIANO[text][1], attack: FORTE_PIANO[text][0] });
+    } else if (/^cresc/.test(text)) out.push({ t: expression.t, kind: "ramp", up: true });
+    else if (/^(dim|decresc)/.test(text)) out.push({ t: expression.t, kind: "ramp", up: false });
   }
-  for (const h of score.hairpins) if (h.staff === staff) out.push({ t: h.start, kind: "ramp", up: h.kind === "<", end: h.end });
-  return out.sort((a, b) => a.t - b.t);
+  for (const hairpin of score.hairpins)
+    if (hairpin.staff === staff) out.push({ t: hairpin.start, kind: "ramp", up: hairpin.kind === "<", end: hairpin.end });
+  return out.sort((first, second) => first.t - second.t);
 }
 
 /**
@@ -50,18 +51,18 @@ function marksOf(score: Score, staff: Staff): Mark[] {
  * la nuance qui le suit ; sans nuance juste après (un temps au plus après sa fin, ou avant
  * l'indication suivante pour un « cresc. » écrit), il change d'un pas et en reste là.
  */
-function levelAt(marks: Mark[], t: number): number {
+function levelAt(marks: Mark[], tick: number): number {
   let level = DEFAULT;
-  for (let i = 0; i < marks.length && marks[i].t <= t; i++) {
-    const m = marks[i];
-    if (m.kind === "set") level = m.level;
-    if (m.kind !== "ramp") continue;
-    const next = marks.slice(i + 1).find((x) => x.kind !== "accent");
+  for (let index = 0; index < marks.length && marks[index].t <= tick; index++) {
+    const mark = marks[index];
+    if (mark.kind === "set") level = mark.level;
+    if (mark.kind !== "ramp") continue;
+    const next = marks.slice(index + 1).find((candidate) => candidate.kind !== "accent");
     // la fin du changement : celle du soufflet, sinon l'indication suivante, sinon une mesure de 4 temps
-    const end = m.end ?? next?.t ?? m.t + 4 * TICKS_PER_BEAT;
-    const target = next?.kind === "set" && next.t <= end + TICKS_PER_BEAT ? next.level : level + (m.up ? STEP : -STEP);
-    if (t >= end) level = target;
-    else level += (target - level) * ((t - m.t) / (end - m.t));
+    const end = mark.end ?? next?.t ?? mark.t + 4 * TICKS_PER_BEAT;
+    const target = next?.kind === "set" && next.t <= end + TICKS_PER_BEAT ? next.level : level + (mark.up ? STEP : -STEP);
+    if (tick >= end) level = target;
+    else level += (target - level) * ((tick - mark.t) / (end - mark.t));
   }
   return level;
 }
@@ -72,40 +73,42 @@ function levelAt(marks: Mark[], t: number): number {
  */
 export function velocityAt(score: Score): (staff: Staff, t: number, accent?: boolean) => number {
   const own = new Map<Staff, Mark[]>();
-  const stavesCount = score.parts.reduce((n, i) => n + i.staves, 0);
-  for (let p = 0; p < stavesCount; p++) own.set(p, marksOf(score, p));
+  const stavesCount = score.parts.reduce((count, part) => count + part.staves, 0);
+  for (let staff = 0; staff < stavesCount; staff++) own.set(staff, marksOf(score, staff));
   // les indications des autres portées de la partie, sauf là où la portée a la sienne
-  const family = (m: Mark) => (m.kind === "ramp" ? "ramp" : "level");
+  const family = (mark: Mark) => (mark.kind === "ramp" ? "ramp" : "level");
   const used = new Map<Staff, Mark[]>();
-  for (let p = 0; p < stavesCount; p++) {
-    const mine = own.get(p)!;
-    const taken = new Set(mine.map((m) => `${family(m)}:${m.t}`));
-    const k = partOf(score.parts, p);
-    const others = [...own].filter(([q]) => q !== p && partOf(score.parts, q) === k).flatMap(([, ms]) => ms);
+  for (let staff = 0; staff < stavesCount; staff++) {
+    const mine = own.get(staff)!;
+    const taken = new Set(mine.map((mark) => `${family(mark)}:${mark.t}`));
+    const part = partOf(score.parts, staff);
+    const others = [...own].filter(([other]) => other !== staff && partOf(score.parts, other) === part).flatMap(([, marks]) => marks);
     const shared: Mark[] = [];
-    for (const m of others) {
-      const key = `${family(m)}:${m.t}`;
+    for (const mark of others) {
+      const key = `${family(mark)}:${mark.t}`;
       if (taken.has(key)) continue;
       taken.add(key);
-      shared.push(m);
+      shared.push(mark);
     }
     // à un même instant, la nuance d'abord, puis le changement qui part d'elle
     used.set(
-      p,
-      [...mine, ...shared].sort((a, b) => a.t - b.t || (family(a) === "ramp" ? 1 : 0) - (family(b) === "ramp" ? 1 : 0)),
+      staff,
+      [...mine, ...shared].sort(
+        (first, second) => first.t - second.t || (family(first) === "ramp" ? 1 : 0) - (family(second) === "ramp" ? 1 : 0),
+      ),
     );
   }
-  return (staff, t, accent = true) => {
+  return (staff, tick, accent = true) => {
     const marks = used.get(staff) ?? [];
     const hit = accent
-      ? (marks.find((m) => m.t === t && m.kind !== "ramp" && m.attack !== undefined) as { attack: number } | undefined)
+      ? (marks.find((mark) => mark.t === tick && mark.kind !== "ramp" && mark.attack !== undefined) as { attack: number } | undefined)
       : undefined;
-    return clamp(hit ? hit.attack : levelAt(marks, t));
+    return clamp(hit ? hit.attack : levelAt(marks, tick));
   };
 }
 
 /** La vélocité de chaque note du morceau, dans l'ordre de score.notes. */
 export function velocities(score: Score): number[] {
   const at = velocityAt(score);
-  return score.notes.map((n) => at(n.staff, n.start));
+  return score.notes.map((note) => at(note.staff, note.start));
 }

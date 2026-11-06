@@ -11,11 +11,13 @@ import { pcloudFile } from "./src/server/pcloudFile.ts";
 /** Le relais de lecture pCloud (une fonction Netlify en ligne), servi aussi par `npm run dev` et `npm run preview`. */
 const relay: Connect.NextHandleFunction = async (req, res) => {
   const url = new URL(req.originalUrl ?? req.url ?? "/", "http://localhost");
-  const headers = new Headers(Object.entries(req.headers).flatMap(([k, v]) => (typeof v === "string" ? [[k, v] as [string, string]] : [])));
-  const r = await pcloudFile(new Request(url, { method: req.method, headers }));
-  res.statusCode = r.status;
-  r.headers.forEach((v, k) => res.setHeader(k, v));
-  res.end(Buffer.from(await r.arrayBuffer()));
+  const headers = new Headers(
+    Object.entries(req.headers).flatMap(([name, value]) => (typeof value === "string" ? [[name, value] as [string, string]] : [])),
+  );
+  const response = await pcloudFile(new Request(url, { method: req.method, headers }));
+  res.statusCode = response.status;
+  response.headers.forEach((value, name) => res.setHeader(name, value));
+  res.end(Buffer.from(await response.arrayBuffer()));
 };
 
 /** La version de l'application : celle de package.json. */
@@ -37,8 +39,8 @@ export default defineConfig({
   plugins: [
     {
       name: "relais-pcloud",
-      configureServer: (s) => void s.middlewares.use("/api/pcloud-file", relay),
-      configurePreviewServer: (s) => void s.middlewares.use("/api/pcloud-file", relay),
+      configureServer: (server) => void server.middlewares.use("/api/pcloud-file", relay),
+      configurePreviewServer: (server) => void server.middlewares.use("/api/pcloud-file", relay),
     },
     react(),
     tailwindcss(),

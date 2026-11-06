@@ -49,21 +49,21 @@ export const INSTRUMENTS: Instrument[] = [
   { id: "vibraphone", label: "Vibraphone", sound: "vibraphone", boost: 5.5 },
 ];
 
-export const instrumentLabel = (id: string) => INSTRUMENTS.find((t) => t.id === id)?.label ?? id;
+export const instrumentLabel = (id: string) => INSTRUMENTS.find((instrument) => instrument.id === id)?.label ?? id;
 /** Le son General MIDI d'un instrument ; « piano » pour le piano échantillonné. */
-export const soundOf = (id: string) => INSTRUMENTS.find((t) => t.id === id)?.sound ?? "piano";
+export const soundOf = (id: string) => INSTRUMENTS.find((instrument) => instrument.id === id)?.sound ?? "piano";
 /** Ce qu'il faut ajouter au son d'un instrument (en décibels) pour qu'il sonne comme le piano. */
-export const boostOf = (id: string) => INSTRUMENTS.find((t) => t.id === id)?.boost ?? 0;
+export const boostOf = (id: string) => INSTRUMENTS.find((instrument) => instrument.id === id)?.boost ?? 0;
 
 /** L'instrument que la partition donne à une partie : celui écrit après son nom, sinon celui que son nom fait deviner. */
 export const scoreInstrument = (part: Part): InstrumentName => part.instrument ?? guessInstrument(part.name);
 
 /** L'instrument de chaque partie : celui choisi pour le morceau, sinon celui de la partition. */
 export function instrumentsOf(parts: Part[], chosen: (string | null)[] = []): InstrumentName[] {
-  return parts.map((part, i) => (isInstrument(chosen[i]) ? (chosen[i] as InstrumentName) : scoreInstrument(part)));
+  return parts.map((part, index) => (isInstrument(chosen[index]) ? (chosen[index] as InstrumentName) : scoreInstrument(part)));
 }
 
 /** L'instrument de chaque portée, d'après celui de sa partie. */
 export function staffInstruments(parts: Part[], instruments: string[]): string[] {
-  return parts.flatMap((part, i) => Array.from({ length: part.staves }, () => instruments[i] ?? PIANO));
+  return parts.flatMap((part, index) => Array.from({ length: part.staves }, () => instruments[index] ?? PIANO));
 }

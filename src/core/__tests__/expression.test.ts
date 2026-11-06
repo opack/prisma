@@ -9,8 +9,8 @@ describe("nuances et soufflets", () => {
     score.expressions
       .map((expression) => `${expression.staff}:${expression.kind}:${expression.text}@${expression.t / TICKS_PER_BEAT}`)
       .join(" ");
-  const pins = (s: Score) =>
-    s.hairpins
+  const pins = (score: Score) =>
+    score.hairpins
       .map((hairpin) => `${hairpin.staff}:${hairpin.kind}${hairpin.start / TICKS_PER_BEAT}-${hairpin.end / TICKS_PER_BEAT}`)
       .join(" ");
   const piece = [
@@ -24,36 +24,36 @@ describe("nuances et soufflets", () => {
   ].join("\n");
 
   it("lit les lignes @ sous chaque portée", () => {
-    const s = parsePrisma(piece);
-    expect(expr(s)).toBe("0:dynamic:p@0 1:dynamic:mf@0");
+    const score = parsePrisma(piece);
+    expect(expr(score)).toBe("0:dynamic:p@0 1:dynamic:mf@0");
     // le soufflet finit avec la case qui contient son dernier caractère
-    expect(pins(s)).toBe("0:<1-3 1:>2-3");
+    expect(pins(score)).toBe("0:<1-3 1:>2-3");
   });
 
   it("écrit nuances et soufflets sous leur portée, et les relit à l'identique", () => {
-    const s = parsePrisma(piece);
-    const text = writePrisma(s);
+    const score = parsePrisma(piece);
+    const text = writePrisma(score);
     const lines = text.split("\n");
     const sep = lines.findIndex((line, index) => index > 2 && /^─/.test(line) && lines[index - 1].startsWith("@"));
     expect(lines[sep - 1]).toMatch(/^@ +p +<-+$/);
-    expect(lines.filter((l) => l.startsWith("@")).pop()).toMatch(/^@ +mf +>-+$/);
+    expect(lines.filter((line) => line.startsWith("@")).pop()).toMatch(/^@ +mf +>-+$/);
     const back = parsePrisma(text);
-    expect(expr(back)).toBe(expr(s));
-    expect(pins(back)).toBe(pins(s));
+    expect(expr(back)).toBe(expr(score));
+    expect(pins(back)).toBe(pins(score));
   });
 
   it("garde un soufflet qui passe d'un système au suivant", () => {
     const bars = Array.from({ length: 8 }, () => "1  |2  |3  ||").join("");
     const notes = Array.from({ length: 8 }, () => "1  |   |   ||").join("");
-    const s = parsePrisma(`m1 |${bars}\n0  |${notes}\n@   <\n---\n`);
-    s.hairpins[0].end = 20 * TICKS_PER_BEAT; // de la mesure 1 au milieu de la mesure 7
-    const text = writePrisma(s, { width: 40 });
+    const score = parsePrisma(`m1 |${bars}\n0  |${notes}\n@   <\n---\n`);
+    score.hairpins[0].end = 20 * TICKS_PER_BEAT; // de la mesure 1 au milieu de la mesure 7
+    const text = writePrisma(score, { width: 40 });
     expect(text.split("\n").filter((line) => /^@ +<-*$/.test(line)).length).toBeGreaterThan(1);
     const back = parsePrisma(text);
     expect(pins(back)).toBe("0:<0-20");
     // un soufflet coupé reste ouvert au point de coupure
     const spans = layout(back, { width: 40, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 }).flatMap(
-      (x) => x.staves[0].voice.hairpins,
+      (system) => system.staves[0].voice.hairpins,
     );
     expect(spans[0].from).toBe(0);
     expect(spans[0].to).toBeGreaterThan(0);
@@ -61,8 +61,8 @@ describe("nuances et soufflets", () => {
   });
 
   it("garde « più f » comme un seul texte", () => {
-    const s = parsePrisma("m1 |1  |2  ||\n0  |1  |   ||\n@   più f\n---\n");
-    expect(expr(s)).toBe("0:text:più f@0");
+    const score = parsePrisma("m1 |1  |2  ||\n0  |1  |   ||\n@   più f\n---\n");
+    expect(expr(score)).toBe("0:text:più f@0");
   });
 
   it("refuse une ligne de notes sous la ligne @ de sa portée", () => {
@@ -88,12 +88,12 @@ describe("nuances et soufflets", () => {
         ],
       },
     ]);
-    const s = importMusicXml(xml);
-    expect(s.texts).toEqual([{ t: 0, text: "rit." }]);
-    expect(expr(s)).toBe("0:dynamic:p@0 1:text:dolce@0 0:dynamic:f@3");
-    expect(pins(s)).toBe("0:<1-3");
-    roundTrip(s);
-    expect(expr(parsePrisma(writePrisma(s)))).toBe("0:dynamic:p@0 1:text:dolce@0 0:dynamic:f@3");
+    const score = importMusicXml(xml);
+    expect(score.texts).toEqual([{ t: 0, text: "rit." }]);
+    expect(expr(score)).toBe("0:dynamic:p@0 1:text:dolce@0 0:dynamic:f@3");
+    expect(pins(score)).toBe("0:<1-3");
+    roundTrip(score);
+    expect(expr(parsePrisma(writePrisma(score)))).toBe("0:dynamic:p@0 1:text:dolce@0 0:dynamic:f@3");
   });
 
   it("lit les lettres de nuance de la police musicale, et sépare une nuance en tête de texte", () => {
@@ -118,8 +118,8 @@ describe("nuances et soufflets", () => {
 
   it("donne son signe à une nuance écrite en toutes lettres, et garde le texte", () => {
     const dir = `<direction><direction-type><words>sempre pianissimo e senza sordini</words></direction-type><staff>1</staff></direction>`;
-    const s = importMusicXml(musicXml([{ notes: [[{ midi: [C4], duration: 4 * QUARTER, before: dir }]] }]));
-    expect(s.expressions).toEqual([
+    const score = importMusicXml(musicXml([{ notes: [[{ midi: [C4], duration: 4 * QUARTER, before: dir }]] }]));
+    expect(score.expressions).toEqual([
       { staff: 0, t: 0, text: "pp", kind: "dynamic" },
       { staff: 0, t: 0, text: "sempre pianissimo e senza sordini", kind: "text" },
     ]);
@@ -127,31 +127,32 @@ describe("nuances et soufflets", () => {
 });
 
 describe("liaisons d'expression", () => {
-  const sk = (score: Score) => score.slurs.map((x) => `${x.staff}:${x.start / TICKS_PER_BEAT}-${x.end / TICKS_PER_BEAT}`).join(" ");
+  const sk = (score: Score) =>
+    score.slurs.map((slur) => `${slur.staff}:${slur.start / TICKS_PER_BEAT}-${slur.end / TICKS_PER_BEAT}`).join(" ");
   const ruler = "m1 |1  |2  |3  |4  ||1  |2  |3  |4  ||";
   const rh = "0  |5  |7  |8  |10 ||8  |7  |5  |3  ||";
   const piece = (slurLine: string) => [ruler, rh, slurLine, "---", ""].join("\n");
 
   it("lit une liaison de la case de sa première note à celle de sa dernière", () => {
-    const s = parsePrisma(piece("@   (-------)   (-------------)"));
-    expect(sk(s)).toBe("0:0-2 0:3-6");
-    expect(s.expressions).toEqual([]);
+    const score = parsePrisma(piece("@   (-------)   (-------------)"));
+    expect(sk(score)).toBe("0:0-2 0:3-6");
+    expect(score.expressions).toEqual([]);
   });
 
   it("garde les liaisons imbriquées, coupées et reprises à l'aller-retour", () => {
-    const s = parsePrisma(piece("@   (-------------------------)\n@       (---)        (---)"));
-    expect(sk(s)).toBe("0:0-6 0:1-2 0:4-5");
+    const score = parsePrisma(piece("@   (-------------------------)\n@       (---)        (---)"));
+    expect(sk(score)).toBe("0:0-6 0:1-2 0:4-5");
     // un système par mesure : la grande liaison est coupée puis reprise
-    const text = writePrisma(s, { width: 24 });
+    const text = writePrisma(score, { width: 24 });
     expect(text).toMatch(/^@ +\(-+$/m);
     expect(text).toMatch(/^@ +-+\)/m);
-    expect(sk(parsePrisma(text))).toBe(sk(s));
+    expect(sk(parsePrisma(text))).toBe(sk(score));
   });
 
   it("range les liaisons imbriquées par étages, la plus courte au plus près des notes", () => {
-    const s = parsePrisma(piece("@   (-------------------------)\n@       (---)        (---)"));
-    const v = layout(s, { width: 999, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 })[0].staves[0].voice;
-    expect(v.slurs.map((x) => `${x.fromAnchor}-${x.toAnchor}:${x.level}`).sort()).toEqual(["0-6:1", "1-2:0", "4-5:0"]);
+    const score = parsePrisma(piece("@   (-------------------------)\n@       (---)        (---)"));
+    const voice = layout(score, { width: 999, prefix: 4, cell: 3, beatSep: 1, barSep: 2, repeatDots: 1 })[0].staves[0].voice;
+    expect(voice.slurs.map((slur) => `${slur.fromAnchor}-${slur.toAnchor}:${slur.level}`).sort()).toEqual(["0-6:1", "1-2:0", "4-5:0"]);
   });
 
   it("refuse une liaison jamais refermée, ou reprise sans avoir été ouverte", () => {
@@ -178,9 +179,9 @@ describe("liaisons d'expression", () => {
       },
       { notes: [[{ midi: [C4 + 5], duration: 4 * QUARTER }]] },
     ]);
-    const s = importMusicXml(xml);
+    const score = importMusicXml(xml);
     // la liaison 1 part de la voix 1 et se termine sur la voix 2 : elle reste à la main où elle commence
-    expect(sk(s)).toBe("0:0-3 0:1-2");
+    expect(sk(score)).toBe("0:0-3 0:1-2");
   });
 });
 
@@ -208,7 +209,7 @@ describe("articulations", () => {
     expect(writePrisma(parsePrisma(piece))).toContain("@   .   .   !   !!");
     const two = piece.replace("@   .   .   !   !!", "@   . !");
     const score = parsePrisma(two);
-    expect(score.articulations.map((x) => x.kind)).toEqual(["staccato", "accent"]);
+    expect(score.articulations.map((articulation) => articulation.kind)).toEqual(["staccato", "accent"]);
     expect(parsePrisma(writePrisma(score)).articulations).toEqual(score.articulations);
   });
 
@@ -247,26 +248,26 @@ describe("point d'orgue", () => {
   });
 
   it("importe le point d'orgue d'une note et d'un silence, une seule fois par instant", () => {
-    const f = "<fermata/>";
+    const fermata = "<fermata/>";
     const xml = musicXml([
       {
         notes: [
           [
-            { midi: [C4], duration: 2 * QUARTER, notations: f },
-            { duration: 2 * QUARTER, notations: f },
+            { midi: [C4], duration: 2 * QUARTER, notations: fermata },
+            { duration: 2 * QUARTER, notations: fermata },
           ],
           [
-            { midi: [48], duration: 2 * QUARTER, staff: 2, notations: f },
+            { midi: [48], duration: 2 * QUARTER, staff: 2, notations: fermata },
             { midi: [43], duration: 2 * QUARTER, staff: 2 },
           ],
         ],
       },
     ]);
-    const s = importMusicXml(xml);
-    expect(s.fermatas).toEqual([0, 2 * TICKS_PER_BEAT]);
-    const { text, back } = roundTrip(s);
+    const score = importMusicXml(xml);
+    expect(score.fermatas).toEqual([0, 2 * TICKS_PER_BEAT]);
+    const { text, back } = roundTrip(score);
     expect(text).toMatch(/^@ +\^ +\^$/m);
-    expect(back.fermatas).toEqual(s.fermatas);
+    expect(back.fermatas).toEqual(score.fermatas);
   });
 
   it("ignore les indications d'octave, déjà portées par les notes", () => {
@@ -289,16 +290,16 @@ describe("doigtés", () => {
   const fk = (score: Score) =>
     score.notes
       .filter((note) => note.finger)
-      .map((n) => `${n.midi}_${n.finger}`)
+      .map((note) => `${note.midi}_${note.finger}`)
       .join(" ");
   const ruler = "m1 |1      |2      |3  |4  ||";
 
   it("lit un doigté « 5_3 », seul ou avec une trille, et le garde à l'aller-retour", () => {
-    const s = parsePrisma([ruler, "0  |5_1    |7~9_3  |8  |   ||", "   |1_5    |       |   |   ||", "---", ""].join("\n"));
-    expect(fk(s)).toBe("64_1 60_5 66_3");
-    expect(s.notes.find((note) => note.midi === 66)!.trill).toBe(68);
-    const { text, back } = roundTrip(s);
-    expect(fk(back)).toBe(fk(s));
+    const score = parsePrisma([ruler, "0  |5_1    |7~9_3  |8  |   ||", "   |1_5    |       |   |   ||", "---", ""].join("\n"));
+    expect(fk(score)).toBe("64_1 60_5 66_3");
+    expect(score.notes.find((note) => note.midi === 66)!.trill).toBe(68);
+    const { text, back } = roundTrip(score);
+    expect(fk(back)).toBe(fk(score));
     expect(text).toContain("7~9_3");
   });
 
@@ -308,7 +309,7 @@ describe("doigtés", () => {
   });
 
   it("importe les doigtés du MusicXML, le premier doigt d'une substitution", () => {
-    const fing = (f: string) => `<technical><fingering>${f}</fingering></technical>`;
+    const fing = (finger: string) => `<technical><fingering>${finger}</fingering></technical>`;
     const xml = musicXml([
       {
         notes: [

@@ -17,7 +17,7 @@ export function PartsBar({ parts, start, back }: { parts: PagePart[]; start: str
   const [away, setAway] = useState(false);
   const [current, setCurrent] = useState<string>();
   // les ancres des parties : la page refait sa liste à chaque rendu, elles ne changent pas
-  const ids = parts.map((p) => p.id).join(" ");
+  const ids = parts.map((pagePart) => pagePart.id).join(" ");
   useEffect(() => {
     let frame = 0;
     const spy = () => {

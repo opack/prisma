@@ -16,34 +16,34 @@ export function Splitter({
   width: number;
   onWidth: (width: number) => void;
 }) {
-  const drag = (e: PointerEvent<HTMLDivElement>) => {
+  const drag = (event: PointerEvent<HTMLDivElement>) => {
     const zone = host.current;
-    if (!zone || e.button !== 0) return;
-    e.preventDefault();
-    const bar = e.currentTarget;
-    bar.setPointerCapture(e.pointerId);
+    if (!zone || event.button !== 0) return;
+    event.preventDefault();
+    const bar = event.currentTarget;
+    bar.setPointerCapture(event.pointerId);
     const rect = zone.getBoundingClientRect();
-    let w = width;
+    let editorWidth = width;
     const move = (ev: globalThis.PointerEvent) => {
-      w = clampWidth((ev.clientX - rect.left) / rect.width);
-      zone.style.setProperty("--editor", `${w * 100}%`);
+      editorWidth = clampWidth((ev.clientX - rect.left) / rect.width);
+      zone.style.setProperty("--editor", `${editorWidth * 100}%`);
     };
     const up = () => {
       bar.removeEventListener("pointermove", move);
       bar.removeEventListener("pointerup", up);
       bar.removeEventListener("pointercancel", up);
       delete zone.dataset.resizing;
-      onWidth(w);
+      onWidth(editorWidth);
     };
     zone.dataset.resizing = "";
     bar.addEventListener("pointermove", move);
     bar.addEventListener("pointerup", up);
     bar.addEventListener("pointercancel", up);
   };
-  const key = (e: KeyboardEvent) => {
-    const step = e.key === "ArrowLeft" ? -0.02 : e.key === "ArrowRight" ? 0.02 : 0;
+  const key = (event: KeyboardEvent) => {
+    const step = event.key === "ArrowLeft" ? -0.02 : event.key === "ArrowRight" ? 0.02 : 0;
     if (!step) return;
-    e.preventDefault();
+    event.preventDefault();
     onWidth(clampWidth(width + step));
   };
   return (

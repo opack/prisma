@@ -73,11 +73,11 @@ export function App() {
   // chasse l'autre), et celui des options, par-dessus, qu'Échap ferme
   // de retour de la connexion à pCloud : la bibliothèque, qu'on était allé ouvrir
   const [panel, setPanel] = useState<"guide" | "library" | null>(fromPcloud ? "library" : null);
-  const togglePanel = (p: "guide" | "library") => setPanel((cur) => (cur === p ? null : p));
+  const togglePanel = (panel: "guide" | "library") => setPanel((open) => (open === panel ? null : panel));
   const [showOptions, setShowOptions] = useState(false);
   useEffect(() => {
     if (!showOptions) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setShowOptions(false);
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && setShowOptions(false);
     addEventListener("keydown", onKey);
     return () => removeEventListener("keydown", onKey);
   }, [showOptions]);
@@ -88,7 +88,7 @@ export function App() {
   });
   const setEditing = (on: boolean) => {
     setEditingState(on);
-    setPanel((cur) => (cur === "guide" ? null : cur));
+    setPanel((open) => (open === "guide" ? null : open));
     saveEditing(on);
   };
   const reading = !editing;
@@ -100,7 +100,7 @@ export function App() {
     onLoaded: settings.resetPiece,
     onSavedIn: settings.placePiece,
     setEditing,
-    onOpenedFrom: (from) => setPanel((cur) => (from !== "drop" || cur === "guide" ? null : cur)),
+    onOpenedFrom: (from) => setPanel((open) => (from !== "drop" || open === "guide" ? null : open)),
   });
   useSettingsAutosave(piece, settings.pieceDir, doc.handle, settings.changed, notify);
   const appUpdate = useAppUpdate(notify);
@@ -144,7 +144,7 @@ export function App() {
     reload: doc.handle ? doc.reloadFile : undefined,
     engrave: doc.engraveNow,
     autoEngrave: { on: options.autoEngrave, toggle: () => setOptions({ autoEngrave: !options.autoEngrave }) },
-    options: { shown: showOptions, toggle: () => setShowOptions((v) => !v) },
+    options: { shown: showOptions, toggle: () => setShowOptions((shown) => !shown) },
     convert: conversion.start,
     about: about.open,
     canPrint: pages.length > 0 && !panel,
@@ -185,7 +185,7 @@ export function App() {
         notice={notice}
         onUpdate={appUpdate.waiting ? appUpdate.apply : undefined}
         optionsOpen={showOptions}
-        onOptions={() => setShowOptions((v) => !v)}
+        onOptions={() => setShowOptions((shown) => !shown)}
         listen={(place) => (
           <ListenControls
             place={place}
@@ -211,10 +211,10 @@ export function App() {
         type="file"
         accept=".prisma,.txt,.musicxml,.xml"
         hidden
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) doc.open(f);
-          e.target.value = "";
+        onChange={(changeEvent) => {
+          const file = changeEvent.target.files?.[0];
+          if (file) doc.open(file);
+          changeEvent.target.value = "";
         }}
       />
       {/* où en est la lecture, sur toute la largeur, sous la barre */}
@@ -289,12 +289,12 @@ export function App() {
             aria-label={reading ? "Partition" : "Aperçu"}
             // la molette fait défiler de côté les pages côte à côte
             // (ajustées à la hauteur et sans zoom : sinon la molette garde son sens, de haut en bas)
-            onWheel={(e) =>
+            onWheel={(event) =>
               view.fit === "height" &&
               view.zoom <= 1 &&
-              !e.ctrlKey &&
-              Math.abs(e.deltaY) > Math.abs(e.deltaX) &&
-              e.currentTarget.scrollBy({ left: e.deltaY })
+              !event.ctrlKey &&
+              Math.abs(event.deltaY) > Math.abs(event.deltaX) &&
+              event.currentTarget.scrollBy({ left: event.deltaY })
             }
             style={{ "--zoom": view.zoom } as React.CSSProperties}
           >
@@ -312,13 +312,13 @@ export function App() {
                 <FocusView pages={pages} options={options} />
                 {/* à l'impression, les pages, comme dans les autres lectures */}
                 <div className="hidden print:block">
-                  {pages.map((p) => (
-                    <PageView key={p.index} page={p} total={pages.length} meta={score!.meta} options={options} still />
+                  {pages.map((page) => (
+                    <PageView key={page.index} page={page} total={pages.length} meta={score!.meta} options={options} still />
                   ))}
                 </div>
               </>
             ) : (
-              pages.map((p) => <PageView key={p.index} page={p} total={pages.length} meta={score!.meta} options={options} />)
+              pages.map((page) => <PageView key={page.index} page={page} total={pages.length} meta={score!.meta} options={options} />)
             )}
           </section>
           {scrolled && !focused && (

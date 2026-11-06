@@ -18,53 +18,61 @@ describe("Gymnopédie n°1", () => {
     expect(fa?.end).toBe(12 * 3 * TICKS_PER_BEAT);
   });
 
-  it.each([40, 60, 96, 140])("survit à l'aller-retour à %i caractères", (w) => {
-    const { text } = roundTrip(score, w);
-    for (const line of text.split("\n")) if (line.startsWith("m")) expect(line.length).toBeLessThanOrEqual(w);
+  it.each([40, 60, 96, 140])("survit à l'aller-retour à %i caractères", (width) => {
+    const { text } = roundTrip(score, width);
+    for (const line of text.split("\n")) if (line.startsWith("m")) expect(line.length).toBeLessThanOrEqual(width);
   });
 });
 
 describe("ordre de jeu du MusicXML", () => {
-  const m = { startRepeat: false, endRepeat: false, times: 2 };
+  const measure = { startRepeat: false, endRepeat: false, times: 2 };
   const st = (kind: string, at = 1) => ({ structure: [{ kind, id: "", at } as never], length: 4 });
 
   it("déroule une reprise simple", () => {
-    expect(playOrder([m, { ...m, startRepeat: true }, { ...m, endRepeat: true }, m])).toEqual([0, 1, 2, 1, 2, 3]);
+    expect(playOrder([measure, { ...measure, startRepeat: true }, { ...measure, endRepeat: true }, measure])).toEqual([0, 1, 2, 1, 2, 3]);
   });
 
   it("déroule les cases 1 et 2", () => {
-    expect(playOrder([m, m, { ...m, endRepeat: true, endings: [1] }, { ...m, endings: [2] }, m])).toEqual([0, 1, 2, 0, 1, 3, 4]);
+    expect(playOrder([measure, measure, { ...measure, endRepeat: true, endings: [1] }, { ...measure, endings: [2] }, measure])).toEqual([
+      0, 1, 2, 0, 1, 3, 4,
+    ]);
   });
 
   it("joue la case 2 placée après la mesure de la reprise, hors de la case 1", () => {
     // case 1 (mesure 1), mesure 2 commune aux deux passages qui termine la reprise, case 2 (mesure 3)
-    const ms = [m, { ...m, endings: [1] }, { ...m, endRepeat: true }, { ...m, endings: [2] }, m];
+    const ms = [measure, { ...measure, endings: [1] }, { ...measure, endRepeat: true }, { ...measure, endings: [2] }, measure];
     expect(playOrder(ms)).toEqual([0, 1, 2, 0, 2, 3, 4]);
   });
 
   it("déroule un D.C. al Fine, sans refaire les reprises", () => {
-    const ms = [m, { ...m, endRepeat: true, ...st("fine") }, m, { ...m, ...st("dacapo") }];
+    const ms = [measure, { ...measure, endRepeat: true, ...st("fine") }, measure, { ...measure, ...st("dacapo") }];
     expect(playOrder(ms)).toEqual([0, 1, 0, 1, 2, 3, 0, 1]);
   });
 
   it("déroule un D.S. al Coda", () => {
-    const ms = [m, { ...m, ...st("segno", 0) }, { ...m, ...st("tocoda") }, { ...m, ...st("dalsegno") }, { ...m, ...st("coda", 0) }];
+    const ms = [
+      measure,
+      { ...measure, ...st("segno", 0) },
+      { ...measure, ...st("tocoda") },
+      { ...measure, ...st("dalsegno") },
+      { ...measure, ...st("coda", 0) },
+    ];
     expect(playOrder(ms)).toEqual([0, 1, 2, 3, 1, 2, 4]);
   });
 
   it("découpe en sections : un corps, puis deux fins", () => {
     // reprise à cases : corps (0), case 1 (1), case 2 (2)
-    const s = sectionsOf([0, 1, 0, 2], 3);
-    expect(s.markers.map((x) => `${x.label}@${x.barIndex}`)).toEqual(["A@0", "B@1", "C@2"]);
-    expect(s.order).toEqual(["A", "B", "A", "C"]);
-    expect(s.repeats).toEqual([]);
+    const sections = sectionsOf([0, 1, 0, 2], 3);
+    expect(sections.markers.map((marker) => `${marker.label}@${marker.barIndex}`)).toEqual(["A@0", "B@1", "C@2"]);
+    expect(sections.order).toEqual(["A", "B", "A", "C"]);
+    expect(sections.repeats).toEqual([]);
   });
 
   it("garde en reprise simple une section toujours jouée deux fois de suite", () => {
     // mesures 1 et 2 répétées au milieu d'un morceau joué d'un bout à l'autre
-    const s = sectionsOf([0, 1, 2, 1, 2, 3], 4);
-    expect(s.markers).toEqual([]);
-    expect(s.repeats).toEqual([
+    const sections = sectionsOf([0, 1, 2, 1, 2, 3], 4);
+    expect(sections.markers).toEqual([]);
+    expect(sections.repeats).toEqual([
       { barIndex: 1, start: true },
       { barIndex: 2, end: true },
     ]);
@@ -72,9 +80,9 @@ describe("ordre de jeu du MusicXML", () => {
 
   it("garde chaque reprise à sa place quand des reprises qui se suivent forment une seule section", () => {
     // ||: 0 1 :||: 2 :|| 3, comme le début de la Marche turque
-    const s = sectionsOf([0, 1, 0, 1, 2, 2, 3], 4);
-    expect(s.markers).toEqual([]);
-    expect(s.repeats).toEqual([
+    const sections = sectionsOf([0, 1, 0, 1, 2, 2, 3], 4);
+    expect(sections.markers).toEqual([]);
+    expect(sections.repeats).toEqual([
       { barIndex: 0, start: true },
       { barIndex: 1, end: true },
       { barIndex: 2, start: true, end: true },
@@ -82,9 +90,9 @@ describe("ordre de jeu du MusicXML", () => {
   });
 
   it("ne fait pas une reprise d'une section rejouée seule après un D.C.", () => {
-    const s = sectionsOf([0, 0, 1, 0], 2);
-    expect(s.order).toEqual(["A", "A", "B", "A"]);
-    expect(s.repeats).toEqual([]);
+    const sections = sectionsOf([0, 0, 1, 0], 2);
+    expect(sections.order).toEqual(["A", "A", "B", "A"]);
+    expect(sections.repeats).toEqual([]);
   });
 
   it("importe une structure avec reprises, cases et D.C. al Fine", () => {
@@ -106,7 +114,7 @@ describe("ordre de jeu du MusicXML", () => {
       bar({ barlineLeft: `<ending number="2" type="start"/>`, barline: `<ending number="2" type="stop"/>` }, words("D.C. al Fine")),
     ]);
     const score = importMusicXml(xml);
-    expect(score.markers.map((x) => `${x.label}@${x.barIndex}`)).toEqual(["A@0", "B@2", "C@3", "D@4"]);
+    expect(score.markers.map((marker) => `${marker.label}@${marker.barIndex}`)).toEqual(["A@0", "B@2", "C@3", "D@4"]);
     expect(score.order.join(" ")).toBe("A A B C B D A");
     expect(score.texts).toEqual([]);
     const { text } = roundTrip(score);
@@ -126,9 +134,9 @@ describe("ordre de jeu du MusicXML", () => {
       bar({ barlineLeft: `<ending number="2" type="start"/>`, barline: `<ending number="2" type="discontinue"/>` }),
       bar(),
     ]);
-    const s = importMusicXml(xml);
-    expect(s.markers.map((x) => `${x.label}@${x.barIndex}`)).toEqual(["A@0", "B@1", "C@2", "D@3", "E@4", "F@5"]);
-    expect(s.order.join(" ")).toBe("A B A C D E D F");
+    const score = importMusicXml(xml);
+    expect(score.markers.map((marker) => `${marker.label}@${marker.barIndex}`)).toEqual(["A@0", "B@1", "C@2", "D@3", "E@4", "F@5"]);
+    expect(score.order.join(" ")).toBe("A B A C D E D F");
   });
 });
 

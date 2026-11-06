@@ -17,14 +17,15 @@ export function usePreviewScroll(preview: RefObject<HTMLElement | null>, reading
   useEffect(() => {
     const pane = preview.current;
     if (!pane) return;
-    const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey) return follow.hold();
-      e.preventDefault();
-      zoom.current(e.deltaY < 0 ? 1 : -1);
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey) return follow.hold();
+      event.preventDefault();
+      zoom.current(event.deltaY < 0 ? 1 : -1);
     };
     // pendant la promenade, tout défilement est le sien (le suivi, lui, ne fait plus défiler) et la prolonge
     const hold = () => follow.hold();
-    const onBar = (e: PointerEvent) => e.target === pane && (e.offsetX > pane.clientWidth || e.offsetY > pane.clientHeight) && hold();
+    const onBar = (event: PointerEvent) =>
+      event.target === pane && (event.offsetX > pane.clientWidth || event.offsetY > pane.clientHeight) && hold();
     const onScroll = () => {
       if (!follow.active() && follow.enabled()) hold();
       const first = pane.querySelector(".page")?.getBoundingClientRect();
@@ -45,13 +46,13 @@ export function usePreviewScroll(preview: RefObject<HTMLElement | null>, reading
   }, []);
   useEffect(() => {
     if (!reading) return;
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (e.ctrlKey || e.metaKey || e.altKey || target.closest("input, select, textarea, .cm-editor, [data-drawer]")) return;
-      const turn = { PageDown: 1, ArrowRight: 1, ArrowDown: 1, PageUp: -1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      if (event.ctrlKey || event.metaKey || event.altKey || target.closest("input, select, textarea, .cm-editor, [data-drawer]")) return;
+      const turn = { PageDown: 1, ArrowRight: 1, ArrowDown: 1, PageUp: -1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
       const pane = preview.current;
       if (!turn || !pane || fit === "focus") return;
-      e.preventDefault();
+      event.preventDefault();
       follow.hold();
       if (fit === "width") return pane.scrollBy({ top: turn * pane.clientHeight * 0.9, behavior: "smooth" });
       const page = pane.querySelector<SVGSVGElement>(".page");

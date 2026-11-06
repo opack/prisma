@@ -29,7 +29,7 @@ export const PIECE_KEYS = [
   "fingerings",
 ] as const;
 export type PieceKey = (typeof PIECE_KEYS)[number];
-export const isPieceKey = (k: string): k is PieceKey => (PIECE_KEYS as readonly string[]).includes(k);
+export const isPieceKey = (key: string): key is PieceKey => (PIECE_KEYS as readonly string[]).includes(key);
 
 export type PieceSettings = {
   /** Le tempo choisi pour l'écoute, à la place de celui de la partition. */
@@ -55,12 +55,12 @@ export const MAX_VOLUME = 6;
 export const settingsName = (pieceName: string) => `${pieceName}.json`;
 
 /** Rien à retenir ? */
-export const isEmpty = (s: PieceSettings) =>
-  s.tempo === undefined &&
-  !s.muted?.length &&
-  !s.instruments?.some((t) => t !== null) &&
-  !s.volumes?.some((v) => v !== 0) &&
-  !Object.keys(s.options ?? {}).length;
+export const isEmpty = (pieceSettings: PieceSettings) =>
+  pieceSettings.tempo === undefined &&
+  !pieceSettings.muted?.length &&
+  !pieceSettings.instruments?.some((text) => text !== null) &&
+  !pieceSettings.volumes?.some((volume) => volume !== 0) &&
+  !Object.keys(pieceSettings.options ?? {}).length;
 
 /**
  * Lit des réglages : ce qui n'est pas compris est laissé de côté (une option inconnue, une valeur
@@ -73,34 +73,37 @@ export function parseSettings(text: string): PieceSettings {
   const out: PieceSettings = {};
   if (Number.isInteger(raw.tempo) && raw.tempo >= MIN_TEMPO && raw.tempo <= MAX_TEMPO) out.tempo = raw.tempo;
   if (Array.isArray(raw.muted)) {
-    const muted = raw.muted.filter((k: unknown) => Number.isInteger(k) && (k as number) >= 0);
-    if (muted.length) out.muted = [...new Set<number>(muted)].sort((a, b) => a - b);
+    const muted = raw.muted.filter((staff: unknown) => Number.isInteger(staff) && (staff as number) >= 0);
+    if (muted.length) out.muted = [...new Set<number>(muted)].sort((first, second) => first - second);
   }
   if (Array.isArray(raw.instruments)) {
-    const instruments = raw.instruments.map((t: unknown) => (isInstrument(t) ? t : null));
-    if (instruments.some((t: string | null) => t !== null)) out.instruments = instruments;
+    const instruments = raw.instruments.map((instrument: unknown) => (isInstrument(instrument) ? instrument : null));
+    if (instruments.some((instrument: string | null) => instrument !== null)) out.instruments = instruments;
   }
   if (Array.isArray(raw.volumes)) {
-    const volumes = raw.volumes.map((v: unknown) => (Number.isInteger(v) ? Math.min(MAX_VOLUME, Math.max(MIN_VOLUME, v as number)) : 0));
-    if (volumes.some((v: number) => v !== 0)) out.volumes = volumes;
+    const volumes = raw.volumes.map((volume: unknown) =>
+      Number.isInteger(volume) ? Math.min(MAX_VOLUME, Math.max(MIN_VOLUME, volume as number)) : 0,
+    );
+    if (volumes.some((volume: number) => volume !== 0)) out.volumes = volumes;
   }
   if (raw.options && typeof raw.options === "object") {
     // les valeurs se valident comme celles des options générales : une valeur refusée y reprend la valeur par défaut
     const checked = loadOptionsFrom(raw.options);
     const options: PieceSettings["options"] = {};
-    for (const k of PIECE_KEYS) if (k in raw.options && checked[k] === raw.options[k]) (options as Record<string, unknown>)[k] = checked[k];
+    for (const key of PIECE_KEYS)
+      if (key in raw.options && checked[key] === raw.options[key]) (options as Record<string, unknown>)[key] = checked[key];
     if (Object.keys(options).length) out.options = options;
   }
   return out;
 }
 
-export function writeSettings(s: PieceSettings): string {
+export function writeSettings(settings: PieceSettings): string {
   const out: Record<string, unknown> = { format: FORMAT };
-  if (s.tempo !== undefined) out.tempo = s.tempo;
-  if (s.muted?.length) out.muted = s.muted;
-  if (s.instruments?.some((t) => t !== null)) out.instruments = s.instruments;
-  if (s.volumes?.some((v) => v !== 0)) out.volumes = s.volumes;
-  if (s.options && Object.keys(s.options).length) out.options = s.options;
+  if (settings.tempo !== undefined) out.tempo = settings.tempo;
+  if (settings.muted?.length) out.muted = settings.muted;
+  if (settings.instruments?.some((text) => text !== null)) out.instruments = settings.instruments;
+  if (settings.volumes?.some((volume) => volume !== 0)) out.volumes = settings.volumes;
+  if (settings.options && Object.keys(settings.options).length) out.options = settings.options;
   return JSON.stringify(out, null, 2) + "\n";
 }
 
@@ -123,8 +126,8 @@ export async function readSettings(dir: StoredFolder, pieceName: string): Promis
 }
 
 /** Enregistre les réglages d'un morceau à côté de lui ; sans réglage, le fichier disparaît. */
-export async function saveSettings(dir: StoredFolder, pieceName: string, s: PieceSettings) {
+export async function saveSettings(dir: StoredFolder, pieceName: string, settings: PieceSettings) {
   const name = settingsName(pieceName);
-  if (isEmpty(s)) return dir.remove(name);
-  await (await dir.create(name)).write(writeSettings(s));
+  if (isEmpty(settings)) return dir.remove(name);
+  await (await dir.create(name)).write(writeSettings(settings));
 }

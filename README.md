@@ -79,9 +79,9 @@ Le lecteur s'arrête à la première erreur. Pour l'éditeur, `core/errors.ts` l
 
 Le cœur du projet. Le moteur découpe le morceau en **systèmes** qui tiennent dans une largeur donnée, puis calcule pour chacun ses colonnes, ses lignes et le contenu de chaque case. Il ne connaît que des unités de largeur, et c'est volontaire : on lui donne des mesures en **caractères** pour écrire le texte (`core/prisma-write.ts`), en **millimètres** pour graver la partition (`app/engrave.ts`). Le texte et la partition sortent donc du même calcul : ils ont les mêmes systèmes, les mêmes alignements, et ne peuvent pas diverger.
 
-### La gravure (`app/score/engrave.ts`, `app/score/PageView.tsx`)
+### La gravure (`app/score/engrave.ts`, `app/score/geometry.ts`, `app/score/PageView.tsx`)
 
-`engrave` place les systèmes sur des pages A4 (toutes les dimensions en millimètres), et `PageView` les dessine en SVG avec React. Le même dessin sert à l'écran, à l'impression (une page gravée tient exactement sur une feuille), aux aperçus de la bibliothèque et aux exemples de la référence et du site. La couleur ne porte jamais seule l'information : la partition reste lisible imprimée en noir et blanc.
+`engrave` place les systèmes sur des pages A4 (toutes les dimensions en millimètres), et `PageView` les dessine en SVG avec React. Ce que le dessin calcule sans React ni navigateur est dans `geometry.ts`, testé à part : les tracés des ondulations (trille, arpège), les largeurs des barres et des indications, la case jouée à un instant ou cliquée à une abscisse, les mesures d'un système et la hauteur du curseur. Le même dessin sert à l'écran, à l'impression (une page gravée tient exactement sur une feuille), aux aperçus de la bibliothèque et aux exemples de la référence et du site. La couleur ne porte jamais seule l'information : la partition reste lisible imprimée en noir et blanc.
 
 ### L'écoute (`app/playback/performance.ts`, `app/playback/player.ts`)
 

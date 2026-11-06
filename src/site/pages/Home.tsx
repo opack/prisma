@@ -172,9 +172,9 @@ export function Home() {
             </ul>
             <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Essayer trois réglages">
               <span className={TRY_LABEL}>Couleurs</span>
-              {PALETTES.map((p) => (
-                <Button key={p.value} size="small" pressed={colors === p.value} onClick={() => setColors(p.value)}>
-                  {p.label}
+              {PALETTES.map((palette) => (
+                <Button key={palette.value} size="small" pressed={colors === palette.value} onClick={() => setColors(palette.value)}>
+                  {palette.label}
                 </Button>
               ))}
               <span className={TRY_LABEL}>Place des notes</span>

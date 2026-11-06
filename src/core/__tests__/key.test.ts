@@ -24,7 +24,7 @@ describe("tonalité", () => {
   });
 
   it("refuse une tonalité qui ne s'écrit pas ainsi", () => {
-    for (const k of ["13", "5m", "H", "sol"]) expect(() => read(k)).toThrow(/« key » est la tonalité du morceau/);
+    for (const key of ["13", "5m", "H", "sol"]) expect(() => read(key)).toThrow(/« key » est la tonalité du morceau/);
   });
 
   it("se nomme en latin ou en anglais, avec l'altération usuelle", () => {

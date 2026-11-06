@@ -17,10 +17,10 @@ export function useErrors(engraved: Problem | undefined, editor: RefObject<Edito
   const shown = problems.length ? Math.min(chosen, problems.length - 1) : 0;
   /** Place le curseur du texte sur une erreur. */
   const goTo = (line?: number, column = 1) => line && editor.current?.goTo(line, column);
-  const show = (k: number) => {
-    const n = (k + problems.length) % problems.length;
-    setChosen(n);
-    goTo(problems[n].line, problems[n].column);
+  const show = (index: number) => {
+    const wrapped = (index + problems.length) % problems.length;
+    setChosen(wrapped);
+    goTo(problems[wrapped].line, problems[wrapped].column);
   };
   const fixed = !!engraved && engraved.line !== undefined && checked !== undefined && !checked.length;
   return { problems, shown, problem: problems[shown] as Problem | undefined, show, goTo, fixed, setChecked };
