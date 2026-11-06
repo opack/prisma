@@ -15,12 +15,12 @@ Il faut Node.js 22.18 ou plus récent (l'outil en ligne de commande s'exécute d
 
 ```sh
 pnpm install
-pnpm dev        # le site sur http://localhost:5173/, l'application sur /app/
+pnpm dev        # le site sur http://localhost:5173/, l'application sur /app/ (en Vue : /app-vue/)
 pnpm test       # les tests (Vitest)
-pnpm typecheck  # la vérification des types (tsc)
+pnpm typecheck  # la vérification des types (vue-tsc)
 pnpm lint       # les règles du code (ESLint)
 pnpm format     # la mise en forme (Prettier)
-pnpm build      # tsc, puis le site et l'application dans dist/
+pnpm build      # vue-tsc, puis le site et l'application dans dist/
 pnpm preview    # sert dist/ pour l'essayer
 pnpm e2e        # les tests de comportement dans le navigateur (Playwright)
 pnpm visual     # le banc de captures (Playwright), voir Tests
@@ -113,6 +113,10 @@ Le chemin inverse, pour ouvrir un morceau dans MuseScore ou un autre logiciel (F
 - **La version et les nouveautés** (`about/`) : la version est celle de `package.json` (semver), le commit celui que donne Netlify (`COMMIT_REF`) ou git, gravés au build (`__VERSION__`, `__COMMIT__` dans `vite.config.ts`). `CHANGELOG.md` dit, pour le musicien, ce qui change à chaque version ; Aide › À propos… le montre, et s'ouvre de lui-même une fois après une mise à jour (la dernière version vue est gardée dans le navigateur). Un test vérifie que les nouveautés commencent par la version de `package.json`.
 
 - **La référence** (`reference/ReferenceView.tsx`) affiche `REFERENCE.md` : chaque exemple ` ```prisma ` y est gravé par le vrai moteur. Elle ne peut donc pas montrer une gravure périmée. Ses liens vers une page du site s'ouvrent dans un nouvel onglet, sans quitter le morceau.
+
+## L'application en Vue, en construction (`src/app-vue/`)
+
+L'application passe de React à Vue 3, domaine par domaine, à côté de celle de React, qui reste celle qu'on sert : la version Vue s'ouvre sur `/app-vue/` (`app-vue/index.html`, construite avec le reste). Elle garde le même cœur (`core/`), le même thème Tailwind et les mêmes outils (Vite, Vitest, Playwright) ; ses composants s'écrivent en `<script setup lang="ts">`, l'état partagé dans des stores Pinia, les utilitaires du navigateur pris dans VueUse. Les éléments d'interface viennent de shadcn-vue (sur Reka UI), ajoutés par sa ligne de commande (`pnpm dlx shadcn-vue@latest add <composant>`, réglée par `components.json`) dans `app-vue/ui/`, un répertoire par composant. Leurs couleurs sont celles de notre palette (`app-vue/style.css`) ; deux de leurs noms sont aussi les nôtres, `accent` et `muted`, qui gardent notre sens (la couleur de l'application, le texte discret) : un composant ajouté qui s'en sert pour un fond reçoit la classe de notre palette qui convient. Les types des composants sont vérifiés par `vue-tsc`, leur code par `eslint-plugin-vue`, leurs tests écrits avec `@vue/test-utils` (dans happy-dom).
 
 ## Le site (`src/site/`)
 

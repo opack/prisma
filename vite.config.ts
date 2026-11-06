@@ -1,11 +1,13 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import vue from "@vitejs/plugin-vue";
 import tailwindcss from "@tailwindcss/vite";
 import type { Connect } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { pcloudFile } from "./src/server/pcloudFile.ts";
 
 /** Le relais de lecture pCloud (une fonction Netlify en ligne), servi aussi par `npm run dev` et `npm run preview`. */
@@ -36,6 +38,8 @@ function commit() {
 }
 
 export default defineConfig({
+  // @ : la racine des sources (src/), pour les composants de shadcn-vue et leurs imports
+  resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   plugins: [
     {
       name: "relais-pcloud",
@@ -43,6 +47,7 @@ export default defineConfig({
       configurePreviewServer: (server) => void server.middlewares.use("/api/pcloud-file", relay),
     },
     react(),
+    vue(),
     tailwindcss(),
     // l'application installable (l'écran d'accueil d'une tablette), et qui marche sans réseau : le site
     // et l'application gardés à la première visite, les polices et les sons à leur premier usage
@@ -99,7 +104,8 @@ export default defineConfig({
     __COMMIT__: JSON.stringify(commit()),
   },
   build: {
-    // le site qui présente Prisma, à la racine, et l'application dans app/
+    // le site qui présente Prisma, à la racine, l'application dans app/, et sa version Vue en
+    // construction dans app-vue/
     rollupOptions: {
       input: {
         index: "index.html",
@@ -108,6 +114,7 @@ export default defineConfig({
         reference: "reference.html",
         guitare: "guitare.html",
         app: "app/index.html",
+        "app-vue": "app-vue/index.html",
       },
     },
   },
