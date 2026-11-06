@@ -1,0 +1,5 @@
+# Les commits de pure mise en forme, que git blame saute :
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style: format the code with Prettier
+13d9d301aca3d3a0e08a20e2ca9d20898d3a1e9e
