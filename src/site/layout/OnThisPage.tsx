@@ -17,14 +17,24 @@ export function OnThisPage({ parts }: { parts: PagePart[] }) {
         <ul className="flex flex-wrap gap-2 m-0 p-0 list-none">
           {parts.map((p) => (
             <li key={p.id}>
-              <a className="inline-block px-3 py-1 border border-line rounded-full bg-white text-[0.95rem] text-ink no-underline hover:border-accent hover:text-accent" href={`#${p.id}`}>
+              <a
+                className="inline-block px-3 py-1 border border-line rounded-full bg-white text-[0.95rem] text-ink no-underline hover:border-accent hover:text-accent"
+                href={`#${p.id}`}
+              >
                 {p.label}
               </a>
             </li>
           ))}
         </ul>
       </nav>
-      <PartsBar parts={parts} start="sur-cette-page" back={{ label: "Retour aux parties de la page", onClick: () => document.getElementById("sur-cette-page")!.scrollIntoView({ block: "center" }) }} />
+      <PartsBar
+        parts={parts}
+        start="sur-cette-page"
+        back={{
+          label: "Retour aux parties de la page",
+          onClick: () => document.getElementById("sur-cette-page")!.scrollIntoView({ block: "center" }),
+        }}
+      />
     </>
   );
 }

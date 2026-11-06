@@ -35,12 +35,22 @@ function useNarrow() {
 export function HeroKeyboard() {
   const [hover, setHover] = useState<number | null>(null);
   const stacked = useNarrow();
-  const W = 46, H = 168, BW = 28, BH = 104, LANE = 30, GAP = 14;
+  const W = 46,
+    H = 168,
+    BW = 28,
+    BH = 104,
+    LANE = 30,
+    GAP = 14;
   const width = stacked ? W * 7 : W * 7 * OCTAVES.length;
   const height = stacked ? OCTAVES.length * (H + LANE) + (OCTAVES.length - 1) * GAP : H + LANE;
   const name = (o: number) => (o > 0 ? `+${o}` : String(o));
   return (
-    <svg className="block w-full max-w-[360px] min-[601px]:max-w-none h-auto touch-manipulation" viewBox={`0 0 ${width + 2} ${height + 2}`} role="img" aria-label="Deux octaves du clavier : chaque touche porte son numéro, de 1 (do) à 12 (si), dans chaque octave.">
+    <svg
+      className="block w-full max-w-[360px] min-[601px]:max-w-none h-auto touch-manipulation"
+      viewBox={`0 0 ${width + 2} ${height + 2}`}
+      role="img"
+      aria-label="Deux octaves du clavier : chaque touche porte son numéro, de 1 (do) à 12 (si), dans chaque octave."
+    >
       {OCTAVES.map((o, oi) => {
         const tint = octaveTint("rainbow", o)!;
         const x0 = stacked ? 1 : 1 + oi * W * 7;
@@ -60,7 +70,15 @@ export function HeroKeyboard() {
               const on = hover === n;
               return (
                 <g key={n} onPointerEnter={() => setHover(n)} onPointerLeave={() => setHover(null)}>
-                  <rect x={x0 + i * W} y={LANE} width={W} height={H} rx={5} className={"stroke-[#8f938d] stroke-1" + (on ? " fill-[#ffc53d]" : "")} style={{ fill: on ? undefined : tint.band }} />
+                  <rect
+                    x={x0 + i * W}
+                    y={LANE}
+                    width={W}
+                    height={H}
+                    rx={5}
+                    className={"stroke-[#8f938d] stroke-1" + (on ? " fill-[#ffc53d]" : "")}
+                    style={{ fill: on ? undefined : tint.band }}
+                  />
                   <text x={x0 + i * W + W / 2} y={LANE + H - 16} textAnchor="middle" className={`${NUM} text-[17px] fill-ink`}>
                     {n}
                   </text>
@@ -71,8 +89,20 @@ export function HeroKeyboard() {
               const on = hover === n;
               return (
                 <g key={n} onPointerEnter={() => setHover(n)} onPointerLeave={() => setHover(null)}>
-                  <rect x={x0 + at * W - BW / 2} y={LANE} width={BW} height={BH} rx={4} className={`stroke-[#1c1e20] stroke-1 ${on ? "fill-[#ffc53d]" : "fill-[#2a2d30]"}`} />
-                  <text x={x0 + at * W} y={LANE + BH - 12} textAnchor="middle" className={`${NUM} text-[13px] ${on ? "fill-ink" : "fill-white"}`}>
+                  <rect
+                    x={x0 + at * W - BW / 2}
+                    y={LANE}
+                    width={BW}
+                    height={BH}
+                    rx={4}
+                    className={`stroke-[#1c1e20] stroke-1 ${on ? "fill-[#ffc53d]" : "fill-[#2a2d30]"}`}
+                  />
+                  <text
+                    x={x0 + at * W}
+                    y={LANE + BH - 12}
+                    textAnchor="middle"
+                    className={`${NUM} text-[13px] ${on ? "fill-ink" : "fill-white"}`}
+                  >
                     {n}
                   </text>
                 </g>

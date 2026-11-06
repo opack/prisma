@@ -13,9 +13,24 @@ const pianoKey = (black: boolean, current: boolean) =>
         : "bg-white border-[#b9bcb6] text-ink hover:bg-accent-10",
   ].join(" ");
 
-export function KeyboardPicker({ current, onPick, title }: { current?: string; onPick: (n: string) => void; title?: (n: number) => string }) {
+export function KeyboardPicker({
+  current,
+  onPick,
+  title,
+}: {
+  current?: string;
+  onPick: (n: string) => void;
+  title?: (n: number) => string;
+}) {
   const key = (n: number, black: boolean, style: React.CSSProperties) => (
-    <button key={n} className={pianoKey(black, String(n) === current)} style={style} onClick={() => onPick(String(n))} title={title?.(n)} aria-label={`note ${n}`}>
+    <button
+      key={n}
+      className={pianoKey(black, String(n) === current)}
+      style={style}
+      onClick={() => onPick(String(n))}
+      title={title?.(n)}
+      aria-label={`note ${n}`}
+    >
       {n}
     </button>
   );

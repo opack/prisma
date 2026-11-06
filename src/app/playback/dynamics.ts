@@ -85,14 +85,21 @@ export function velocityAt(score: Score): (staff: Staff, t: number, accent?: boo
     const shared: Mark[] = [];
     for (const m of others) {
       const key = `${family(m)}:${m.t}`;
-      if (!taken.has(key)) (taken.add(key), shared.push(m));
+      if (taken.has(key)) continue;
+      taken.add(key);
+      shared.push(m);
     }
     // à un même instant, la nuance d'abord, puis le changement qui part d'elle
-    used.set(p, [...mine, ...shared].sort((a, b) => a.t - b.t || (family(a) === "ramp" ? 1 : 0) - (family(b) === "ramp" ? 1 : 0)));
+    used.set(
+      p,
+      [...mine, ...shared].sort((a, b) => a.t - b.t || (family(a) === "ramp" ? 1 : 0) - (family(b) === "ramp" ? 1 : 0)),
+    );
   }
   return (staff, t, accent = true) => {
     const marks = used.get(staff) ?? [];
-    const hit = accent ? (marks.find((m) => m.t === t && m.kind !== "ramp" && m.attack !== undefined) as { attack: number } | undefined) : undefined;
+    const hit = accent
+      ? (marks.find((m) => m.t === t && m.kind !== "ramp" && m.attack !== undefined) as { attack: number } | undefined)
+      : undefined;
     return clamp(hit ? hit.attack : levelAt(marks, t));
   };
 }

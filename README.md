@@ -14,22 +14,25 @@ Pour lire et jouer en Prisma, c'est [REFERENCE.md](REFERENCE.md). Ce document-ci
 Il faut Node.js 22.18 ou plus récent (l'outil en ligne de commande s'exécute directement en TypeScript).
 
 ```sh
-npm install
-npm run dev        # le site sur http://localhost:5173/, l'application sur /app/
-npm test           # les tests (Vitest)
-npm run typecheck  # la vérification des types (tsc)
-npm run build      # tsc, puis le site et l'application dans dist/
-npm run preview    # sert dist/ pour l'essayer
-npm run visual     # le banc de captures (Playwright), voir Tests
+pnpm install
+pnpm dev        # le site sur http://localhost:5173/, l'application sur /app/
+pnpm test       # les tests (Vitest)
+pnpm typecheck  # la vérification des types (tsc)
+pnpm lint       # les règles du code (ESLint)
+pnpm format     # la mise en forme (Prettier)
+pnpm build      # tsc, puis le site et l'application dans dist/
+pnpm preview    # sert dist/ pour l'essayer
+pnpm e2e        # les tests de comportement dans le navigateur (Playwright)
+pnpm visual     # le banc de captures (Playwright), voir Tests
 ```
 
 L'outil en ligne de commande :
 
 ```sh
-npm run prisma -- import morceau.musicxml -o morceau.prisma   # MusicXML → .prisma
-npm run prisma -- export morceau.prisma -o morceau.musicxml   # .prisma → MusicXML (--reprises : en reprises et en cases)
-npm run prisma -- format morceau.prisma -o propre.prisma      # remet en page (--largeur 96 par défaut)
-npm run prisma -- check morceau.prisma                        # signale la première erreur, ligne et colonne
+pnpm prisma import morceau.musicxml -o morceau.prisma   # MusicXML → .prisma
+pnpm prisma export morceau.prisma -o morceau.musicxml   # .prisma → MusicXML (--reprises : en reprises et en cases)
+pnpm prisma format morceau.prisma -o propre.prisma      # remet en page (--largeur 96 par défaut)
+pnpm prisma check morceau.prisma                        # signale la première erreur, ligne et colonne
 ```
 
 Sous Windows, préférez `-o` à une redirection `>` : PowerShell n'écrit pas toujours en UTF-8.
@@ -102,10 +105,10 @@ Le chemin inverse, pour ouvrir un morceau dans MuseScore ou un autre logiciel (F
 - **La complétion** (`editor/completion.ts`) propose ce qui peut s'écrire à la place du curseur ; `complete.ts` l'écrit sans casser l'alignement, en élargissant au besoin une case sur toutes les lignes du système.
 - **De la partition au texte** : un clic sur la partition place le curseur sur le signe cliqué (`core/locate.ts`), et le signe sous le curseur est encadré sur la partition (`score/textMark.ts`). La partition refait ses propres systèmes, le texte a les siens : un signe s'y retrouve par son instant, sa portée, son octave et ce qui est écrit dans sa case, le texte étant relu avec indulgence.
 - **La retouche sur place** (`retouch/`) : un double-clic sur une case change sa note, sa durée, son octave, ses ajouts ; sur une corde, sa case (de 0 à 24, chacune nommée), sa durée si la corde est libre, et sa corde : une autre corde choisie montre ses cases (celle du même son marquée), et la case choisie y place la note, avec ses tenues ; comme sur l'instrument, elle coupe ce qui sonnait encore sur cette corde et s'arrête à la note suivante. La retouche est une réécriture du texte, comme une frappe : Ctrl+Z la défait.
-- **Les fichiers** (`files/files.ts`, `files/stored.ts`, `library/`) : avec Chrome et Edge, l'API File System Access réécrit le fichier ouvert et donne accès à un dossier de morceaux, la bibliothèque. Ailleurs, on ouvre par le sélecteur de fichiers et on enregistre par un téléchargement. Rien n'est copié dans le navigateur : le disque reste la seule référence. L'application ne connaît qu'un fichier et un dossier où qu'ils soient (`StoredFile`, `StoredFolder` : lire, réécrire, trouver un fichier par son nom) ; la bibliothèque, qu'une source (`LibrarySource` : son accès, ses fichiers), dont elle lit les titres et les réglages (`scan`). Deux sources : un dossier du disque (`library/diskLibrary.ts`), et le dossier de l'app sur pCloud (`library/pcloudLibrary.ts`, sur `library/pcloud.ts` : la connexion OAuth depuis le navigateur, le jeton gardé dans le navigateur et passé en paramètre, les appels de l'API), lu en un seul appel, sous-dossiers compris ; pCloud refusant de donner un fichier à une page web, la lecture passe par un relais du site, sans mémoire (`src/server/pcloudFile.ts` : une fonction Netlify, `netlify/functions/pcloud-file.ts`, servie aussi par `npm run dev` et `npm run preview`) ; la liste et l'écriture vont directement du navigateur à pCloud ; la source choisie est retenue (`library/sources.ts`). `scan` lit six fichiers à la fois. L'identifiant de l'app chez pCloud (`VITE_PCLOUD_CLIENT_ID`) est dans `.env` en local, hors du dépôt (`.env.example` en donne la liste), et dans les variables d'environnement de Netlify en ligne ; sans lui, la bibliothèque ne propose pas pCloud. Une variable `VITE_…` finit dans le code du navigateur : un secret ne porte jamais ce préfixe et ne sert qu'au relais du serveur. Le banc simule l'API de pCloud (`page.route`), les tests aussi (`tests/pcloud.test.ts`).
+- **Les fichiers** (`files/files.ts`, `files/stored.ts`, `library/`) : avec Chrome et Edge, l'API File System Access réécrit le fichier ouvert et donne accès à un dossier de morceaux, la bibliothèque. Ailleurs, on ouvre par le sélecteur de fichiers et on enregistre par un téléchargement. Rien n'est copié dans le navigateur : le disque reste la seule référence. L'application ne connaît qu'un fichier et un dossier où qu'ils soient (`StoredFile`, `StoredFolder` : lire, réécrire, trouver un fichier par son nom) ; la bibliothèque, qu'une source (`LibrarySource` : son accès, ses fichiers), dont elle lit les titres et les réglages (`scan`). Deux sources : un dossier du disque (`library/diskLibrary.ts`), et le dossier de l'app sur pCloud (`library/pcloudLibrary.ts`, sur `library/pcloud.ts` : la connexion OAuth depuis le navigateur, le jeton gardé dans le navigateur et passé en paramètre, les appels de l'API), lu en un seul appel, sous-dossiers compris ; pCloud refusant de donner un fichier à une page web, la lecture passe par un relais du site, sans mémoire (`src/server/pcloudFile.ts` : une fonction Netlify, `netlify/functions/pcloud-file.ts`, servie aussi par `pnpm dev` et `pnpm preview`) ; la liste et l'écriture vont directement du navigateur à pCloud ; la source choisie est retenue (`library/sources.ts`). `scan` lit six fichiers à la fois. L'identifiant de l'app chez pCloud (`VITE_PCLOUD_CLIENT_ID`) est dans `.env` en local, hors du dépôt (`.env.example` en donne la liste), et dans les variables d'environnement de Netlify en ligne ; sans lui, la bibliothèque ne propose pas pCloud. Une variable `VITE_…` finit dans le code du navigateur : un secret ne porte jamais ce préfixe et ne sert qu'au relais du serveur. Le banc simule l'API de pCloud (`page.route`), les tests aussi (`library/__tests__/pcloud.test.ts`).
 - **Le partage par un lien** (`files/share.ts`, `files/useShare.ts`, `files/ReceivedDialog.tsx`, `files/ImportLinkDialog.tsx`) : le morceau, son nom et ses réglages, en JSON compressé (`CompressionStream`, *deflate*) puis en base64 sans signe gênant, dans le fragment de l'adresse (`app/#p=…`), que le navigateur n'envoie jamais au serveur. Le lien est tenu prêt à chaque changement : Safari ne partage (`navigator.share`) et ne copie qu'aussitôt après le geste. Un lien s'ouvre, ou se colle (Fichier › Importer un lien) ; reçu, le morceau s'ouvre tel quel ou s'enregistre d'abord à la racine de la source de la bibliothèque.
 - **Les réglages** : les options générales sont gardées dans le navigateur (`options/options.ts`) ; celles d'un morceau (tempo, portées muettes, instrument et volume de chaque partie, rendu) dans un fichier `.json` à côté de lui (`options/piece.ts`), pour que la partition reste propre à diffuser.
-- **L'application installable et hors ligne** (PWA, `vite-plugin-pwa` dans `vite.config.ts`, `ui/useAppUpdate.ts`) : le manifeste, les icônes (`public/icons/`, tirées du logo) et un service worker, généré au build, qui garde le site et l'application (précache), puis les polices et les échantillons des instruments à leur premier usage (CacheFirst). Une nouvelle version attend qu'on la prenne : le bouton « Mettre à jour » de la barre. En développement (`npm run dev`, le banc), pas de service worker.
+- **L'application installable et hors ligne** (PWA, `vite-plugin-pwa` dans `vite.config.ts`, `ui/useAppUpdate.ts`) : le manifeste, les icônes (`public/icons/`, tirées du logo) et un service worker, généré au build, qui garde le site et l'application (précache), puis les polices et les échantillons des instruments à leur premier usage (CacheFirst). Une nouvelle version attend qu'on la prenne : le bouton « Mettre à jour » de la barre. En développement (`pnpm dev`, le banc), pas de service worker.
 - **Les aperçus** de la bibliothèque sont gravés dans un worker (`library/thumbs.worker.ts`) et gardés en cache (`library/thumbs.ts`).
 - **La version et les nouveautés** (`about/`) : la version est celle de `package.json` (semver), le commit celui que donne Netlify (`COMMIT_REF`) ou git, gravés au build (`__VERSION__`, `__COMMIT__` dans `vite.config.ts`). `CHANGELOG.md` dit, pour le musicien, ce qui change à chaque version ; Aide › À propos… le montre, et s'ouvre de lui-même une fois après une mise à jour (la dernière version vue est gardée dans le navigateur). Un test vérifie que les nouveautés commencent par la version de `package.json`.
 
@@ -127,24 +130,26 @@ Cinq pages à la racine (`index.html`, `apprendre.html`, `reference.html`, `guit
 
 ## Tests
 
-`npm test` lance Vitest sur `tests/`. L'essentiel est dans `core.test.ts`, organisé par sujet : règles du format, reprises et sections, import MusicXML (avec la Gymnopédie n° 1 de Satie en exemple), nuances, pédale, ornements, accords, paroles, et l'écoute (déroulé, intensités, métronome…). `export.test.ts` fait l'aller-retour de l'export : la Gymnopédie et chaque exemple de la référence, exportés puis réimportés, redonnent les mêmes notes, les mêmes indications, les mêmes sections et le même ordre de jeu. `strings.test.ts` couvre les instruments à cordes : cordes et cases, accordage et capo, erreurs, parties mêlées, import, export, conversion. `techniques.test.ts` couvre les techniques des cordes : leur écriture, leurs erreurs, l'écoute, MusicXML. `shapes.test.ts` couvre les grilles d'accords : leur écriture, les formes choisies, le capo et l'accordage, les erreurs, MusicXML. Les autres fichiers couvrent les erreurs en une passe, la complétion, le chemin de la partition au texte, la retouche et les réglages d'un morceau.
+`pnpm test` lance Vitest. Chaque test vit à côté de ce qu'il vérifie, dans le dossier `__tests__` du domaine, un fichier par sujet. Dans `core/__tests__/` : les règles du format (`format`), les reprises et les sections, l'import et l'export MusicXML (avec la Gymnopédie n° 1 de Satie en exemple ; l'export fait l'aller-retour de la Gymnopédie et de chaque exemple de la référence), l'expression (nuances, soufflets, liaisons, articulations, point d'orgue, doigtés), les ornements, la pédale, les accords, les paroles, les portées et parties, les instruments, la tonalité, les cordes (`strings`), leurs techniques et leurs grilles (`shapes`), les erreurs, ce que montre le curseur (`inspect`, `locate`), et les exemples de la référence. Dans `app/*/__tests__/` : l'écoute (déroulé, intensités, pédale, métronome, tempo), la complétion, la retouche, la bibliothèque et pCloud, le partage, les réglages d'un morceau, les nouveautés. `tests/` ne garde que ce qui sert à tous : les fichiers d'exemple (`fixtures/`), les aides (`support/` : un petit générateur de MusicXML, l'aller-retour par le texte, l'application ouverte dans un état connu), les tests de comportement (`e2e/`) et le banc de captures (`visual/`).
 
 `reference.test.ts` vérifie chaque exemple de la référence : il doit se lire sans erreur et être écrit exactement comme l'application l'écrirait. La documentation ne peut donc pas montrer un exemple faux ou mal mis en forme.
 
-Le banc de captures (`npm run visual`, Playwright, `tests/visual/`) photographie chaque page du site (au bureau et sur un téléphone), les écrans et panneaux de l'application (au bureau, et quelques-uns sur une tablette et un téléphone, à la souris et au doigt), et la gravure d'un petit corpus, en impression comprise, et compare chaque capture pixel à pixel à sa référence. Il sert aux refontes qui ne doivent rien changer à l'œil : les références se prennent sur le code de départ, dans un `git worktree` à côté, puis le code modifié s'y compare.
+Les tests de comportement (`pnpm e2e`, Playwright, `tests/e2e/`) ouvrent l'application et le site dans Chromium et vérifient ce qu'ils font par ce qu'ils montrent : les éléments s'y trouvent par leur rôle et leur nom (`getByRole("button", { name: "Options" })`), comme les trouverait un lecteur d'écran, jamais par une classe CSS. Un fichier par domaine (`layout`, `menus`, `files`, `library`, `options`, `playback`, `retouch`, `editor`, `about`, `site`) ; ils ne dépendent pas du framework, et vérifient le même comportement avant et après une refonte.
+
+Le banc de captures (`pnpm visual`, Playwright, `tests/visual/`) photographie chaque page du site (au bureau et sur un téléphone), les écrans et panneaux de l'application (au bureau, et quelques-uns sur une tablette et un téléphone, à la souris et au doigt), et la gravure d'un petit corpus, en impression comprise, et compare chaque capture pixel à pixel à sa référence. Il sert aux refontes qui ne doivent rien changer à l'œil : les références se prennent sur le code de départ, dans un `git worktree` à côté, puis le code modifié s'y compare.
 
 ```sh
-npx playwright install chromium                    # une fois
-git worktree add ../prisma-reference HEAD          # le code de départ (npm install dedans)
-VISUAL_ROOT=../prisma-reference npm run visual:reference
-npm run visual                                     # les écarts : test-results/visual-report
+pnpm exec playwright install chromium        # une fois
+git worktree add ../prisma-reference HEAD   # le code de départ (pnpm install dedans)
+VISUAL_ROOT=../prisma-reference pnpm visual:reference
+pnpm visual                                 # les écarts : test-results/report
 ```
 
-Sous PowerShell : `$env:VISUAL_ROOT = "../prisma-reference"; npm run visual:reference`, puis `Remove-Item Env:VISUAL_ROOT`. Les captures et les écarts restent hors du dépôt.
+Sous PowerShell : `$env:VISUAL_ROOT = "../prisma-reference"; pnpm visual:reference`, puis `Remove-Item Env:VISUAL_ROOT`. Les captures et les écarts restent hors du dépôt.
 
 ## Contribuer
 
-- Lancez `npm run typecheck` et `npm test` avant de proposer un changement.
+- Lancez `pnpm typecheck`, `pnpm lint` et `pnpm test` avant de proposer un changement.
 - Un changement du format se reporte dans [FORMAT.md](FORMAT.md) (la grammaire exacte) et dans [REFERENCE.md](REFERENCE.md) (pour le musicien), avec un exemple quand c'est utile : le test de la référence le vérifiera.
 - Le code, ses commentaires et la documentation sont en français ; les clés de l'en-tête et les noms d'instruments sont en anglais, comme les noms d'accords.
 - Les messages de commit sont en anglais, au format conventionnel : `feat(editor): …`, `fix(app): …`, avec si besoin une liste de tirets.

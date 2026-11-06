@@ -109,7 +109,8 @@ export function instrumentOfProgram(program: number): InstrumentName | undefined
 /** Les entrées de `parts:`, séparées par des virgules, sauf entre parenthèses (« Guitare (guitar, capo 2), Chant »). */
 export function splitParts(list: string): string[] {
   const out: string[] = [];
-  let depth = 0, from = 0;
+  let depth = 0,
+    from = 0;
   for (let i = 0; i < list.length; i++) {
     if (list[i] === "(") depth++;
     else if (list[i] === ")") depth = Math.max(0, depth - 1);
@@ -130,5 +131,11 @@ export function splitParts(list: string): string[] {
 export function splitPartEntry(entry: string): { name: string; extras: string[] } {
   const m = entry.match(/^(.*?)\s*\(\s*([^()]*?)\s*\)\s*$/);
   if (!m) return { name: entry.trim(), extras: [] };
-  return { name: m[1].trim(), extras: m[2].split(",").map((x) => x.trim().toLowerCase().replace(/\s+/g, " ")).filter(Boolean) };
+  return {
+    name: m[1].trim(),
+    extras: m[2]
+      .split(",")
+      .map((x) => x.trim().toLowerCase().replace(/\s+/g, " "))
+      .filter(Boolean),
+  };
 }

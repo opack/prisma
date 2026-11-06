@@ -2,7 +2,17 @@
 import { writeFrontmatter } from "./frontmatter.ts";
 import { layout, noteText } from "./layout.ts";
 import type { Column, Mark, System, SystemRow, Voice } from "./layout.ts";
-import { ARTICULATION_SIGNS, EFFECT_SIGNS, GRACE_MARK, HYPHEN, LYRIC_LINE, firstStaves, graceDigits, joinsText, staffCount } from "./model.ts";
+import {
+  ARTICULATION_SIGNS,
+  EFFECT_SIGNS,
+  GRACE_MARK,
+  HYPHEN,
+  LYRIC_LINE,
+  firstStaves,
+  graceDigits,
+  joinsText,
+  staffCount,
+} from "./model.ts";
 import type { Score } from "./model.ts";
 import { octaveLabel } from "./pitch.ts";
 
@@ -19,7 +29,7 @@ export type WriteOptions = { width?: number };
 function rule(model: string, prefix: number, double = false, name?: string): string {
   const line: string[] = [...model].map((c) => (c === "|" ? (double ? "╪" : "┼") : double ? "═" : "─"));
   if (name) {
-    const label = [..." " + name + " "];
+    const label = [...(" " + name + " ")];
     while (line.length < prefix + 1 + label.length + 1) line.push(double ? "═" : "─");
     line.splice(prefix + 1, label.length, ...label);
     // un morceau de trait après le nom, même quand un croisement tombe juste là
@@ -96,11 +106,19 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
   // toutes les lignes, pour que les notes jouées ensemble restent alignées
   const graceW = sys.anchors.map((_, a) => Math.max(...sys.staves.map((p) => graceWidth(p.graceDigits[a]))));
   const cellText = (r: SystemRow, a: number) => {
-    const g = sys.staves[r.staff].graceDigits[a].map((d, k) => (r.graces[a][k] ? r.graces[a][k] + GRACE_MARK : "").padEnd(d + GRACE_MARK.length)).join("");
+    const g = sys.staves[r.staff].graceDigits[a]
+      .map((d, k) => (r.graces[a][k] ? r.graces[a][k] + GRACE_MARK : "").padEnd(d + GRACE_MARK.length))
+      .join("");
     return g.trim() || r.cells[a] ? g.padEnd(graceW[a]) + r.cells[a] : "";
   };
   const rows = (list: SystemRow[]) =>
-    list.map((r) => ((r.string !== undefined ? String(r.string) : r.showOctave ? octaveLabel(r.octave) : "").padEnd(prefix - 1) + "|" + line((a) => cellText(r, a))).trimEnd());
+    list.map((r) =>
+      (
+        (r.string !== undefined ? String(r.string) : r.showOctave ? octaveLabel(r.octave) : "").padEnd(prefix - 1) +
+        "|" +
+        line((a) => cellText(r, a))
+      ).trimEnd(),
+    );
   // « ] » sur le premier « | » de sa barre, « [ » sur le dernier ; -1 : barre de gauche du
   // système (le « | » de la colonne de gauche, ou celui de « |: » si le système commence par une reprise)
   const sepText = (ci: number) => separatorText(sys.columns[ci] as Exclude<Column, { kind: "anchor" }>);
@@ -117,27 +135,38 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
   // (liaisons), puis l'expression (nuances, soufflets, textes, arpèges) ; une famille
   // n'occupe une ligne que si elle a quelque chose dans ce système
   const expressionLines = (v: Voice) =>
-    stackLines([
-      // deux articulations d'une même case se suivent sur la même ligne : « . ! »
-      ...v.marks.map((m, i) => {
-        const before = m.kind === "articulation" ? v.marks.slice(0, i).filter((x) => x.kind === "articulation" && x.anchor === m.anchor) : [];
-        return { col: anchorCol[m.anchor] + before.reduce((w, x) => w + x.text.length + 1, 0), text: m.text, ...(m.kind === "text" ? { t: tAt(m.anchor) } : {}) };
-      }),
-      ...v.hairpins.map((h) => {
-        const before = Math.max(0, ...v.marks.filter((m) => m.anchor === h.fromAnchor).map((m) => m.text.length + 1));
-        const col = anchorCol[h.fromAnchor] + before;
-        const last = Math.max(col, anchorCol[h.toAnchor] + widths[h.toAnchor] - 2);
-        return { col, text: h.kind + "-".repeat(last - col) };
-      }),
-      // l'étouffé et le vibrato, comme un soufflet : « P.M.--- », « ~~~~ »
-      ...v.effects.map((e) => {
-        const before = Math.max(0, ...v.marks.filter((m) => m.anchor === e.fromAnchor).map((m) => m.text.length + 1));
-        const col = anchorCol[e.fromAnchor] + before;
-        const last = Math.max(col, anchorCol[e.toAnchor] + widths[e.toAnchor] - 2);
-        const sign = EFFECT_SIGNS[e.kind];
-        return { col, text: e.kind === "palmMute" ? sign + "-".repeat(Math.max(0, last - col + 1 - sign.length)) : sign.repeat(last - col + 1) };
-      }),
-    ], collide);
+    stackLines(
+      [
+        // deux articulations d'une même case se suivent sur la même ligne : « . ! »
+        ...v.marks.map((m, i) => {
+          const before =
+            m.kind === "articulation" ? v.marks.slice(0, i).filter((x) => x.kind === "articulation" && x.anchor === m.anchor) : [];
+          return {
+            col: anchorCol[m.anchor] + before.reduce((w, x) => w + x.text.length + 1, 0),
+            text: m.text,
+            ...(m.kind === "text" ? { t: tAt(m.anchor) } : {}),
+          };
+        }),
+        ...v.hairpins.map((h) => {
+          const before = Math.max(0, ...v.marks.filter((m) => m.anchor === h.fromAnchor).map((m) => m.text.length + 1));
+          const col = anchorCol[h.fromAnchor] + before;
+          const last = Math.max(col, anchorCol[h.toAnchor] + widths[h.toAnchor] - 2);
+          return { col, text: h.kind + "-".repeat(last - col) };
+        }),
+        // l'étouffé et le vibrato, comme un soufflet : « P.M.--- », « ~~~~ »
+        ...v.effects.map((e) => {
+          const before = Math.max(0, ...v.marks.filter((m) => m.anchor === e.fromAnchor).map((m) => m.text.length + 1));
+          const col = anchorCol[e.fromAnchor] + before;
+          const last = Math.max(col, anchorCol[e.toAnchor] + widths[e.toAnchor] - 2);
+          const sign = EFFECT_SIGNS[e.kind];
+          return {
+            col,
+            text: e.kind === "palmMute" ? sign + "-".repeat(Math.max(0, last - col + 1 - sign.length)) : sign.repeat(last - col + 1),
+          };
+        }),
+      ],
+      collide,
+    );
   // liaison : « ( » sur la case de la première note, « ) » dans celle de la dernière ;
   // coupée, elle va jusqu'au bout du système. Les suites de liaisons commencées plus tôt
   // s'écrivent de haut en bas dans l'ordre de leur début (v.slurs est trié ainsi), comme
@@ -168,11 +197,12 @@ export function renderSystemText(sys: System, cellAt: (t: number) => number, pre
     });
   const firsts = firstStaves(sys.parts);
   // accords : une ligne à part, juste au-dessus de la règle, chaque accord sur sa case
-  const chordLine = sys.chords.length
-    ? [sys.chords.reduce((l, c) => l.padEnd(anchorCol[c.anchor]) + c.text, CHORD_LINE).trimEnd()]
-    : [];
+  const chordLine = sys.chords.length ? [sys.chords.reduce((l, c) => l.padEnd(anchorCol[c.anchor]) + c.text, CHORD_LINE).trimEnd()] : [];
   return [
-    ...stackLines(sys.marks.map((m) => ({ col: colOf(m), text: m.text, ...(m.kind === "text" && m.anchor !== undefined ? { t: tAt(m.anchor) } : {}) })), collide),
+    ...stackLines(
+      sys.marks.map((m) => ({ col: colOf(m), text: m.text, ...(m.kind === "text" && m.anchor !== undefined ? { t: tAt(m.anchor) } : {}) })),
+      collide,
+    ),
     ...chordLine,
     ruler,
     // chaque portée sous son trait : double au début d'une partie (avec son nom), simple sinon ;
@@ -230,7 +260,10 @@ function cellWidths(score: Score, cell: number, widen: Set<number> = new Set()):
   // une articulation, suivie d'une espace (deux signes d'une même case : « . ! »)
   for (const t of new Set(score.articulations.map((x) => x.t))) {
     const here = score.articulations.filter((x) => x.t === t);
-    want(t, here.reduce((w, x) => w + ARTICULATION_SIGNS[x.kind].length + 1, 0));
+    want(
+      t,
+      here.reduce((w, x) => w + ARTICULATION_SIGNS[x.kind].length + 1, 0),
+    );
   }
   for (const c of score.chords) want(c.t, c.text.length + 1);
   // l'étouffé de la paume commence par « P.M. », qui tient dans sa case
@@ -246,7 +279,9 @@ function cellWidths(score: Score, cell: number, widen: Set<number> = new Set()):
     want(n.start, len);
   }
   for (const g of score.graces) {
-    const graces = Math.max(...Array.from({ length: staffCount(score.parts) }, (_, k) => graceWidth(graceDigits(score.graces, k, g.t, score.parts))));
+    const graces = Math.max(
+      ...Array.from({ length: staffCount(score.parts) }, (_, k) => graceWidth(graceDigits(score.graces, k, g.t, score.parts))),
+    );
     want(g.t, graces + (trillNeed.get(g.t) ?? cell));
   }
   for (const tm of score.texts) if (widen.has(tm.t)) want(tm.t, tm.text.length + 2);
@@ -282,8 +317,14 @@ export function writePrisma(score: Score, opts: WriteOptions = {}): string {
   if (score.order.length) meta.order = score.order.join(" ");
   // noms des parties : déclarés ici, avec l'instrument qui les joue s'il est écrit, et sur le trait de chacune
   // et pour un instrument à cordes, son accordage (hors accordage standard) et son capo
-  const extras = (x: Score["parts"][number]) => [x.instrument, x.strings && x.strings.tuning !== "standard" ? x.strings.tuning : undefined, x.strings?.capo ? `capo ${x.strings.capo}` : undefined].filter(Boolean);
-  if (score.parts.some((x) => x.name)) meta.parts = score.parts.map((x) => (extras(x).length ? `${x.name} (${extras(x).join(", ")})` : x.name)).join(", ");
+  const extras = (x: Score["parts"][number]) =>
+    [
+      x.instrument,
+      x.strings && x.strings.tuning !== "standard" ? x.strings.tuning : undefined,
+      x.strings?.capo ? `capo ${x.strings.capo}` : undefined,
+    ].filter(Boolean);
+  if (score.parts.some((x) => x.name))
+    meta.parts = score.parts.map((x) => (extras(x).length ? `${x.name} (${extras(x).join(", ")})` : x.name)).join(", ");
   const out = writeFrontmatter(meta);
   systems.forEach((s, i) => {
     if (i) out.push("");

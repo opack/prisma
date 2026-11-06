@@ -10,13 +10,37 @@ import { DialogTrigger, Pressable } from "react-aria-components";
 import { Button } from "../ui/button/Button.tsx";
 import { ButtonGroup } from "../ui/button/ButtonGroup.tsx";
 
-export function EngraveButton({ dirty, auto, onEngrave, onAuto }: { dirty: boolean; auto: boolean; onEngrave: () => void; onAuto: (auto: boolean) => void }) {
-  const title = auto ? "Mise en page automatique : les pages suivent le texte" : dirty ? "Mettre en page le texte modifié (Ctrl+Entrée)" : "Rien à mettre en page : les pages sont à jour";
+export function EngraveButton({
+  dirty,
+  auto,
+  onEngrave,
+  onAuto,
+}: {
+  dirty: boolean;
+  auto: boolean;
+  onEngrave: () => void;
+  onAuto: (auto: boolean) => void;
+}) {
+  const title = auto
+    ? "Mise en page automatique : les pages suivent le texte"
+    : dirty
+      ? "Mettre en page le texte modifié (Ctrl+Entrée)"
+      : "Rien à mettre en page : les pages sont à jour";
   return (
     // sur un fond blanc : éteint, le bouton pâlit sans laisser voir le texte dessous
     <ButtonGroup className="absolute right-6 bottom-5 z-2 bg-white rounded shadow-[0_2px_6px_rgba(0,0,0,0.18),0_6px_16px_rgba(0,0,0,0.1)]">
       <Button kind="primary" size="icon" onClick={onEngrave} disabled={auto || !dirty} title={title} aria-label="Mettre en page">
-        <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <svg
+          viewBox="0 0 16 16"
+          width="16"
+          height="16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
           <path d="M13.5 6.5A5.6 5.6 0 0 0 3 5M2.5 9.5A5.6 5.6 0 0 0 13 11" />
           <path d="M3 1.8V5h3.2M13 14.2V11H9.8" />
         </svg>

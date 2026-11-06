@@ -17,11 +17,30 @@ import type { NameDisplay } from "../options/options.ts";
 import { player } from "../playback/player.ts";
 import { pick } from "../score/pick.ts";
 import type { ScreenPoint } from "../score/pick.ts";
-import { cellOf, durationOf, freeStrings, holdChoices, holdIn, moveOctave, octaveRoomOf, placeOnString, resize, retouch } from "./retouch.ts";
+import {
+  cellOf,
+  durationOf,
+  freeStrings,
+  holdChoices,
+  holdIn,
+  moveOctave,
+  octaveRoomOf,
+  placeOnString,
+  resize,
+  retouch,
+} from "./retouch.ts";
 import type { RetouchMenu } from "./RetouchMenu.tsx";
 
 /** at : la note que le choix retouche (sa case d'attaque) ; clicked : la case cliquée, qui reste encadrée (une tenue de la note, par exemple). */
-type Retouch = { at: ScorePlace; clicked: ScorePlace; where: ScreenPoint; content: string; canHold: boolean; duration?: ReturnType<typeof durationOf>; holds: string[] };
+type Retouch = {
+  at: ScorePlace;
+  clicked: ScorePlace;
+  where: ScreenPoint;
+  content: string;
+  canHold: boolean;
+  duration?: ReturnType<typeof durationOf>;
+  holds: string[];
+};
 /** La case encadrée sur la partition, le choix ouvert : la case cliquée, ou, sur une autre corde choisie, la case où la note ira. */
 export type RetouchMark = { at: ScorePlace; clicked: ScorePlace; lane?: number } | null;
 
@@ -45,7 +64,15 @@ function describe(text: string, at: ScorePlace, where: ScreenPoint, clicked: Sco
   const cell = at.octave !== undefined ? cellOf(text, at) : undefined;
   if (!cell) return null;
   const duration = cell.content ? durationOf(text, at) : undefined;
-  return { at: duration?.attack ?? at, clicked, where, content: cell.content, canHold: cell.canHold, duration, holds: cell.content || !cell.exact ? [] : holdChoices(text, at) };
+  return {
+    at: duration?.attack ?? at,
+    clicked,
+    where,
+    content: cell.content,
+    canHold: cell.canHold,
+    duration,
+    holds: cell.content || !cell.exact ? [] : holdChoices(text, at),
+  };
 }
 
 export function useRetouch({ current, rewrite, editor, linked, score, names }: Deps) {
@@ -75,10 +102,17 @@ export function useRetouch({ current, rewrite, editor, linked, score, names }: D
   const close = useCallback(() => setOpen(null), []);
 
   // les cordes de la portée d'une case de corde ; la corde de la case, ce que font sonner les cordes à vide (capo compris), et celles où la note peut passer
-  const stringsAt = (at: ScorePlace) => (at.octave !== undefined && at.octave >= STRING_LANE && score ? stringsOfStaff(score.parts, at.staff) : undefined);
+  const stringsAt = (at: ScorePlace) =>
+    at.octave !== undefined && at.octave >= STRING_LANE && score ? stringsOfStaff(score.parts, at.staff) : undefined;
   const stringOf = (at: ScorePlace) => {
     const strs = stringsAt(at);
-    return strs && { string: at.octave! - STRING_LANE, open: strs.open.map((m) => m + strs.capo), free: freeStrings(current.current, at, strs.open.length) };
+    return (
+      strs && {
+        string: at.octave! - STRING_LANE,
+        open: strs.open.map((m) => m + strs.capo),
+        free: freeStrings(current.current, at, strs.open.length),
+      }
+    );
   };
 
   let menu: ComponentProps<typeof RetouchMenu> | null = null;
@@ -125,7 +159,8 @@ export function useRetouch({ current, rewrite, editor, linked, score, names }: D
       // sur une corde : la note passe à la case choisie, sur cette corde ou une autre ; sur une tenue et sa corde, une note nouvelle commence dans la case cliquée
       onString: (string, fret) => {
         const home = string === open.at.octave! - STRING_LANE;
-        const r = home && open.content.startsWith("-") ? retouch(text(), open.clicked, String(fret)) : placeOnString(text(), open.at, string, fret);
+        const r =
+          home && open.content.startsWith("-") ? retouch(text(), open.clicked, String(fret)) : placeOnString(text(), open.at, string, fret);
         // dans une case vide de la corde, comme une note : le choix reste ouvert sur elle
         if (rewrite(r) && home && !open.content) setOpen(describe(r!.text, open.clicked, open.where));
         else setOpen(null);

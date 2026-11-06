@@ -13,10 +13,20 @@ export function EditorTab({ editing, onToggle }: { editing: boolean; onToggle: (
       aria-label="Éditeur"
     >
       <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
-        <path fill="currentColor" d="M11.3 1.3a1.5 1.5 0 0 1 2.1 0l1.3 1.3a1.5 1.5 0 0 1 0 2.1l-8.6 8.6-3.9 1.2 1.2-3.9zM10.4 4 3.5 10.9l-.6 2.2 2.2-.6L12 5.6z" />
+        <path
+          fill="currentColor"
+          d="M11.3 1.3a1.5 1.5 0 0 1 2.1 0l1.3 1.3a1.5 1.5 0 0 1 0 2.1l-8.6 8.6-3.9 1.2 1.2-3.9zM10.4 4 3.5 10.9l-.6 2.2 2.2-.6L12 5.6z"
+        />
       </svg>
       <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden>
-        <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d={editing ? "M10 3 5 8l5 5" : "M6 3l5 5-5 5"} />
+        <path
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d={editing ? "M10 3 5 8l5 5" : "M6 3l5 5-5 5"}
+        />
       </svg>
     </button>
   );

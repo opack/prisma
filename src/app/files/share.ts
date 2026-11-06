@@ -33,7 +33,12 @@ function fromBase64(text: string) {
 
 /** Le nom d'un fichier reçu : sans dossier ni signe qu'un système refuse, en .prisma. */
 function safeName(name: unknown) {
-  const base = (typeof name === "string" ? name : "").split(/[\\/]/).pop()!.replace(/[:*?"<>|]/g, " ").replace(/\s+/g, " ").trim();
+  const base = (typeof name === "string" ? name : "")
+    .split(/[\\/]/)
+    .pop()!
+    .replace(/[:*?"<>|]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   return /\.prisma$/i.test(base) ? base : `${base.replace(/\.(musicxml|xml|txt)$/i, "") || "morceau"}.prisma`;
 }
 

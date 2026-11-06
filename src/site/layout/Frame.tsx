@@ -23,7 +23,11 @@ export type Page = "index" | (typeof PAGES)[number][0];
 /** Le lien d'une page ; celui de la page où l'on est s'écrit comme le texte, sans soulignement. */
 function PageLink({ page, current, label, className = "" }: { page: Page; current: Page; label: string; className?: string }) {
   return (
-    <a className={`${className} aria-[current=page]:text-ink aria-[current=page]:no-underline`} href={`${page}.html`} aria-current={page === current ? "page" : undefined}>
+    <a
+      className={`${className} aria-[current=page]:text-ink aria-[current=page]:no-underline`}
+      href={`${page}.html`}
+      aria-current={page === current ? "page" : undefined}
+    >
       {label}
     </a>
   );
@@ -43,10 +47,18 @@ function PagesMenu({ current }: { current: Page }) {
           </Button>
         </Pressable>
       </span>
-      <Popover className="min-w-[260px] p-1.5 bg-white border border-line rounded-md shadow-[0_6px_18px_rgba(0,0,0,0.12)] outline-none" placement="bottom end" offset={6}>
+      <Popover
+        className="min-w-[260px] p-1.5 bg-white border border-line rounded-md shadow-[0_6px_18px_rgba(0,0,0,0.12)] outline-none"
+        placement="bottom end"
+        offset={6}
+      >
         <Menu className="grid outline-none" aria-label="Pages du site">
           {PAGES.map(([page, label]) => (
-            <MenuItem key={page} href={`${page}.html`} className={`px-2.5 py-2 rounded no-underline outline-none data-focused:bg-panel ${page === current ? "text-ink" : "text-accent"}`}>
+            <MenuItem
+              key={page}
+              href={`${page}.html`}
+              className={`px-2.5 py-2 rounded no-underline outline-none data-focused:bg-panel ${page === current ? "text-ink" : "text-accent"}`}
+            >
               {label}
             </MenuItem>
           ))}

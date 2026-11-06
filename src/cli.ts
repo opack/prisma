@@ -2,16 +2,16 @@
 /**
  * Outil en ligne de commande Prisma.
  *
- *   npm run prisma -- import morceau.musicxml [-o morceau.prisma] [--largeur 96]
+ *   pnpm prisma import morceau.musicxml [-o morceau.prisma] [--largeur 96]
  *       Convertit un MusicXML en .prisma.
- *   npm run prisma -- format morceau.prisma [-o sortie.prisma] [--largeur 96]
+ *   pnpm prisma format morceau.prisma [-o sortie.prisma] [--largeur 96]
  *       Relit un .prisma et le remet en page à la largeur demandée (en caractères).
- *   npm run prisma -- export morceau.prisma [-o morceau.musicxml] [--reprises]
+ *   pnpm prisma export morceau.prisma [-o morceau.musicxml] [--reprises]
  *       Écrit un .prisma en MusicXML, pour MuseScore ou un autre logiciel de partition. L'ordre de
  *       jeu s'y déroule, ses sections à la suite ; avec --reprises, il s'écrit quand c'est possible
  *       en reprises et en cases, comme une partition classique (--sans-lettres : sans la lettre
  *       de chaque section).
- *   npm run prisma -- check morceau.prisma
+ *   pnpm prisma check morceau.prisma
  *       Vérifie un .prisma et signale la première erreur avec sa ligne et sa colonne.
  *
  * Sans -o, le résultat s'affiche dans le terminal. Sous Windows, préfère -o :
@@ -44,7 +44,13 @@ try {
   const src = readFileSync(file, "utf8");
   if (cmd === "import") emit(writePrisma(importMusicXml(src, basename(file)), { width }));
   else if (cmd === "format") emit(writePrisma(parsePrisma(src), { width }));
-  else if (cmd === "export") emit(exportMusicXml(parsePrisma(src), { repeats: rest.includes("--reprises") ? "traditional" : "sections", letters: !rest.includes("--sans-lettres") }));
+  else if (cmd === "export")
+    emit(
+      exportMusicXml(parsePrisma(src), {
+        repeats: rest.includes("--reprises") ? "traditional" : "sections",
+        letters: !rest.includes("--sans-lettres"),
+      }),
+    );
   else if (cmd === "check") {
     const s = parsePrisma(src);
     const bars = new Set(s.beats.map((b) => b.barIndex)).size;

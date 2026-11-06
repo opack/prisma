@@ -33,7 +33,8 @@ function persistPiece(s: PieceSettings) {
 }
 
 /** Les seules options du rendu, celles qu'une partition peut définir. */
-const renderOnly = (patch: Partial<RenderOptions>) => Object.fromEntries(Object.entries(patch).filter(([k]) => isPieceKey(k))) as Partial<RenderOptions>;
+const renderOnly = (patch: Partial<RenderOptions>) =>
+  Object.fromEntries(Object.entries(patch).filter(([k]) => isPieceKey(k))) as Partial<RenderOptions>;
 
 export function useSettings() {
   const [general, setGeneral] = useState<RenderOptions>(loadOptions);
@@ -80,14 +81,33 @@ export function useSettings() {
     for (const k of keys) delete own[k];
     updatePiece({ options: Object.keys(own).length ? (own as PieceSettings["options"]) : undefined });
   };
-  return { general, options, setOptions, piece, updatePiece, resetPiece, placePiece, setPieceOptions, unsetPieceOptions, pieceDir, pieceId, changed };
+  return {
+    general,
+    options,
+    setOptions,
+    piece,
+    updatePiece,
+    resetPiece,
+    placePiece,
+    setPieceOptions,
+    unsetPieceOptions,
+    pieceDir,
+    pieceId,
+    changed,
+  };
 }
 
 /**
  * Les réglages du morceau enregistrés à côté de lui, peu après le dernier changement ; il faut son
  * dossier et le morceau lui-même sur le disque (un MusicXML importé : à son premier enregistrement en .prisma).
  */
-export function useSettingsAutosave(piece: PieceSettings, dir: StoredFolder | null, handle: StoredFile | null, changed: MutableRefObject<boolean>, onError: (message: string) => void) {
+export function useSettingsAutosave(
+  piece: PieceSettings,
+  dir: StoredFolder | null,
+  handle: StoredFile | null,
+  changed: MutableRefObject<boolean>,
+  onError: (message: string) => void,
+) {
   useEffect(() => {
     if (!changed.current || !dir || !handle) return;
     const name = handle.name;

@@ -37,10 +37,14 @@ export function playedPedals(score: Score): Pedal[] {
     for (let b = bar; b >= 0 && model < 0; b--) if (pedalled(b).length) model = b;
     while (bar < bars.length && pedalled(bar).length) bar++;
     if (model < 0) continue;
-    const motif = pedalled(model).map((p) => ({ start: Math.max(p.start, bars[model].from) - bars[model].from, end: Math.min(p.end, bars[model].to) - bars[model].from }));
+    const motif = pedalled(model).map((p) => ({
+      start: Math.max(p.start, bars[model].from) - bars[model].from,
+      end: Math.min(p.end, bars[model].to) - bars[model].from,
+    }));
     for (; bar < bars.length && !pedalled(bar).length && !(bar > at && sectionStarts.has(bar)); bar++) {
       const { from, to } = bars[bar];
-      for (const m of motif) if (from + m.start < to) out.push({ staff: text.staff, start: from + m.start, end: Math.min(from + m.end, to), implied: true });
+      for (const m of motif)
+        if (from + m.start < to) out.push({ staff: text.staff, start: from + m.start, end: Math.min(from + m.end, to), implied: true });
     }
   }
   return out;

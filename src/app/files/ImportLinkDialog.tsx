@@ -12,7 +12,14 @@ export function ImportLinkDialog({ onImport, onClose }: Props) {
   const [problem, setProblem] = useState<string | null>(null);
   const id = useId();
   return (
-    <Dialog title="Importer un lien" intro="Collez le lien d'une partition partagée (Fichier › Partager par un lien), ou ce qui suit son « #p= »." submit="Importer" onSubmit={async () => setProblem(await onImport(link))} onClose={onClose} focusField>
+    <Dialog
+      title="Importer un lien"
+      intro="Collez le lien d'une partition partagée (Fichier › Partager par un lien), ou ce qui suit son « #p= »."
+      submit="Importer"
+      onSubmit={async () => setProblem(await onImport(link))}
+      onClose={onClose}
+      focusField
+    >
       <label className="grid gap-1" htmlFor={id}>
         Lien
         <textarea

@@ -187,7 +187,13 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, onSavedIn, 
   };
 
   /** Lit un fichier, .prisma ou MusicXML (importé) ; un fichier rechargé garde le mode en cours. Ses réglages : donnés (un morceau reçu), ou lus à côté de lui. */
-  const open = async (file: Readable, fileHandle: StoredFile | null = null, keepMode = false, dir: StoredFolder | null = null, given?: PieceSettings) => {
+  const open = async (
+    file: Readable,
+    fileHandle: StoredFile | null = null,
+    keepMode = false,
+    dir: StoredFolder | null = null,
+    given?: PieceSettings,
+  ) => {
     const text = await file.text();
     let prisma = text;
     const isXml = /\.(musicxml|xml)$/i.test(file.name);
@@ -316,7 +322,8 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, onSavedIn, 
   /** Relit depuis le disque le fichier ouvert (modifié ailleurs, ou pour annuler ses changements). */
   const reloadFile = async () => {
     if (!handle) return;
-    if (unsaved && !window.confirm(`Recharger ${handle.name} depuis le disque ? Les modifications non enregistrées seront perdues.`)) return;
+    if (unsaved && !window.confirm(`Recharger ${handle.name} depuis le disque ? Les modifications non enregistrées seront perdues.`))
+      return;
     try {
       await open(handle, handle, true);
       notify(`${handle.name} rechargé`);
@@ -326,10 +333,31 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, onSavedIn, 
   };
 
   return {
-    source, setSource, current, engraved, dirty, engraveNow, rewrite,
-    fileName, handle, savedText, unsaved,
-    saveFile, saveInto, exporting, setExporting, exportFile,
-    open, openFile, openEntry, openDropped, openShared, fileInput,
-    choosingNew, setChoosingNew, newFile, reloadFile,
+    source,
+    setSource,
+    current,
+    engraved,
+    dirty,
+    engraveNow,
+    rewrite,
+    fileName,
+    handle,
+    savedText,
+    unsaved,
+    saveFile,
+    saveInto,
+    exporting,
+    setExporting,
+    exportFile,
+    open,
+    openFile,
+    openEntry,
+    openDropped,
+    openShared,
+    fileInput,
+    choosingNew,
+    setChoosingNew,
+    newFile,
+    reloadFile,
   };
 }

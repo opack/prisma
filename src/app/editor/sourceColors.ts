@@ -11,7 +11,19 @@ import type { Extension } from "@codemirror/state";
 import { RangeSetBuilder } from "@codemirror/state";
 import { Decoration, EditorView, ViewPlugin } from "@codemirror/view";
 import type { DecorationSet, ViewUpdate } from "@codemirror/view";
-import { isArpeggioSign, isArticulationSign, isEffect, isDynamic, isHairpin, isPedalSign, isPedalText, isSlur, isStructureSign, FERMATA, octaveOffset } from "../../core/index.ts";
+import {
+  isArpeggioSign,
+  isArticulationSign,
+  isEffect,
+  isDynamic,
+  isHairpin,
+  isPedalSign,
+  isPedalText,
+  isSlur,
+  isStructureSign,
+  FERMATA,
+  octaveOffset,
+} from "../../core/index.ts";
 import { parseOctaveLabel } from "../../core/pitch.ts";
 import { STRING_LANE } from "../../core/locate.ts";
 import { CHORD_LINE, isRuler, markTokens, parseRule } from "../../core/prisma-parse.ts";
@@ -90,7 +102,8 @@ function readLine(text: string, s: State, mode: SourceColors, palette: OctaveCol
         const key = m[1].length;
         spans.push({ from: key, to: key + m[2].length, cls: "cm-p-key" });
         // les instruments de « parts: », entre parenthèses
-        if (m[2] === "parts") for (const p of text.matchAll(/\([^()]*\)/g)) spans.push({ from: p.index, to: p.index + p[0].length, cls: "cm-p-instrument" });
+        if (m[2] === "parts")
+          for (const p of text.matchAll(/\([^()]*\)/g)) spans.push({ from: p.index, to: p.index + p[0].length, cls: "cm-p-instrument" });
       }
       return line;
     }
@@ -146,11 +159,16 @@ function readLine(text: string, s: State, mode: SourceColors, palette: OctaveCol
     // les barres recopiées pour se repérer
     bars(text, lead + size, spans);
     if (kind === "mark") {
-      for (const k of markTokens(text.slice(lead))) spans.push({ from: lead + k.col, to: lead + k.col + k.text.length, cls: markClass(k.text) });
+      for (const k of markTokens(text.slice(lead)))
+        spans.push({ from: lead + k.col, to: lead + k.col + k.text.length, cls: markClass(k.text) });
     } else {
       for (const m of text.slice(lead + size).matchAll(/[^\s|]+/g)) {
         const at = lead + size + m.index;
-        spans.push({ from: at, to: at + m[0].length, cls: kind === "chord" ? "cm-p-chord" : /^-[-|]*$/.test(m[0]) ? "cm-p-hold" : "cm-p-lyric" });
+        spans.push({
+          from: at,
+          to: at + m[0].length,
+          cls: kind === "chord" ? "cm-p-chord" : /^-[-|]*$/.test(m[0]) ? "cm-p-hold" : "cm-p-lyric",
+        });
       }
     }
     return line;
@@ -172,7 +190,12 @@ function readLine(text: string, s: State, mode: SourceColors, palette: OctaveCol
   if (mode === "octaves" && s.octave !== undefined) line.band = tint?.band ?? (s.lane % 2 === 1 ? BAND : undefined);
   if (label) {
     const at = text.indexOf(label);
-    spans.push({ from: at, to: at + label.length, cls: "cm-p-octave", style: mode === "octaves" && o !== undefined ? `background-color: ${tint?.tab ?? TAB}` : undefined });
+    spans.push({
+      from: at,
+      to: at + label.length,
+      cls: "cm-p-octave",
+      style: mode === "octaves" && o !== undefined ? `background-color: ${tint?.tab ?? TAB}` : undefined,
+    });
   }
   bars(text, pipe, spans);
   // les cases, entre deux barres

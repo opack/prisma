@@ -58,7 +58,13 @@ export function clickVolume(context: AudioContext, volume?: number): GainNode {
   return bus;
 }
 
-export function click(context: AudioContext, buffer: AudioBuffer, time: number, level: ClickLevel, sound: Exclude<ClickSound, "none">): () => void {
+export function click(
+  context: AudioContext,
+  buffer: AudioBuffer,
+  time: number,
+  level: ClickLevel,
+  sound: Exclude<ClickSound, "none">,
+): () => void {
   const source = context.createBufferSource();
   source.buffer = buffer;
   source.playbackRate.value = RATE[sound];

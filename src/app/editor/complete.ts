@@ -35,7 +35,7 @@ const isRuleLine = (line: string) => {
 /** Les barres d'une règle de comptage. */
 export function separators(ruler: string): Sep[] {
   const seps: Sep[] = [];
-  for (let i = ruler.indexOf("|"); i >= 0 && i < ruler.length; ) {
+  for (let i = ruler.indexOf("|"); i >= 0 && i < ruler.length;) {
     if (ruler[i] === "|" || (ruler[i] === ":" && ruler[i + 1] === "|")) {
       let j = i;
       while (j < ruler.length && (ruler[j] === "|" || ruler[j] === ":")) j++;
@@ -51,7 +51,8 @@ export function cases(ruler: string): Case[] {
   const seps = separators(ruler);
   const out: Case[] = [];
   for (let k = 0; k + 1 < seps.length; k++) {
-    const from = seps[k].to, to = seps[k + 1].from;
+    const from = seps[k].to,
+      to = seps[k + 1].from;
     const labels = [...ruler.slice(from, to).matchAll(/\S+/g)].map((m) => from + m.index);
     if (!labels.length) continue;
     labels[0] = from;
@@ -69,7 +70,8 @@ export const caseAt = (ruler: string, col: number) => cases(ruler).find((c) => c
  */
 export function systemOf(lines: string[], L: number, body = 0): System | undefined {
   const blank = (k: number) => !lines[k]?.trim();
-  let top = L, bottom = L;
+  let top = L,
+    bottom = L;
   if (blank(L)) {
     if (L === 0 || blank(L - 1)) return undefined;
     top = L - 1;
@@ -111,7 +113,8 @@ function widen(line: string, x: number, n: number): string {
     // au milieu du nom d'une partie, écrit sur le trait : le trait s'allonge après le nom
     const h = ruleChar(line);
     let at = x;
-    if (/[^─━=═\-┼╪+|]/.test(line[x - 1] ?? "") && /[^─━=═\-┼╪+|]/.test(line[x])) while (at < line.length && /[^─━=═\-┼╪+|]/.test(line[at])) at++;
+    if (/[^─━=═\-┼╪+|]/.test(line[x - 1] ?? "") && /[^─━=═\-┼╪+|]/.test(line[x]))
+      while (at < line.length && /[^─━=═\-┼╪+|]/.test(line[at])) at++;
     return line.slice(0, at) + h.repeat(n) + line.slice(at);
   }
   if (line.startsWith("@")) {
@@ -273,10 +276,13 @@ export function soundingAt(lines: string[], sys: { ruler: number; last: number }
     if (label) octave = parseOctaveLabel(label);
     if (octave === undefined) continue;
     // la case de la colonne, ou, pour une tenue, la case de la note qu'elle prolonge
-    for (let col = C; col > first; ) {
+    for (let col = C; col > first;) {
       const c = caseAt(ruler, col);
       if (!c) break;
-      const content = line.slice(c.start, c.end).trim().replace(/^(\d+')+/, "");
+      const content = line
+        .slice(c.start, c.end)
+        .trim()
+        .replace(/^(\d+')+/, "");
       const n = content.match(/^-?(\d+)/);
       if (n) {
         const v = Number(n[1]);
@@ -301,7 +307,14 @@ export function soundingAt(lines: string[], sys: { ruler: number; last: number }
  * l'étouffé de la paume, le vibrato) s'écrit jusqu'à la case suivante, sans rien recouvrir : on
  * l'allonge ensuite. Sa fin, si elle est donnée (« ) »), se place au début de cette case.
  */
-export function writeMark(lines: string[], sys: System, L: number, start: number, old: number, mark: { head: string; fill?: string; tail?: string }): Rewrite {
+export function writeMark(
+  lines: string[],
+  sys: System,
+  L: number,
+  start: number,
+  old: number,
+  mark: { head: string; fill?: string; tail?: string },
+): Rewrite {
   const all = cases(lines[sys.ruler]);
   const k = all.findIndex((x) => start >= x.start && start < x.end);
   const next = all[k + 1];

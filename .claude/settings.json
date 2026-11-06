@@ -1,42 +1,47 @@
 {
-	"permissions": {
-		"allow": [
-			"Bash(cd:*)",
-			"Bash(echo:*)",
-			"Bash(find:*)",
-			"Bash(git add:*)",
-			"Bash(git apply:*)",
-			"Bash(git commit -m:*)",
-			"Bash(git diff:*)",
-			"Bash(git log:*)",
-			"Bash(git status:*)",
-			"Bash(grep:*)",
-			"Bash(head:*)",
-			"Bash(ls:*)",
-			"Bash(mkdir:*)",
-			"Bash(node .claude/hooks/*)",
-			"Bash(node -e '*)",
-			"Bash(npm install:*)",
-			"Bash(npm ls:*)",
-			"Bash(npm run:*)",
-			"Bash(npm uninstall:*)",
-			"Bash(npm view:*)",
-			"Bash(npx eslint *)",
-			"Bash(npx tsc:*)",
-			"Bash(tail:*)",
-			"Bash(wc:*)",
-			"Bash(xargs grep:*)",
-			"Edit",
-			"Glob",
-			"Grep",
-			"Skill",
-			"Write"
-		]
-	},
-	"sandbox": {
-		"enabled": true,
-		"filesystem": {
-			"allowWrite": ["./"]
-		}
-	},
+  "permissions": {
+    "allow": [
+      "Bash(cd:*)",
+      "Bash(echo:*)",
+      "Bash(find:*)",
+      "Bash(git add:*)",
+      "Bash(git apply:*)",
+      "Bash(git commit -m:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git status:*)",
+      "Bash(grep:*)",
+      "Bash(head:*)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(node .claude/hooks/*)",
+      "Bash(node -e '*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm ls:*)",
+      "Bash(pnpm remove:*)",
+      "Bash(pnpm view:*)",
+      "Bash(pnpm run:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm exec eslint:*)",
+      "Bash(pnpm exec tsc:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(xargs grep:*)",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Skill",
+      "Write"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "filesystem": {
+      "allowWrite": ["./"]
+    }
+  }
 }

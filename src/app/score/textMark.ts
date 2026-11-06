@@ -12,7 +12,8 @@ const listeners = new Set<() => void>();
 export const textMark = {
   get: () => current,
   set(next: TextMark) {
-    const a = current?.place, b = next?.place;
+    const a = current?.place,
+      b = next?.place;
     if (a === b || (a && b && a.t === b.t && a.staff === b.staff && a.octave === b.octave && a.content === b.content)) return;
     current = next;
     listeners.forEach((l) => l());

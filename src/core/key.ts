@@ -70,8 +70,11 @@ const MINOR_PROFILE = [6.33, 2.68, 3.52, 5.38, 2.6, 3.53, 2.54, 4.75, 3.98, 2.69
 
 function correlation(a: number[], b: number[]): number {
   const mean = (x: number[]) => x.reduce((s, v) => s + v, 0) / x.length;
-  const ma = mean(a), mb = mean(b);
-  let num = 0, da = 0, db = 0;
+  const ma = mean(a),
+    mb = mean(b);
+  let num = 0,
+    da = 0,
+    db = 0;
   for (let i = 0; i < a.length; i++) {
     num += (a[i] - ma) * (b[i] - mb);
     da += (a[i] - ma) ** 2;
@@ -85,7 +88,8 @@ export function guessKey(score: Score, among?: Key[]): Key | undefined {
   const weight = new Array(12).fill(0);
   for (const n of score.notes) weight[pc(n.midi)] += n.end - n.start;
   if (!weight.some((w) => w > 0)) return undefined;
-  let best: Key | undefined, bestR = -Infinity;
+  let best: Key | undefined,
+    bestR = -Infinity;
   for (let t = 0; t < 12; t++) {
     const rotated = weight.map((_, i) => weight[pc(i + t)]);
     for (const minor of [false, true]) {

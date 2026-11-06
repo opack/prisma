@@ -54,7 +54,9 @@ function pcloudFolder(path: string, children?: Map<string, Known>): StoredFolder
       }
       try {
         const r = await call<{ metadata: PcloudItem }>("stat", { path: join(path, name) });
-        return r.metadata.isfolder ? null : pcloudFile(path, name, { fileid: r.metadata.fileid!, modified: Date.parse(r.metadata.modified) });
+        return r.metadata.isfolder
+          ? null
+          : pcloudFile(path, name, { fileid: r.metadata.fileid!, modified: Date.parse(r.metadata.modified) });
       } catch (e) {
         if (e instanceof PcloudError && NOT_FOUND.has(e.code)) return null;
         throw e;
@@ -76,7 +78,10 @@ export function pcloudLibrary(): LibrarySource {
   return {
     kind: "pcloud",
     label: `pCloud, dossier « ${PCLOUD_FOLDER} »`,
-    locked: { hint: `Connectez-vous à pCloud pour retrouver vos partitions, dans le dossier « ${PCLOUD_FOLDER} ».`, action: "Se connecter à pCloud" },
+    locked: {
+      hint: `Connectez-vous à pCloud pour retrouver vos partitions, dans le dossier « ${PCLOUD_FOLDER} ».`,
+      action: "Se connecter à pCloud",
+    },
     root: pcloudFolder(""),
     // sans connexion : la demander, en réponse à un clic (on quitte la page, pCloud la rend)
     access: async (ask = false) => {
@@ -89,14 +94,23 @@ export function pcloudLibrary(): LibrarySource {
       const out: SourceFile[] = [];
       const walk = (item: PcloudItem, folder: string, path: string) => {
         const items = item.contents ?? [];
-        const children = new Map(items.filter((c) => !c.isfolder).map((c) => [c.name, { fileid: c.fileid!, modified: Date.parse(c.modified) }]));
+        const children = new Map(
+          items.filter((c) => !c.isfolder).map((c) => [c.name, { fileid: c.fileid!, modified: Date.parse(c.modified) }]),
+        );
         const dir = pcloudFolder(path, children);
         for (const c of items) {
           if (c.name.startsWith(".")) continue;
           if (c.isfolder) walk(c, folder ? `${folder}/${c.name}` : c.name, `${path}/${c.name}`);
           else if (kindOf(c.name)) {
             const known = children.get(c.name)!;
-            out.push({ path: folder ? `${folder}/${c.name}` : c.name, folder, name: c.name, modified: known.modified, file: pcloudFile(path, c.name, known), dir });
+            out.push({
+              path: folder ? `${folder}/${c.name}` : c.name,
+              folder,
+              name: c.name,
+              modified: known.modified,
+              file: pcloudFile(path, c.name, known),
+              dir,
+            });
           }
         }
       };

@@ -103,7 +103,8 @@ async function request<T>(method: string, params: Record<string, string | number
 }
 
 /** Un appel de l'API ; un corps (body) : en POST. */
-export const call = <T = Record<string, unknown>>(method: string, params: Record<string, string | number>, body?: BodyInit) => request<T>(method, params, body);
+export const call = <T = Record<string, unknown>>(method: string, params: Record<string, string | number>, body?: BodyInit) =>
+  request<T>(method, params, body);
 
 /**
  * Le texte d'un fichier : pCloud le refuse à une page web (le lien, comme le texte) ; le relais du
@@ -112,7 +113,9 @@ export const call = <T = Record<string, unknown>>(method: string, params: Record
 export async function download(fileid: number): Promise<string> {
   const s = session();
   if (!s) throw new PcloudAuthError("pas connecté à pCloud");
-  const res = await fetch(`/api/pcloud-file?${new URLSearchParams({ host: s.host, fileid: String(fileid) })}`, { headers: { "X-Pcloud-Token": s.token } });
+  const res = await fetch(`/api/pcloud-file?${new URLSearchParams({ host: s.host, fileid: String(fileid) })}`, {
+    headers: { "X-Pcloud-Token": s.token },
+  });
   if ((res.headers.get("content-type") ?? "").includes("json")) throw failure(await res.json());
   if (!res.ok) throw new Error(`pCloud : lecture impossible (${res.status})`);
   return res.text();

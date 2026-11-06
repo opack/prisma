@@ -71,14 +71,17 @@ function OptionsButton({ open, onClick }: { open: boolean; onClick: () => void }
 }
 
 export function Toolbar({ menus, fileName, saved, rewritable, notes, notice, onUpdate, optionsOpen, onOptions, listen }: Props) {
-  const tip = [saved ? "" : "Modifications non enregistrées", rewritable ? "Enregistrer réécrit ce fichier" : ""].filter(Boolean).join(" ; ");
+  const tip = [saved ? "" : "Modifications non enregistrées", rewritable ? "Enregistrer réécrit ce fichier" : ""]
+    .filter(Boolean)
+    .join(" ; ");
   const name = (
     <>
       {fileName}
       {!saved && (
         <>
           <span className="text-accent" aria-hidden>
-            {" "}●
+            {" "}
+            ●
           </span>
           <span className="sr-only">, non enregistré</span>
         </>
@@ -95,7 +98,10 @@ export function Toolbar({ menus, fileName, saved, rewritable, notes, notice, onU
       <MenuBar
         menus={menus}
         heading={
-          <p className="hidden phone:block max-w-[260px] mt-0 mb-1 px-2.5 pt-1 pb-1.5 border-b border-line text-muted truncate" title={tip || undefined}>
+          <p
+            className="hidden phone:block max-w-[260px] mt-0 mb-1 px-2.5 pt-1 pb-1.5 border-b border-line text-muted truncate"
+            title={tip || undefined}
+          >
             {name}
           </p>
         }
@@ -114,7 +120,13 @@ export function Toolbar({ menus, fileName, saved, rewritable, notes, notice, onU
         </span>
       )}
       {onUpdate && (
-        <Button kind="primary" size="small" className="ml-2 whitespace-nowrap" onClick={onUpdate} title="Une nouvelle version de Prisma est prête : recharger l'application pour la prendre">
+        <Button
+          kind="primary"
+          size="small"
+          className="ml-2 whitespace-nowrap"
+          onClick={onUpdate}
+          title="Une nouvelle version de Prisma est prête : recharger l'application pour la prendre"
+        >
           Mettre à jour
         </Button>
       )}

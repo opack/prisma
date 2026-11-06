@@ -41,8 +41,28 @@ const MUTED = {
 
 /** Teinte de chaque octave, de -4 (le plus grave) à +4, pour chaque palette. */
 const PALETTES: Record<Exclude<OctaveColors, "none">, Tint[]> = {
-  rainbow: [RAINBOW.greyviolet, RAINBOW.violet, RAINBOW.blue, RAINBOW.cyan, RAINBOW.green, RAINBOW.yellow, RAINBOW.orange, RAINBOW.red, RAINBOW.pink],
-  rainbowMixed: [RAINBOW.yellow, RAINBOW.violet, RAINBOW.cyan, RAINBOW.orange, RAINBOW.green, RAINBOW.pink, RAINBOW.blue, RAINBOW.red, RAINBOW.greyviolet],
+  rainbow: [
+    RAINBOW.greyviolet,
+    RAINBOW.violet,
+    RAINBOW.blue,
+    RAINBOW.cyan,
+    RAINBOW.green,
+    RAINBOW.yellow,
+    RAINBOW.orange,
+    RAINBOW.red,
+    RAINBOW.pink,
+  ],
+  rainbowMixed: [
+    RAINBOW.yellow,
+    RAINBOW.violet,
+    RAINBOW.cyan,
+    RAINBOW.orange,
+    RAINBOW.green,
+    RAINBOW.pink,
+    RAINBOW.blue,
+    RAINBOW.red,
+    RAINBOW.greyviolet,
+  ],
   muted: [MUTED.green, MUTED.yellow, MUTED.orange, MUTED.brown, MUTED.gray, MUTED.blue, MUTED.purple, MUTED.pink, MUTED.red],
   mutedMixed: [MUTED.red, MUTED.blue, MUTED.yellow, MUTED.purple, MUTED.gray, MUTED.green, MUTED.orange, MUTED.pink, MUTED.brown],
 };

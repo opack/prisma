@@ -22,7 +22,11 @@ const INSTRUMENTS: { value: Instrument; label: string }[] = [
 const OCTAVES: { value: ConversionOptions["octave"]; label: string; hint: string }[] = [
   { value: undefined, label: "Au mieux", hint: "Prisma essaie les deux octaves et garde la plus facile à jouer." },
   { value: 0, label: "Telle qu'elle sonne", hint: "Les notes sonnent à la hauteur de l'original." },
-  { value: -1, label: "Une octave plus bas", hint: "Comme la plupart des arrangements pour guitare : les notes écrites de l'original, qui sonnent une octave plus bas." },
+  {
+    value: -1,
+    label: "Une octave plus bas",
+    hint: "Comme la plupart des arrangements pour guitare : les notes écrites de l'original, qui sonnent une octave plus bas.",
+  },
 ];
 
 /** Les cordes à vide d'un accordage, de la plus grave à l'aiguë : « mi la ré sol si mi ». */
@@ -32,9 +36,24 @@ const openNames = (instrument: Instrument, tuning: string, names: NoteNames) =>
     .map((m) => pitchClass((m % 12) + 1, names))
     .join(" ");
 
-export function ConvertDialog({ parts, noteNames, onConvert, onClose }: { parts: Part[]; noteNames: NoteNames; onConvert: (part: number, options: ConversionOptions) => void; onClose: () => void }) {
+export function ConvertDialog({
+  parts,
+  noteNames,
+  onConvert,
+  onClose,
+}: {
+  parts: Part[];
+  noteNames: NoteNames;
+  onConvert: (part: number, options: ConversionOptions) => void;
+  onClose: () => void;
+}) {
   // de préférence la première partie qui n'est pas déjà sur des cordes
-  const [part, setPart] = useState(() => Math.max(0, parts.findIndex((p) => !p.strings)));
+  const [part, setPart] = useState(() =>
+    Math.max(
+      0,
+      parts.findIndex((p) => !p.strings),
+    ),
+  );
   const [instrument, setInstrument] = useState<Instrument>("guitar");
   const [tuning, setTuning] = useState("standard");
   const [capo, setCapo] = useState(0);
@@ -79,7 +98,13 @@ export function ConvertDialog({ parts, noteNames, onConvert, onClose }: { parts:
             </option>
           ))}
         </SelectField>
-        <NumberField label="Capo" min={0} max={MAX_CAPO} value={capo} onChange={(v) => setCapo(Math.min(MAX_CAPO, Math.max(0, Math.round(v || 0))))} />
+        <NumberField
+          label="Capo"
+          min={0}
+          max={MAX_CAPO}
+          value={capo}
+          onChange={(v) => setCapo(Math.min(MAX_CAPO, Math.max(0, Math.round(v || 0))))}
+        />
       </Fields>
       <Choices legend="L'octave" name="octave" options={OCTAVES} value={octave} onChange={setOctave} />
     </Dialog>

@@ -10,7 +10,11 @@ import type { ConversionOptions, Part } from "../../core/index.ts";
 
 const count = (n: number, word: string) => `${n} ${word}${n > 1 ? "s" : ""}`;
 
-export function useConversion(current: MutableRefObject<string>, rewrite: (r: { text: string; line: number; column: number }) => boolean, notify: (message: string) => void) {
+export function useConversion(
+  current: MutableRefObject<string>,
+  rewrite: (r: { text: string; line: number; column: number }) => boolean,
+  notify: (message: string) => void,
+) {
   const [parts, setParts] = useState<Part[] | null>(null);
   const start = () => {
     try {

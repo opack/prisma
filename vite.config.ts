@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -24,7 +25,9 @@ const version: string = JSON.parse(readFileSync(new URL("./package.json", import
 function commit() {
   if (process.env.COMMIT_REF) return process.env.COMMIT_REF.slice(0, 7);
   try {
-    return execSync("git rev-parse --short=7 HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+    return execSync("git rev-parse --short=7 HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
   } catch {
     return "";
   }
@@ -32,7 +35,11 @@ function commit() {
 
 export default defineConfig({
   plugins: [
-    { name: "relais-pcloud", configureServer: (s) => void s.middlewares.use("/api/pcloud-file", relay), configurePreviewServer: (s) => void s.middlewares.use("/api/pcloud-file", relay) },
+    {
+      name: "relais-pcloud",
+      configureServer: (s) => void s.middlewares.use("/api/pcloud-file", relay),
+      configurePreviewServer: (s) => void s.middlewares.use("/api/pcloud-file", relay),
+    },
     react(),
     tailwindcss(),
     // l'application installable (l'écran d'accueil d'une tablette), et qui marche sans réseau : le site
@@ -62,8 +69,16 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{html,js,css,svg,png,wav,woff2}"],
         runtimeCaching: [
-          { urlPattern: ({ url }) => url.origin === "https://fonts.googleapis.com", handler: "StaleWhileRevalidate", options: { cacheName: "polices-css" } },
-          { urlPattern: ({ url }) => url.origin === "https://fonts.gstatic.com", handler: "CacheFirst", options: { cacheName: "polices", cacheableResponse: { statuses: [0, 200] } } },
+          {
+            urlPattern: ({ url }) => url.origin === "https://fonts.googleapis.com",
+            handler: "StaleWhileRevalidate",
+            options: { cacheName: "polices-css" },
+          },
+          {
+            urlPattern: ({ url }) => url.origin === "https://fonts.gstatic.com",
+            handler: "CacheFirst",
+            options: { cacheName: "polices", cacheableResponse: { statuses: [0, 200] } },
+          },
           // les échantillons des instruments (smplr) : gardés une fois chargés, ils ne changent pas
           {
             urlPattern: ({ url }) => ["https://smpldsnds.github.io", "https://gleitz.github.io", "https://goldst.dev"].includes(url.origin),
@@ -76,9 +91,24 @@ export default defineConfig({
   ],
   // l'heure de la construction (ou du lancement du serveur) : les aperçus faits par une autre version se refont ;
   // la version (semver, celle de package.json et de CHANGELOG.md) et le commit, montrés dans Aide › À propos
-  define: { __BUILD__: JSON.stringify(new Date().toISOString()), __VERSION__: JSON.stringify(version), __COMMIT__: JSON.stringify(commit()) },
+  define: {
+    __BUILD__: JSON.stringify(new Date().toISOString()),
+    __VERSION__: JSON.stringify(version),
+    __COMMIT__: JSON.stringify(commit()),
+  },
   build: {
     // le site qui présente Prisma, à la racine, et l'application dans app/
-    rollupOptions: { input: { index: "index.html", comparaison: "comparaison.html", apprendre: "apprendre.html", reference: "reference.html", guitare: "guitare.html", app: "app/index.html" } },
+    rollupOptions: {
+      input: {
+        index: "index.html",
+        comparaison: "comparaison.html",
+        apprendre: "apprendre.html",
+        reference: "reference.html",
+        guitare: "guitare.html",
+        app: "app/index.html",
+      },
+    },
   },
+  // Vitest : les tests unitaires seuls (ceux du navigateur, dans tests/e2e et tests/visual, sont à Playwright)
+  test: { include: ["src/**/*.test.ts", "tests/**/*.test.ts"] },
 });

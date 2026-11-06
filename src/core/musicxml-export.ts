@@ -36,9 +36,30 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 
 /** Programme General MIDI (1 à 128) de chaque instrument de l'écoute. */
 const PROGRAM: Record<InstrumentName, number> = {
-  piano: 1, "electric-piano": 5, harpsichord: 7, organ: 20, accordion: 22, guitar: 25, "electric-bass": 34, harp: 47,
-  violin: 41, viola: 42, cello: 43, "double-bass": 44, strings: 49, flute: 74, oboe: 69, clarinet: 72, bassoon: 71,
-  saxophone: 66, trumpet: 57, horn: 61, trombone: 58, voice: 53, marimba: 13, vibraphone: 12,
+  piano: 1,
+  "electric-piano": 5,
+  harpsichord: 7,
+  organ: 20,
+  accordion: 22,
+  guitar: 25,
+  "electric-bass": 34,
+  harp: 47,
+  violin: 41,
+  viola: 42,
+  cello: 43,
+  "double-bass": 44,
+  strings: 49,
+  flute: 74,
+  oboe: 69,
+  clarinet: 72,
+  bassoon: 71,
+  saxophone: 66,
+  trumpet: 57,
+  horn: 61,
+  trombone: 58,
+  voice: 53,
+  marimba: 13,
+  vibraphone: 12,
 };
 
 /**
@@ -46,12 +67,30 @@ const PROGRAM: Record<InstrumentName, number> = {
  * lui qui fait choisir l'instrument à MuseScore (sa tessiture, sa clé), plus sûrement que le nom.
  */
 const SOUND: Record<InstrumentName, string> = {
-  piano: "keyboard.piano", "electric-piano": "keyboard.piano.electric", harpsichord: "keyboard.harpsichord", organ: "keyboard.organ",
-  accordion: "keyboard.accordion", guitar: "pluck.guitar.nylon-string", "electric-bass": "pluck.bass.electric", harp: "pluck.harp",
-  violin: "strings.violin", viola: "strings.viola", cello: "strings.cello", "double-bass": "strings.contrabass", strings: "strings.group",
-  flute: "wind.flutes.flute", oboe: "wind.reed.oboe", clarinet: "wind.reed.clarinet", bassoon: "wind.reed.bassoon",
-  saxophone: "wind.reed.saxophone.alto", trumpet: "brass.trumpet", horn: "brass.french-horn", trombone: "brass.trombone",
-  voice: "voice.vocals", marimba: "pitched-percussion.marimba", vibraphone: "pitched-percussion.vibraphone",
+  piano: "keyboard.piano",
+  "electric-piano": "keyboard.piano.electric",
+  harpsichord: "keyboard.harpsichord",
+  organ: "keyboard.organ",
+  accordion: "keyboard.accordion",
+  guitar: "pluck.guitar.nylon-string",
+  "electric-bass": "pluck.bass.electric",
+  harp: "pluck.harp",
+  violin: "strings.violin",
+  viola: "strings.viola",
+  cello: "strings.cello",
+  "double-bass": "strings.contrabass",
+  strings: "strings.group",
+  flute: "wind.flutes.flute",
+  oboe: "wind.reed.oboe",
+  clarinet: "wind.reed.clarinet",
+  bassoon: "wind.reed.bassoon",
+  saxophone: "wind.reed.saxophone.alto",
+  trumpet: "brass.trumpet",
+  horn: "brass.french-horn",
+  trombone: "brass.trombone",
+  voice: "voice.vocals",
+  marimba: "pitched-percussion.marimba",
+  vibraphone: "pitched-percussion.vibraphone",
 };
 
 /* ---------------------------------------------------------------- noms des notes */
@@ -99,7 +138,9 @@ const TYPES: [string, number][] = [
   ["128th", 0.03125],
 ];
 /** Les durées qu'une seule figure rend, pointée ou non, en divisions. */
-const SHAPES = TYPES.flatMap(([type, q]) => [0, 1, 2].map((dots) => ({ type, dots, div: Math.round(q * DIVISIONS * (2 - 1 / 2 ** dots)) }))).sort((a, b) => b.div - a.div);
+const SHAPES = TYPES.flatMap(([type, q]) =>
+  [0, 1, 2].map((dots) => ({ type, dots, div: Math.round(q * DIVISIONS * (2 - 1 / 2 ** dots)) })),
+).sort((a, b) => b.div - a.div);
 const shapeOf = (div: number) => SHAPES.find((s) => s.div === div);
 
 /** Une durée en figures liées, de la plus longue à la plus courte ; undefined si aucune suite de figures ne la rend. */
@@ -139,7 +180,8 @@ function barsOf(score: Score): Bar[] {
     if (last && last.index === b.barIndex) {
       last.end = (i + 1) * T;
       last.beats++;
-    } else bars.push({ index: b.barIndex, number: b.bar, start: i * T, end: (i + 1) * T, beats: 1, compound, implicit: i === 0 && b.label > 1 });
+    } else
+      bars.push({ index: b.barIndex, number: b.bar, start: i * T, end: (i + 1) * T, beats: 1, compound, implicit: i === 0 && b.label > 1 });
   });
   return bars;
 }
@@ -164,7 +206,15 @@ export type ExportOptions = { repeats?: "sections" | "traditional"; letters?: bo
  * Une mesure à écrire : la mesure de Prisma (bi, son rang dans bars), la lettre de sa section, et
  * ses barres : début de reprise, fin de reprise (et le nombre de passages), début et fin d'une case.
  */
-type Written = { bi: number; marker?: string; forward?: boolean; backward?: number; ending?: number; endingStart?: boolean; endingStop?: "stop" | "discontinue" };
+type Written = {
+  bi: number;
+  marker?: string;
+  forward?: boolean;
+  backward?: number;
+  ending?: number;
+  endingStart?: boolean;
+  endingStop?: "stop" | "discontinue";
+};
 
 /** Les mesures à écrire, dans l'ordre. */
 function writtenBars(score: Score, bars: Bar[], options: ExportOptions): Written[] {
@@ -186,7 +236,7 @@ function writtenBars(score: Score, bars: Bar[], options: ExportOptions): Written
   const section = (label: string) => span(label).map((bi, k) => ({ ...plain(bi), ...(k === 0 ? { marker: label } : {}) }));
   const order = score.order;
   const out: Written[] = [];
-  for (let i = 0; i < order.length; ) {
+  for (let i = 0; i < order.length;) {
     if (options.repeats === "traditional") {
       // une suite de sections jouée plusieurs fois de suite (la plus courte d'abord) : une reprise
       let done = false;
@@ -309,8 +359,12 @@ export function exportMusicXml(score: Score, options: ExportOptions = {}): strin
     const name = part.name ?? (score.parts.length > 1 ? `Partie ${i + 1}` : "Piano");
     out.push(`    <score-part id="P${i + 1}">`);
     out.push(`      <part-name>${esc(name)}</part-name>`);
-    out.push(`      <score-instrument id="P${i + 1}-I1"><instrument-name>${esc(name)}</instrument-name><instrument-sound>${SOUND[instrument]}</instrument-sound></score-instrument>`);
-    out.push(`      <midi-instrument id="P${i + 1}-I1"><midi-channel>${(i % 15) + 1 + (i >= 9 ? 1 : 0)}</midi-channel><midi-program>${PROGRAM[instrument]}</midi-program></midi-instrument>`);
+    out.push(
+      `      <score-instrument id="P${i + 1}-I1"><instrument-name>${esc(name)}</instrument-name><instrument-sound>${SOUND[instrument]}</instrument-sound></score-instrument>`,
+    );
+    out.push(
+      `      <midi-instrument id="P${i + 1}-I1"><midi-channel>${(i % 15) + 1 + (i >= 9 ? 1 : 0)}</midi-channel><midi-program>${PROGRAM[instrument]}</midi-program></midi-instrument>`,
+    );
     out.push("    </score-part>");
   });
   out.push("  </part-list>");
@@ -332,7 +386,9 @@ export function exportMusicXml(score: Score, options: ExportOptions = {}): strin
       // à gauche : le début d'une reprise, d'une case
       if (w.forward || w.endingStart) {
         const ending = w.endingStart ? `<ending number="${w.ending}" type="start">${w.ending}.</ending>` : "";
-        out.push(`      <barline location="left">${w.forward ? "<bar-style>heavy-light</bar-style>" : ""}${ending}${w.forward ? '<repeat direction="forward"/>' : ""}</barline>`);
+        out.push(
+          `      <barline location="left">${w.forward ? "<bar-style>heavy-light</bar-style>" : ""}${ending}${w.forward ? '<repeat direction="forward"/>' : ""}</barline>`,
+        );
       }
       const time = timeOf(bar, bar.implicit ? fullBeats : bar.beats);
       const timeText = `${time.beats}/${time.type}`;
@@ -345,7 +401,9 @@ export function exportMusicXml(score: Score, options: ExportOptions = {}): strin
         out.push(`        <time><beats>${time.beats}</beats><beat-type>${time.type}</beat-type></time>`);
         if (k === 0) {
           if (staves.length > 1) out.push(`        <staves>${staves.length}</staves>`);
-          clefs.forEach((c, s) => out.push(`        <clef${part.staves > 1 ? ` number="${s + 1}"` : ""}><sign>${c.sign}</sign><line>${c.line}</line></clef>`));
+          clefs.forEach((c, s) =>
+            out.push(`        <clef${part.staves > 1 ? ` number="${s + 1}"` : ""}><sign>${c.sign}</sign><line>${c.line}</line></clef>`),
+          );
           if (strs) out.push(...tablatureAttributes(strs));
         }
         out.push("      </attributes>");
@@ -358,13 +416,17 @@ export function exportMusicXml(score: Score, options: ExportOptions = {}): strin
           `      <direction placement="above"><direction-type><metronome><beat-unit>quarter</beat-unit>${bar.compound ? "<beat-unit-dot/>" : ""}<per-minute>${score.meta.bpm}</per-minute></metronome></direction-type><sound tempo="${+(score.meta.bpm * quarters).toFixed(2)}"/></direction>`,
         );
       }
-      if (p === 0 && w.marker && (options.repeats !== "traditional" || options.letters !== false)) out.push(`      <direction placement="above"><direction-type><rehearsal>${w.marker}</rehearsal></direction-type></direction>`);
+      if (p === 0 && w.marker && (options.repeats !== "traditional" || options.letters !== false))
+        out.push(`      <direction placement="above"><direction-type><rehearsal>${w.marker}</rehearsal></direction-type></direction>`);
       out.push(...measureBody(ctx, p, staves, voices, bar, !!strs));
       // à droite : la fin d'une case, d'une reprise, du morceau
       const final = k === order.length - 1;
       const ending = w.endingStop ? `<ending number="${w.ending}" type="${w.endingStop}"/>` : "";
       const backward = w.backward !== undefined ? `<repeat direction="backward"${w.backward !== 2 ? ` times="${w.backward}"` : ""}/>` : "";
-      if (backward || final || ending) out.push(`      <barline location="right">${backward || final ? "<bar-style>light-heavy</bar-style>" : ""}${ending}${backward}</barline>`);
+      if (backward || final || ending)
+        out.push(
+          `      <barline location="right">${backward || final ? "<bar-style>light-heavy</bar-style>" : ""}${ending}${backward}</barline>`,
+        );
       out.push("    </measure>");
     });
     out.push("  </part>");
@@ -403,7 +465,18 @@ function clefOf(notes: Note[]) {
 /** Un événement d'une voix dans la mesure : un accord (ou une note), ou un silence, sur [start, end[. */
 type Event = { start: number; end: number; group?: Group };
 /** Un morceau d'événement, écrit par une figure : un tuplet s'ouvre ou se ferme peut-être sur lui. */
-type Piece = { e: Event; div: number; type: string; dots: number; tuplet?: [number, number]; beat: number; first: boolean; last: boolean; open?: boolean; close?: boolean };
+type Piece = {
+  e: Event;
+  div: number;
+  type: string;
+  dots: number;
+  tuplet?: [number, number];
+  beat: number;
+  first: boolean;
+  last: boolean;
+  open?: boolean;
+  close?: boolean;
+};
 
 /** tab : la seconde portée est la tablature de la première. */
 function measureBody(ctx: Ctx, p: number, staves: Staff[], voices: Group[][][], bar: Bar, tab = false): string[] {
@@ -418,7 +491,8 @@ function measureBody(ctx: Ctx, p: number, staves: Staff[], voices: Group[][][], 
       const events: Event[] = [];
       let t = bar.start;
       for (const g of inBar) {
-        const a = Math.max(g.start, bar.start), b = Math.min(g.end, bar.end);
+        const a = Math.max(g.start, bar.start),
+          b = Math.min(g.end, bar.end);
         if (a > t) events.push({ start: t, end: a });
         events.push({ start: a, end: b, group: g });
         t = b;
@@ -440,7 +514,8 @@ function measureBody(ctx: Ctx, p: number, staves: Staff[], voices: Group[][][], 
     const all = piecesOf(block.events, bar);
     all.forEach((x, k) => {
       if (!x.tuplet) return;
-      const prev = all[k - 1], next = all[k + 1];
+      const prev = all[k - 1],
+        next = all[k + 1];
       x.open = !prev?.tuplet || prev.beat !== x.beat;
       x.close = !next?.tuplet || next.beat !== x.beat;
     });
@@ -455,7 +530,20 @@ function measureBody(ctx: Ctx, p: number, staves: Staff[], voices: Group[][][], 
       if (!e.group && secondary) {
         // un silence d'une voix secondaire : un simple saut
         out.push(`      <forward><duration>${toDiv(e.end - e.start)}</duration></forward>`);
-      } else out.push(...eventXml(ctx, block.staff, block.s, block.voice, e, bar, measureRest, all.filter((x) => x.e === e), tab ? (block.tab ? "tab" : "notation") : undefined));
+      } else
+        out.push(
+          ...eventXml(
+            ctx,
+            block.staff,
+            block.s,
+            block.voice,
+            e,
+            bar,
+            measureRest,
+            all.filter((x) => x.e === e),
+            tab ? (block.tab ? "tab" : "notation") : undefined,
+          ),
+        );
       cursor += toDiv(e.end - e.start);
     }
     // les indications à la fin de la mesure (la fin d'un soufflet, d'une pédale)
@@ -479,10 +567,12 @@ function piecesOf(events: Event[], bar: Bar): Piece[] {
   const out: Piece[] = [];
   for (const e of events) {
     const cuts = [e.start];
-    for (let b = beatOf(e.start) + 1; bar.start + b * T < e.end; b++) if (tupletBeats.has(b) || tupletBeats.has(b - 1)) cuts.push(bar.start + b * T);
+    for (let b = beatOf(e.start) + 1; bar.start + b * T < e.end; b++)
+      if (tupletBeats.has(b) || tupletBeats.has(b - 1)) cuts.push(bar.start + b * T);
     cuts.push(e.end);
     for (let i = 0; i + 1 < cuts.length; i++) {
-      const a = cuts[i], b = cuts[i + 1];
+      const a = cuts[i],
+        b = cuts[i + 1];
       const beat = beatOf(a);
       const div = toDiv(b - a);
       let ratio: [number, number] | undefined;
@@ -500,7 +590,18 @@ function piecesOf(events: Event[], bar: Bar): Piece[] {
       }
       // aucune figure ne la rend (un découpage très fin) : une seule note, de sa vraie durée
       if (!figs) figs = [{ type: "128th", dots: 0, div }];
-      figs.forEach((f, k) => out.push({ e, div: f.div, type: f.type, dots: f.dots, tuplet: ratio, beat, first: i === 0 && k === 0, last: i + 2 === cuts.length && k === figs!.length - 1 }));
+      figs.forEach((f, k) =>
+        out.push({
+          e,
+          div: f.div,
+          type: f.type,
+          dots: f.dots,
+          tuplet: ratio,
+          beat,
+          first: i === 0 && k === 0,
+          last: i + 2 === cuts.length && k === figs!.length - 1,
+        }),
+      );
     }
   }
   return out;
@@ -510,23 +611,41 @@ function piecesOf(events: Event[], bar: Bar): Piece[] {
  * Un événement d'une voix. Pour un instrument à cordes (layer), la partition ou la tablature : la
  * tablature porte la corde et la case de chaque note, et les liaisons ; la partition, les paroles.
  */
-function eventXml(ctx: Ctx, staff: Staff, s: number, voice: number, e: Event, bar: Bar, measureRest: boolean, ps: Piece[], layer?: "notation" | "tab"): string[] {
+function eventXml(
+  ctx: Ctx,
+  staff: Staff,
+  s: number,
+  voice: number,
+  e: Event,
+  bar: Bar,
+  measureRest: boolean,
+  ps: Piece[],
+  layer?: "notation" | "tab",
+): string[] {
   const { score, fifths } = ctx;
   const out: string[] = [];
   const part = ctx.firstStaff.findIndex((f, i) => f <= staff && staff < f + score.parts[i].staves);
   const strs = score.parts[part].strings;
   const staffTag = score.parts[part].staves > 1 || layer ? `<staff>${s + 1}</staff>` : "";
   // la corde et la case d'une note, sur la tablature
-  const onString = (x: { midi: number; string?: number }) => (layer === "tab" && strs && x.string !== undefined ? `<technical><string>${x.string}</string><fret>${fretOf(strs, x.string, x.midi)}</fret></technical>` : "");
-  const tuplet = (x: Piece) => (x.tuplet ? (x.open ? '<tuplet type="start" bracket="yes"/>' : "") + (x.close ? '<tuplet type="stop"/>' : "") : "");
+  const onString = (x: { midi: number; string?: number }) =>
+    layer === "tab" && strs && x.string !== undefined
+      ? `<technical><string>${x.string}</string><fret>${fretOf(strs, x.string, x.midi)}</fret></technical>`
+      : "";
+  const tuplet = (x: Piece) =>
+    x.tuplet ? (x.open ? '<tuplet type="start" bracket="yes"/>' : "") + (x.close ? '<tuplet type="stop"/>' : "") : "";
   if (!e.group) {
     if (measureRest) {
-      out.push(`      <note><rest measure="yes"/><duration>${(e.end - e.start) * (bar.compound ? 3 : 2)}</duration><voice>${voice}</voice>${staffTag}</note>`);
+      out.push(
+        `      <note><rest measure="yes"/><duration>${(e.end - e.start) * (bar.compound ? 3 : 2)}</duration><voice>${voice}</voice>${staffTag}</note>`,
+      );
       return out;
     }
     for (const x of ps) {
       const notations = tuplet(x);
-      out.push(`      <note><rest/><duration>${x.div}</duration><voice>${voice}</voice><type>${x.type}</type>${"<dot/>".repeat(x.dots)}${timeMod(x.tuplet)}${staffTag}${notations ? `<notations>${notations}</notations>` : ""}</note>`);
+      out.push(
+        `      <note><rest/><duration>${x.div}</duration><voice>${voice}</voice><type>${x.type}</type>${"<dot/>".repeat(x.dots)}${timeMod(x.tuplet)}${staffTag}${notations ? `<notations>${notations}</notations>` : ""}</note>`,
+      );
     }
     return out;
   }
@@ -540,7 +659,9 @@ function eventXml(ctx: Ctx, staff: Staff, s: number, voice: number, e: Event, ba
     graces.forEach((x, k) => {
       const chord = k > 0 && graces[k - 1].slot === x.slot ? "<chord/>" : "";
       const tech = onString(x);
-      out.push(`      <note><grace slash="yes"/>${chord}${pitchXml(spell(x.midi, fifths))}<voice>${voice}</voice><type>eighth</type>${staffTag}${tech ? `<notations>${tech}</notations>` : ""}</note>`);
+      out.push(
+        `      <note><grace slash="yes"/>${chord}${pitchXml(spell(x.midi, fifths))}<voice>${voice}</voice><type>eighth</type>${staffTag}${tech ? `<notations>${tech}</notations>` : ""}</note>`,
+      );
     });
   }
   const notes = [...g.notes].sort((a, b) => a.midi - b.midi);
@@ -571,11 +692,20 @@ function eventXml(ctx: Ctx, staff: Staff, s: number, voice: number, e: Event, ba
 }
 
 const accidentalName = (alter: number) => (alter > 0 ? "sharp" : alter < 0 ? "flat" : "natural");
-const pitchXml = (sp: { step: string; alter: number; octave: number }) => `<pitch><step>${sp.step}</step>${sp.alter ? `<alter>${sp.alter}</alter>` : ""}<octave>${sp.octave}</octave></pitch>`;
-const timeMod = (r?: [number, number]) => (r ? `<time-modification><actual-notes>${r[0]}</actual-notes><normal-notes>${r[1]}</normal-notes></time-modification>` : "");
+const pitchXml = (sp: { step: string; alter: number; octave: number }) =>
+  `<pitch><step>${sp.step}</step>${sp.alter ? `<alter>${sp.alter}</alter>` : ""}<octave>${sp.octave}</octave></pitch>`;
+const timeMod = (r?: [number, number]) =>
+  r ? `<time-modification><actual-notes>${r[0]}</actual-notes><normal-notes>${r[1]}</normal-notes></time-modification>` : "";
 
 /** Ce qui s'attache à l'attaque d'une note : point d'orgue, arpège, articulations, doigté, trille. */
-function attackNotations(ctx: Ctx, staff: Staff, t: number, n: Note, sp: { step: string; alter: number; octave: number }, first: boolean): string[] {
+function attackNotations(
+  ctx: Ctx,
+  staff: Staff,
+  t: number,
+  n: Note,
+  sp: { step: string; alter: number; octave: number },
+  first: boolean,
+): string[] {
   const { score } = ctx;
   const out: string[] = [];
   const top = ctx.firstStaff.includes(staff) && ctx.firstStaff.indexOf(staff) === 0;
@@ -585,7 +715,10 @@ function attackNotations(ctx: Ctx, staff: Staff, t: number, n: Note, sp: { step:
   if (first) {
     const all = score.articulations.filter((a) => a.staff === staff && a.t === t);
     const arts = all.filter((a) => !isPick(a.kind));
-    if (arts.length) out.push(`<articulations>${arts.map((a) => (a.kind === "staccato" ? "<staccato/>" : a.kind === "accent" ? "<accent/>" : "<strong-accent/>")).join("")}</articulations>`);
+    if (arts.length)
+      out.push(
+        `<articulations>${arts.map((a) => (a.kind === "staccato" ? "<staccato/>" : a.kind === "accent" ? "<accent/>" : "<strong-accent/>")).join("")}</articulations>`,
+      );
     // le sens du médiator : celui de l'archet, en MusicXML
     const picks = all.filter((a) => isPick(a.kind));
     if (picks.length) out.push(`<technical>${picks.map((a) => (a.kind === "down" ? "<down-bow/>" : "<up-bow/>")).join("")}</technical>`);
@@ -597,7 +730,10 @@ function attackNotations(ctx: Ctx, staff: Staff, t: number, n: Note, sp: { step:
     const letter = LETTERS[i % 7];
     const oct = sp.octave + (i > 6 ? 1 : 0);
     const alter = n.trill - (12 * (oct + 1) + STEP[letter]);
-    const mark = Math.abs(alter) <= 1 && alter !== keyAlter(ctx.fifths, letter) ? `<accidental-mark placement="above">${accidentalName(alter)}</accidental-mark>` : "";
+    const mark =
+      Math.abs(alter) <= 1 && alter !== keyAlter(ctx.fifths, letter)
+        ? `<accidental-mark placement="above">${accidentalName(alter)}</accidental-mark>`
+        : "";
     out.push(`<ornaments><trill-mark/>${mark}</ornaments>`);
   }
   return out;
@@ -615,7 +751,8 @@ function techniqueXml(ctx: Ctx, staff: Staff, n: Note, layer?: "notation" | "tab
   const same = (m: Note) => m !== n && m.staff === staff && m.string === n.string;
   const next = score.notes.filter((m) => same(m) && m.start > n.start).sort((a, b) => a.start - b.start)[0];
   const prev = score.notes.filter((m) => same(m) && m.start < n.start).sort((a, b) => b.start - a.start)[0];
-  const tied = (a: Note, b: Note) => score.slurs.some((s) => s.staff === staff && s.start <= a.start && b.start <= s.end) && a.midi !== b.midi;
+  const tied = (a: Note, b: Note) =>
+    score.slurs.some((s) => s.staff === staff && s.start <= a.start && b.start <= s.end) && a.midi !== b.midi;
   if (layer !== "notation") {
     const tech: string[] = [];
     if (n.bend !== undefined) {
@@ -625,14 +762,18 @@ function techniqueXml(ctx: Ctx, staff: Staff, n: Note, layer?: "notation" | "tab
     if (n.harmonic) tech.push("<harmonic><natural/></harmonic>");
     const legato = (a: Note, b: Note) => (b.midi > a.midi ? "hammer-on" : "pull-off");
     if (prev && tied(prev, n)) tech.push(`<${legato(prev, n)} type="stop" number="1"/>`);
-    if (next && tied(n, next)) tech.push(`<${legato(n, next)} type="start" number="1">${next.midi > n.midi ? "H" : "P"}</${legato(n, next)}>`);
+    if (next && tied(n, next))
+      tech.push(`<${legato(n, next)} type="start" number="1">${next.midi > n.midi ? "H" : "P"}</${legato(n, next)}>`);
     if (tech.length) out.push(`<technical>${tech.join("")}</technical>`);
   }
   if (prev?.slide) out.push('<slide type="stop" number="1"/>');
   if (n.slide && next) out.push('<slide type="start" number="1" line-type="solid"/>');
   // glissés vers rien et depuis rien : les articulations de MusicXML (la chute, la montée finale ; l'arrivée d'en dessous, d'au-dessus)
   const straight = (t: string) => `<${t} line-shape="straight"/>`;
-  const slides = [n.slideIn && straight(n.slideIn === "up" ? "scoop" : "plop"), n.slideOut && straight(n.slideOut === "down" ? "falloff" : "doit")].filter(Boolean);
+  const slides = [
+    n.slideIn && straight(n.slideIn === "up" ? "scoop" : "plop"),
+    n.slideOut && straight(n.slideOut === "down" ? "falloff" : "doit"),
+  ].filter(Boolean);
   if (slides.length) out.push(`<articulations>${slides.join("")}</articulations>`);
   // le vibrato : commencé sur la première note qu'il couvre, fini sur la dernière
   for (const e of score.effects.filter((x) => x.staff === staff && x.kind === "vibrato")) {
@@ -650,7 +791,12 @@ function techniqueXml(ctx: Ctx, staff: Staff, n: Note, layer?: "notation" | "tab
  * défaut, sur la suite d'une note tenue en début de mesure, sur une note d'une autre portée de
  * la partie, ou sur la dernière note attaquée avant dans sa portée. Une seule voix le porte.
  */
-function slurMarks(score: Score, voices: Map<Staff, Group[][]>, firstStaff: number[], bars: Bar[]): Map<Group, { t: number; xml: string }[]> {
+function slurMarks(
+  score: Score,
+  voices: Map<Staff, Group[][]>,
+  firstStaff: number[],
+  bars: Bar[],
+): Map<Group, { t: number; xml: string }[]> {
   const marks = new Map<Group, { t: number; xml: string }[]>();
   const barStarts = new Set(bars.map((b) => b.start));
   const groups = (x: Staff) => (voices.get(x) ?? []).flat();
@@ -669,7 +815,8 @@ function slurMarks(score: Score, voices: Map<Staff, Group[][]>, firstStaff: numb
     const slurs = score.slurs
       .filter((s) => staves.includes(s.staff))
       .flatMap((s) => {
-        const a = carrier(s.staff, s.start), b = carrier(s.staff, s.end);
+        const a = carrier(s.staff, s.start),
+          b = carrier(s.staff, s.end);
         return a && b && b.t > a.t ? [{ a, b }] : [];
       })
       .sort((x, y) => x.a.t - y.a.t || y.b.t - x.b.t);
@@ -679,7 +826,8 @@ function slurMarks(score: Score, voices: Map<Staff, Group[][]>, firstStaff: numb
       let number = 1;
       while (open.some((o) => o.number === number)) number++;
       open.push({ end: b.t, number });
-      const add = (c: { g: Group; t: number }, type: string) => marks.set(c.g, [...(marks.get(c.g) ?? []), { t: c.t, xml: `<slur type="${type}" number="${number}"/>` }]);
+      const add = (c: { g: Group; t: number }, type: string) =>
+        marks.set(c.g, [...(marks.get(c.g) ?? []), { t: c.t, xml: `<slur type="${type}" number="${number}"/>` }]);
       add(b, "stop");
       add(a, "start");
     }
@@ -717,7 +865,8 @@ function directionsOf(ctx: Ctx, p: number, staff: Staff, bar: Bar): Direction[] 
   const staffNo = score.parts[p].staves > 1 ? `<staff>${staff - ctx.firstStaff[p] + 1}</staff>` : "";
   const dir = (t: number, placement: "above" | "below", type: string, sound = "") => ({
     t,
-    xml: (offset: number) => `      <direction placement="${placement}"><direction-type>${type}</direction-type>${offset ? `<offset sound="yes">${offset}</offset>` : ""}${staffNo}${sound}</direction>`,
+    xml: (offset: number) =>
+      `      <direction placement="${placement}"><direction-type>${type}</direction-type>${offset ? `<offset sound="yes">${offset}</offset>` : ""}${staffNo}${sound}</direction>`,
   });
   const out: Direction[] = [];
   const firstOfPart = staff === ctx.firstStaff[p];
@@ -727,7 +876,12 @@ function directionsOf(ctx: Ctx, p: number, staff: Staff, bar: Bar): Direction[] 
   if (firstOfPart && p === 0) {
     for (const c of score.chords.filter((x) => inBar(x.t))) {
       const xml = harmonyXml(c.text, gridStrings(score.parts.map((x) => x.strings)));
-      if (xml) out.push({ t: c.t, xml: (offset: number) => `      ${xml.replace("</harmony>", `${offset ? `<offset>${offset}</offset>` : ""}${staffNo}</harmony>`)}` });
+      if (xml)
+        out.push({
+          t: c.t,
+          xml: (offset: number) =>
+            `      ${xml.replace("</harmony>", `${offset ? `<offset>${offset}</offset>` : ""}${staffNo}</harmony>`)}`,
+        });
     }
   }
   for (const x of score.expressions.filter((x) => x.staff === staff && inBar(x.t))) {
@@ -738,7 +892,8 @@ function directionsOf(ctx: Ctx, p: number, staff: Staff, bar: Bar): Direction[] 
   }
   // l'étouffé de la paume : « P.M. », puis des tirets jusqu'à sa fin (le vibrato s'écrit sur les notes)
   for (const e of score.effects.filter((x) => x.staff === staff && x.kind === "palmMute")) {
-    if (inBar(e.start)) out.push(dir(e.start, "above", '<words>P.M.</words></direction-type><direction-type><dashes type="start" number="1"/>'));
+    if (inBar(e.start))
+      out.push(dir(e.start, "above", '<words>P.M.</words></direction-type><direction-type><dashes type="start" number="1"/>'));
     if (atEnd(e.end) && e.end > e.start) out.push(dir(e.end, "above", '<dashes type="stop" number="1"/>'));
   }
   for (const h of score.hairpins.filter((x) => x.staff === staff)) {
@@ -752,16 +907,37 @@ function directionsOf(ctx: Ctx, p: number, staff: Staff, bar: Bar): Direction[] 
     const continued = pedals.some((o) => o.start === pd.end);
     if (atEnd(pd.end) && !continued) out.push(dir(pd.end, "below", '<pedal type="stop" line="yes"/>'));
   }
-  for (const x of score.pedalTexts.filter((x) => x.staff === staff && inBar(x.t))) out.push(dir(x.t, "below", `<words>${esc(x.text)}</words>`));
+  for (const x of score.pedalTexts.filter((x) => x.staff === staff && inBar(x.t)))
+    out.push(dir(x.t, "below", `<words>${esc(x.text)}</words>`));
   return out.sort((a, b) => a.t - b.t);
 }
 
 /** Les qualités d'accord MusicXML (<kind>) de chaque suffixe. */
 const KINDS: Record<string, string> = {
-  "": "major", m: "minor", aug: "augmented", dim: "diminished", "7": "dominant", maj7: "major-seventh", m7: "minor-seventh",
-  dim7: "diminished-seventh", aug7: "augmented-seventh", m7b5: "half-diminished", mMaj7: "major-minor", "6": "major-sixth",
-  m6: "minor-sixth", "9": "dominant-ninth", maj9: "major-ninth", m9: "minor-ninth", "11": "dominant-11th", m11: "minor-11th",
-  "13": "dominant-13th", maj13: "major-13th", m13: "minor-13th", sus2: "suspended-second", sus4: "suspended-fourth", "5": "power",
+  "": "major",
+  m: "minor",
+  aug: "augmented",
+  dim: "diminished",
+  "7": "dominant",
+  maj7: "major-seventh",
+  m7: "minor-seventh",
+  dim7: "diminished-seventh",
+  aug7: "augmented-seventh",
+  m7b5: "half-diminished",
+  mMaj7: "major-minor",
+  "6": "major-sixth",
+  m6: "minor-sixth",
+  "9": "dominant-ninth",
+  maj9: "major-ninth",
+  m9: "minor-ninth",
+  "11": "dominant-11th",
+  m11: "minor-11th",
+  "13": "dominant-13th",
+  maj13: "major-13th",
+  m13: "minor-13th",
+  sus2: "suspended-second",
+  sus4: "suspended-fourth",
+  "5": "power",
 };
 const ROOT = ["C", "C", "D", "E", "E", "F", "F", "G", "A", "A", "B", "B"];
 const ROOT_ALTER = [0, 1, 0, -1, 0, 0, 1, 0, -1, 0, -1, 0];
@@ -775,14 +951,17 @@ function harmonyXml(text: string, strs: Strings): string | undefined {
   const notes = chordNotes(text);
   const r = notes && recognize(notes);
   if (!r || KINDS[r.quality] === undefined) return undefined;
-  const note = (tag: string, p: number) => `<${tag}><${tag}-step>${ROOT[p]}</${tag}-step>${ROOT_ALTER[p] ? `<${tag}-alter>${ROOT_ALTER[p]}</${tag}-alter>` : ""}</${tag}>`;
+  const note = (tag: string, p: number) =>
+    `<${tag}><${tag}-step>${ROOT[p]}</${tag}-step>${ROOT_ALTER[p] ? `<${tag}-alter>${ROOT_ALTER[p]}</${tag}-alter>` : ""}</${tag}>`;
   const { shape } = splitShape(text);
   const frets = shape === undefined ? undefined : parseShape(shape);
   let frame = "";
   if (frets) {
     const pressed = frets.filter((f): f is number => !!f);
     const first = pressed.length && Math.max(...pressed) > 4 ? Math.min(...pressed) : 1;
-    const notesXml = frets.map((f, k) => (f === null ? "" : `<frame-note><string>${frets.length - k}</string><fret>${f}</fret></frame-note>`)).join("");
+    const notesXml = frets
+      .map((f, k) => (f === null ? "" : `<frame-note><string>${frets.length - k}</string><fret>${f}</fret></frame-note>`))
+      .join("");
     frame = `<frame><frame-strings>${strs.open.length}</frame-strings><frame-frets>4</frame-frets>${first > 1 ? `<first-fret>${first}</first-fret>` : ""}${notesXml}</frame>`;
   }
   return `<harmony>${note("root", r.root)}<kind>${KINDS[r.quality]}</kind>${r.bass !== r.root ? note("bass", r.bass) : ""}${frame}</harmony>`;

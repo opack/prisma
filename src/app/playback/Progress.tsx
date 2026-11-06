@@ -31,7 +31,12 @@ export function Progress({ bpm }: { bpm: number }) {
   const current = played === null ? null : barAt(bars, played);
   const shown = dragged ?? current;
   // la place du curseur, en mesures : la mesure jouée, et ce qui en est passé
-  const position = dragged !== null ? dragged : current === null ? 0 : current + Math.min(1, (played! - bars[current].at) / (bars[current].end - bars[current].at));
+  const position =
+    dragged !== null
+      ? dragged
+      : current === null
+        ? 0
+        : current + Math.min(1, (played! - bars[current].at) / (bars[current].end - bars[current].at));
   const sectionOf = (k: number) => sections.find((s) => k >= s.first && k < s.first + s.count);
   const label = (k: number) => {
     const s = sectionOf(k);
@@ -57,7 +62,16 @@ export function Progress({ bpm }: { bpm: number }) {
     const k = current ?? 0;
     const s = sectionOf(k);
     const at = s ? sections.indexOf(s) : 0;
-    const to = { ArrowRight: k + 1, ArrowUp: k + 1, ArrowLeft: k - 1, ArrowDown: k - 1, Home: 0, End: n - 1, PageDown: sections[at + 1]?.first ?? n - 1, PageUp: s && k > s.first ? s.first : (sections[at - 1]?.first ?? 0) }[e.key];
+    const to = {
+      ArrowRight: k + 1,
+      ArrowUp: k + 1,
+      ArrowLeft: k - 1,
+      ArrowDown: k - 1,
+      Home: 0,
+      End: n - 1,
+      PageDown: sections[at + 1]?.first ?? n - 1,
+      PageUp: s && k > s.first ? s.first : (sections[at - 1]?.first ?? 0),
+    }[e.key];
     if (to === undefined) return;
     e.preventDefault();
     seek(to);
@@ -99,12 +113,26 @@ export function Progress({ bpm }: { bpm: number }) {
         </span>
         {/* le début de chaque section, sauf la première : une coupure de la barre, à la couleur du fond */}
         {sections.slice(1).map((s) => (
-          <span key={s.first} className="absolute top-1/2 h-1.5 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-panel" style={{ left: percent(s.first) }} />
+          <span
+            key={s.first}
+            className="absolute top-1/2 h-1.5 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-panel"
+            style={{ left: percent(s.first) }}
+          />
         ))}
-        {(played !== null || dragged !== null) && <span className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-accent bg-white pointer-events-none" style={{ left: percent(position) }} />}
-        {hovered !== null && <Bubble at={percent(hovered + 0.5)} bar={hovered} time={time(bars[hovered].at)} section={sectionOf(hovered)} />}
+        {(played !== null || dragged !== null) && (
+          <span
+            className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-accent bg-white pointer-events-none"
+            style={{ left: percent(position) }}
+          />
+        )}
+        {hovered !== null && (
+          <Bubble at={percent(hovered + 0.5)} bar={hovered} time={time(bars[hovered].at)} section={sectionOf(hovered)} />
+        )}
       </div>
-      <span className="text-muted text-[13px] tabular-nums whitespace-nowrap" title="Le temps écoulé, sur la durée de l'écoute au tempo choisi">
+      <span
+        className="text-muted text-[13px] tabular-nums whitespace-nowrap"
+        title="Le temps écoulé, sur la durée de l'écoute au tempo choisi"
+      >
         {elapsed ?? "–"} / {total}
       </span>
     </span>
@@ -114,7 +142,10 @@ export function Progress({ bpm }: { bpm: number }) {
 /** La mesure jouée sur le nombre de mesures, et la lettre de sa section, dans son carré comme sur la partition. */
 function Counter({ bar, count, section }: { bar: number | null; count: number; section?: PlayedSection }) {
   return (
-    <span className="flex items-center gap-1.5 text-muted text-[13px] tabular-nums whitespace-nowrap" title="La mesure jouée, sur les mesures du morceau dans l'ordre où elles se jouent, et sa section">
+    <span
+      className="flex items-center gap-1.5 text-muted text-[13px] tabular-nums whitespace-nowrap"
+      title="La mesure jouée, sur les mesures du morceau dans l'ordre où elles se jouent, et sa section"
+    >
       {bar === null ? "–" : bar + 1} / {count}
       {section?.label && <SectionMark label={section.label} />}
     </span>
@@ -123,13 +154,20 @@ function Counter({ bar, count, section }: { bar: number | null; count: number; s
 
 /** La lettre d'une section, blanc sur noir, le signe des sections sur la partition. */
 function SectionMark({ label }: { label: string }) {
-  return <span className="inline-grid place-items-center min-w-[1.5em] h-[1.5em] px-1 rounded-[2px] bg-ink text-white text-[11px] font-bold leading-none">{label}</span>;
+  return (
+    <span className="inline-grid place-items-center min-w-[1.5em] h-[1.5em] px-1 rounded-[2px] bg-ink text-white text-[11px] font-bold leading-none">
+      {label}
+    </span>
+  );
 }
 
 /** Sous le pointeur : la mesure où l'on tombera, à quel temps, et sa section. */
 function Bubble({ at, bar, time, section }: { at: string; bar: number; time: string; section?: PlayedSection }) {
   return (
-    <span className="absolute top-full mt-2 z-30 flex items-center gap-1.5 px-2 py-1 -translate-x-1/2 bg-white border border-line rounded-md shadow-[0_4px_14px_rgba(0,0,0,0.12)] text-[13px] tabular-nums whitespace-nowrap pointer-events-none" style={{ left: at }}>
+    <span
+      className="absolute top-full mt-2 z-30 flex items-center gap-1.5 px-2 py-1 -translate-x-1/2 bg-white border border-line rounded-md shadow-[0_4px_14px_rgba(0,0,0,0.12)] text-[13px] tabular-nums whitespace-nowrap pointer-events-none"
+      style={{ left: at }}
+    >
       mesure {bar + 1}
       <span className="text-muted">{time}</span>
       {section?.label && <SectionMark label={section.label} />}

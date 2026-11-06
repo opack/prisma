@@ -83,7 +83,15 @@ const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
 const titleOf = (e: LibraryEntry) => e.title ?? e.name.replace(/\.[^.]+$/, "");
 const compare = (a: string, b: string) => a.localeCompare(b, "fr", { sensitivity: "base", numeric: true });
 
-export function LibraryView({ options, onOpen, onClose }: { options: RenderOptions; onOpen: (entry: LibraryEntry) => void; onClose: () => void }) {
+export function LibraryView({
+  options,
+  onOpen,
+  onClose,
+}: {
+  options: RenderOptions;
+  onOpen: (entry: LibraryEntry) => void;
+  onClose: () => void;
+}) {
   const [view, setViewState] = useState<View>(loadView);
   const setView = (v: View) => {
     setViewState(v);
@@ -168,7 +176,9 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
   const groups = useMemo(() => {
     if (state.kind !== "ready") return [];
     const q = fold(query.trim());
-    const found = state.entries.filter((e) => (kinds === "all" || e.kind === kinds) && (!q || fold([titleOf(e), e.composer ?? "", e.path].join(" ")).includes(q)));
+    const found = state.entries.filter(
+      (e) => (kinds === "all" || e.kind === kinds) && (!q || fold([titleOf(e), e.composer ?? "", e.path].join(" ")).includes(q)),
+    );
     if (sort === "recent") {
       const recent = recentOpenings();
       const at = (e: LibraryEntry) => recent[e.path] ?? 0;
@@ -179,7 +189,10 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
     for (const e of found) byFolder.set(e.folder, [...(byFolder.get(e.folder) ?? []), e]);
     return [...byFolder]
       .sort(([a], [b]) => (a === "" ? -1 : b === "" ? 1 : compare(a, b)))
-      .map(([folder, entries]) => ({ folder, entries: entries.sort((a, b) => compare(key(a)[0], key(b)[0]) || compare(key(a)[1], key(b)[1])) }));
+      .map(([folder, entries]) => ({
+        folder,
+        entries: entries.sort((a, b) => compare(key(a)[0], key(b)[0]) || compare(key(a)[1], key(b)[1])),
+      }));
   }, [state, query, sort, kinds]);
   const count = groups.reduce((n, g) => n + g.entries.length, 0);
   const total = (k: Kinds) => (state.kind === "ready" ? state.entries.filter((e) => k === "all" || e.kind === k).length : 0);
@@ -193,7 +206,12 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
           {(state.kind === "ready" || state.kind === "locked") && (
             <p className="flex flex-wrap items-center gap-2 mt-0 mb-4 text-muted">
               {state.source.label}
-              <Button size="icon" onClick={() => setState({ kind: "none" })} title="Changer de bibliothèque : un autre dossier, ou pCloud" aria-label="Changer de bibliothèque">
+              <Button
+                size="icon"
+                onClick={() => setState({ kind: "none" })}
+                title="Changer de bibliothèque : un autre dossier, ou pCloud"
+                aria-label="Changer de bibliothèque"
+              >
                 <FolderIcon />
               </Button>
               {state.kind === "ready" && (
@@ -209,12 +227,17 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
             </p>
           )}
           {state.kind === "ready" && state.source.kind === "pcloud" && state.entries.length > 0 && (
-            <p className={`${NOTE} -mt-2 mb-4 text-[13px]`}>Prisma ne voit que ce dossier de votre pCloud : vos partitions doivent y être.</p>
+            <p className={`${NOTE} -mt-2 mb-4 text-[13px]`}>
+              Prisma ne voit que ce dossier de votre pCloud : vos partitions doivent y être.
+            </p>
           )}
         </header>
 
         {state.kind === "unsupported" && (
-          <p className={NOTE}>La bibliothèque a besoin de garder l'accès à un dossier de votre disque, ce que seuls Chrome et Edge savent faire. Ici, ouvrez vos morceaux par Fichier › Ouvrir, ou en les glissant dans la fenêtre.</p>
+          <p className={NOTE}>
+            La bibliothèque a besoin de garder l'accès à un dossier de votre disque, ce que seuls Chrome et Edge savent faire. Ici, ouvrez
+            vos morceaux par Fichier › Ouvrir, ou en les glissant dans la fenêtre.
+          </p>
         )}
         {state.kind === "loading" && <p className={NOTE}>Lecture du dossier…</p>}
         {state.kind === "none" && <Sources onFolder={chooseFolder} onPcloud={choosePcloud} />}
@@ -239,7 +262,15 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
         {state.kind === "ready" && (
           <>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2.5 mt-0 mb-5">
-              <input className="flex-[1_1_100%] min-w-0 px-2.5 py-[7px] border border-line rounded" type="search" placeholder="Chercher un titre, un compositeur…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Chercher" autoFocus />
+              <input
+                className="flex-[1_1_100%] min-w-0 px-2.5 py-[7px] border border-line rounded"
+                type="search"
+                placeholder="Chercher un titre, un compositeur…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                aria-label="Chercher"
+                autoFocus
+              />
               <label className={TOOL}>
                 Afficher
                 <select className={SELECT} value={kinds} onChange={(e) => setKinds(e.target.value as Kinds)}>
@@ -259,7 +290,10 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
                 </select>
               </label>
               {view === "thumbs" && (
-                <label className="inline-flex items-center gap-1.5 text-muted whitespace-nowrap cursor-pointer" title="Les vignettes montrent chaque partition avec ses propres options, si elle en a ; sinon avec les options générales">
+                <label
+                  className="inline-flex items-center gap-1.5 text-muted whitespace-nowrap cursor-pointer"
+                  title="Les vignettes montrent chaque partition avec ses propres options, si elle en a ; sinon avec les options générales"
+                >
                   <input type="checkbox" checked={thumbsOwn} onChange={(e) => setThumbsOwn(e.target.checked)} />
                   Options de chaque partition
                 </label>
@@ -267,19 +301,39 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
               <ButtonGroup className="ml-auto" label="Présentation">
                 <Button size="icon" pressed={view === "list"} onClick={() => setView("list")} title="En liste" aria-label="En liste">
                   <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
-                    <path fill="currentColor" d="M1.5 3h2v2h-2zM5.5 3.25h9v1.5h-9zM1.5 7h2v2h-2zM5.5 7.25h9v1.5h-9zM1.5 11h2v2h-2zM5.5 11.25h9v1.5h-9z" />
+                    <path
+                      fill="currentColor"
+                      d="M1.5 3h2v2h-2zM5.5 3.25h9v1.5h-9zM1.5 7h2v2h-2zM5.5 7.25h9v1.5h-9zM1.5 11h2v2h-2zM5.5 11.25h9v1.5h-9z"
+                    />
                   </svg>
                 </Button>
-                <Button size="icon" pressed={view === "thumbs"} onClick={() => setView("thumbs")} title="En vignettes : le haut de la première page" aria-label="En vignettes">
+                <Button
+                  size="icon"
+                  pressed={view === "thumbs"}
+                  onClick={() => setView("thumbs")}
+                  title="En vignettes : le haut de la première page"
+                  aria-label="En vignettes"
+                >
                   <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
                     <path fill="currentColor" d="M1.5 1.5h5.5v5.5h-5.5zM9 1.5h5.5v5.5H9zM1.5 9h5.5v5.5h-5.5zM9 9h5.5v5.5H9z" />
                   </svg>
                 </Button>
               </ButtonGroup>
             </div>
-            {!state.entries.length && (state.source.kind === "pcloud" ? <PcloudEmpty /> : <p className={NOTE}>Aucune partition (.prisma ou MusicXML) dans ce dossier.</p>)}
+            {!state.entries.length &&
+              (state.source.kind === "pcloud" ? (
+                <PcloudEmpty />
+              ) : (
+                <p className={NOTE}>Aucune partition (.prisma ou MusicXML) dans ce dossier.</p>
+              ))}
             {state.entries.length > 0 && !count && (
-              <p className={NOTE}>{query.trim() ? `Aucun morceau ne correspond à « ${query.trim()} ».` : kinds === "prisma" ? "Aucune partition Prisma dans ce dossier." : "Aucun MusicXML à importer dans ce dossier."}</p>
+              <p className={NOTE}>
+                {query.trim()
+                  ? `Aucun morceau ne correspond à « ${query.trim()} ».`
+                  : kinds === "prisma"
+                    ? "Aucune partition Prisma dans ce dossier."
+                    : "Aucun MusicXML à importer dans ce dossier."}
+              </p>
             )}
             {groups.map((g) => (
               <section key={g.folder}>
@@ -302,22 +356,26 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
                     ))}
                   </ul>
                 ) : (
-                <ul className="m-0 p-0 list-none border-t border-line">
-                  {g.entries.map((e) => (
-                    <li key={e.path} className="border-b border-line">
-                      <button className={`grid grid-cols-[1fr_auto] gap-x-4 gap-y-0.5 px-2 py-2.5 rounded-none ${ENTRY}`} onClick={() => onOpen(e)} title={e.path}>
-                        <span className="font-semibold">{titleOf(e)}</span>
-                        {e.composer && <span className="text-right text-muted">{e.composer}</span>}
-                        <span className={`${META} text-[12px]`}>
-                          {sort === "recent" && e.folder ? `${e.folder}/` : ""}
-                          {e.name}
-                          {e.kind === "musicxml" && <span className="px-1.5 rounded-[3px] bg-accent-12 text-accent">à importer</span>}
-                          <span className="ml-auto">{new Date(e.modified).toLocaleDateString("fr-FR")}</span>
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                  <ul className="m-0 p-0 list-none border-t border-line">
+                    {g.entries.map((e) => (
+                      <li key={e.path} className="border-b border-line">
+                        <button
+                          className={`grid grid-cols-[1fr_auto] gap-x-4 gap-y-0.5 px-2 py-2.5 rounded-none ${ENTRY}`}
+                          onClick={() => onOpen(e)}
+                          title={e.path}
+                        >
+                          <span className="font-semibold">{titleOf(e)}</span>
+                          {e.composer && <span className="text-right text-muted">{e.composer}</span>}
+                          <span className={`${META} text-[12px]`}>
+                            {sort === "recent" && e.folder ? `${e.folder}/` : ""}
+                            {e.name}
+                            {e.kind === "musicxml" && <span className="px-1.5 rounded-[3px] bg-accent-12 text-accent">à importer</span>}
+                            <span className="ml-auto">{new Date(e.modified).toLocaleDateString("fr-FR")}</span>
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </section>
             ))}
@@ -332,7 +390,10 @@ export function LibraryView({ options, onOpen, onClose }: { options: RenderOptio
 function Sources({ onFolder, onPcloud }: { onFolder: () => void; onPcloud: () => void }) {
   return (
     <div className={`${NOTE} grid gap-5`}>
-      <p className="m-0">La bibliothèque montre toutes vos partitions (.prisma et MusicXML) d'un dossier, sous-dossiers compris. Les fichiers restent où ils sont : Prisma les lit et les réécrit en place.</p>
+      <p className="m-0">
+        La bibliothèque montre toutes vos partitions (.prisma et MusicXML) d'un dossier, sous-dossiers compris. Les fichiers restent où ils
+        sont : Prisma les lit et les réécrit en place.
+      </p>
       {available.disk && (
         <section className="grid gap-2 justify-items-start">
           <h2 className="m-0 text-ink text-[16px]">Un dossier de cet ordinateur</h2>
@@ -346,7 +407,9 @@ function Sources({ onFolder, onPcloud }: { onFolder: () => void; onPcloud: () =>
         <section className="grid gap-2 justify-items-start">
           <h2 className="m-0 text-ink text-[16px]">pCloud</h2>
           <p className="m-0">
-            Vos partitions depuis tous vos appareils, tablette comprise. Prisma n'a accès qu'à un dossier de votre pCloud, « {PCLOUD_FOLDER} » : c'est là que vos partitions doivent être. Si vous avez pCloud Drive sur cet ordinateur, ce même dossier peut aussi servir de bibliothèque ici.
+            Vos partitions depuis tous vos appareils, tablette comprise. Prisma n'a accès qu'à un dossier de votre pCloud, « {PCLOUD_FOLDER}{" "}
+            » : c'est là que vos partitions doivent être. Si vous avez pCloud Drive sur cet ordinateur, ce même dossier peut aussi servir de
+            bibliothèque ici.
           </p>
           <Button kind={available.disk ? "normal" : "primary"} onClick={onPcloud}>
             Se connecter à pCloud
@@ -383,7 +446,10 @@ function ThumbView({ entry, options }: { entry: LibraryEntry; options: RenderOpt
   useEffect(() => {
     const el = ref.current;
     if (!el || visible) return;
-    const seen = new IntersectionObserver(([e]) => e.isIntersecting && setVisible(true), { root: el.closest("[data-library]"), rootMargin: "300px" });
+    const seen = new IntersectionObserver(([e]) => e.isIntersecting && setVisible(true), {
+      root: el.closest("[data-library]"),
+      rootMargin: "300px",
+    });
     seen.observe(el);
     return () => seen.disconnect();
   }, [visible]);
@@ -397,10 +463,20 @@ function ThumbView({ entry, options }: { entry: LibraryEntry; options: RenderOpt
     };
   }, [visible, entry, engraving]);
   return (
-    <span className="relative block aspect-[210/150] overflow-hidden mb-1.5 bg-white border border-line rounded-[3px] shadow-[0_1px_3px_rgba(0,0,0,0.08)] [&_.page]:w-full [&_.page]:h-auto [&_.page]:shadow-none [&_.page]:pointer-events-none" ref={ref} aria-hidden>
+    <span
+      className="relative block aspect-[210/150] overflow-hidden mb-1.5 bg-white border border-line rounded-[3px] shadow-[0_1px_3px_rgba(0,0,0,0.08)] [&_.page]:w-full [&_.page]:h-auto [&_.page]:shadow-none [&_.page]:pointer-events-none"
+      ref={ref}
+      aria-hidden
+    >
       {result?.thumb && <PageView page={result.thumb.page} total={result.thumb.total} meta={result.thumb.meta} options={options} still />}
-      {result?.error && <span className="absolute inset-0 grid place-items-center p-3 text-center text-muted text-[12px]">Aperçu impossible : le fichier ne se lit pas</span>}
-      {result && !result.thumb && !result.error && <span className="absolute inset-0 grid place-items-center p-3 text-center text-muted text-[12px]">Aucune mesure</span>}
+      {result?.error && (
+        <span className="absolute inset-0 grid place-items-center p-3 text-center text-muted text-[12px]">
+          Aperçu impossible : le fichier ne se lit pas
+        </span>
+      )}
+      {result && !result.thumb && !result.error && (
+        <span className="absolute inset-0 grid place-items-center p-3 text-center text-muted text-[12px]">Aucune mesure</span>
+      )}
     </span>
   );
 }

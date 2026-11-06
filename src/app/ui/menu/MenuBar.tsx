@@ -50,14 +50,22 @@ function groups(items: MenuItem[]): Group[] {
 }
 
 const PANEL = "min-w-[260px] overflow-y-auto p-1 bg-white border border-line rounded-md shadow-[0_6px_18px_rgba(0,0,0,0.12)] outline-none";
-const ITEM = "grid grid-cols-[1.2em_1fr_auto] items-center gap-2 px-2.5 py-1.5 whitespace-nowrap rounded cursor-default outline-none data-focused:bg-panel data-disabled:opacity-50";
+const ITEM =
+  "grid grid-cols-[1.2em_1fr_auto] items-center gap-2 px-2.5 py-1.5 whitespace-nowrap rounded cursor-default outline-none data-focused:bg-panel data-disabled:opacity-50";
 
 /** Les actions d'un menu, par groupes, séparés d'un trait. */
 function Actions({ items }: { items: MenuItem[] }) {
   return groups(items).map((g, i) => (
     <Fragment key={i}>
       {g.separated && <Separator id={`trait-${i}`} className="mx-1.5 my-1 border-0 border-t border-line" />}
-      <MenuSection id={`groupe-${i}`} className="grid" {...(checkable(g.actions[0]) && { selectionMode: "multiple" as const, selectedKeys: g.actions.filter((a) => a.checked).map((a) => a.label) })}>
+      <MenuSection
+        id={`groupe-${i}`}
+        className="grid"
+        {...(checkable(g.actions[0]) && {
+          selectionMode: "multiple" as const,
+          selectedKeys: g.actions.filter((a) => a.checked).map((a) => a.label),
+        })}
+      >
         {g.actions.map((a) => (
           <Item key={a.label} id={a.label} textValue={a.label} isDisabled={a.disabled} onAction={a.onSelect} className={ITEM}>
             {({ isSelected }) => (
@@ -104,7 +112,8 @@ function Bar({ menus }: { menus: MenuDef[] }) {
   // un menu ouvert : un clic hors de la barre et du menu le ferme (ses titres, eux, passent d'un menu à l'autre)
   useEffect(() => {
     if (open === null) return;
-    const away = (e: PointerEvent) => !bar.current?.contains(e.target as Node) && !panel.current?.contains(e.target as Node) && setOpen(null);
+    const away = (e: PointerEvent) =>
+      !bar.current?.contains(e.target as Node) && !panel.current?.contains(e.target as Node) && setOpen(null);
     addEventListener("pointerdown", away, true);
     return () => removeEventListener("pointerdown", away, true);
   }, [open]);
@@ -193,7 +202,13 @@ function CompactMenu({ menus, heading }: { menus: MenuDef[]; heading?: ReactNode
             <div onKeyDownCapture={(e) => e.key === "ArrowLeft" && (e.preventDefault(), setSection(null))}>
               <Menu key={menu.label} className="grid outline-none" aria-label={menu.label} autoFocus="first" shouldCloseOnSelect>
                 <MenuSection className="grid">
-                  <Item id="retour" textValue="Menu" onAction={() => setSection(null)} shouldCloseOnSelect={false} className={`${ITEM} text-muted`}>
+                  <Item
+                    id="retour"
+                    textValue="Menu"
+                    onAction={() => setSection(null)}
+                    shouldCloseOnSelect={false}
+                    className={`${ITEM} text-muted`}
+                  >
                     <span aria-hidden>‹</span>
                     <span>Menu</span>
                   </Item>
@@ -204,11 +219,24 @@ function CompactMenu({ menus, heading }: { menus: MenuDef[]; heading?: ReactNode
             </div>
           ) : (
             // la flèche droite ouvre le titre, comme Entrée
-            <div onKeyDownCapture={(e) => e.key === "ArrowRight" && (e.preventDefault(), enter(menus.findIndex((m) => m.label === (e.target as HTMLElement).closest<HTMLElement>("[data-key]")?.dataset.key)))}>
+            <div
+              onKeyDownCapture={(e) =>
+                e.key === "ArrowRight" &&
+                (e.preventDefault(),
+                enter(menus.findIndex((m) => m.label === (e.target as HTMLElement).closest<HTMLElement>("[data-key]")?.dataset.key)))
+              }
+            >
               {heading}
               <Menu key="titres" className="grid outline-none" aria-label="Menu" autoFocus="first">
                 {menus.map((m, i) => (
-                  <Item key={m.label} id={m.label} textValue={m.label} onAction={() => setSection(i)} shouldCloseOnSelect={false} className={ITEM}>
+                  <Item
+                    key={m.label}
+                    id={m.label}
+                    textValue={m.label}
+                    onAction={() => setSection(i)}
+                    shouldCloseOnSelect={false}
+                    className={ITEM}
+                  >
                     <span />
                     <span>{m.label}</span>
                     <span className="text-muted" aria-hidden>

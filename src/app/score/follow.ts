@@ -28,12 +28,16 @@ export const follow = {
     if (!on) return;
     clearTimeout(timer);
     timer = setTimeout(() => this.release(), DELAY);
-    if (!held) (held = true), notify();
+    if (held) return;
+    held = true;
+    notify();
   },
   /** La promenade s'arrête : le suivi reprend tout de suite (un clic dans la partition, un saut). */
   release() {
     clearTimeout(timer);
-    if (held) (held = false), notify();
+    if (!held) return;
+    held = false;
+    notify();
   },
   subscribe(listener: () => void) {
     listeners.add(listener);

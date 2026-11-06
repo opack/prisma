@@ -225,7 +225,8 @@ function posOf(text: string, at: ScorePlace): Pos | undefined {
 /** La case d'avant sur la même ligne d'octave, jusque dans le système d'avant pour la première. */
 function before(lines: string[], p: Pos, note: string): Pos | undefined {
   if (p.k > 0) return { L: p.L, k: p.k - 1 };
-  const here = casesAt(lines, p.L), lane = laneOf(lines, p.L);
+  const here = casesAt(lines, p.L),
+    lane = laneOf(lines, p.L);
   const prev = here && lane && nextSystem(lines, here.sys, -1);
   if (!prev || !lane) return undefined;
   const last = cases(lines[prev.ruler]).length - 1;
@@ -310,7 +311,12 @@ export function durationOf(text: string, at: ScorePlace) {
   const start = n.chain[0];
   const c = casesAt(lines, start.L)!;
   const place = textPlace(text, start.L + 1, c.all[start.k].start + 1);
-  const attack: ScorePlace = { t: place?.t ?? at.t, staff: at.staff, octave: at.octave, content: cellAt(lines, start).startsWith("-") ? cellAt(lines, start) : n.note };
+  const attack: ScorePlace = {
+    t: place?.t ?? at.t,
+    staff: at.staff,
+    octave: at.octave,
+    content: cellAt(lines, start).startsWith("-") ? cellAt(lines, start) : n.note,
+  };
   // elle peut toujours s'allonger, sauf au bout du morceau (une case prise la fait changer de
   // ligne) ; sur une corde, seulement si la case d'après est libre
   const here = casesAt(lines, end.L)!;
@@ -388,7 +394,8 @@ export function holdChoices(text: string, at: ScorePlace): string[] {
   const lines = text.split("\n");
   const p = posOf(text, at);
   if (!p) return [];
-  const here = casesAt(lines, p.L), lane = laneOf(lines, p.L);
+  const here = casesAt(lines, p.L),
+    lane = laneOf(lines, p.L);
   if (!here || !lane) return [];
   const found: { note: string; from: number }[] = [];
   for (const L of laneLines(lines, here.sys, lane.staff, lane.octave)) {
@@ -413,15 +420,18 @@ function lastNote(lines: string[], p: Pos): { note: string; from: number } | und
     return note ? { note, from: k + 1 } : undefined;
   }
   // la ligne est vide jusqu'au début du système : la note qui sonnait au bout du système d'avant
-  const here = casesAt(lines, p.L), lane = laneOf(lines, p.L);
+  const here = casesAt(lines, p.L),
+    lane = laneOf(lines, p.L);
   const prev = here && lane && nextSystem(lines, here.sys, -1);
   if (!prev || !lane) return undefined;
-  const pa = cases(lines[prev.ruler]), last = pa.length - 1;
+  const pa = cases(lines[prev.ruler]),
+    last = pa.length - 1;
   for (const L of laneLines(lines, prev, lane.staff, lane.octave)) {
     const c = cellAt(lines, { L, k: last });
     const n = attackOf(c) ?? (c.startsWith("-") ? heldBefore(lines[L], pa, last) : undefined);
     // une note qui ne continue pas déjà ailleurs dans ce système
-    if (n && !laneLines(lines, here.sys, lane.staff, lane.octave).some((M) => cellAt(lines, { L: M, k: 0 }) === "-" + n)) return { note: n, from: 0 };
+    if (n && !laneLines(lines, here.sys, lane.staff, lane.octave).some((M) => cellAt(lines, { L: M, k: 0 }) === "-" + n))
+      return { note: n, from: 0 };
   }
   return undefined;
 }
@@ -431,7 +441,8 @@ export function holdIn(text: string, at: ScorePlace, note: string): Done | undef
   let lines = text.split("\n");
   const p = posOf(text, at);
   if (!p) return undefined;
-  const here = casesAt(lines, p.L), lane = laneOf(lines, p.L);
+  const here = casesAt(lines, p.L),
+    lane = laneOf(lines, p.L);
   if (!here || !lane) return undefined;
   for (const L of laneLines(lines, here.sys, lane.staff, lane.octave)) {
     const n = lastNote(lines, { L, k: p.k });
@@ -456,7 +467,8 @@ export function splitCell(cell: string): CellParts | undefined {
 }
 
 /** La case réécrite d'après ses morceaux. */
-export const joinCell = (p: CellParts) => p.graces.map((g) => g + "'").join("") + p.note + (p.trill ? "~" + p.trill : "") + (p.finger ? "_" + p.finger : "");
+export const joinCell = (p: CellParts) =>
+  p.graces.map((g) => g + "'").join("") + p.note + (p.trill ? "~" + p.trill : "") + (p.finger ? "_" + p.finger : "");
 
 /**
  * Une ligne de notes restée vide après qu'une note l'a quittée disparaît : son numéro d'octave passe
@@ -481,7 +493,8 @@ function dropIfEmpty(lines: string[], L: number): string[] {
 }
 
 /** Les octaves possibles : de -4 à +4 autour de celle du do central. */
-const LOWEST = CENTRAL_OCTAVE - 4, HIGHEST = CENTRAL_OCTAVE + 4;
+const LOWEST = CENTRAL_OCTAVE - 4,
+  HIGHEST = CENTRAL_OCTAVE + 4;
 
 /**
  * Change l'octave d'une note (dir : 1 au-dessus, -1 au-dessous) : son attaque et ses tenues passent,
@@ -521,7 +534,11 @@ export function placeOnString(text: string, at: ScorePlace, string: number, fret
     const parts = splitCell(head);
     const fits = (x: string) => Number(x) + shift >= 0 && Number(x) + shift <= MAX_FRET;
     const out = parts
-      ? joinCell({ graces: parts.graces.filter(fits).map((g) => String(Number(g) + shift)), note: String(fret), ...(parts.trill && fits(parts.trill) ? { trill: String(Number(parts.trill) + shift) } : {}) })
+      ? joinCell({
+          graces: parts.graces.filter(fits).map((g) => String(Number(g) + shift)),
+          note: String(fret),
+          ...(parts.trill && fits(parts.trill) ? { trill: String(Number(parts.trill) + shift) } : {}),
+        })
       : head.replace(/\d+/, String(fret)); // une tenue nommée (« -5 ») nomme sa nouvelle case
     return finger === undefined ? out : out + "_" + finger;
   };
@@ -569,7 +586,10 @@ function attacks(text: string, at: ScorePlace) {
 /** Si la note (ou la case vide) d'une case peut passer sur chaque corde : une par corde, de la 1 à la plus grave. */
 export function freeStrings(text: string, at: ScorePlace, count: number): boolean[] {
   const start = (cellOf(text, at)?.content && durationOf(text, at)?.attack) || at;
-  return Array.from({ length: count }, (_, k) => STRING_LANE + k + 1 === at.octave || !attacks(text, { t: start.t, staff: at.staff, octave: STRING_LANE + k + 1 }));
+  return Array.from(
+    { length: count },
+    (_, k) => STRING_LANE + k + 1 === at.octave || !attacks(text, { t: start.t, staff: at.staff, octave: STRING_LANE + k + 1 }),
+  );
 }
 
 /** Fait passer une note (son attaque et ses tenues) dans le couloir target, chaque case réécrite par change. */

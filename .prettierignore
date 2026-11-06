@@ -1,0 +1,4 @@
+# le lockfile est écrit par pnpm
+pnpm-lock.yaml
+# le Markdown garde son écriture (les noms de notes en *italique*, les tableaux alignés à la main)
+*.md

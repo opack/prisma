@@ -12,7 +12,13 @@ export function NewDialog({ onCreate, onClose }: { onCreate: (template: Template
   const [chosen, setChosen] = useState(TEMPLATES[1].id);
   return (
     <Dialog title="Nouveau morceau" submit="Créer" onSubmit={() => onCreate(TEMPLATES.find((t) => t.id === chosen)!)} onClose={onClose}>
-      <Choices legend="Pour commencer" name="template" options={TEMPLATES.map((t) => ({ value: t.id, label: t.label, hint: t.hint }))} value={chosen} onChange={setChosen} />
+      <Choices
+        legend="Pour commencer"
+        name="template"
+        options={TEMPLATES.map((t) => ({ value: t.id, label: t.label, hint: t.hint }))}
+        value={chosen}
+        onChange={setChosen}
+      />
     </Dialog>
   );
 }

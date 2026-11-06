@@ -15,7 +15,8 @@ import { MAX_FRET, defaultStrings } from "./strings.ts";
  * sinon une guitare en accordage standard. La basse n'a pas de grilles : on y joue la basse de
  * l'accord, pas l'accord.
  */
-export const gridStrings = (strings: (Strings | undefined)[]): Strings => strings.find((s) => s && s.open.length === 6) ?? defaultStrings("guitar");
+export const gridStrings = (strings: (Strings | undefined)[]): Strings =>
+  strings.find((s) => s && s.open.length === 6) ?? defaultStrings("guitar");
 
 /** Ce que coûte l'écart des doigts, de 0 à 3 cases : quatre cases, c'est l'extension, rarement confortable. */
 const SPAN_COST = [0, 0.5, 1.2, 4.5];
@@ -70,7 +71,8 @@ export function barreOf(shape: Shape): { fret: number; from: number; to: number 
   const at = pressed.filter((p) => p.f === fret).map((p) => p.k);
   if (at.length < 2) return undefined;
   // le doigt couché va de la première corde à cette case jusqu'à la plus aiguë : rien de plus bas, ni à vide, ni muet, entre les deux
-  const from = at[0], to = shape.length - 1;
+  const from = at[0],
+    to = shape.length - 1;
   for (let k = from; k <= to; k++) if (shape[k] === null || shape[k]! < fret) return undefined;
   return { fret, from, to };
 }
@@ -123,19 +125,30 @@ export function chordShape(notes: number[], s: Strings): Shape | undefined {
       const heard = new Set(played.map((p) => (open[p.k] + p.f) % 12));
       for (const p of set) if (!heard.has(p) && p !== fifth) return undefined;
       const pressed = played.filter((p) => p.f > 0).map((p) => p.f);
-      const lo = pressed.length ? Math.min(...pressed) : 0, hi = pressed.length ? Math.max(...pressed) : 0;
+      const lo = pressed.length ? Math.min(...pressed) : 0,
+        hi = pressed.length ? Math.max(...pressed) : 0;
       if (hi - lo > 3 || fingersOf(sh) > 4) return undefined;
       // seule la position la plus basse qui contient ces cases compte : pas de doublon d'une position à l'autre
       if (pressed.length && lo !== pos) return undefined;
       const muted = n - played.length;
       // une corde à vide prise entre deux cases hautes : la main, loin du sillet, l'étouffe
-      const caught = played.filter((p) => p.f === 0 && played.some((q) => q.k < p.k && q.f >= 4) && played.some((q) => q.k > p.k && q.f > 0)).length;
-      return lo + SPAN_COST[hi - lo] + muted + (barreOf(sh) ? 0.5 : 0) + fingersOf(sh) * 0.2 - (played.length - pressed.length) * 0.3 + caught * 2;
+      const caught = played.filter(
+        (p) => p.f === 0 && played.some((q) => q.k < p.k && q.f >= 4) && played.some((q) => q.k > p.k && q.f > 0),
+      ).length;
+      return (
+        lo +
+        SPAN_COST[hi - lo] +
+        muted +
+        (barreOf(sh) ? 0.5 : 0) +
+        fingersOf(sh) * 0.2 -
+        (played.length - pressed.length) * 0.3 +
+        caught * 2
+      );
     };
     walk(0);
   }
   // un accord tout à vide (rare : un accordage ouvert) : aucune case appuyée, donc aucune position
   const allOpen = open.map((o) => (set.has(o % 12) ? 0 : null));
-  if (!best && allOpen[0] === 0 && (open[0] % 12) === bass) best = { shape: allOpen, cost: 0 };
+  if (!best && allOpen[0] === 0 && open[0] % 12 === bass) best = { shape: allOpen, cost: 0 };
   return best?.shape;
 }

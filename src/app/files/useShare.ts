@@ -91,7 +91,8 @@ export function useShare({ source, fileName, piece, notify, openShared }: Deps) 
   const [importing, setImporting] = useState(false);
   const importLink = async (link: string) => {
     const data = sharedInLink(link);
-    if (!data) return "Ce n'est pas le lien d'une partition partagée : il contient « #p= » suivi du morceau, en lettres, chiffres, « - » et « _ ».";
+    if (!data)
+      return "Ce n'est pas le lien d'une partition partagée : il contient « #p= » suivi du morceau, en lettres, chiffres, « - » et « _ ».";
     const shared = await decodeShare(data);
     if (!shared) return "Ce lien ne se lit pas : il a peut-être été coupé en route. Copiez-le de nouveau, en entier.";
     setImporting(false);

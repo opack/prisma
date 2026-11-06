@@ -30,7 +30,16 @@ function Score({ text, options = {}, scale = 1.5 }: Omit<Engraved, "label" | "gu
   const o = { ...DEFAULT_OPTIONS, ...options };
   const result = useMemo(() => {
     try {
-      return { pages: engrave(parsePrisma(text), { compact: o.density === "compact", chords: o.chords, chordNames: o.chordNames, align: alignOf(o.notePosition), reminders: o.holdReminders, inlineSections: o.sections === "inline" }) };
+      return {
+        pages: engrave(parsePrisma(text), {
+          compact: o.density === "compact",
+          chords: o.chords,
+          chordNames: o.chordNames,
+          align: alignOf(o.notePosition),
+          reminders: o.holdReminders,
+          inlineSections: o.sections === "inline",
+        }),
+      };
     } catch (e) {
       return { error: (e as Error).message };
     }
@@ -88,7 +97,13 @@ export function Source({ text, header = true }: { text: string; header?: boolean
 export function Example({ label, text, guide, ...rest }: Engraved) {
   const [view, setView] = useState<"score" | "text">("score");
   const tab = (v: typeof view, name: ReactNode) => (
-    <button type="button" role="tab" aria-selected={view === v} className={`text-[0.85rem] px-2.5 py-[3px] border-0 rounded-[5px] cursor-pointer ${view === v ? "bg-panel text-ink font-bold" : "bg-transparent text-muted"}`} onClick={() => setView(v)}>
+    <button
+      type="button"
+      role="tab"
+      aria-selected={view === v}
+      className={`text-[0.85rem] px-2.5 py-[3px] border-0 rounded-[5px] cursor-pointer ${view === v ? "bg-panel text-ink font-bold" : "bg-transparent text-muted"}`}
+      onClick={() => setView(v)}
+    >
       {name}
     </button>
   );

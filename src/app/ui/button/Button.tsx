@@ -11,7 +11,11 @@ import { forwardRef } from "react";
 import type { ButtonHTMLAttributes } from "react";
 import { mergeProps, useFocusRing } from "react-aria";
 
-export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { kind?: "normal" | "primary" | "quiet"; pressed?: boolean; size?: "text" | "small" | "icon" | "caret" };
+export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  kind?: "normal" | "primary" | "quiet";
+  pressed?: boolean;
+  size?: "text" | "small" | "icon" | "caret";
+};
 
 const KINDS = {
   normal: "border-line bg-white text-ink enabled:hover:border-muted",
@@ -26,7 +30,10 @@ const SIZES = {
   caret: "w-[1.4em] h-[2.1em] p-0 touch:w-7 touch:h-11",
 };
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button({ kind = "normal", pressed, size = "text", className = "", type = "button", ...props }, ref) {
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { kind = "normal", pressed, size = "text", className = "", type = "button", ...props },
+  ref,
+) {
   const { focusProps, isFocusVisible } = useFocusRing();
   return (
     <button

@@ -11,7 +11,29 @@ import type { ReactNode } from "react";
 import { useFocusVisible } from "react-aria";
 import { Button } from "../button/Button.tsx";
 
-export function Dialog({ title, intro, submit, onSubmit, onClose, actions, cancel = "Annuler", focusSubmit = false, focusField = false, children }: { title: string; intro?: ReactNode; submit: string; onSubmit: () => void; onClose: () => void; actions?: ReactNode; cancel?: string | null; focusSubmit?: boolean; focusField?: boolean; children: ReactNode }) {
+export function Dialog({
+  title,
+  intro,
+  submit,
+  onSubmit,
+  onClose,
+  actions,
+  cancel = "Annuler",
+  focusSubmit = false,
+  focusField = false,
+  children,
+}: {
+  title: string;
+  intro?: ReactNode;
+  submit: string;
+  onSubmit: () => void;
+  onClose: () => void;
+  actions?: ReactNode;
+  cancel?: string | null;
+  focusSubmit?: boolean;
+  focusField?: boolean;
+  children: ReactNode;
+}) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
   const { isFocusVisible: keyboard } = useFocusVisible();
@@ -25,7 +47,14 @@ export function Dialog({ title, intro, submit, onSubmit, onClose, actions, cance
     else if (focusSubmit) d.querySelector<HTMLButtonElement>("button[type=submit]")?.focus();
   }, []);
   return (
-    <dialog ref={ref} tabIndex={-1} className="outline-none m-auto w-[min(460px,calc(100%_-_32px))] p-0 border border-line rounded-lg bg-panel text-ink shadow-[0_12px_40px_rgba(0,0,0,0.18)] backdrop:bg-[rgba(27,29,31,0.32)]" aria-labelledby={id} onClose={onClose} onCancel={onClose}>
+    <dialog
+      ref={ref}
+      tabIndex={-1}
+      className="outline-none m-auto w-[min(460px,calc(100%_-_32px))] p-0 border border-line rounded-lg bg-panel text-ink shadow-[0_12px_40px_rgba(0,0,0,0.18)] backdrop:bg-[rgba(27,29,31,0.32)]"
+      aria-labelledby={id}
+      onClose={onClose}
+      onCancel={onClose}
+    >
       <form
         className="grid gap-3.5 px-5 pt-4.5 pb-4"
         method="dialog"

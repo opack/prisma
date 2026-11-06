@@ -25,7 +25,12 @@ export function PartsBar({ parts, start, back }: { parts: PagePart[]; start: str
       frame = requestAnimationFrame(() => {
         setAway((document.getElementById(start)?.getBoundingClientRect().bottom ?? 1) < 0);
         // la partie lue : la dernière dont le haut est passé sous le bouton du haut
-        setCurrent(ids.split(" ").filter((id) => (document.getElementById(id)?.getBoundingClientRect().top ?? Infinity) <= BAR + 16).pop());
+        setCurrent(
+          ids
+            .split(" ")
+            .filter((id) => (document.getElementById(id)?.getBoundingClientRect().top ?? Infinity) <= BAR + 16)
+            .pop(),
+        );
       });
     };
     spy();
@@ -38,7 +43,11 @@ export function PartsBar({ parts, start, back }: { parts: PagePart[]; start: str
   if (!away) return null;
   const go = (id: string) => {
     const el = document.getElementById(id);
-    if (el) scrollTo({ top: el.getBoundingClientRect().top + scrollY - BAR, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    if (el)
+      scrollTo({
+        top: el.getBoundingClientRect().top + scrollY - BAR,
+        behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      });
   };
   return (
     <>

@@ -9,21 +9,9 @@
     "noEmit": true,
     "strict": true,
     "skipLibCheck": true,
-    "types": [
-      "node",
-      "vite-plugin-pwa/client"
-    ],
+    "types": ["node", "vite-plugin-pwa/client"],
     "jsx": "react-jsx",
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ]
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
   },
-  "include": [
-    "src",
-    "netlify",
-    "tests",
-    "vite.config.ts"
-  ]
+  "include": ["src", "netlify", "tests", "vite.config.ts"]
 }

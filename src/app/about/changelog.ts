@@ -38,4 +38,5 @@ export function compareVersions(a: string, b: string) {
 }
 
 /** L'application vient de passer à une version plus récente que celle déjà vue (rien de vu : une première visite, pas une mise à jour). */
-export const updatedSince = (seen: string | null, current: string) => !!seen && /^\d+\.\d+\.\d+$/.test(seen) && compareVersions(seen, current) < 0;
+export const updatedSince = (seen: string | null, current: string) =>
+  !!seen && /^\d+\.\d+\.\d+$/.test(seen) && compareVersions(seen, current) < 0;
