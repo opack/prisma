@@ -15,8 +15,9 @@ import type { KeyboardEvent, ReactNode } from "react";
 import { Header, Keyboard, Menu, MenuItem as Item, MenuSection, MenuTrigger, Popover, Pressable, Separator } from "react-aria-components";
 import { Button } from "../button/Button.tsx";
 
-export type MenuItem = { label: string; onSelect: () => void; shortcut?: string; disabled?: boolean; checked?: boolean } | "separator";
-export type MenuDef = { label: string; items: MenuItem[] };
+import type { MenuDef, MenuItem } from "./menu.ts";
+
+export type { MenuDef, MenuItem };
 
 type Action = Exclude<MenuItem, "separator">;
 /** Un groupe d'actions, entre deux traits. */

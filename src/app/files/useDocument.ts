@@ -7,8 +7,13 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
-import { DEFAULT_WIDTH, PrismaError, exportMusicXml, importMusicXml, parsePrisma, writePrisma } from "../../core/index.ts";
-import type { ExportOptions, Score } from "../../core/index.ts";
+import { DEFAULT_WIDTH, exportMusicXml, importMusicXml, parsePrisma, writePrisma } from "../../core/index.ts";
+import type { ExportOptions } from "../../core/index.ts";
+import { tryParse } from "./parse.ts";
+import type { Problem } from "./parse.ts";
+
+export { tryParse };
+export type { Problem };
 import type { EditorHandle } from "../editor/SourceEditor.tsx";
 import { firstCell } from "../editor/templates.ts";
 import type { Template } from "../editor/templates.ts";
@@ -25,20 +30,6 @@ import { loadSource, saveSource } from "./storage.ts";
 
 /** Délai sans frappe avant la gravure automatique. */
 const AUTO_ENGRAVE_DELAY = 600;
-
-/** Ce qui empêche la mise en page, et où, dans le texte. */
-export type Problem = { message: string; line?: number; column?: number };
-
-/** Le texte lu en partition, ou son erreur ; un texte vide (nouvelle partition) : rien à graver, ce n'est pas une erreur. */
-export function tryParse(text: string): { score?: Score; problem?: Problem } {
-  if (!text.trim()) return {};
-  try {
-    return { score: parsePrisma(text) };
-  } catch (error) {
-    if (error instanceof PrismaError) return { problem: { message: error.message, line: error.line, column: error.column } };
-    return { problem: { message: (error as Error).message } };
-  }
-}
 
 type Deps = {
   /** Mettre en page peu après la dernière frappe. */

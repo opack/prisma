@@ -7,6 +7,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import {
+  APPS,
   CLAIR_SECTIONS,
   DESKTOP,
   GREENSLEEVES_CHORDS,
@@ -21,6 +22,7 @@ import {
   fakePcloud,
   openApp,
   provideFolder,
+  receiveShared,
   retouchAt,
   settle,
 } from "../support/app.ts";
@@ -126,6 +128,71 @@ for (const [site, root, textTolerance, menuTolerance] of [
     await settle(page);
     await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
     await expect(back).toHaveCount(0);
+  });
+}
+
+// l'application, en React et en Vue (en construction, dans app-vue/) : ses menus, ses fenêtres et
+// l'éditeur, chacun à part (la barre de Vue n'a pas encore l'écoute), aux mêmes références. Deux
+// écarts compris, tolérés pour Vue seulement : le texte, que Vue découpe en nœuds autrement, s'y
+// lisse de quelques pixels de plus ; et React Aria pose ses menus et ses fenêtres au demi-pixel, que
+// Vue pose au pixel entier : leurs bords et leur texte s'y lissent autrement.
+for (const { name, root } of APPS) {
+  const tolerance = name === "Vue" ? { maxDiffPixels: 50 } : {};
+  const placedTolerance = name === "Vue" ? { maxDiffPixels: 1000 } : {};
+  // le panneau du menu ouvert, son cadre compris (React Aria le pose autour du menu, Reka UI sur lui)
+  const menuPanel = (page: Page) => page.locator('[data-trigger="MenuTrigger"], [data-slot="dropdown-menu-content"]');
+
+  test(`app ${name} : un menu de la barre`, async ({ page }) => {
+    await openApp(page, { source: CLAIR_SECTIONS, root });
+    await page.getByRole("button", { name: "Affichage", exact: true }).click();
+    await settle(page);
+    await expect(menuPanel(page)).toHaveScreenshot("app-menu-affichage.png", placedTolerance);
+  });
+
+  // sur un téléphone, le seul « Menu » porte en tête le nom du morceau ; une tablette montre les
+  // actions d'un titre choisi à la place des titres, sous « ‹ Menu »
+  test(`app ${name} : le menu d'un téléphone`, async ({ page }) => {
+    await openApp(page, { source: CLAIR_SECTIONS, root, editing: false, size: PHONE });
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
+    await settle(page);
+    await expect(menuPanel(page)).toHaveScreenshot("app-menu-telephone.png", placedTolerance);
+  });
+  test(`app ${name} : le menu d'une tablette`, async ({ page }) => {
+    await openApp(page, { source: CLAIR_SECTIONS, root, editing: false, size: TABLET });
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
+    await page.getByRole("menuitem", { name: /Partition/ }).click();
+    await settle(page);
+    await expect(menuPanel(page)).toHaveScreenshot("app-menu-tablette.png", placedTolerance);
+  });
+
+  // les fenêtres : Nouveau, l'export, la conversion pour la guitare
+  for (const [menu, action, dialog, file] of [
+    ["Fichier", "Nouveau…", "Nouveau morceau", "app-fenetre-nouveau.png"],
+    ["Fichier", "Exporter en MusicXML…", "Exporter en MusicXML", "app-fenetre-export.png"],
+    ["Partition", "Convertir pour la guitare ou la basse…", "Convertir pour la guitare ou la basse", "app-fenetre-conversion.png"],
+  ] as const)
+    test(`app ${name} : la fenêtre ${dialog}`, async ({ page }) => {
+      await openApp(page, { source: CLAIR_SECTIONS, root });
+      await chooseMenu(page, menu, action);
+      await expect(page.getByRole("dialog", { name: dialog })).toHaveScreenshot(file, placedTolerance);
+    });
+
+  // un morceau reçu par un lien : son titre, son compositeur, ses notes, son nom de fichier
+  test(`app ${name} : la fenêtre Partition reçue`, async ({ page }) => {
+    await openApp(page, { source: TECHNIQUES, root, editing: false });
+    await receiveShared(page, CLAIR_SECTIONS.replace("bpm: 100", "bpm: 100\nnotes: À jouer lentement"));
+    const dialog = page.getByRole("dialog", { name: "Partition reçue" });
+    await expect(dialog).toContainText("Au clair de la lune");
+    await settle(page);
+    await expect(dialog).toHaveScreenshot("app-fenetre-recue.png", placedTolerance);
+  });
+
+  // l'éditeur : le texte coloré, une erreur sous lui, la barre d'état, le bouton de mise en page
+  test(`app ${name} : l'éditeur, avec une erreur`, async ({ page }) => {
+    await openApp(page, { source: CLAIR_SECTIONS.replace("|1  |1  |1  |3  ||", "|1  |1  |13 |3  ||"), root });
+    await page.locator(".cm-line").nth(10).click();
+    await settle(page);
+    await expect(page.locator("section:has(.cm-editor)")).toHaveScreenshot("app-editeur-erreur.png", tolerance);
   });
 }
 

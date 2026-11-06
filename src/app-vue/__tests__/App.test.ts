@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it } from "vitest";
 import { CLAIR } from "../../site/examples/pieces.ts";
 import App from "../App.vue";
@@ -7,17 +7,25 @@ import App from "../App.vue";
 describe("l'application Vue", () => {
   beforeEach(() => localStorage.clear());
 
-  it("grave le morceau en cours", () => {
+  it("ouvre le morceau en cours en lecture : sa partition, sans l'éditeur", async () => {
     localStorage.setItem("prisma:source", CLAIR);
-    const app = mount(App);
+    localStorage.setItem("prisma:editing", "false");
+    const app = mount(App, { attachTo: document.body });
+    await flushPromises();
     expect(app.findAll("svg.page")).toHaveLength(1);
-    expect(app.text()).toContain("Au clair de la lune");
+    expect(app.find("section[aria-label='Partition']").text()).toContain("Au clair de la lune");
+    expect(app.find("section:has(.cm-editor)").attributes("hidden")).toBeDefined();
+    app.unmount();
   });
 
-  it("dit pourquoi un morceau ne se lit pas", () => {
+  it("ouvre en édition un morceau qui ne se lit pas, et dit pourquoi", async () => {
     localStorage.setItem("prisma:source", "0 |1 |\n");
-    const app = mount(App);
-    expect(app.find("svg").exists()).toBe(false);
-    expect(app.text()).toMatch(/^ligne \d+, col\. \d+ : /);
+    localStorage.setItem("prisma:editing", "false");
+    const app = mount(App, { attachTo: document.body });
+    await flushPromises();
+    expect(app.find("svg.page").exists()).toBe(false);
+    expect(app.find("section:has(.cm-editor)").attributes("hidden")).toBeUndefined();
+    expect(app.find('[title="aller à l\'erreur"]').text()).toMatch(/^ligne \d+, col\. \d+ : /);
+    app.unmount();
   });
 });

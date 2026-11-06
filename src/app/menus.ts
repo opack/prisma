@@ -1,7 +1,7 @@
 /** Les menus de la barre : Fichier, Partition, Affichage, Aide ; ce que fait chaque action, et quand elle est cochée ou inactive. */
-import type { MenuDef } from "./ui/menu/MenuBar.tsx";
-import { ZOOMS } from "./score/useView.ts";
-import type { View } from "./score/useView.ts";
+import type { MenuDef } from "./ui/menu/menu.ts";
+import { ZOOMS } from "./score/view.ts";
+import type { View } from "./score/view.ts";
 
 type Ctx = {
   newFile: () => void;
