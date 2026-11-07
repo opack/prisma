@@ -141,6 +141,8 @@ for (const { name, root } of APPS) {
   const placedTolerance = name === "Vue" ? { maxDiffPixels: 1000 } : {};
   // le panneau du menu ouvert, son cadre compris (React Aria le pose autour du menu, Reka UI sur lui)
   const menuPanel = (page: Page) => page.locator('[data-trigger="MenuTrigger"], [data-slot="dropdown-menu-content"]');
+  // de même, un petit panneau ouvert depuis un bouton
+  const popoverPanel = (page: Page) => page.locator('[data-trigger="DialogTrigger"], [data-slot="popover-content"]');
 
   test(`app ${name} : un menu de la barre`, async ({ page }) => {
     await openApp(page, { source: CLAIR_SECTIONS, root });
@@ -193,6 +195,79 @@ for (const { name, root } of APPS) {
     await page.locator(".cm-line").nth(10).click();
     await settle(page);
     await expect(page.locator("section:has(.cm-editor)")).toHaveScreenshot("app-editeur-erreur.png", tolerance);
+  });
+
+  // l'écoute, dans la barre : le tempo (+ l'avance de 1, un appui long de 5 en 5 ; le ↺ du champ
+  // revient à celui de la partition), et Tab, des menus jusqu'à ses boutons
+  test(`app ${name} : le tempo`, async ({ page }) => {
+    await openApp(page, { source: CLAIR_SECTIONS, root });
+    const field = page.getByRole("spinbutton", { name: "Tempo de l'écoute" });
+    const plus = page.getByRole("button", { name: "Plus rapide", exact: true });
+    await plus.click();
+    await expect(field).toHaveValue("101");
+    await plus.hover();
+    await page.mouse.down();
+    await page.waitForTimeout(700);
+    await page.mouse.up();
+    await expect(field).toHaveValue("106");
+    await page.mouse.move(0, 400);
+    await settle(page);
+    await expect(page.locator("header")).toHaveScreenshot("app-tempo.png", tolerance);
+    await page.getByRole("button", { name: "Revenir au tempo de la partition" }).click();
+    await expect(field).toHaveValue("100");
+  });
+  test(`app ${name} : Tab jusqu'à l'écoute`, async ({ page }) => {
+    await openApp(page, { source: CLAIR_SECTIONS, root });
+    await page.getByRole("button", { name: "Fichier", exact: true }).focus();
+    for (let step = 0; step < 9; step++) await page.keyboard.press("Tab");
+    await expect(page.getByRole("button", { name: "Écouter" })).toBeFocused();
+    await expect(page.locator("header")).toHaveScreenshot("app-tab-ecoute.png", tolerance);
+  });
+
+  // les panneaux de l'écoute : ce que bat le métronome, les parties jouées et leurs instruments
+  for (const [button, file] of [
+    ["Battre", "app-panneau-metronome.png"],
+    ["Parties et instruments", "app-panneau-parties.png"],
+  ] as const)
+    test(`app ${name} : le panneau ${button}`, async ({ page }) => {
+      await openApp(page, { source: CLAIR_SECTIONS, root });
+      await page.getByRole("button", { name: button, exact: true }).click();
+      await settle(page);
+      // le panneau ramené au pixel entier (React Aria le pose au demi-pixel : son texte s'y lisserait
+      // autrement), puis la capture d'un cadre autour de lui
+      await popoverPanel(page).evaluate((panel) => {
+        const { x, y } = panel.getBoundingClientRect();
+        panel.style.translate = `${Math.round(x) - x}px ${Math.round(y) - y}px`;
+      });
+      const box = (await popoverPanel(page).boundingBox())!;
+      const clip = { x: Math.round(box.x), y: Math.round(box.y), width: Math.ceil(box.width), height: Math.ceil(box.height) };
+      await expect(page).toHaveScreenshot(file, { clip, ...tolerance });
+    });
+
+  // où en est la lecture, sous la barre : un clic sur la piste place la lecture sur une mesure (ici la 10e des 16, dans la section B)
+  test(`app ${name} : la piste de lecture`, async ({ page }) => {
+    await openApp(page, { source: CLAIR_SECTIONS, root, editing: false });
+    const track = page.getByRole("slider", { name: "Position dans le morceau" });
+    const box = (await track.boundingBox())!;
+    await page.mouse.click(box.x + box.width * 0.6, box.y + box.height / 2);
+    await settle(page);
+    await expect(track).toHaveAttribute("aria-valuetext", "mesure 10 sur 16, section B");
+    // la bulle, au survol : la mesure où l'on tombera ; puis la piste seule, le pointeur ailleurs
+    // (le compteur s'est élargi : la piste a bougé)
+    const moved = (await track.boundingBox())!;
+    await page.mouse.move(moved.x + moved.width * 0.3, moved.y + moved.height / 2);
+    await expect(page.getByText(/^mesure 5/)).toBeVisible();
+    await page.mouse.move(0, 400);
+    // 16 mesures de 4 temps à 100 : 38 secondes ; la 10e commence à 21
+    await expect(page.getByText("0:21 / 0:38")).toBeVisible();
+    await expect(page).toHaveScreenshot("app-piste.png", { clip: { x: 0, y: 0, width: 1300, height: 72 }, ...tolerance });
+  });
+
+  // la lecture focalisée : deux systèmes, aux mêmes places
+  test(`app ${name} : la lecture focalisée`, async ({ page }) => {
+    await openApp(page, { source: GYMNOPEDIE, root, editing: false, view: { fit: "focus", zoom: 1 } });
+    await settle(page);
+    await expect(page.locator("section[data-fit]")).toHaveScreenshot("app-partition-focalisee.png", tolerance);
   });
 }
 
@@ -454,25 +529,6 @@ test("app métronome", async ({ page }) => {
   await expect(page).toHaveScreenshot("app-metronome.png");
 });
 
-// le tempo : + l'avance de 1, un appui long de 5 en 5 ; le ↺ du champ revient au tempo de la partition
-test("app tempo", async ({ page }) => {
-  await openApp(page, { source: CLAIR_SECTIONS });
-  const field = page.getByRole("spinbutton", { name: "Tempo de l'écoute" });
-  const plus = page.getByRole("button", { name: "Plus rapide", exact: true });
-  await plus.click();
-  await expect(field).toHaveValue("101");
-  await plus.hover();
-  await page.mouse.down();
-  await page.waitForTimeout(700);
-  await page.mouse.up();
-  await expect(field).toHaveValue("106");
-  await page.mouse.move(0, 400);
-  await settle(page);
-  await expect(page.locator("header")).toHaveScreenshot("app-tempo.png");
-  await page.getByRole("button", { name: "Revenir au tempo de la partition" }).click();
-  await expect(field).toHaveValue("100");
-});
-
 test("app menu ouvert", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS });
   await page.getByRole("button", { name: "Partition", exact: true }).click();
@@ -493,15 +549,6 @@ test("app menu au clavier", async ({ page }) => {
   await page.keyboard.press("Escape");
   await expect(page.getByRole("menu")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Affichage", exact: true })).toBeFocused();
-});
-
-// au clavier, Tab passe des menus aux boutons de l'écoute : le bouton qui a le focus a son contour
-test("app tab jusqu'à l'écoute", async ({ page }) => {
-  await openApp(page, { source: CLAIR_SECTIONS });
-  await page.getByRole("button", { name: "Fichier", exact: true }).focus();
-  for (let step = 0; step < 9; step++) await page.keyboard.press("Tab");
-  await expect(page.getByRole("button", { name: "Écouter" })).toBeFocused();
-  await expect(page.locator("header")).toHaveScreenshot("app-tab-ecoute.png");
 });
 
 // la barre des menus : un menu ouvert, le survol d'un autre titre l'ouvre à sa place ; les flèches
@@ -677,25 +724,6 @@ for (const [fit, zoom, name] of [
     await expect(page.locator("section[data-fit]")).toHaveJSProperty(fit === "height" ? "scrollLeft" : "scrollTop", 0);
     await expect(page.getByRole("button", { name: "Retour au début de la partition" })).toHaveCount(0);
   });
-
-// où en est la lecture, sous la barre : un clic sur la piste place la lecture sur une mesure (ici la 10e des 16, dans la section B)
-test("app piste de lecture", async ({ page }) => {
-  await openApp(page, { source: CLAIR_SECTIONS, editing: false });
-  const track = page.getByRole("slider", { name: "Position dans le morceau" });
-  const box = (await track.boundingBox())!;
-  await page.mouse.click(box.x + box.width * 0.6, box.y + box.height / 2);
-  await settle(page);
-  await expect(track).toHaveAttribute("aria-valuetext", "mesure 10 sur 16, section B");
-  // la bulle, au survol : la mesure où l'on tombera ; puis la piste seule, le pointeur ailleurs
-  // (le compteur s'est élargi : la piste a bougé)
-  const moved = (await track.boundingBox())!;
-  await page.mouse.move(moved.x + moved.width * 0.3, moved.y + moved.height / 2);
-  await expect(page.getByText(/^mesure 5/)).toBeVisible();
-  await page.mouse.move(0, 400);
-  // 16 mesures de 4 temps à 100 : 38 secondes ; la 10e commence à 21
-  await expect(page.getByText("0:21 / 0:38")).toBeVisible();
-  await expect(page).toHaveScreenshot("app-piste.png", { clip: { x: 0, y: 0, width: 1300, height: 72 } });
-});
 
 // Affichage › Piste de lecture la masque, et le choix tient au rechargement
 test("app sans piste de lecture", async ({ page }) => {
