@@ -2,6 +2,10 @@
 
 Ce qui change pour vous d'une version à l'autre de Prisma, la plus récente en haut.
 
+## 0.4.1 — 7 novembre 2026
+
+- Options › Partition › Grilles : définir les grilles pour la partition seule, avec une autre valeur que l'option générale, ne fait plus disparaître l'application.
+
 ## 0.4.0 — 5 novembre 2026
 
 - Options › Partition › Règle : la règle peut détailler chaque temps jusqu'au premier ou au second découpage, même là où rien ne joue. Les tenues se lisent case par case, et le texte ne change pas.

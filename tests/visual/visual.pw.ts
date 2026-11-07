@@ -5,7 +5,7 @@
  * et la vue sont posés avant le chargement.
  */
 import { expect, test } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import {
   APPS,
   CLAIR_SECTIONS,
@@ -26,6 +26,25 @@ import {
   retouchAt,
   settle,
 } from "../support/app.ts";
+
+/**
+ * Un panneau posé par-dessus la page, ramené au pixel entier (React Aria le pose au demi-pixel : son
+ * texte s'y lisserait autrement), puis capturé dans un cadre autour de lui.
+ */
+async function panelClip(panel: Locator, tolerance: { maxDiffPixels?: number }) {
+  await panel.evaluate((element) => {
+    const { x, y } = element.getBoundingClientRect();
+    (element as HTMLElement).style.translate = `${Math.round(x) - x}px ${Math.round(y) - y}px`;
+  });
+  const box = (await panel.boundingBox())!;
+  return { clip: { x: Math.round(box.x), y: Math.round(box.y), width: Math.ceil(box.width), height: Math.ceil(box.height) }, ...tolerance };
+}
+
+/** Les dates des fichiers de la bibliothèque (qui changent) : effacées, sans toucher à la place qu'elles prennent. */
+const hideDates = (page: Page) =>
+  page
+    .getByText(/^\d{2}\/\d{2}\/\d{4}$/)
+    .evaluateAll((dates) => dates.forEach((date) => ((date as HTMLElement).style.color = "transparent")));
 
 // le site, en React et en Vue (en construction, dans vue/) : les mêmes scènes, aux mêmes références.
 // Deux écarts compris, tolérés pour Vue seulement : le texte, que Vue et React coupent en nœuds
@@ -233,15 +252,7 @@ for (const { name, root } of APPS) {
       await openApp(page, { source: CLAIR_SECTIONS, root });
       await page.getByRole("button", { name: button, exact: true }).click();
       await settle(page);
-      // le panneau ramené au pixel entier (React Aria le pose au demi-pixel : son texte s'y lisserait
-      // autrement), puis la capture d'un cadre autour de lui
-      await popoverPanel(page).evaluate((panel) => {
-        const { x, y } = panel.getBoundingClientRect();
-        panel.style.translate = `${Math.round(x) - x}px ${Math.round(y) - y}px`;
-      });
-      const box = (await popoverPanel(page).boundingBox())!;
-      const clip = { x: Math.round(box.x), y: Math.round(box.y), width: Math.ceil(box.width), height: Math.ceil(box.height) };
-      await expect(page).toHaveScreenshot(file, { clip, ...tolerance });
+      await expect(page).toHaveScreenshot(file, await panelClip(popoverPanel(page), tolerance));
     });
 
   // où en est la lecture, sous la barre : un clic sur la piste place la lecture sur une mesure (ici la 10e des 16, dans la section B)
@@ -268,6 +279,72 @@ for (const { name, root } of APPS) {
     await openApp(page, { source: GYMNOPEDIE, root, editing: false, view: { fit: "focus", zoom: 1 } });
     await settle(page);
     await expect(page.locator("section[data-fit]")).toHaveScreenshot("app-partition-focalisee.png", tolerance);
+  });
+
+  // le panneau des options : les options générales, celles de la partition (l'une définie pour
+  // elle), celles du métronome
+  for (const [scene, file, steps] of [
+    ["générales", "app-panneau-options.png", async () => {}],
+    [
+      "de la partition",
+      "app-panneau-options-partition.png",
+      async (page: Page) => {
+        await page.getByRole("radio", { name: /^Partition/ }).click();
+        await page.getByRole("button", { name: "Définir pour la partition" }).first().click();
+      },
+    ],
+    ["du métronome", "app-panneau-options-metronome.png", async (page: Page) => page.getByRole("tab", { name: "Métronome" }).click()],
+  ] as const)
+    test(`app ${name} : les options ${scene}`, async ({ page }) => {
+      await openApp(page, { source: CLAIR_SECTIONS, root });
+      await chooseMenu(page, "Partition", "Options");
+      await steps(page);
+      await settle(page);
+      await expect(page.getByRole("complementary", { name: "Options" })).toHaveScreenshot(file, tolerance);
+    });
+
+  // la retouche d'une case : une note, sur une corde, au clavier
+  for (const [scene, source, digit, options, file] of [
+    ["d'une note", CLAIR_SECTIONS, /^5$/, {}, "app-panneau-retouche.png"],
+    ["sur une corde", TECHNIQUES, /^8$/, {}, "app-panneau-retouche-corde.png"],
+    ["au clavier", CLAIR_SECTIONS, /^5$/, { noteNames: "keyboard" }, "app-panneau-retouche-clavier.png"],
+  ] as const)
+    test(`app ${name} : la retouche ${scene}`, async ({ page }) => {
+      await openApp(page, { source, root, editing: false, options });
+      await retouchAt(page, digit);
+      await settle(page);
+      // le panneau : le choix lui-même, ou (React Aria) son cadre autour de lui
+      const panel = page
+        .getByRole("dialog", { name: "Note de la case" })
+        .locator('xpath=ancestor-or-self::*[contains(@class, "border-line")][1]');
+      await expect(page).toHaveScreenshot(file, await panelClip(panel, tolerance));
+    });
+
+  // À propos : la version et les nouveautés, qui changent à chaque version, cachées ; leur cadre reste
+  test(`app ${name} : la fenêtre À propos`, async ({ page }) => {
+    await openApp(page, { source: CLAIR_SECTIONS, root });
+    await chooseMenu(page, "Aide", "À propos…");
+    const dialog = page.getByRole("dialog", { name: "À propos de Prisma" });
+    await dialog.getByText(/^Version /).evaluate((version) => ((version as HTMLElement).style.visibility = "hidden"));
+    await dialog
+      .getByLabel("Nouveautés")
+      .evaluate((list) => [...list.children].forEach((element) => ((element as HTMLElement).style.visibility = "hidden")));
+    await settle(page);
+    await expect(dialog).toHaveScreenshot("app-fenetre-a-propos.png", placedTolerance);
+  });
+
+  // la bibliothèque : un dossier, en liste et en vignettes ; pCloud, vide
+  for (const view of ["list", "thumbs"] as const)
+    test(`app ${name} : la bibliothèque ${view === "list" ? "en liste" : "en vignettes"}`, async ({ page }) => {
+      await openLibrary(page, view, root);
+      await hideDates(page);
+      await expect(page.locator("[data-library]")).toHaveScreenshot(`app-panneau-bibliotheque-${view}.png`, tolerance);
+    });
+  test(`app ${name} : la bibliothèque pCloud vide`, async ({ page }) => {
+    await openPcloud(page, {}, { root });
+    await expect(page.locator("[data-library]")).toContainText("Aucune partition pour l'instant");
+    await settle(page);
+    await expect(page.locator("[data-library]")).toHaveScreenshot("app-panneau-bibliotheque-pcloud-vide.png", tolerance);
   });
 }
 
@@ -635,14 +712,14 @@ test("app bibliothèque", async ({ page }) => {
  * Une bibliothèque : le choix du dossier remplacé par un dossier privé du navigateur (OPFS), rempli
  * de quelques morceaux, dont un dans un sous-dossier et un MusicXML. Les dates (celles du jour) sont masquées.
  */
-async function openLibrary(page: Page, view: "list" | "thumbs") {
+async function openLibrary(page: Page, view: "list" | "thumbs", root = "/app/") {
   await provideFolder(page, "bibliotheque", [
     ["Au clair de la lune.prisma", CLAIR_SECTIONS],
     ["Techniques.prisma", TECHNIQUES],
     ["Guitare/Greensleeves.prisma", GREENSLEEVES_CHORDS],
     ["Satie/Gymnopedie 1.musicxml", GYMNOPEDIE_XML],
   ]);
-  await openApp(page, { source: CLAIR_SECTIONS });
+  await openApp(page, { source: CLAIR_SECTIONS, root });
   await chooseMenu(page, "Fichier", "Bibliothèque");
   await page.getByRole("button", { name: "Choisir un dossier" }).click();
   await page.waitForTimeout(1500);
@@ -654,9 +731,9 @@ async function openLibrary(page: Page, view: "list" | "thumbs") {
  * Une bibliothèque sur pCloud, connectée : l'API simulée (page.route) sert ces fichiers du dossier
  * de l'app, comme la vraie (une liste, des liens de téléchargement).
  */
-async function openPcloud(page: Page, files: Record<string, string>, { refused = false } = {}) {
+async function openPcloud(page: Page, files: Record<string, string>, { refused = false, root = "/app/" } = {}) {
   await fakePcloud(page, files, { refused });
-  await openApp(page, { source: CLAIR_SECTIONS });
+  await openApp(page, { source: CLAIR_SECTIONS, root });
   await connectPcloud(page);
   await chooseMenu(page, "Fichier", "Bibliothèque");
   await page.waitForTimeout(800);
@@ -689,10 +766,7 @@ test("app bibliothèque pcloud", async ({ page }) => {
 for (const view of ["list", "thumbs"] as const)
   test(`app bibliothèque ${view}`, async ({ page }) => {
     await openLibrary(page, view);
-    // les dates (celles des fichiers, qui changent) : effacées, sans toucher à la place qu'elles prennent
-    await page
-      .getByText(/^\d{2}\/\d{2}\/\d{4}$/)
-      .evaluateAll((dates) => dates.forEach((date) => ((date as HTMLElement).style.color = "transparent")));
+    await hideDates(page);
     await expect(page).toHaveScreenshot(`app-bibliotheque-${view}.png`);
   });
 

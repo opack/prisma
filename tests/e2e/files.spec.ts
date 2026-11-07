@@ -86,7 +86,6 @@ for (const { name, root } of APPS)
     });
 
     test("reçu avec une bibliothèque : il s'y enregistre avec ses réglages, puis s'ouvre", async ({ page }) => {
-      test.skip(name === "Vue", "la bibliothèque n'est pas encore passée à Vue");
       await provideFolder(page, "recus");
       await openApp(page, { root, source: "", editing: false });
       await chooseMenu(page, "Fichier", "Bibliothèque");

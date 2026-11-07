@@ -2,27 +2,29 @@
 /**
  * L'application : la barre du haut, et dessous l'éditeur du texte et la partition gravée (ou, à leur
  * place, la référence). Elle assemble ce que chaque domaine tient : le morceau ouvert
- * (files/useDocument), les réglages (options/settings), l'écoute (playback/usePieceSound), la vue
- * (score/useView), le partage (files/useShare), la conversion (editor/useConversion).
+ * (files/useDocument), les réglages (options/settings), l'écoute (playback/usePieceSound), la
+ * retouche (retouch/useRetouch), la vue (score/useView), le partage (files/useShare), la conversion
+ * (editor/useConversion).
  *
  * Lecture, le mode ordinaire : pour jouer, sans l'éditeur, les pages côte à côte, chacune de toute la
  * hauteur de l'écran. Édition : l'éditeur à côté des pages. Une nouvelle partition, un MusicXML
  * importé ou un .prisma qui ne se grave pas s'ouvrent en édition, un .prisma en lecture ; le mode se
  * retrouve d'une visite à l'autre.
- *
- * En construction : la retouche, le panneau des options, la bibliothèque et la fenêtre À propos
- * viendront ensuite.
  */
 import { onKeyStroke } from "@vueuse/core";
 import { storeToRefs } from "pinia";
 import { computed, ref, useTemplateRef } from "vue";
 import { loadEditing, loadSource, saveEditing } from "../app/files/storage.ts";
 import { tryParse } from "../app/files/parse.ts";
+import { pcloudReturned } from "../app/library/pcloud.ts";
 import { saveToLibrary } from "../app/library/sources.ts";
 import { appMenus } from "../app/menus.ts";
+import { settingsName } from "../app/options/piece.ts";
 import { DEFAULT_BPM } from "../app/playback/player.ts";
 import { follow } from "../app/score/follow.ts";
 import { engraveOptions, engravePages } from "../app/score/render.ts";
+import AboutDialog from "./about/AboutDialog.vue";
+import { useAbout } from "./about/useAbout.ts";
 import ConvertDialog from "./editor/ConvertDialog.vue";
 import EditorTab from "./editor/EditorTab.vue";
 import ErrorBar from "./editor/ErrorBar.vue";
@@ -34,21 +36,26 @@ import { useErrors } from "./editor/useErrors.ts";
 import DropZone from "./files/DropZone.vue";
 import ExportDialog from "./files/ExportDialog.vue";
 import ImportLinkDialog from "./files/ImportLinkDialog.vue";
+import LibraryView from "./library/LibraryView.vue";
 import NewDialog from "./files/NewDialog.vue";
 import ReceivedDialog from "./files/ReceivedDialog.vue";
 import { useDocument } from "./files/useDocument.ts";
 import { useShare } from "./files/useShare.ts";
+import OptionsDrawer from "./options/OptionsDrawer.vue";
 import { useSettings } from "./options/settings.ts";
 import { useSettingsAutosave } from "./options/useSettingsAutosave.ts";
 import ListenControls from "./playback/ListenControls.vue";
 import Progress from "./playback/Progress.vue";
 import { usePieceSound } from "./playback/usePieceSound.ts";
 import ReferenceView from "./reference/ReferenceView.vue";
+import RetouchMenu from "./retouch/RetouchMenu.vue";
+import { useRetouch } from "./retouch/useRetouch.ts";
 import EngraveButton from "./score/EngraveButton.vue";
 import EngraveProblem from "./score/EngraveProblem.vue";
 import FocusView from "./score/FocusView.vue";
 import PageView from "./score/PageView.vue";
 import { usePreviewScroll } from "./score/usePreviewScroll.ts";
+import { useTextMark } from "./score/useTextMark.ts";
 import { useView } from "./score/useView.ts";
 import Toolbar from "./Toolbar.vue";
 import BackButton from "./ui/button/BackButton.vue";
@@ -65,10 +72,11 @@ const { setOptions } = settings;
 const { view, setView, zoomBy } = useView();
 const editor = useTemplateRef<EditorHandle>("editor");
 
-// le panneau à la place de l'éditeur et de la partition (la référence), et celui des options, qu'Échap ferme
-const panel = ref<"guide" | null>(null);
-const toggleGuide = () => (panel.value = panel.value ? null : "guide");
-const library = () => notify("La bibliothèque arrive bientôt dans cette version");
+// les panneaux à la place de l'éditeur et de la partition (la référence, la bibliothèque : l'une
+// chasse l'autre), et celui des options, par-dessus, qu'Échap ferme
+// de retour de la connexion à pCloud : la bibliothèque, qu'on était allé ouvrir
+const panel = ref<"guide" | "library" | null>(pcloudReturned() ? "library" : null);
+const togglePanel = (shown: "guide" | "library") => (panel.value = panel.value === shown ? null : shown);
 const showOptions = ref(false);
 onKeyStroke("Escape", () => (showOptions.value = false));
 
@@ -94,6 +102,7 @@ const doc = useDocument({
 const { source, fileInput } = doc;
 useSettingsAutosave(doc.handle, notify);
 const appUpdate = useAppUpdate(notify);
+const about = useAbout();
 const sharing = useShare({ source, fileName: doc.fileName, piece, notify, openShared: doc.openShared });
 const conversion = useConversion(source, doc.rewrite, notify);
 const { fullScreen, toggle: toggleFullScreen } = useFullScreen(notify);
@@ -106,6 +115,9 @@ const errors = useErrors(
 );
 
 const sound = usePieceSound(score);
+const linked = computed(() => !reading.value && options.value.scoreToText);
+const retouch = useRetouch({ source, rewrite: doc.rewrite, editor, linked, score });
+const onCaret = useTextMark(linked, retouch.mark);
 
 const split = useTemplateRef<HTMLElement>("split");
 const preview = useTemplateRef<HTMLElement>("preview");
@@ -126,7 +138,7 @@ useShortcuts({
   engrave: doc.engraveNow,
   save: doc.saveFile,
   open: doc.openFile,
-  library,
+  library: () => togglePanel("library"),
   editor: () => setEditing(!editing.value),
   zoom: (direction) => (direction ? zoomBy(direction) : setView({ zoom: 1 })),
   fullScreen: toggleFullScreen,
@@ -136,7 +148,7 @@ const menus = computed(() =>
   appMenus({
     newFile: () => (doc.choosingNew.value = true),
     openFile: doc.openFile,
-    library: { shown: false, toggle: library },
+    library: { shown: panel.value === "library", toggle: () => togglePanel("library") },
     save: doc.saveFile,
     saveToLibrary: () => saveToLibrary(doc.saveInto, notify),
     exportFile: () => (doc.exporting.value = true),
@@ -147,14 +159,14 @@ const menus = computed(() =>
     autoEngrave: { on: options.value.autoEngrave, toggle: () => setOptions({ autoEngrave: !options.value.autoEngrave }) },
     options: { shown: showOptions.value, toggle: () => (showOptions.value = !showOptions.value) },
     convert: conversion.start,
-    about: () => {},
+    about: about.open,
     canPrint: pages.value.length > 0 && !panel.value,
     editor: { on: editing.value, toggle: () => setEditing(!editing.value) },
     view: view.value,
     setView,
     zoomBy,
     fullScreen: { on: fullScreen.value, toggle: toggleFullScreen },
-    guide: { shown: panel.value === "guide", toggle: toggleGuide },
+    guide: { shown: panel.value === "guide", toggle: () => togglePanel("guide") },
   }),
 );
 
@@ -224,6 +236,7 @@ function onFileChosen(event: Event) {
         <BackButton @click="panel = null" />
         <ReferenceView :options="general" />
       </main>
+      <LibraryView v-if="panel === 'library'" :options="general" @open="doc.openEntry" @close="panel = null" />
       <ExportDialog v-if="doc.exporting.value" @export="doc.exportFile" @close="doc.exporting.value = false" />
       <NewDialog v-if="doc.choosingNew.value" @create="doc.newFile" @close="doc.choosingNew.value = false" />
       <ImportLinkDialog v-if="sharing.importing.value" :import-link="sharing.importLink" @close="sharing.importing.value = false" />
@@ -234,6 +247,7 @@ function onFileChosen(event: Event) {
         @open="sharing.accept"
         @close="sharing.close"
       />
+      <AboutDialog v-if="about.shown.value" @close="about.close" />
       <ConvertDialog
         v-if="conversion.parts.value"
         :parts="conversion.parts.value"
@@ -272,6 +286,7 @@ function onFileChosen(event: Event) {
             :colors="options.sourceColors"
             :palette="options.octaveColors"
             @check="errors.setChecked"
+            @caret="onCaret"
           >
             <EngraveButton
               :dirty="doc.dirty.value"
@@ -298,6 +313,19 @@ function onFileChosen(event: Event) {
           @wheel="onWheel"
         >
           <p v-if="score && !pages.length" class="text-muted">Aucune mesure à mettre en page.</p>
+          <RetouchMenu
+            v-if="retouch.menu.value"
+            v-bind="retouch.menu.value"
+            :names="options.noteNames"
+            @pick="retouch.pick"
+            @string="retouch.string"
+            @target="retouch.target"
+            @resize="retouch.resize"
+            @hold="retouch.hold"
+            @octave="retouch.octave"
+            @amend="retouch.amend"
+            @close="retouch.close"
+          />
           <EngraveProblem
             :problems="errors.problems.value"
             :fixed="errors.fixed.value"
@@ -332,6 +360,12 @@ function onFileChosen(event: Event) {
           @click="scrollBack"
         />
       </main>
+      <OptionsDrawer
+        v-if="showOptions"
+        :name="doc.fileName.value"
+        :where="settings.pieceDir && doc.handle.value ? settingsName(doc.handle.value.name) : null"
+        @close="showOptions = false"
+      />
     </div>
   </DropZone>
 </template>
