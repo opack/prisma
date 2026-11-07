@@ -38,7 +38,6 @@ for (const { name, root } of APPS)
     });
 
     test("Tab passe des menus aux boutons de l'écoute", async ({ page }) => {
-      test.skip(name === "Vue", "l'écoute n'est pas encore passée à Vue");
       await openApp(page, { source: CLAIR_SECTIONS, root });
       await page.getByRole("button", { name: "Fichier", exact: true }).focus();
       for (let step = 0; step < 9; step++) await page.keyboard.press("Tab");

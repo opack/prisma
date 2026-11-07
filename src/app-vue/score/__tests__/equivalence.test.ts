@@ -6,18 +6,22 @@
  */
 import { readFileSync } from "node:fs";
 import { createElement } from "react";
+import { flushSync } from "react-dom";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { createSSRApp } from "vue";
+import { createApp, createSSRApp } from "vue";
 import type { Component } from "vue";
 import { renderToString } from "vue/server-renderer";
 import { DEFAULT_OPTIONS } from "../../../app/options/options.ts";
 import type { RenderOptions } from "../../../app/options/options.ts";
+import { FocusView as ReactFocusView } from "../../../app/score/FocusView.tsx";
 import { Excerpt as ReactExcerpt, PageView as ReactPageView } from "../../../app/score/PageView.tsx";
 import { engraveOptions, engravePages, scoreOf } from "../../../app/score/render.ts";
 import { importMusicXml, writePrisma } from "../../../core/index.ts";
 import * as sitePieces from "../../../site/examples/pieces.ts";
 import Excerpt from "../Excerpt.vue";
+import FocusView from "../FocusView.vue";
 import PageView from "../PageView.vue";
 
 /** Les exemples ```prisma de la référence (dans une liste, ils sont indentés). */
@@ -52,7 +56,7 @@ const VARIANTS: Record<string, Partial<RenderOptions>> = {
 
 /**
  * Le SVG sous une forme comparable, un élément par ligne : les attributs triés, le style sans
- * espaces, sans les commentaires que posent React (entre deux textes) et Vue (fragments, v-if).
+ * espaces, les classes sans espaces en trop, sans les commentaires que posent React (entre deux textes) et Vue (fragments, v-if).
  */
 function canonical(html: string): string {
   const container = document.createElement("div");
@@ -62,7 +66,10 @@ function canonical(html: string): string {
     if (node.nodeType === Node.ELEMENT_NODE) {
       const element = node as Element;
       const attributes = [...element.attributes]
-        .map(({ name, value }) => `${name}="${name === "style" ? value.replace(/\s|;$/g, "") : value}"`)
+        .map(
+          ({ name, value }) =>
+            `${name}="${name === "style" ? value.replace(/\s|;$/g, "") : name === "class" ? value.trim().replace(/\s+/g, " ") : value}"`,
+        )
         .sort()
         .join(" ");
       lines.push(`${"  ".repeat(depth)}<${element.tagName.toLowerCase()} ${attributes}>`);
@@ -84,6 +91,24 @@ function canonical(html: string): string {
 
 const vueMarkup = (component: Component, props: Record<string, unknown>) => renderToString(createSSRApp(component, props));
 
+/** Rendus dans le navigateur, pour ce qui suit le lecteur (React ne le rend pas sur le serveur). */
+function reactDom<Props extends object>(component: (props: Props) => unknown, props: Props): string {
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  flushSync(() => root.render(createElement(component as never, props)));
+  const html = host.innerHTML;
+  root.unmount();
+  return html;
+}
+function vueDom(component: Component, props: Record<string, unknown>): string {
+  const host = document.createElement("div");
+  const app = createApp(component, props);
+  app.mount(host);
+  const html = host.innerHTML;
+  app.unmount();
+  return html;
+}
+
 function engraved(text: string, variant: Partial<RenderOptions>) {
   const options = { ...DEFAULT_OPTIONS, ...variant };
   const score = scoreOf(text, "prisma", "");
@@ -96,11 +121,27 @@ describe("la page gravée en Vue est celle de React", () => {
     it.each(corpus)(`${variantName} : %s`, async (_, text) => {
       const { options, meta, pages } = engraved(text, variant);
       for (const page of pages) {
-        const props = { page, total: pages.length, meta, options };
-        const react = renderToStaticMarkup(createElement(ReactPageView, { ...props, still: true }));
+        const props = { page, total: pages.length, meta, options, still: true };
+        const react = renderToStaticMarkup(createElement(ReactPageView, props));
         expect(canonical(await vueMarkup(PageView, props))).toBe(canonical(react));
       }
     });
+
+  it.each(corpus)("lecture focalisée : %s", (_, text) => {
+    const { options, pages } = engraved(text, {});
+    const props = { pages, options };
+    expect(canonical(vueDom(FocusView, props))).toBe(canonical(reactDom(ReactFocusView, props)));
+  });
+
+  // vivante, à l'arrêt (rendue dans le navigateur : React ne la rend pas sur le serveur) : les zones
+  // où cliquer pour écouter, l'ordre de jeu où choisir sa section
+  it.each(corpus)("vivante : %s", (_, text) => {
+    const { options, meta, pages } = engraved(text, {});
+    for (const page of pages) {
+      const props = { page, total: pages.length, meta, options };
+      expect(canonical(vueDom(PageView, props))).toBe(canonical(reactDom(ReactPageView, props)));
+    }
+  });
 });
 
 describe("l'extrait gravé en Vue est celui de React", () => {

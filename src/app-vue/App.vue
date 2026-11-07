@@ -2,23 +2,26 @@
 /**
  * L'application : la barre du haut, et dessous l'éditeur du texte et la partition gravée (ou, à leur
  * place, la référence). Elle assemble ce que chaque domaine tient : le morceau ouvert
- * (files/useDocument), les options (options/useOptions), la vue (score/useView), le partage
- * (files/useShare), la conversion (editor/useConversion).
+ * (files/useDocument), les réglages (options/settings), l'écoute (playback/usePieceSound), la vue
+ * (score/useView), le partage (files/useShare), la conversion (editor/useConversion).
  *
  * Lecture, le mode ordinaire : pour jouer, sans l'éditeur, les pages côte à côte, chacune de toute la
  * hauteur de l'écran. Édition : l'éditeur à côté des pages. Une nouvelle partition, un MusicXML
  * importé ou un .prisma qui ne se grave pas s'ouvrent en édition, un .prisma en lecture ; le mode se
  * retrouve d'une visite à l'autre.
  *
- * En construction : l'écoute, la retouche, la lecture focalisée, le panneau des options, la
- * bibliothèque et la fenêtre À propos viendront ensuite.
+ * En construction : la retouche, le panneau des options, la bibliothèque et la fenêtre À propos
+ * viendront ensuite.
  */
-import { computed, ref, shallowRef, useTemplateRef } from "vue";
-import type { PieceSettings } from "../app/options/piece.ts";
+import { onKeyStroke } from "@vueuse/core";
+import { storeToRefs } from "pinia";
+import { computed, ref, useTemplateRef } from "vue";
 import { loadEditing, loadSource, saveEditing } from "../app/files/storage.ts";
 import { tryParse } from "../app/files/parse.ts";
 import { saveToLibrary } from "../app/library/sources.ts";
 import { appMenus } from "../app/menus.ts";
+import { DEFAULT_BPM } from "../app/playback/player.ts";
+import { follow } from "../app/score/follow.ts";
 import { engraveOptions, engravePages } from "../app/score/render.ts";
 import ConvertDialog from "./editor/ConvertDialog.vue";
 import EditorTab from "./editor/EditorTab.vue";
@@ -35,29 +38,39 @@ import NewDialog from "./files/NewDialog.vue";
 import ReceivedDialog from "./files/ReceivedDialog.vue";
 import { useDocument } from "./files/useDocument.ts";
 import { useShare } from "./files/useShare.ts";
-import { useOptions } from "./options/useOptions.ts";
+import { useSettings } from "./options/settings.ts";
+import { useSettingsAutosave } from "./options/useSettingsAutosave.ts";
+import ListenControls from "./playback/ListenControls.vue";
+import Progress from "./playback/Progress.vue";
+import { usePieceSound } from "./playback/usePieceSound.ts";
 import ReferenceView from "./reference/ReferenceView.vue";
 import EngraveButton from "./score/EngraveButton.vue";
 import EngraveProblem from "./score/EngraveProblem.vue";
+import FocusView from "./score/FocusView.vue";
 import PageView from "./score/PageView.vue";
+import { usePreviewScroll } from "./score/usePreviewScroll.ts";
 import { useView } from "./score/useView.ts";
 import Toolbar from "./Toolbar.vue";
 import BackButton from "./ui/button/BackButton.vue";
+import ScrollBackButton from "./ui/ScrollBackButton.vue";
 import { useAppUpdate } from "./ui/useAppUpdate.ts";
 import { useFullScreen } from "./ui/useFullScreen.ts";
 import { useNotice } from "./ui/useNotice.ts";
 import { useShortcuts } from "./useShortcuts.ts";
 
 const { notice, notify } = useNotice();
-const { options, setOptions } = useOptions();
+const settings = useSettings();
+const { general, options, piece } = storeToRefs(settings);
+const { setOptions } = settings;
 const { view, setView, zoomBy } = useView();
 const editor = useTemplateRef<EditorHandle>("editor");
 
-// le panneau à la place de l'éditeur et de la partition (la référence), et celui des options
+// le panneau à la place de l'éditeur et de la partition (la référence), et celui des options, qu'Échap ferme
 const panel = ref<"guide" | null>(null);
 const toggleGuide = () => (panel.value = panel.value ? null : "guide");
 const library = () => notify("La bibliothèque arrive bientôt dans cette version");
 const showOptions = ref(false);
+onKeyStroke("Escape", () => (showOptions.value = false));
 
 const initialSource = loadSource();
 const editing = ref(loadEditing(initialSource) || !!tryParse(initialSource).problem);
@@ -68,19 +81,18 @@ function setEditing(on: boolean) {
 }
 const reading = computed(() => !editing.value);
 
-// les réglages propres au morceau (le tempo, les instruments…) viendront avec l'écoute
-const piece = shallowRef<PieceSettings>({});
 const autoEngrave = computed(() => options.value.autoEngrave);
 const doc = useDocument({
   autoEngrave,
   editor,
   notify,
-  onLoaded: (settings) => (piece.value = settings),
-  onSavedIn: () => {},
+  onLoaded: settings.resetPiece,
+  onSavedIn: settings.placePiece,
   setEditing,
   onOpenedFrom: (from) => (from !== "drop" || panel.value === "guide") && (panel.value = null),
 });
 const { source, fileInput } = doc;
+useSettingsAutosave(doc.handle, notify);
 const appUpdate = useAppUpdate(notify);
 const sharing = useShare({ source, fileName: doc.fileName, piece, notify, openShared: doc.openShared });
 const conversion = useConversion(source, doc.rewrite, notify);
@@ -93,7 +105,22 @@ const errors = useErrors(
   editor,
 );
 
+const sound = usePieceSound(score);
+
 const split = useTemplateRef<HTMLElement>("split");
+const preview = useTemplateRef<HTMLElement>("preview");
+const focused = computed(() => view.value.fit === "focus");
+const scrolled = usePreviewScroll(
+  preview,
+  reading,
+  computed(() => view.value.fit),
+  zoomBy,
+);
+function scrollBack() {
+  follow.hold();
+  const behavior = matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+  preview.value!.scrollTo({ top: 0, left: 0, behavior });
+}
 
 useShortcuts({
   engrave: doc.engraveNow,
@@ -180,13 +207,22 @@ function onFileChosen(event: Event) {
       :options-open="showOptions"
       @update="appUpdate.apply"
       @options="showOptions = !showOptions"
-    />
+    >
+      <template #listen="{ place }">
+        <ListenControls :place="place" :score="score" :disabled="!score || !pages.length" :sound="sound" />
+      </template>
+    </Toolbar>
     <input ref="fileInput" type="file" accept=".prisma,.txt,.musicxml,.xml" hidden @change="onFileChosen" />
+
+    <!-- où en est la lecture, sur toute la largeur, sous la barre -->
+    <div v-if="view.progress && score && pages.length" class="flex px-4 py-px bg-panel border-b border-line print:hidden!">
+      <Progress :bpm="piece.tempo ?? score.meta.bpm ?? DEFAULT_BPM" />
+    </div>
 
     <div class="flex-1 relative flex flex-col min-h-0">
       <main v-if="panel === 'guide'" class="guide-pane flex-1 overflow-auto bg-white">
         <BackButton @click="panel = null" />
-        <ReferenceView :options="options" />
+        <ReferenceView :options="general" />
       </main>
       <ExportDialog v-if="doc.exporting.value" @export="doc.exportFile" @close="doc.exporting.value = false" />
       <NewDialog v-if="doc.choosingNew.value" @create="doc.newFile" @close="doc.choosingNew.value = false" />
@@ -254,6 +290,7 @@ function onFileChosen(event: Event) {
         </section>
 
         <section
+          ref="preview"
           :class="previewClass"
           :data-fit="view.fit"
           :aria-label="reading ? 'Partition' : 'Aperçu'"
@@ -268,8 +305,32 @@ function onFileChosen(event: Event) {
             @engrave="doc.engraveNow"
             @show="errors.show"
           />
-          <PageView v-for="page in pages" :key="page.index" :page="page" :total="pages.length" :meta="score!.meta" :options="options" />
+          <template v-if="focused">
+            <FocusView :pages="pages" :options="options" />
+            <!-- à l'impression, les pages, comme dans les autres lectures -->
+            <div class="hidden print:block">
+              <PageView
+                v-for="page in pages"
+                :key="page.index"
+                :page="page"
+                :total="pages.length"
+                :meta="score!.meta"
+                :options="options"
+                still
+              />
+            </div>
+          </template>
+          <template v-else>
+            <PageView v-for="page in pages" :key="page.index" :page="page" :total="pages.length" :meta="score!.meta" :options="options" />
+          </template>
         </section>
+        <ScrollBackButton
+          v-if="scrolled && !focused"
+          class="absolute right-6 bottom-6 z-4"
+          :direction="scrolled"
+          label="Retour au début de la partition"
+          @click="scrollBack"
+        />
       </main>
     </div>
   </DropZone>

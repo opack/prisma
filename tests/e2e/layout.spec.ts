@@ -118,7 +118,6 @@ for (const { name, root } of APPS)
     });
 
     test("la lecture focalisée montre deux systèmes", async ({ page }) => {
-      test.skip(name === "Vue", "la lecture focalisée n'est pas encore passée à Vue");
       await openApp(page, { root, source: GYMNOPEDIE, editing: false });
       await chooseMenu(page, "Affichage", "Lecture focalisée");
       await expect(scorePane(page)).toHaveAttribute("data-fit", "focus");
@@ -132,7 +131,6 @@ for (const { name, root } of APPS)
       test(`la première page sortie de l'écran, un bouton ramène au début (${fit === "height" ? "de côté" : "de haut en bas"})`, async ({
         page,
       }) => {
-        test.skip(name === "Vue", "le retour au début n'est pas encore passé à Vue");
         await openApp(page, { root, source: GYMNOPEDIE, editing: false, view: { fit, zoom } });
         const back = page.getByRole("button", { name: "Retour au début de la partition" });
         await expect(back).toHaveCount(0);
@@ -144,7 +142,6 @@ for (const { name, root } of APPS)
       });
 
     test("Affichage › Piste de lecture la masque, et le choix tient au rechargement", async ({ page }) => {
-      test.skip(name === "Vue", "la piste de lecture n'est pas encore passée à Vue");
       await openApp(page, { root, source: CLAIR_SECTIONS, editing: false });
       const track = page.getByRole("slider", { name: "Position dans le morceau" });
       await expect(track).toBeVisible();
