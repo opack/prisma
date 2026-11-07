@@ -12,7 +12,9 @@ import { engraveOptions } from "../score/render.ts";
 import { thumbOf } from "./thumbs.ts";
 import type { Thumb } from "./thumbs.ts";
 import { pickFolder } from "./diskLibrary.ts";
-import { recentOpenings, scan } from "./library.ts";
+import { scan } from "./library.ts";
+import { SORTS, countOf, groupEntries, titleOf } from "./browse.ts";
+import type { Kinds, LibraryView as View, Sort } from "./browse.ts";
 import { PCLOUD_FOLDER, PcloudAuthError, connect, disconnect, session } from "./pcloud.ts";
 import { available, choose, savedSource } from "./sources.ts";
 import { BackButton } from "../ui/button/BackButton.tsx";
@@ -30,12 +32,6 @@ const ENTRY = "w-full text-left bg-transparent border-0 hover:bg-panel";
 const META = "col-span-full flex items-center gap-2.5 text-muted";
 import type { LibraryEntry, LibrarySource } from "./library.ts";
 
-type Sort = "title" | "composer" | "recent";
-const SORTS: { value: Sort; label: string }[] = [
-  { value: "title", label: "Titre" },
-  { value: "composer", label: "Compositeur" },
-  { value: "recent", label: "Ouverts récemment" },
-];
 const SORT_KEY = "prisma:library-sort";
 const loadSort = (): Sort => {
   try {
@@ -46,8 +42,6 @@ const loadSort = (): Sort => {
   }
 };
 
-/** Les morceaux montrés : tous, les partitions .prisma seules, ou les MusicXML à importer seuls. */
-type Kinds = "all" | "prisma" | "musicxml";
 const KINDS_KEY = "prisma:library-kinds";
 const loadKinds = (): Kinds => {
   try {
@@ -58,8 +52,6 @@ const loadKinds = (): Kinds => {
   }
 };
 
-/** En liste, pour chercher vite ; en vignettes, pour retrouver un morceau à l'œil. */
-type View = "list" | "thumbs";
 const THUMBS_OWN_KEY = "prisma:thumbs-own";
 const VIEW_KEY = "prisma:library-view";
 const loadView = (): View => {
@@ -77,11 +69,6 @@ type State =
   | { kind: "locked"; source: LibrarySource; reason?: string }
   | { kind: "ready"; source: LibrarySource; entries: LibraryEntry[] }
   | { kind: "error"; message: string };
-
-/** Pour chercher et trier sans tenir compte des accents ni des majuscules. */
-const fold = (text: string) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-const titleOf = (libraryEntry: LibraryEntry) => libraryEntry.title ?? libraryEntry.name.replace(/\.[^.]+$/, "");
-const compare = (first: string, second: string) => first.localeCompare(second, "fr", { sensitivity: "base", numeric: true });
 
 export function LibraryView({
   options,
@@ -173,35 +160,12 @@ export function LibraryView({
     setState({ kind: "none" });
   };
 
-  const groups = useMemo(() => {
-    if (state.kind !== "ready") return [];
-    const needle = fold(query.trim());
-    const found = state.entries.filter(
-      (libraryEntry) =>
-        (kinds === "all" || libraryEntry.kind === kinds) &&
-        (!needle || fold([titleOf(libraryEntry), libraryEntry.composer ?? "", libraryEntry.path].join(" ")).includes(needle)),
-    );
-    if (sort === "recent") {
-      const recent = recentOpenings();
-      const at = (entry: LibraryEntry) => recent[entry.path] ?? 0;
-      return [
-        { folder: "", entries: [...found].sort((first, second) => at(second) - at(first) || compare(titleOf(first), titleOf(second))) },
-      ];
-    }
-    const key = (entry: LibraryEntry) =>
-      sort === "composer" ? [entry.composer ?? "￿", titleOf(entry)] : [titleOf(entry), entry.composer ?? ""];
-    const byFolder = new Map<string, LibraryEntry[]>();
-    for (const entry of found) byFolder.set(entry.folder, [...(byFolder.get(entry.folder) ?? []), entry]);
-    return [...byFolder]
-      .sort(([first], [second]) => (first === "" ? -1 : second === "" ? 1 : compare(first, second)))
-      .map(([folder, entries]) => ({
-        folder,
-        entries: entries.sort((first, second) => compare(key(first)[0], key(second)[0]) || compare(key(first)[1], key(second)[1])),
-      }));
-  }, [state, query, sort, kinds]);
+  const groups = useMemo(
+    () => (state.kind === "ready" ? groupEntries(state.entries, query, sort, kinds) : []),
+    [state, query, sort, kinds],
+  );
   const count = groups.reduce((sum, group) => sum + group.entries.length, 0);
-  const total = (shown: Kinds) =>
-    state.kind === "ready" ? state.entries.filter((libraryEntry) => shown === "all" || libraryEntry.kind === shown).length : 0;
+  const total = (shown: Kinds) => (state.kind === "ready" ? countOf(state.entries, shown) : 0);
 
   return (
     <main data-library className="flex-1 overflow-auto bg-white">

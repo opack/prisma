@@ -18,6 +18,8 @@ for (const { name, root } of APPS)
       await page.keyboard.press("Tab");
       await expect(opened).toHaveCount(0);
       await page.getByRole("button", { name: "Partition", exact: true }).click();
+      // le menu ouvert d'abord : Reka UI n'écoute les clics ailleurs qu'une fois le menu monté
+      await expect(opened).toHaveAttribute("aria-label", "Partition");
       await page.mouse.click(900, 600);
       await expect(opened).toHaveCount(0);
     });

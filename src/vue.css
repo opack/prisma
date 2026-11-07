@@ -35,9 +35,10 @@
   --radius-xl: 0.75rem;
 }
 
-/* les bordures et les contours de shadcn-vue : la couleur des traits, sans qu'on la redise */
+/* les bordures de shadcn-vue : la couleur des traits, sans qu'on la redise ; les contours du focus
+   restent ceux du navigateur, comme dans l'application de React */
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
 }
