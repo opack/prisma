@@ -1,15 +1,16 @@
 /** Un avis dans la barre (« Enregistré dans… », une erreur d'ouverture) : il s'efface de lui-même. */
-import { useEffect, useState } from "react";
+import { useTimeoutFn } from "@vueuse/core";
+import { ref } from "vue";
 
 /** Le temps qu'un avis reste affiché (ms). */
 const SHOWN = 3500;
 
 export function useNotice() {
-  const [notice, setNotice] = useState<string | null>(null);
-  useEffect(() => {
-    if (!notice) return;
-    const timeout = setTimeout(() => setNotice(null), SHOWN);
-    return () => clearTimeout(timeout);
-  }, [notice]);
-  return [notice, setNotice] as const;
+  const notice = ref<string | null>(null);
+  const { start } = useTimeoutFn(() => (notice.value = null), SHOWN, { immediate: false });
+  const notify = (message: string | null) => {
+    notice.value = message;
+    if (message) start();
+  };
+  return { notice, notify };
 }

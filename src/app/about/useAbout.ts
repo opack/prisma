@@ -3,13 +3,13 @@
  * d'être mise à jour vers une version plus récente, pour en montrer les nouveautés. La dernière
  * version vue est gardée dans le navigateur.
  */
-import { useEffect, useState } from "react";
+import { ref } from "vue";
 import { updatedSince } from "./changelog.ts";
 
 const SEEN = "prisma:version";
 
 export function useAbout() {
-  const [shown, setShown] = useState(() => updatedSince(localStorage.getItem(SEEN), __VERSION__));
-  useEffect(() => localStorage.setItem(SEEN, __VERSION__), []);
-  return { shown, open: () => setShown(true), close: () => setShown(false) };
+  const shown = ref(updatedSince(localStorage.getItem(SEEN), __VERSION__));
+  localStorage.setItem(SEEN, __VERSION__);
+  return { shown, open: () => (shown.value = true), close: () => (shown.value = false) };
 }

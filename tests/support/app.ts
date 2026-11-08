@@ -15,16 +15,8 @@ export const DESKTOP = { width: 1300, height: 850 };
 export const PHONE = { width: 390, height: 844 };
 export const TABLET = { width: 820, height: 1180 };
 
-/** Les deux applications, le temps de la migration : celle de React, et celle de Vue qui la remplace. */
-export const APPS = [
-  { name: "React", root: "/app/" },
-  { name: "Vue", root: "/app-vue/" },
-] as const;
-
 export type AppState = {
   source: string;
-  /** L'application ouverte (APPS) : celle de React, d'ordinaire. */
-  root?: string;
   editing?: boolean;
   options?: Record<string, unknown>;
   view?: Record<string, unknown>;
@@ -32,7 +24,7 @@ export type AppState = {
 };
 
 /** L'application, dans un état connu : son texte, l'éditeur ouvert ou non, ses options, sa vue, la taille de l'écran. */
-export async function openApp(page: Page, { source, root = "/app/", editing = true, options, view, size = DESKTOP }: AppState) {
+export async function openApp(page: Page, { source, editing = true, options, view, size = DESKTOP }: AppState) {
   await page.setViewportSize(size);
   await page.addInitScript(
     ([text, editingFlag, optionsJson, viewJson]) => {
@@ -47,7 +39,7 @@ export async function openApp(page: Page, { source, root = "/app/", editing = tr
     },
     [source, String(editing), options ? JSON.stringify(options) : "", view ? JSON.stringify(view) : ""] as const,
   );
-  await page.goto(root);
+  await page.goto("/app/");
   await settle(page);
 }
 
@@ -203,7 +195,7 @@ export async function dropFiles(page: Page, files: [string, string][], event: "d
     for (const [name, text] of list) data.items.add(new File([text], name));
     return data;
   }, files);
-  await page.dispatchEvent("#root > div, #app > div", event, { dataTransfer: transfer });
+  await page.dispatchEvent("#app > div", event, { dataTransfer: transfer });
 }
 
 /** Double-clique sur la première case de la partition qui porte ce chiffre (le chiffre ne reçoit pas le clic : la case, dessous, le reçoit). */

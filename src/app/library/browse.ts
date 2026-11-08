@@ -1,8 +1,7 @@
 /**
  * Parcourir la bibliothèque : les morceaux cherchés (sans tenir compte des accents ni des
  * majuscules), filtrés par sorte, rangés par sous-dossier et triés par titre ou par compositeur ;
- * ou, ouverts récemment, en une seule liste, du plus récent au plus ancien. Partagé par les
- * bibliothèques de React et de Vue.
+ * ou, ouverts récemment, en une seule liste, du plus récent au plus ancien.
  */
 import { recentOpenings } from "./library.ts";
 import type { LibraryEntry } from "./library.ts";

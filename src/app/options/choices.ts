@@ -1,7 +1,7 @@
 /**
  * Les choix du panneau des options : ses onglets, et pour chaque option à liste, ses valeurs, leur nom
  * et ce qu'elles font ; le nom en clair de la valeur d'une option du rendu, pour dire celle de l'autre
- * portée. Partagés par les panneaux de React et de Vue.
+ * portée.
  */
 import type { OctaveColors } from "../score/colors.ts";
 import type { ClickLevel } from "../playback/performance.ts";
