@@ -3,30 +3,33 @@
  * sur les parties du texte, puis le texte réécrit (annulable avec Ctrl+Z), et ce que la conversion
  * a dû changer, dit dans la barre.
  */
-import { useState } from "react";
-import type { MutableRefObject } from "react";
+import { shallowRef } from "vue";
+import type { Ref } from "vue";
 import { convertToStrings, parsePrisma, writePrisma } from "../../core/index.ts";
 import type { ConversionOptions, Part } from "../../core/index.ts";
 
 const count = (amount: number, word: string) => `${amount} ${word}${amount > 1 ? "s" : ""}`;
 
 export function useConversion(
-  current: MutableRefObject<string>,
-  rewrite: (r: { text: string; line: number; column: number }) => boolean,
+  source: Ref<string>,
+  rewrite: (rewritten: { text: string; line: number; column: number }) => unknown,
   notify: (message: string) => void,
 ) {
-  const [parts, setParts] = useState<Part[] | null>(null);
-  const start = () => {
+  /** Les parties du texte, le choix ouvert ; null, fermé. */
+  const parts = shallowRef<Part[] | null>(null);
+
+  function start() {
     try {
-      setParts(parsePrisma(current.current).parts);
+      parts.value = parsePrisma(source.value).parts;
     } catch (error) {
       notify(`Conversion impossible : ${(error as Error).message}`);
     }
-  };
-  const convert = (part: number, conversion: ConversionOptions) => {
-    setParts(null);
+  }
+
+  function convert(part: number, conversion: ConversionOptions) {
+    parts.value = null;
     try {
-      const { score, report } = convertToStrings(parsePrisma(current.current), part, conversion);
+      const { score, report } = convertToStrings(parsePrisma(source.value), part, conversion);
       rewrite({ text: writePrisma(score), line: 1, column: 1 });
       const changes = [
         report.octave && conversion.octave === undefined ? "une octave plus bas" : "",
@@ -37,6 +40,7 @@ export function useConversion(
     } catch (error) {
       notify(`Conversion impossible : ${(error as Error).message}`);
     }
-  };
-  return { parts, start, convert, cancel: () => setParts(null) };
+  }
+
+  return { parts, start, convert, cancel: () => (parts.value = null) };
 }

@@ -1,4 +1,4 @@
-/** Le texte lu en partition, ou ce qui l'en empêche (sans React : useDocument s'en sert). */
+/** Le texte lu en partition, ou ce qui l'en empêche (sans Vue : useDocument s'en sert). */
 import { PrismaError, parsePrisma } from "../../core/index.ts";
 import type { Score } from "../../core/index.ts";
 

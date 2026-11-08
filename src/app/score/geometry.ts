@@ -1,5 +1,5 @@
 /**
- * La géométrie de la page gravée : les tracés et les mesures que dessine PageView, sans React ni
+ * La géométrie de la page gravée : les tracés et les mesures que dessine PageView, sans framework ni
  * navigateur. Les longueurs sont en millimètres de la page, comme la mise en page (engrave.ts).
  */
 import { METRICS } from "./engrave.ts";

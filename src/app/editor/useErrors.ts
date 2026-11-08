@@ -4,24 +4,30 @@
  * celle de la mise en page. Sous l'éditeur, on passe de l'une à l'autre ; corrigées, mais pas encore
  * remises en page, on le dit.
  */
-import { useState } from "react";
-import type { RefObject } from "react";
-import type { EditorHandle } from "./SourceEditor.tsx";
-import type { Problem } from "../files/useDocument.ts";
+import { computed, ref } from "vue";
+import type { Ref } from "vue";
+import type { Problem } from "../files/parse.ts";
+import type { EditorHandle } from "./codemirror.ts";
 
-export function useErrors(engraved: Problem | undefined, editor: RefObject<EditorHandle | null>) {
+export function useErrors(engraved: Ref<Problem | undefined>, editor: Ref<EditorHandle | null | undefined>) {
   // le texte relu pendant la frappe : ses erreurs, toutes (undefined : pas encore relu)
-  const [checked, setChecked] = useState<Problem[] | undefined>(undefined);
-  const problems: Problem[] = engraved?.line !== undefined && checked !== undefined ? checked : engraved ? [engraved] : [];
-  const [chosen, setChosen] = useState(0);
-  const shown = problems.length ? Math.min(chosen, problems.length - 1) : 0;
+  const checked = ref<Problem[]>();
+  const problems = computed<Problem[]>(() =>
+    engraved.value?.line !== undefined && checked.value !== undefined ? checked.value : engraved.value ? [engraved.value] : [],
+  );
+  const chosen = ref(0);
+  const shown = computed(() => (problems.value.length ? Math.min(chosen.value, problems.value.length - 1) : 0));
+  const problem = computed<Problem | undefined>(() => problems.value[shown.value]);
   /** Place le curseur du texte sur une erreur. */
-  const goTo = (line?: number, column = 1) => line && editor.current?.goTo(line, column);
+  const goTo = (line?: number, column = 1) => line && editor.value?.goTo(line, column);
   const show = (index: number) => {
-    const wrapped = (index + problems.length) % problems.length;
-    setChosen(wrapped);
-    goTo(problems[wrapped].line, problems[wrapped].column);
+    const wrapped = (index + problems.value.length) % problems.value.length;
+    chosen.value = wrapped;
+    goTo(problems.value[wrapped].line, problems.value[wrapped].column);
   };
-  const fixed = !!engraved && engraved.line !== undefined && checked !== undefined && !checked.length;
-  return { problems, shown, problem: problems[shown] as Problem | undefined, show, goTo, fixed, setChecked };
+  const fixed = computed(
+    () => !!engraved.value && engraved.value.line !== undefined && checked.value !== undefined && !checked.value.length,
+  );
+  const setChecked = (found: Problem[]) => (checked.value = found);
+  return { problems, shown, problem, show, goTo, fixed, setChecked };
 }

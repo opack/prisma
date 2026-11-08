@@ -4,7 +4,7 @@
   "typescript": true,
   "tailwind": {
     "config": "",
-    "css": "src/vue.css",
+    "css": "src/tailwind.css",
     "baseColor": "neutral",
     "cssVariables": true,
     "prefix": ""
@@ -13,11 +13,11 @@
   "rtl": false,
   "pointer": false,
   "aliases": {
-    "components": "@/app-vue/ui",
-    "utils": "@/app-vue/ui/utils",
-    "ui": "@/app-vue/ui",
-    "lib": "@/app-vue/ui",
-    "composables": "@/app-vue/composables"
+    "components": "@/app/ui",
+    "utils": "@/app/ui/utils",
+    "ui": "@/app/ui",
+    "lib": "@/app/ui",
+    "composables": "@/app/composables"
   },
   "registries": {}
 }

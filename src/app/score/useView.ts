@@ -1,53 +1,36 @@
 /**
- * La vue de la partition, retenue d'une visite à l'autre : le zoom (un facteur parmi des crans),
- * l'ajustement des pages à la place laissée à la partition (à sa hauteur, côte à côte ; à sa
- * largeur, l'une sous l'autre ; ou deux systèmes seuls, la lecture focalisée), la largeur de
- * l'éditeur, la piste de lecture montrée ou non. Choisir un ajustement remet le zoom à 100 % : la
- * page tient alors exactement ; le zoom part de là. En lecture focalisée, pas de zoom.
+ * La vue de la partition, retenue d'une visite à l'autre (voir app/score/view.ts, qui garde les
+ * crans de zoom et la lecture du stockage) : le zoom, l'ajustement des pages, la largeur de
+ * l'éditeur, la piste de lecture montrée ou non. Choisir un ajustement remet le zoom à 100 % ; en
+ * lecture focalisée, pas de zoom.
  */
-import { useCallback, useState } from "react";
+import { useStorage } from "@vueuse/core";
 import { EDITOR_WIDTH, FITS, ZOOMS, clampWidth } from "./view.ts";
 import type { Fit, View } from "./view.ts";
 
-export { EDITOR_WIDTH, ZOOMS, clampWidth };
-export type { Fit, View };
-
-const VIEW_KEY = "prisma:view";
 const DEFAULT: View = { zoom: 1, fit: "height", editorWidth: EDITOR_WIDTH, progress: true };
 
-function load(): View {
-  try {
-    const raw = JSON.parse(localStorage.getItem(VIEW_KEY) ?? "{}");
-    return {
-      zoom: ZOOMS.includes(raw.zoom) ? raw.zoom : 1,
-      fit: FITS.includes(raw.fit) ? raw.fit : "height",
-      editorWidth: typeof raw.editorWidth === "number" ? clampWidth(raw.editorWidth) : EDITOR_WIDTH,
-      progress: raw.progress !== false,
-    };
-  } catch {
-    return DEFAULT;
-  }
-}
-
-function save(view: View) {
-  try {
-    localStorage.setItem(VIEW_KEY, JSON.stringify(view));
-  } catch {
-    /* stockage indisponible : sans conséquence */
-  }
-  return view;
+/** La vue lue du stockage, chaque valeur ramenée à ce qui est permis. */
+function sane(raw: Partial<View>): View {
+  return {
+    zoom: ZOOMS.includes(raw.zoom as number) ? (raw.zoom as number) : 1,
+    fit: FITS.includes(raw.fit as Fit) ? (raw.fit as Fit) : "height",
+    editorWidth: typeof raw.editorWidth === "number" ? clampWidth(raw.editorWidth) : EDITOR_WIDTH,
+    progress: raw.progress !== false,
+  };
 }
 
 /** Le cran de zoom voisin, plus grand ou plus petit. */
-const step = (zoom: number, dir: 1 | -1) =>
-  dir > 0 ? (ZOOMS.find((level) => level > zoom + 1e-6) ?? zoom) : ([...ZOOMS].reverse().find((level) => level < zoom - 1e-6) ?? zoom);
+const step = (zoom: number, direction: 1 | -1) =>
+  direction > 0
+    ? (ZOOMS.find((level) => level > zoom + 1e-6) ?? zoom)
+    : ([...ZOOMS].reverse().find((level) => level < zoom - 1e-6) ?? zoom);
 
 export function useView() {
-  const [view, setState] = useState(load);
-  const setView = useCallback((patch: Partial<View>) => setState((cur) => save({ ...cur, ...patch })), []);
-  const zoomBy = useCallback(
-    (dir: 1 | -1) => setState((cur) => (cur.fit === "focus" ? cur : save({ ...cur, zoom: step(cur.zoom, dir) }))),
-    [],
-  );
+  const view = useStorage<View>("prisma:view", DEFAULT, localStorage, {
+    serializer: { read: (raw) => sane(JSON.parse(raw)), write: JSON.stringify },
+  });
+  const setView = (patch: Partial<View>) => (view.value = { ...view.value, ...patch });
+  const zoomBy = (direction: 1 | -1) => view.value.fit !== "focus" && setView({ zoom: step(view.value.zoom, direction) });
   return { view, setView, zoomBy };
 }

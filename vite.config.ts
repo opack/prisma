@@ -1,6 +1,5 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
 import vue from "@vitejs/plugin-vue";
 import tailwindcss from "@tailwindcss/vite";
 import type { Connect } from "vite";
@@ -46,7 +45,6 @@ export default defineConfig({
       configureServer: (server) => void server.middlewares.use("/api/pcloud-file", relay),
       configurePreviewServer: (server) => void server.middlewares.use("/api/pcloud-file", relay),
     },
-    react(),
     vue(),
     tailwindcss(),
     // l'application installable (l'écran d'accueil d'une tablette), et qui marche sans réseau : le site
@@ -104,8 +102,7 @@ export default defineConfig({
     __COMMIT__: JSON.stringify(commit()),
   },
   build: {
-    // le site qui présente Prisma, à la racine, l'application dans app/, et sa version Vue en
-    // construction dans app-vue/
+    // le site qui présente Prisma, à la racine, et l'application dans app/
     rollupOptions: {
       input: {
         index: "index.html",
@@ -114,12 +111,6 @@ export default defineConfig({
         reference: "reference.html",
         guitare: "guitare.html",
         app: "app/index.html",
-        "app-vue": "app-vue/index.html",
-        "vue/index": "./vue/index.html",
-        "vue/comparaison": "./vue/comparaison.html",
-        "vue/apprendre": "./vue/apprendre.html",
-        "vue/reference": "./vue/reference.html",
-        "vue/guitare": "./vue/guitare.html",
       },
     },
   },

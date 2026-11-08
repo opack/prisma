@@ -2,6 +2,10 @@
 
 Ce qui change pour vous d'une version à l'autre de Prisma, la plus récente en haut.
 
+## 0.4.2 — 8 novembre 2026
+
+- L'application et le site ont été réécrits sous le capot : tout marche comme avant ; seuls les menus, les fenêtres et les petits panneaux peuvent se placer à un pixel près autrement, et le fond derrière une fenêtre est flouté.
+
 ## 0.4.1 — 7 novembre 2026
 
 - Options › Partition › Grilles : définir les grilles pour la partition seule, avec une autre valeur que l'option générale, ne fait plus disparaître l'application.

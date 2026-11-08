@@ -5,9 +5,8 @@
  * et la vue sont posés avant le chargement.
  */
 import { expect, test } from "@playwright/test";
-import type { Locator, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import {
-  APPS,
   CLAIR_SECTIONS,
   DESKTOP,
   GREENSLEEVES_CHORDS,
@@ -22,23 +21,9 @@ import {
   fakePcloud,
   openApp,
   provideFolder,
-  receiveShared,
   retouchAt,
   settle,
 } from "../support/app.ts";
-
-/**
- * Un panneau posé par-dessus la page, ramené au pixel entier (React Aria le pose au demi-pixel : son
- * texte s'y lisserait autrement), puis capturé dans un cadre autour de lui.
- */
-async function panelClip(panel: Locator, tolerance: { maxDiffPixels?: number }) {
-  await panel.evaluate((element) => {
-    const { x, y } = element.getBoundingClientRect();
-    (element as HTMLElement).style.translate = `${Math.round(x) - x}px ${Math.round(y) - y}px`;
-  });
-  const box = (await panel.boundingBox())!;
-  return { clip: { x: Math.round(box.x), y: Math.round(box.y), width: Math.ceil(box.width), height: Math.ceil(box.height) }, ...tolerance };
-}
 
 /** Les dates des fichiers de la bibliothèque (qui changent) : effacées, sans toucher à la place qu'elles prennent. */
 const hideDates = (page: Page) =>
@@ -46,307 +31,101 @@ const hideDates = (page: Page) =>
     .getByText(/^\d{2}\/\d{2}\/\d{4}$/)
     .evaluateAll((dates) => dates.forEach((date) => ((date as HTMLElement).style.color = "transparent")));
 
-// le site, en React et en Vue (en construction, dans vue/) : les mêmes scènes, aux mêmes références.
-// Deux écarts compris, tolérés pour Vue seulement : le texte, que Vue et React coupent en nœuds
-// différemment, s'y lisse autrement de quelques pixels ; et un sommaire ouvert y tombe au pixel
-// entier, quand React Aria le pose au demi-pixel sous son bouton.
-for (const [site, root, textTolerance, menuTolerance] of [
-  ["site", "/", {}, {}],
-  ["site vue", "/vue/", { maxDiffPixels: 50 }, { maxDiffPixels: 5000 }],
-] as const) {
-  // chaque page, entière, au bureau et sur un téléphone
-  for (const [name, size] of [
-    ["bureau", DESKTOP],
-    ["telephone", PHONE],
-  ] as const)
-    for (const pagePath of ["index", "apprendre", "reference", "guitare", "comparaison"])
-      test(`${site} ${pagePath} ${name}`, async ({ page }) => {
-        await page.setViewportSize(size);
-        await page.goto(`${root}${pagePath}.html`);
-        await settle(page);
-        await expect(page).toHaveScreenshot(`site-${pagePath}-${name}.png`, { fullPage: true, ...textTolerance });
-      });
-
-  // sur un téléphone, les pages du site sous le bouton du haut
-  test(`${site} menu telephone`, async ({ page }) => {
-    await page.setViewportSize(PHONE);
-    await page.goto(`${root}apprendre.html`);
-    await settle(page);
-    await page.getByRole("button", { name: "Pages du site" }).click();
-    await expect(page).toHaveScreenshot("site-menu-telephone.png");
-    // un clic ailleurs le ferme
-    await page.mouse.click(20, 600);
-    await expect(page.getByRole("menu")).toHaveCount(0);
-  });
-
-  // l'accueil, plus bas que son haut : ses parties sous le bouton fixé en haut, et le retour en haut
-  for (const [name, size] of [
-    ["bureau", DESKTOP],
-    ["telephone", PHONE],
-  ] as const)
-    test(`${site} parties ${name}`, async ({ page }) => {
+// le site
+// chaque page, entière, au bureau et sur un téléphone
+for (const [name, size] of [
+  ["bureau", DESKTOP],
+  ["telephone", PHONE],
+] as const)
+  for (const pagePath of ["index", "apprendre", "reference", "guitare", "comparaison"])
+    test(`site ${pagePath} ${name}`, async ({ page }) => {
       await page.setViewportSize(size);
-      await page.goto(`${root}index.html`);
+      await page.goto(`/${pagePath}.html`);
       await settle(page);
-      await page.locator("#temps").evaluate((el) => el.scrollIntoView({ behavior: "instant" }));
-      await settle(page);
-      await page.getByRole("button", { name: /^Sur cette page/ }).click();
-      await expect(page).toHaveScreenshot(`site-parties-${name}.png`, menuTolerance);
+      await expect(page).toHaveScreenshot(`site-${pagePath}-${name}.png`, { fullPage: true });
     });
 
-  // la référence sur un téléphone : son sommaire, sous le bouton collé en haut, ouvert plus bas dans la page
-  test(`${site} sommaire telephone`, async ({ page }) => {
-    await page.setViewportSize(PHONE);
-    await page.goto(`${root}reference.html`);
+// sur un téléphone, les pages du site sous le bouton du haut
+test(`site menu telephone`, async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.goto("/apprendre.html");
+  await settle(page);
+  await page.getByRole("button", { name: "Pages du site" }).click();
+  await expect(page).toHaveScreenshot("site-menu-telephone.png");
+  // un clic ailleurs le ferme
+  await page.mouse.click(20, 600);
+  await expect(page.getByRole("menu")).toHaveCount(0);
+});
+
+// l'accueil, plus bas que son haut : ses parties sous le bouton fixé en haut, et le retour en haut
+for (const [name, size] of [
+  ["bureau", DESKTOP],
+  ["telephone", PHONE],
+] as const)
+  test(`site parties ${name}`, async ({ page }) => {
+    await page.setViewportSize(size);
+    await page.goto("/index.html");
     await settle(page);
-    await page.locator('[id="3-le-temps"]').evaluate((heading) => heading.scrollIntoView({ behavior: "instant" }));
+    await page.locator("#temps").evaluate((el) => el.scrollIntoView({ behavior: "instant" }));
     await settle(page);
-    await page.getByRole("button", { name: /^Sommaire/ }).click();
-    await expect(page).toHaveScreenshot("site-sommaire-telephone.png", menuTolerance);
+    await page.getByRole("button", { name: /^Sur cette page/ }).click();
+    await expect(page).toHaveScreenshot(`site-parties-${name}.png`);
   });
 
-  // le clavier de l'accueil, une touche noire puis une blanche survolées : la même dans les deux octaves
-  for (const digit of ["2", "5"])
-    test(`${site} clavier ${digit}`, async ({ page }) => {
-      await page.setViewportSize(DESKTOP);
-      await page.goto(`${root}index.html`);
-      await settle(page);
-      const keyboard = page.getByRole("img", { name: /Deux octaves du clavier/ });
-      await keyboard
-        .locator("text", { hasText: new RegExp(`^${digit}$`) })
-        .first()
-        .locator("..")
-        .hover();
-      await expect(keyboard).toHaveScreenshot(`site-clavier-${digit}.png`);
-    });
+// la référence sur un téléphone : son sommaire, sous le bouton collé en haut, ouvert plus bas dans la page
+test(`site sommaire telephone`, async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.goto("/reference.html");
+  await settle(page);
+  await page.locator('[id="3-le-temps"]').evaluate((heading) => heading.scrollIntoView({ behavior: "instant" }));
+  await settle(page);
+  await page.getByRole("button", { name: /^Sommaire/ }).click();
+  await expect(page).toHaveScreenshot("site-sommaire-telephone.png");
+});
 
-  // plus bas sur la page, le bouton qui ramène à « Sur cette page »
-  test(`${site} retour aux parties`, async ({ page }) => {
+// le clavier de l'accueil, une touche noire puis une blanche survolées : la même dans les deux octaves
+for (const digit of ["2", "5"])
+  test(`site clavier ${digit}`, async ({ page }) => {
     await page.setViewportSize(DESKTOP);
-    await page.goto(`${root}guitare.html`);
+    await page.goto("/index.html");
     await settle(page);
-    await page.mouse.wheel(0, 2400);
-    await settle(page);
-    await expect(page.getByRole("button", { name: "Retour aux parties de la page" })).toHaveScreenshot("site-retour.png");
-    await page.getByRole("button", { name: "Retour aux parties de la page" }).click();
-    await settle(page);
-    await expect(page.getByRole("navigation", { name: "Sur cette page" })).toBeInViewport();
-    await expect(page.getByRole("button", { name: "Retour aux parties de la page" })).toHaveCount(0);
+    const keyboard = page.getByRole("img", { name: /Deux octaves du clavier/ });
+    await keyboard
+      .locator("text", { hasText: new RegExp(`^${digit}$`) })
+      .first()
+      .locator("..")
+      .hover();
+    await expect(keyboard).toHaveScreenshot(`site-clavier-${digit}.png`);
   });
 
-  // la référence, plus bas : le bouton qui ramène en haut
-  test(`${site} retour en haut de la référence`, async ({ page }) => {
-    await page.setViewportSize(DESKTOP);
-    await page.goto(`${root}reference.html`);
-    await settle(page);
-    await page.mouse.wheel(0, 3000);
-    await settle(page);
-    const back = page.getByRole("button", { name: "Retour en haut de la référence" });
-    await expect(back).toHaveScreenshot("site-retour-reference.png");
-    await back.click();
-    await settle(page);
-    await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
-    await expect(back).toHaveCount(0);
-  });
-}
+// plus bas sur la page, le bouton qui ramène à « Sur cette page »
+test(`site retour aux parties`, async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  await page.goto("/guitare.html");
+  await settle(page);
+  await page.mouse.wheel(0, 2400);
+  await settle(page);
+  await expect(page.getByRole("button", { name: "Retour aux parties de la page" })).toHaveScreenshot("site-retour.png");
+  await page.getByRole("button", { name: "Retour aux parties de la page" }).click();
+  await settle(page);
+  await expect(page.getByRole("navigation", { name: "Sur cette page" })).toBeInViewport();
+  await expect(page.getByRole("button", { name: "Retour aux parties de la page" })).toHaveCount(0);
+});
 
-// l'application, en React et en Vue (en construction, dans app-vue/) : ses menus, ses fenêtres et
-// l'éditeur, chacun à part (la barre de Vue n'a pas encore l'écoute), aux mêmes références. Deux
-// écarts compris, tolérés pour Vue seulement : le texte, que Vue découpe en nœuds autrement, s'y
-// lisse de quelques pixels de plus ; et React Aria pose ses menus et ses fenêtres au demi-pixel, que
-// Vue pose au pixel entier : leurs bords et leur texte s'y lissent autrement.
-for (const { name, root } of APPS) {
-  const tolerance = name === "Vue" ? { maxDiffPixels: 50 } : {};
-  const placedTolerance = name === "Vue" ? { maxDiffPixels: 1000 } : {};
-  // le panneau du menu ouvert, son cadre compris (React Aria le pose autour du menu, Reka UI sur lui)
-  const menuPanel = (page: Page) => page.locator('[data-trigger="MenuTrigger"], [data-slot="dropdown-menu-content"]');
-  // de même, un petit panneau ouvert depuis un bouton
-  const popoverPanel = (page: Page) => page.locator('[data-trigger="DialogTrigger"], [data-slot="popover-content"]');
-
-  test(`app ${name} : un menu de la barre`, async ({ page }) => {
-    await openApp(page, { source: CLAIR_SECTIONS, root });
-    await page.getByRole("button", { name: "Affichage", exact: true }).click();
-    await settle(page);
-    await expect(menuPanel(page)).toHaveScreenshot("app-menu-affichage.png", placedTolerance);
-  });
-
-  // sur un téléphone, le seul « Menu » porte en tête le nom du morceau ; une tablette montre les
-  // actions d'un titre choisi à la place des titres, sous « ‹ Menu »
-  test(`app ${name} : le menu d'un téléphone`, async ({ page }) => {
-    await openApp(page, { source: CLAIR_SECTIONS, root, editing: false, size: PHONE });
-    await page.getByRole("button", { name: "Menu", exact: true }).click();
-    await settle(page);
-    await expect(menuPanel(page)).toHaveScreenshot("app-menu-telephone.png", placedTolerance);
-  });
-  test(`app ${name} : le menu d'une tablette`, async ({ page }) => {
-    await openApp(page, { source: CLAIR_SECTIONS, root, editing: false, size: TABLET });
-    await page.getByRole("button", { name: "Menu", exact: true }).click();
-    await page.getByRole("menuitem", { name: /Partition/ }).click();
-    await settle(page);
-    await expect(menuPanel(page)).toHaveScreenshot("app-menu-tablette.png", placedTolerance);
-  });
-
-  // les fenêtres : Nouveau, l'export, la conversion pour la guitare
-  for (const [menu, action, dialog, file] of [
-    ["Fichier", "Nouveau…", "Nouveau morceau", "app-fenetre-nouveau.png"],
-    ["Fichier", "Exporter en MusicXML…", "Exporter en MusicXML", "app-fenetre-export.png"],
-    ["Partition", "Convertir pour la guitare ou la basse…", "Convertir pour la guitare ou la basse", "app-fenetre-conversion.png"],
-  ] as const)
-    test(`app ${name} : la fenêtre ${dialog}`, async ({ page }) => {
-      await openApp(page, { source: CLAIR_SECTIONS, root });
-      await chooseMenu(page, menu, action);
-      await expect(page.getByRole("dialog", { name: dialog })).toHaveScreenshot(file, placedTolerance);
-    });
-
-  // un morceau reçu par un lien : son titre, son compositeur, ses notes, son nom de fichier
-  test(`app ${name} : la fenêtre Partition reçue`, async ({ page }) => {
-    await openApp(page, { source: TECHNIQUES, root, editing: false });
-    await receiveShared(page, CLAIR_SECTIONS.replace("bpm: 100", "bpm: 100\nnotes: À jouer lentement"));
-    const dialog = page.getByRole("dialog", { name: "Partition reçue" });
-    await expect(dialog).toContainText("Au clair de la lune");
-    await settle(page);
-    await expect(dialog).toHaveScreenshot("app-fenetre-recue.png", placedTolerance);
-  });
-
-  // l'éditeur : le texte coloré, une erreur sous lui, la barre d'état, le bouton de mise en page
-  test(`app ${name} : l'éditeur, avec une erreur`, async ({ page }) => {
-    await openApp(page, { source: CLAIR_SECTIONS.replace("|1  |1  |1  |3  ||", "|1  |1  |13 |3  ||"), root });
-    await page.locator(".cm-line").nth(10).click();
-    await settle(page);
-    await expect(page.locator("section:has(.cm-editor)")).toHaveScreenshot("app-editeur-erreur.png", tolerance);
-  });
-
-  // l'écoute, dans la barre : le tempo (+ l'avance de 1, un appui long de 5 en 5 ; le ↺ du champ
-  // revient à celui de la partition), et Tab, des menus jusqu'à ses boutons
-  test(`app ${name} : le tempo`, async ({ page }) => {
-    await openApp(page, { source: CLAIR_SECTIONS, root });
-    const field = page.getByRole("spinbutton", { name: "Tempo de l'écoute" });
-    const plus = page.getByRole("button", { name: "Plus rapide", exact: true });
-    await plus.click();
-    await expect(field).toHaveValue("101");
-    await plus.hover();
-    await page.mouse.down();
-    await page.waitForTimeout(700);
-    await page.mouse.up();
-    await expect(field).toHaveValue("106");
-    await page.mouse.move(0, 400);
-    await settle(page);
-    await expect(page.locator("header")).toHaveScreenshot("app-tempo.png", tolerance);
-    await page.getByRole("button", { name: "Revenir au tempo de la partition" }).click();
-    await expect(field).toHaveValue("100");
-  });
-  test(`app ${name} : Tab jusqu'à l'écoute`, async ({ page }) => {
-    await openApp(page, { source: CLAIR_SECTIONS, root });
-    await page.getByRole("button", { name: "Fichier", exact: true }).focus();
-    for (let step = 0; step < 9; step++) await page.keyboard.press("Tab");
-    await expect(page.getByRole("button", { name: "Écouter" })).toBeFocused();
-    await expect(page.locator("header")).toHaveScreenshot("app-tab-ecoute.png", tolerance);
-  });
-
-  // les panneaux de l'écoute : ce que bat le métronome, les parties jouées et leurs instruments
-  for (const [button, file] of [
-    ["Battre", "app-panneau-metronome.png"],
-    ["Parties et instruments", "app-panneau-parties.png"],
-  ] as const)
-    test(`app ${name} : le panneau ${button}`, async ({ page }) => {
-      await openApp(page, { source: CLAIR_SECTIONS, root });
-      await page.getByRole("button", { name: button, exact: true }).click();
-      await settle(page);
-      await expect(page).toHaveScreenshot(file, await panelClip(popoverPanel(page), tolerance));
-    });
-
-  // où en est la lecture, sous la barre : un clic sur la piste place la lecture sur une mesure (ici la 10e des 16, dans la section B)
-  test(`app ${name} : la piste de lecture`, async ({ page }) => {
-    await openApp(page, { source: CLAIR_SECTIONS, root, editing: false });
-    const track = page.getByRole("slider", { name: "Position dans le morceau" });
-    const box = (await track.boundingBox())!;
-    await page.mouse.click(box.x + box.width * 0.6, box.y + box.height / 2);
-    await settle(page);
-    await expect(track).toHaveAttribute("aria-valuetext", "mesure 10 sur 16, section B");
-    // la bulle, au survol : la mesure où l'on tombera ; puis la piste seule, le pointeur ailleurs
-    // (le compteur s'est élargi : la piste a bougé)
-    const moved = (await track.boundingBox())!;
-    await page.mouse.move(moved.x + moved.width * 0.3, moved.y + moved.height / 2);
-    await expect(page.getByText(/^mesure 5/)).toBeVisible();
-    await page.mouse.move(0, 400);
-    // 16 mesures de 4 temps à 100 : 38 secondes ; la 10e commence à 21
-    await expect(page.getByText("0:21 / 0:38")).toBeVisible();
-    await expect(page).toHaveScreenshot("app-piste.png", { clip: { x: 0, y: 0, width: 1300, height: 72 }, ...tolerance });
-  });
-
-  // la lecture focalisée : deux systèmes, aux mêmes places
-  test(`app ${name} : la lecture focalisée`, async ({ page }) => {
-    await openApp(page, { source: GYMNOPEDIE, root, editing: false, view: { fit: "focus", zoom: 1 } });
-    await settle(page);
-    await expect(page.locator("section[data-fit]")).toHaveScreenshot("app-partition-focalisee.png", tolerance);
-  });
-
-  // le panneau des options : les options générales, celles de la partition (l'une définie pour
-  // elle), celles du métronome
-  for (const [scene, file, steps] of [
-    ["générales", "app-panneau-options.png", async () => {}],
-    [
-      "de la partition",
-      "app-panneau-options-partition.png",
-      async (page: Page) => {
-        await page.getByRole("radio", { name: /^Partition/ }).click();
-        await page.getByRole("button", { name: "Définir pour la partition" }).first().click();
-      },
-    ],
-    ["du métronome", "app-panneau-options-metronome.png", async (page: Page) => page.getByRole("tab", { name: "Métronome" }).click()],
-  ] as const)
-    test(`app ${name} : les options ${scene}`, async ({ page }) => {
-      await openApp(page, { source: CLAIR_SECTIONS, root });
-      await chooseMenu(page, "Partition", "Options");
-      await steps(page);
-      await settle(page);
-      await expect(page.getByRole("complementary", { name: "Options" })).toHaveScreenshot(file, tolerance);
-    });
-
-  // la retouche d'une case : une note, sur une corde, au clavier
-  for (const [scene, source, digit, options, file] of [
-    ["d'une note", CLAIR_SECTIONS, /^5$/, {}, "app-panneau-retouche.png"],
-    ["sur une corde", TECHNIQUES, /^8$/, {}, "app-panneau-retouche-corde.png"],
-    ["au clavier", CLAIR_SECTIONS, /^5$/, { noteNames: "keyboard" }, "app-panneau-retouche-clavier.png"],
-  ] as const)
-    test(`app ${name} : la retouche ${scene}`, async ({ page }) => {
-      await openApp(page, { source, root, editing: false, options });
-      await retouchAt(page, digit);
-      await settle(page);
-      // le panneau : le choix lui-même, ou (React Aria) son cadre autour de lui
-      const panel = page
-        .getByRole("dialog", { name: "Note de la case" })
-        .locator('xpath=ancestor-or-self::*[contains(@class, "border-line")][1]');
-      await expect(page).toHaveScreenshot(file, await panelClip(panel, tolerance));
-    });
-
-  // À propos : la version et les nouveautés, qui changent à chaque version, cachées ; leur cadre reste
-  test(`app ${name} : la fenêtre À propos`, async ({ page }) => {
-    await openApp(page, { source: CLAIR_SECTIONS, root });
-    await chooseMenu(page, "Aide", "À propos…");
-    const dialog = page.getByRole("dialog", { name: "À propos de Prisma" });
-    await dialog.getByText(/^Version /).evaluate((version) => ((version as HTMLElement).style.visibility = "hidden"));
-    await dialog
-      .getByLabel("Nouveautés")
-      .evaluate((list) => [...list.children].forEach((element) => ((element as HTMLElement).style.visibility = "hidden")));
-    await settle(page);
-    await expect(dialog).toHaveScreenshot("app-fenetre-a-propos.png", placedTolerance);
-  });
-
-  // la bibliothèque : un dossier, en liste et en vignettes ; pCloud, vide
-  for (const view of ["list", "thumbs"] as const)
-    test(`app ${name} : la bibliothèque ${view === "list" ? "en liste" : "en vignettes"}`, async ({ page }) => {
-      await openLibrary(page, view, root);
-      await hideDates(page);
-      await expect(page.locator("[data-library]")).toHaveScreenshot(`app-panneau-bibliotheque-${view}.png`, tolerance);
-    });
-  test(`app ${name} : la bibliothèque pCloud vide`, async ({ page }) => {
-    await openPcloud(page, {}, { root });
-    await expect(page.locator("[data-library]")).toContainText("Aucune partition pour l'instant");
-    await settle(page);
-    await expect(page.locator("[data-library]")).toHaveScreenshot("app-panneau-bibliotheque-pcloud-vide.png", tolerance);
-  });
-}
+// la référence, plus bas : le bouton qui ramène en haut
+test(`site retour en haut de la référence`, async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  await page.goto("/reference.html");
+  await settle(page);
+  await page.mouse.wheel(0, 3000);
+  await settle(page);
+  const back = page.getByRole("button", { name: "Retour en haut de la référence" });
+  await expect(back).toHaveScreenshot("site-retour-reference.png");
+  await back.click();
+  await settle(page);
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+  await expect(back).toHaveCount(0);
+});
 
 // l'application : ses écrans et ses panneaux
 test("app éditeur et partition", async ({ page }) => {
@@ -585,7 +364,11 @@ test("app retouche sans noms", async ({ page }) => {
 
 test("app statut au clavier", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS, options: { noteNames: "keyboard" } });
-  await page.locator(".cm-line").nth(10).click();
+  // au début de la ligne : un clic en son milieu, au-delà du bord, ferait défiler l'éditeur
+  await page
+    .locator(".cm-line")
+    .nth(10)
+    .click({ position: { x: 4, y: 4 } });
   await page.keyboard.press("Home");
   for (let index = 0; index < 4; index++) await page.keyboard.press("ArrowRight");
   await settle(page);
@@ -604,6 +387,25 @@ test("app métronome", async ({ page }) => {
   await page.getByRole("button", { name: "Battre" }).click();
   await settle(page);
   await expect(page).toHaveScreenshot("app-metronome.png");
+});
+
+// le tempo : + l'avance de 1, un appui long de 5 en 5 ; le ↺ du champ revient au tempo de la partition
+test("app tempo", async ({ page }) => {
+  await openApp(page, { source: CLAIR_SECTIONS });
+  const field = page.getByRole("spinbutton", { name: "Tempo de l'écoute" });
+  const plus = page.getByRole("button", { name: "Plus rapide", exact: true });
+  await plus.click();
+  await expect(field).toHaveValue("101");
+  await plus.hover();
+  await page.mouse.down();
+  await page.waitForTimeout(700);
+  await page.mouse.up();
+  await expect(field).toHaveValue("106");
+  await page.mouse.move(0, 400);
+  await settle(page);
+  await expect(page.locator("header")).toHaveScreenshot("app-tempo.png");
+  await page.getByRole("button", { name: "Revenir au tempo de la partition" }).click();
+  await expect(field).toHaveValue("100");
 });
 
 test("app menu ouvert", async ({ page }) => {
@@ -626,6 +428,15 @@ test("app menu au clavier", async ({ page }) => {
   await page.keyboard.press("Escape");
   await expect(page.getByRole("menu")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Affichage", exact: true })).toBeFocused();
+});
+
+// au clavier, Tab passe des menus aux boutons de l'écoute : le bouton qui a le focus a son contour
+test("app tab jusqu'à l'écoute", async ({ page }) => {
+  await openApp(page, { source: CLAIR_SECTIONS });
+  await page.getByRole("button", { name: "Fichier", exact: true }).focus();
+  for (let step = 0; step < 9; step++) await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Écouter" })).toBeFocused();
+  await expect(page.locator("header")).toHaveScreenshot("app-tab-ecoute.png");
 });
 
 // la barre des menus : un menu ouvert, le survol d'un autre titre l'ouvre à sa place ; les flèches
@@ -694,7 +505,7 @@ for (const [name, size] of [
 
 test("app complétion", async ({ page }) => {
   await openApp(page, { source: TECHNIQUES });
-  await page.locator(".cm-line").nth(8).click();
+  await page.locator(".cm-line").nth(8).click({ position: { x: 4, y: 4 } });
   await page.keyboard.press("Home");
   for (let step = 0; step < 4; step++) await page.keyboard.press("ArrowRight");
   await page.keyboard.press("Control+Space");
@@ -712,14 +523,14 @@ test("app bibliothèque", async ({ page }) => {
  * Une bibliothèque : le choix du dossier remplacé par un dossier privé du navigateur (OPFS), rempli
  * de quelques morceaux, dont un dans un sous-dossier et un MusicXML. Les dates (celles du jour) sont masquées.
  */
-async function openLibrary(page: Page, view: "list" | "thumbs", root = "/app/") {
+async function openLibrary(page: Page, view: "list" | "thumbs") {
   await provideFolder(page, "bibliotheque", [
     ["Au clair de la lune.prisma", CLAIR_SECTIONS],
     ["Techniques.prisma", TECHNIQUES],
     ["Guitare/Greensleeves.prisma", GREENSLEEVES_CHORDS],
     ["Satie/Gymnopedie 1.musicxml", GYMNOPEDIE_XML],
   ]);
-  await openApp(page, { source: CLAIR_SECTIONS, root });
+  await openApp(page, { source: CLAIR_SECTIONS });
   await chooseMenu(page, "Fichier", "Bibliothèque");
   await page.getByRole("button", { name: "Choisir un dossier" }).click();
   await page.waitForTimeout(1500);
@@ -731,9 +542,9 @@ async function openLibrary(page: Page, view: "list" | "thumbs", root = "/app/") 
  * Une bibliothèque sur pCloud, connectée : l'API simulée (page.route) sert ces fichiers du dossier
  * de l'app, comme la vraie (une liste, des liens de téléchargement).
  */
-async function openPcloud(page: Page, files: Record<string, string>, { refused = false, root = "/app/" } = {}) {
+async function openPcloud(page: Page, files: Record<string, string>, { refused = false } = {}) {
   await fakePcloud(page, files, { refused });
-  await openApp(page, { source: CLAIR_SECTIONS, root });
+  await openApp(page, { source: CLAIR_SECTIONS });
   await connectPcloud(page);
   await chooseMenu(page, "Fichier", "Bibliothèque");
   await page.waitForTimeout(800);
@@ -799,6 +610,25 @@ for (const [fit, zoom, name] of [
     await expect(page.getByRole("button", { name: "Retour au début de la partition" })).toHaveCount(0);
   });
 
+// où en est la lecture, sous la barre : un clic sur la piste place la lecture sur une mesure (ici la 10e des 16, dans la section B)
+test("app piste de lecture", async ({ page }) => {
+  await openApp(page, { source: CLAIR_SECTIONS, editing: false });
+  const track = page.getByRole("slider", { name: "Position dans le morceau" });
+  const box = (await track.boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.6, box.y + box.height / 2);
+  await settle(page);
+  await expect(track).toHaveAttribute("aria-valuetext", "mesure 10 sur 16, section B");
+  // la bulle, au survol : la mesure où l'on tombera ; puis la piste seule, le pointeur ailleurs
+  // (le compteur s'est élargi : la piste a bougé)
+  const moved = (await track.boundingBox())!;
+  await page.mouse.move(moved.x + moved.width * 0.3, moved.y + moved.height / 2);
+  await expect(page.getByText(/^mesure 5/)).toBeVisible();
+  await page.mouse.move(0, 400);
+  // 16 mesures de 4 temps à 100 : 38 secondes ; la 10e commence à 21
+  await expect(page.getByText("0:21 / 0:38")).toBeVisible();
+  await expect(page).toHaveScreenshot("app-piste.png", { clip: { x: 0, y: 0, width: 1300, height: 72 } });
+});
+
 // Affichage › Piste de lecture la masque, et le choix tient au rechargement
 test("app sans piste de lecture", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS, editing: false });
@@ -847,7 +677,7 @@ test("app dépôt", async ({ page }) => {
     transfer.items.add(new File(["0 |1 ||"], "morceau.prisma"));
     return transfer;
   });
-  await page.dispatchEvent("#root > div", "dragenter", { dataTransfer: files });
+  await page.dispatchEvent("#app > div", "dragenter", { dataTransfer: files });
   await settle(page);
   await expect(page).toHaveScreenshot("app-depot.png");
 });
@@ -860,7 +690,7 @@ test("app avis", async ({ page }) => {
     transfer.items.add(new File(["x"], "photo.png"));
     return transfer;
   });
-  await page.dispatchEvent("#root > div", "drop", { dataTransfer: files });
+  await page.dispatchEvent("#app > div", "drop", { dataTransfer: files });
   await settle(page);
   await expect(page.locator("header")).toHaveScreenshot("app-avis.png");
 });
@@ -876,20 +706,6 @@ const ENGRAVINGS: [string, string, Record<string, unknown>?][] = [
 for (const [name, source, options] of ENGRAVINGS)
   test(`gravure ${name}`, async ({ page }) => {
     await openApp(page, { source, editing: false, ...(options ? { options } : {}) });
-    await expect(page.locator(".page").first()).toHaveScreenshot(`gravure-${name}.png`);
-  });
-
-// la gravure de l'application Vue, en construction : au pixel près celle de React, à la même place
-// et à la même taille (celles de la page dans l'application React), comparée à la même référence
-for (const [name, source, options] of ENGRAVINGS)
-  test(`gravure vue ${name}`, async ({ page }) => {
-    await openApp(page, { source, editing: false, ...(options ? { options } : {}) });
-    const box = (await page.locator(".page").first().boundingBox())!;
-    await page.goto("/app-vue/");
-    await page.addStyleTag({
-      content: `.page { position: fixed; left: ${box.x}px; top: ${box.y}px; width: ${box.width}px; height: ${box.height}px; } .page ~ .page { display: none; }`,
-    });
-    await settle(page);
     await expect(page.locator(".page").first()).toHaveScreenshot(`gravure-${name}.png`);
   });
 
