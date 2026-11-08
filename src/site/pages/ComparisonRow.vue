@@ -16,12 +16,12 @@ defineSlots<{ classic(): unknown; prisma(): unknown }>();
       {{ what }}
     </th>
     <td
-      class="px-4 py-3.5 align-top border-b border-line phone:block phone:border-0 phone:px-0 phone:py-1 phone:before:block phone:before:text-[0.85rem] phone:before:text-muted phone:before:content-['Partition_classique']"
+      class="px-4 py-3.5 align-top border-b border-line phone:block phone:border-0 phone:px-0 phone:py-1 phone:before:block phone:before:text-[0.85rem] phone:before:text-dim phone:before:content-['Partition_classique']"
     >
       <slot name="classic" />
     </td>
     <td
-      class="px-4 py-3.5 align-top border-b border-line bg-accent-5 phone:block phone:border-0 phone:px-2.5 phone:py-2 phone:rounded-md phone:before:block phone:before:text-[0.85rem] phone:before:text-muted phone:before:content-['Prisma']"
+      class="px-4 py-3.5 align-top border-b border-line bg-brand-5 phone:block phone:border-0 phone:px-2.5 phone:py-2 phone:rounded-md phone:before:block phone:before:text-[0.85rem] phone:before:text-dim phone:before:content-['Prisma']"
     >
       <slot name="prisma" />
     </td>

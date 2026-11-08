@@ -2,6 +2,10 @@
 
 Ce qui change pour vous d'une version à l'autre de Prisma, la plus récente en haut.
 
+## 0.4.3 — 8 novembre 2026
+
+- Les boutons, les menus, les petits panneaux et les fenêtres ont une allure nouvelle, un peu plus aérée ; un bouton allumé (le suivi de la lecture, le son, une note choisie) est désormais plein.
+
 ## 0.4.2 — 8 novembre 2026
 
 - L'application et le site ont été réécrits sous le capot : tout marche comme avant ; seuls les menus, les fenêtres et les petits panneaux peuvent se placer à un pixel près autrement, et le fond derrière une fenêtre est flouté.

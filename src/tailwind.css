@@ -1,6 +1,6 @@
 /*
  * Tailwind, pour l'application et le site : son thème et ses classes utilitaires. Les couleurs et
- * les polices sont celles des pages (leurs variables : --ink, --accent…), que chaque feuille de
+ * les polices sont celles des pages (leurs variables : --ink, --brand…), que chaque feuille de
  * style définit ; les classes s'y réfèrent (text-ink, border-line, bg-panel, font-mono…).
  * Le preflight de Tailwind remet les éléments à zéro ; les titres y gardent leur gras.
  */
@@ -47,23 +47,25 @@
    font-mono…) et, pour le CSS qui reste, en variables (var(--color-ink), var(--font-mono)…) */
 @theme {
   --color-ink: #1b1d1f;
-  --color-muted: #5b6064;
+  /* le texte discret */
+  --color-dim: #5b6064;
   --color-line: #cfd2cd;
   --color-panel: #f7f7f5;
   /* le fond de l'application, autour des pages */
   --color-chrome: #e9eae6;
-  --color-accent: #2b5d6e;
+  /* la couleur de Prisma */
+  --color-brand: #2b5d6e;
   --color-error: #9b2c2c;
   --color-error-bg: #fbeceb;
-  /* l'accent éclairci de blanc, pour les fonds (un bouton allumé, une case choisie) */
-  --color-accent-5: color-mix(in srgb, var(--color-accent) 5%, #fff);
-  --color-accent-7: color-mix(in srgb, var(--color-accent) 7%, #fff);
-  --color-accent-8: color-mix(in srgb, var(--color-accent) 8%, #fff);
-  --color-accent-10: color-mix(in srgb, var(--color-accent) 10%, #fff);
-  --color-accent-12: color-mix(in srgb, var(--color-accent) 12%, #fff);
-  --color-accent-14: color-mix(in srgb, var(--color-accent) 14%, #fff);
-  --color-accent-22: color-mix(in srgb, var(--color-accent) 22%, #fff);
-  --color-accent-40: color-mix(in srgb, var(--color-accent) 40%, #fff);
+  /* la couleur de Prisma éclaircie de blanc, pour les fonds (un bouton allumé, une case choisie) */
+  --color-brand-5: color-mix(in srgb, var(--color-brand) 5%, #fff);
+  --color-brand-7: color-mix(in srgb, var(--color-brand) 7%, #fff);
+  --color-brand-8: color-mix(in srgb, var(--color-brand) 8%, #fff);
+  --color-brand-10: color-mix(in srgb, var(--color-brand) 10%, #fff);
+  --color-brand-12: color-mix(in srgb, var(--color-brand) 12%, #fff);
+  --color-brand-14: color-mix(in srgb, var(--color-brand) 14%, #fff);
+  --color-brand-22: color-mix(in srgb, var(--color-brand) 22%, #fff);
+  --color-brand-40: color-mix(in srgb, var(--color-brand) 40%, #fff);
   --font-ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
   /* une seule police à chasse fixe qui contient aussi les traits ─ ┼ : sinon le navigateur les prend
      dans une autre police et les colonnes se décalent */
@@ -95,10 +97,9 @@
 }
 
 /*
- * Les jetons des composants de shadcn-vue (app/ui/), pris dans la même palette. Deux noms sont
- * communs aux deux : accent (pour shadcn-vue, le fond d'un élément survolé) et muted (un fond éteint)
- * restent les nôtres, la couleur de l'application et le texte discret ; un composant qui s'en sert
- * pour un fond prend, à son ajout, la classe de notre palette qui convient (bg-accent-12, bg-panel…).
+ * Les jetons des composants de shadcn-vue (app/ui/), pris dans la même palette : leurs composants
+ * s'utilisent tels quels. accent et muted y sont leurs fonds (un élément survolé, un fond éteint) ;
+ * les nôtres s'appellent brand (la couleur de Prisma) et dim (le texte discret).
  */
 /* le mode sombre des composants de shadcn-vue : sous une classe .dark, que l'application ne pose pas
    (sans elle, ils suivraient le réglage du système) */
@@ -111,16 +112,18 @@
   --color-card-foreground: var(--color-ink);
   --color-popover: #fff;
   --color-popover-foreground: var(--color-ink);
-  --color-primary: var(--color-accent);
+  --color-primary: var(--color-brand);
   --color-primary-foreground: #fff;
-  --color-secondary: var(--color-accent-10);
+  --color-secondary: var(--color-brand-10);
   --color-secondary-foreground: var(--color-ink);
-  --color-accent-foreground: #fff;
-  --color-muted-foreground: var(--color-muted);
+  --color-accent: var(--color-brand-8);
+  --color-accent-foreground: var(--color-ink);
+  --color-muted: var(--color-panel);
+  --color-muted-foreground: var(--color-dim);
   --color-destructive: var(--color-error);
   --color-border: var(--color-line);
   --color-input: var(--color-line);
-  --color-ring: var(--color-accent);
+  --color-ring: var(--color-brand);
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
   --radius-lg: 0.5rem;

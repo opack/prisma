@@ -46,11 +46,11 @@ async function drop(event: DragEvent) {
   <div @dragenter="enter" @dragleave="leave" @dragover="overZone" @drop="drop">
     <div
       v-if="over"
-      class="absolute inset-0 z-20 grid place-content-center text-center gap-1 bg-[rgba(43,93,110,.12)] border-3 border-dashed border-accent pointer-events-none"
+      class="absolute inset-0 z-20 grid place-content-center text-center gap-1 bg-[rgba(43,93,110,.12)] border-3 border-dashed border-brand pointer-events-none"
       aria-hidden="true"
     >
-      <p class="text-[22px] font-bold text-accent">Déposer pour ouvrir</p>
-      <span class="text-muted">.prisma ou .musicxml</span>
+      <p class="text-[22px] font-bold text-brand">Déposer pour ouvrir</p>
+      <span class="text-dim">.prisma ou .musicxml</span>
     </div>
     <slot />
   </div>

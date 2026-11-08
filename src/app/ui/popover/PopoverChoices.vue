@@ -10,7 +10,7 @@ const value = defineModel<T>({ required: true });
 
 <template>
   <label v-for="option in options" :key="String(option.value)" class="flex gap-2 items-start cursor-pointer whitespace-normal">
-    <input class="mt-[3px] accent-accent" type="radio" :name="name" :checked="option.value === value" @change="value = option.value" />
+    <input class="mt-[3px] accent-brand" type="radio" :name="name" :checked="option.value === value" @change="value = option.value" />
     <span>
       {{ option.label }}
       <PopoverHint>{{ option.hint }}</PopoverHint>

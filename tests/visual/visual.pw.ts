@@ -505,7 +505,10 @@ for (const [name, size] of [
 
 test("app complétion", async ({ page }) => {
   await openApp(page, { source: TECHNIQUES });
-  await page.locator(".cm-line").nth(8).click({ position: { x: 4, y: 4 } });
+  await page
+    .locator(".cm-line")
+    .nth(8)
+    .click({ position: { x: 4, y: 4 } });
   await page.keyboard.press("Home");
   for (let step = 0; step < 4; step++) await page.keyboard.press("ArrowRight");
   await page.keyboard.press("Control+Space");

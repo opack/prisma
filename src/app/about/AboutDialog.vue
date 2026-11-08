@@ -26,7 +26,7 @@ const commit = __COMMIT__;
   >
     <p class="m-0 flex items-baseline gap-2">
       <span class="font-semibold">Version {{ version }}</span>
-      <span v-if="commit" class="font-mono text-[12px] text-muted" title="Le commit construit, à donner pour signaler un problème">{{
+      <span v-if="commit" class="font-mono text-[12px] text-dim" title="Le commit construit, à donner pour signaler un problème">{{
         commit
       }}</span>
     </p>
@@ -36,7 +36,7 @@ const commit = __COMMIT__;
     >
       <article v-for="release in list" :key="release.version" class="text-[14px] leading-[1.4]">
         <h3 class="m-0 text-[14px]">
-          {{ release.version }}&#32;<span class="font-normal text-muted">· {{ release.date }}</span>
+          {{ release.version }}&#32;<span class="font-normal text-dim">· {{ release.date }}</span>
         </h3>
         <!-- eslint-disable-next-line vue/no-v-html -- le CHANGELOG du dépôt, rendu par marked -->
         <div v-html="release.html" />

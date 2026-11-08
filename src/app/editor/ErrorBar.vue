@@ -23,11 +23,21 @@ const problem = computed(() => props.problems[props.shown]);
       <Message :text="problem.message" />
     </button>
     <span v-if="problems.length > 1" class="shrink-0 flex items-center gap-1 pr-2.5 tabular-nums text-[13px] whitespace-nowrap">
-      <Button size="small" title="erreur précédente (Maj+F8 dans l'éditeur)" aria-label="Erreur précédente" @click="emit('show', shown - 1)"
+      <Button
+        variant="outline"
+        size="sm"
+        title="erreur précédente (Maj+F8 dans l'éditeur)"
+        aria-label="Erreur précédente"
+        @click="emit('show', shown - 1)"
         >‹</Button
       >
       <span>{{ shown + 1 }}/{{ problems.length }}</span>
-      <Button size="small" title="erreur suivante (F8 dans l'éditeur)" aria-label="Erreur suivante" @click="emit('show', shown + 1)"
+      <Button
+        variant="outline"
+        size="sm"
+        title="erreur suivante (F8 dans l'éditeur)"
+        aria-label="Erreur suivante"
+        @click="emit('show', shown + 1)"
         >›</Button
       >
     </span>

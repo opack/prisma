@@ -10,7 +10,7 @@ defineProps<{ editing: boolean }>();
 <template>
   <button
     :class="[
-      'absolute z-3 top-1/2 -translate-y-1/2 grid justify-items-center gap-1.5 w-[22px] py-2.5 border border-line bg-panel text-muted shadow-[1px_1px_4px_rgba(0,0,0,0.08)] hover:text-accent hover:border-accent print:hidden',
+      'absolute z-3 top-1/2 -translate-y-1/2 grid justify-items-center gap-1.5 w-[22px] py-2.5 border border-line bg-panel text-dim shadow-[1px_1px_4px_rgba(0,0,0,0.08)] hover:text-brand hover:border-brand print:hidden',
       editing
         ? 'left-[calc(var(--editor-width)-1px)] border-l-0 rounded-r-md narrow:left-auto narrow:right-0 narrow:border-l narrow:border-r-0 narrow:rounded-r-none narrow:rounded-l-md'
         : 'left-0 border-l-0 rounded-r-md',

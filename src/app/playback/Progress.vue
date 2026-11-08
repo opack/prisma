@@ -106,7 +106,7 @@ function release() {
   <span v-if="barCount" class="flex items-center gap-4 w-full">
     <!-- la mesure jouée sur le nombre de mesures, et la lettre de sa section -->
     <span
-      class="flex items-center gap-1.5 text-muted text-[13px] tabular-nums whitespace-nowrap"
+      class="flex items-center gap-1.5 text-dim text-[13px] tabular-nums whitespace-nowrap"
       title="La mesure jouée, sur les mesures du morceau dans l'ordre où elles se jouent, et sa section"
     >
       {{ shown === null ? "–" : shown + 1 }} / {{ barCount }}
@@ -114,7 +114,7 @@ function release() {
     </span>
     <div
       ref="track"
-      class="relative flex-1 h-5 cursor-pointer touch-none rounded focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+      class="relative flex-1 h-5 cursor-pointer touch-none rounded focus-visible:outline-2 focus-visible:outline-brand focus-visible:outline-offset-2"
       role="slider"
       tabindex="0"
       aria-label="Position dans le morceau"
@@ -131,7 +131,7 @@ function release() {
     >
       <!-- la barre, et la partie jouée, à la couleur de l'accent -->
       <span class="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-line">
-        <span class="absolute inset-y-0 left-0 rounded-full bg-accent" :style="{ width: percent(position) }" />
+        <span class="absolute inset-y-0 left-0 rounded-full bg-brand" :style="{ width: percent(position) }" />
       </span>
       <!-- le début de chaque section, sauf la première : une coupure de la barre, à la couleur du fond -->
       <span
@@ -142,7 +142,7 @@ function release() {
       />
       <span
         v-if="played !== null || dragged !== null"
-        class="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-accent bg-white pointer-events-none"
+        class="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-brand bg-white pointer-events-none"
         :style="{ left: percent(position) }"
       />
       <!-- sous le pointeur : la mesure où l'on tombera, à quel temps, et sa section -->
@@ -151,11 +151,11 @@ function release() {
         class="absolute top-full mt-2 z-30 flex items-center gap-1.5 px-2 py-1 -translate-x-1/2 bg-white border border-line rounded-md shadow-[0_4px_14px_rgba(0,0,0,0.12)] text-[13px] tabular-nums whitespace-nowrap pointer-events-none"
         :style="{ left: percent(hovered + 0.5) }"
         >mesure {{ hovered + 1 }}
-        <span class="text-muted">{{ time(bars[hovered].at) }}</span>
+        <span class="text-dim">{{ time(bars[hovered].at) }}</span>
         <SectionMark v-if="sectionOf(hovered)?.label" :label="sectionOf(hovered)!.label!" />
       </span>
     </div>
-    <span class="text-muted text-[13px] tabular-nums whitespace-nowrap" title="Le temps écoulé, sur la durée de l'écoute au tempo choisi">
+    <span class="text-dim text-[13px] tabular-nums whitespace-nowrap" title="Le temps écoulé, sur la durée de l'écoute au tempo choisi">
       {{ elapsed ?? "–" }} / {{ total }}
     </span>
   </span>

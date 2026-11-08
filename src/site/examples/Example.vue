@@ -30,7 +30,7 @@ const view = ref<(typeof VIEWS)[number][0]>("score");
         :aria-selected="view === target"
         :class="[
           'text-[0.85rem] px-2.5 py-[3px] border-0 rounded-[5px] cursor-pointer',
-          view === target ? 'bg-panel text-ink font-bold' : 'bg-transparent text-muted',
+          view === target ? 'bg-panel text-ink font-bold' : 'bg-transparent text-dim',
         ]"
         @click="view = target"
       >

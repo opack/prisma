@@ -45,7 +45,7 @@ function key(event: KeyboardEvent) {
 
 <template>
   <div
-    class="absolute z-2 inset-y-0 left-(--editor-width) w-[9px] -translate-x-[5px] cursor-col-resize touch-none outline-none narrow:hidden print:hidden after:absolute after:inset-y-0 after:left-[3px] after:w-[3px] after:transition-colors hover:after:bg-accent focus-visible:after:bg-accent group-data-resizing/split:after:bg-accent"
+    class="absolute z-2 inset-y-0 left-(--editor-width) w-[9px] -translate-x-[5px] cursor-col-resize touch-none outline-none narrow:hidden print:hidden after:absolute after:inset-y-0 after:left-[3px] after:w-[3px] after:transition-colors hover:after:bg-brand focus-visible:after:bg-brand group-data-resizing/split:after:bg-brand"
     role="separator"
     aria-orientation="vertical"
     aria-label="Largeur de l'éditeur"

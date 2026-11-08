@@ -6,7 +6,7 @@
 import { CLICK_GRIDS } from "../options/options.ts";
 import type { ClickGrid } from "./performance.ts";
 import { Button } from "../ui/button";
-import ButtonGroup from "../ui/button/ButtonGroup.vue";
+import { ButtonGroup } from "../ui/button-group";
 import PopoverChoices from "../ui/popover/PopoverChoices.vue";
 import PopoverPanel from "../ui/popover/PopoverPanel.vue";
 import CaretIcon from "./CaretIcon.vue";
@@ -19,6 +19,7 @@ const clickGrid = defineModel<ClickGrid>("clickGrid", { required: true });
 <template>
   <ButtonGroup>
     <Button
+      variant="outline"
       size="icon"
       :pressed="metronome"
       :title="metronome ? 'Métronome : marque les temps' : 'Métronome : coupé'"
@@ -29,7 +30,7 @@ const clickGrid = defineModel<ClickGrid>("clickGrid", { required: true });
     </Button>
     <PopoverPanel label="Battre" title="Battre" class="w-[280px]">
       <template #trigger>
-        <Button size="caret" title="Ce que bat le métronome" aria-label="Battre"><CaretIcon /></Button>
+        <Button variant="outline" size="icon-sm" title="Ce que bat le métronome" aria-label="Battre"><CaretIcon /></Button>
       </template>
       <PopoverChoices v-model="clickGrid" name="click-grid-bar" :options="CLICK_GRIDS" />
     </PopoverPanel>

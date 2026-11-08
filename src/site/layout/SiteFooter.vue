@@ -9,7 +9,7 @@ defineProps<{ current: SitePage }>();
 
 <template>
   <footer
-    class="max-w-[1160px] mx-auto px-6 py-[18px] flex flex-wrap items-center justify-between gap-3 mt-12 border-t border-line text-muted text-[0.95rem]"
+    class="max-w-[1160px] mx-auto px-6 py-[18px] flex flex-wrap items-center justify-between gap-3 mt-12 border-t border-line text-dim text-[0.95rem]"
   >
     <p class="mb-0">Prisma, une notation chromatique de la musique.</p>
     <nav class="flex flex-wrap items-center gap-5" aria-label="Pages du site">

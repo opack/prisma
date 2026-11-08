@@ -21,7 +21,7 @@ const name = computed(() => (copied.value ? "Copié" : "Copier le texte"));
 <template>
   <div class="relative justify-self-start w-fit max-w-full min-w-0">
     <SourceText with-button>{{ shown }}</SourceText>
-    <Button class="absolute top-2 right-2" size="icon" :aria-label="name" :title="name" @click="copy(text)">
+    <Button variant="outline" class="absolute top-2 right-2" size="icon" :aria-label="name" :title="name" @click="copy(text)">
       <CheckIcon v-if="copied" />
       <CopyIcon v-else />
     </Button>

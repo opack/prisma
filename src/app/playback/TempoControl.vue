@@ -8,7 +8,7 @@ import { ref } from "vue";
 import { MAX_TEMPO, MIN_TEMPO } from "../options/piece.ts";
 import { TEMPO_STEP, stepTempo } from "./tempo.ts";
 import { Button } from "../ui/button";
-import ButtonGroup from "../ui/button/ButtonGroup.vue";
+import { ButtonGroup } from "../ui/button-group";
 import PlayIcon from "./PlayIcon.vue";
 import { useStep } from "./useStep.ts";
 
@@ -34,12 +34,19 @@ function restore() {
 </script>
 
 <template>
-  <ButtonGroup label="Tempo">
-    <Button size="icon" :disabled="bpm <= MIN_TEMPO" :title="`Plus lent, de 1 bpm (${hold})`" aria-label="Plus lent" v-on="slower">
+  <ButtonGroup aria-label="Tempo">
+    <Button
+      variant="outline"
+      size="icon"
+      :disabled="bpm <= MIN_TEMPO"
+      :title="`Plus lent, de 1 bpm (${hold})`"
+      aria-label="Plus lent"
+      v-on="slower"
+    >
       <PlayIcon path="M3 7.25h10v1.5H3z" />
     </Button>
     <span
-      class="flex items-center h-[2.1em] touch:h-11 pr-1.5 bg-white border border-line focus-within:relative focus-within:z-1 focus-within:border-muted"
+      class="flex items-center h-9 touch:h-11 pr-1.5 bg-white border border-line focus-within:relative focus-within:z-1 focus-within:border-dim"
       :title="`Tempo de l'écoute, en temps par minute (${MIN_TEMPO} à ${MAX_TEMPO})`"
     >
       <input
@@ -54,16 +61,23 @@ function restore() {
       />
       <button
         v-if="chosen"
-        class="m-0 px-1 py-0 text-[1em] leading-none text-muted bg-none border-0 cursor-pointer hover:text-ink"
+        class="m-0 px-1 py-0 text-[1em] leading-none text-dim bg-none border-0 cursor-pointer hover:text-ink"
         :title="`Revenir au tempo de la partition (${written} bpm)`"
         aria-label="Revenir au tempo de la partition"
         @click="restore"
       >
         ↺
       </button>
-      <span class="ml-0.5 text-muted text-[0.9em] compact:hidden">bpm</span>
+      <span class="ml-0.5 text-dim text-[0.9em] compact:hidden">bpm</span>
     </span>
-    <Button size="icon" :disabled="bpm >= MAX_TEMPO" :title="`Plus rapide, de 1 bpm (${hold})`" aria-label="Plus rapide" v-on="faster">
+    <Button
+      variant="outline"
+      size="icon"
+      :disabled="bpm >= MAX_TEMPO"
+      :title="`Plus rapide, de 1 bpm (${hold})`"
+      aria-label="Plus rapide"
+      v-on="faster"
+    >
       <PlayIcon path="M7.25 3h1.5v4.25H13v1.5H8.75V13h-1.5V8.75H3v-1.5h4.25z" />
     </Button>
   </ButtonGroup>

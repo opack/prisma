@@ -9,7 +9,7 @@
  */
 import { Button } from "../button";
 import { fromKeyboard } from "../keyboardModality.ts";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from ".";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from ".";
 
 const {
   cancel = "Annuler",
@@ -32,22 +32,20 @@ function placeFocus(event: Event) {
 
 <template>
   <Dialog :open="true" @update:open="(open) => open || emit('close')">
-    <DialogContent
-      :show-close-button="false"
-      class="block gap-0 max-w-none sm:max-w-none w-[min(460px,calc(100%_-_32px))] p-0 border border-line rounded-lg ring-0 bg-panel text-ink text-[length:inherit] shadow-[0_12px_40px_rgba(0,0,0,0.18)]"
-      @open-auto-focus="placeFocus"
-    >
-      <form class="grid gap-3.5 px-5 pt-4.5 pb-4" @submit.prevent="emit('submit')">
-        <DialogTitle class="m-0 text-[1.05rem] leading-[inherit] font-bold">{{ title }}</DialogTitle>
-        <DialogDescription v-if="intro || $slots.intro" class="-mt-1.5 mb-0 text-muted text-[length:inherit] leading-[1.4]">
-          <slot name="intro">{{ intro }}</slot>
-        </DialogDescription>
+    <DialogContent :show-close-button="false" @open-auto-focus="placeFocus">
+      <form class="grid gap-4" @submit.prevent="emit('submit')">
+        <DialogHeader>
+          <DialogTitle>{{ title }}</DialogTitle>
+          <DialogDescription v-if="intro || $slots.intro">
+            <slot name="intro">{{ intro }}</slot>
+          </DialogDescription>
+        </DialogHeader>
         <slot />
-        <div class="flex flex-wrap justify-end gap-2">
-          <Button v-if="cancel !== null" @click="emit('close')">{{ cancel }}</Button>
+        <DialogFooter>
+          <Button v-if="cancel !== null" variant="outline" @click="emit('close')">{{ cancel }}</Button>
           <slot name="actions" />
-          <Button type="submit" kind="primary">{{ submit }}</Button>
-        </div>
+          <Button type="submit">{{ submit }}</Button>
+        </DialogFooter>
       </form>
     </DialogContent>
   </Dialog>

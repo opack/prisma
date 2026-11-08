@@ -18,11 +18,11 @@ const value = defineModel<T>({ required: true });
       :key="String(option.value)"
       :class="[
         'flex gap-2.5 items-start px-3 py-2.5 border rounded-md cursor-pointer',
-        option.value === value ? 'border-accent bg-accent-7' : 'border-line bg-white',
+        option.value === value ? 'border-brand bg-brand-7' : 'border-line bg-white',
       ]"
     >
       <input
-        class="mt-[3px] mb-0 mx-0 accent-accent"
+        class="mt-[3px] mb-0 mx-0 accent-brand"
         type="radio"
         :name="name"
         :checked="option.value === value"
@@ -30,7 +30,7 @@ const value = defineModel<T>({ required: true });
       />
       <span>
         <span class="block font-semibold">{{ option.label }}</span>
-        <span class="block mt-0.5 text-muted text-[0.92em] leading-[1.35]">{{ option.hint }}</span>
+        <span class="block mt-0.5 text-dim text-[0.92em] leading-[1.35]">{{ option.hint }}</span>
       </span>
     </label>
     <slot />

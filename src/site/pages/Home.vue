@@ -42,7 +42,7 @@ const PALETTES: { value: OctaveColors; label: string }[] = [
 ];
 
 /** Le nom d'un réglage à essayer, sur sa ligne. */
-const TRY_LABEL = "w-full text-[0.95rem] text-muted mt-1.5";
+const TRY_LABEL = "w-full text-[0.95rem] text-dim mt-1.5";
 
 const colors = ref<OctaveColors>("rainbow");
 const pitch = ref(false);
@@ -177,18 +177,19 @@ const backToTop = () => scrollTo({ top: 0, behavior: matchMedia("(prefers-reduce
           <Button
             v-for="palette in PALETTES"
             :key="palette.value"
-            size="small"
+            variant="outline"
+            size="sm"
             :pressed="colors === palette.value"
             @click="colors = palette.value"
           >
             {{ palette.label }}
           </Button>
           <span :class="TRY_LABEL">Place des notes</span>
-          <Button size="small" :pressed="!pitch" @click="pitch = false">En haut</Button>
-          <Button size="small" :pressed="pitch" @click="pitch = true">Une ligne par note</Button>
+          <Button variant="outline" size="sm" :pressed="!pitch" @click="pitch = false">En haut</Button>
+          <Button variant="outline" size="sm" :pressed="pitch" @click="pitch = true">Une ligne par note</Button>
           <span :class="TRY_LABEL">Sections</span>
-          <Button size="small" :pressed="!inline" @click="inline = false">À la ligne</Button>
-          <Button size="small" :pressed="inline" @click="inline = true">À la suite</Button>
+          <Button variant="outline" size="sm" :pressed="!inline" @click="inline = false">À la ligne</Button>
+          <Button variant="outline" size="sm" :pressed="inline" @click="inline = true">À la suite</Button>
         </div>
       </IdeaText>
       <Example

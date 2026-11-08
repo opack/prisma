@@ -5,13 +5,14 @@
  * revient : pas de sous-menu à rejoindre à la souris, ni de place à trouver à côté sur un
  * téléphone. En tête des titres, ce qu'on lui donne (le nom du morceau, sur un téléphone).
  */
+import { ChevronLeft, ChevronRight } from "@lucide/vue";
 import { useMediaQuery } from "@vueuse/core";
 import { computed, nextTick, ref, useId, watch } from "vue";
 import type { MenuDef } from "./menu.ts";
 import { Button } from "../button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "../dropdown-menu";
 import MenuActions from "./MenuActions.vue";
-import { COMPACT, ITEM, PANEL } from "./menu.ts";
+import { COMPACT } from "./menu.ts";
 
 const { menus } = defineProps<{ menus: MenuDef[] }>();
 defineSlots<{ heading?(): unknown }>();
@@ -62,7 +63,7 @@ function stay(event: Event, index: number | null) {
   <span class="hidden compact:block">
     <DropdownMenu :open="open && compact" @update:open="change">
       <DropdownMenuTrigger as-child>
-        <Button kind="quiet" size="icon" title="Menu" aria-label="Menu">
+        <Button variant="ghost" size="icon" title="Menu" aria-label="Menu">
           <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
             <path fill="currentColor" d="M2 3.25h12v1.5H2zM2 7.25h12v1.5H2zM2 11.25h12v1.5H2z" />
           </svg>
@@ -70,32 +71,25 @@ function stay(event: Event, index: number | null) {
       </DropdownMenuTrigger>
       <DropdownMenuContent
         :id="id"
-        :class="PANEL"
+        class="w-auto min-w-56"
         :aria-label="menu ? menu.label : 'Menu'"
         align="start"
         :side-offset="4"
         @keydown.capture="onKey"
       >
         <template v-if="menu">
-          <DropdownMenuItem text-value="Menu" :class="[ITEM, 'text-muted']" @select="stay($event, null)">
-            <span aria-hidden="true">‹</span>
-            <span>Menu</span>
+          <DropdownMenuItem text-value="Menu" @select="stay($event, null)">
+            <ChevronLeft aria-hidden="true" />
+            Menu
           </DropdownMenuItem>
-          <DropdownMenuLabel class="mt-1 mb-0.5 px-2.5 py-0 text-muted text-[12px] font-semibold">{{ menu.label }}</DropdownMenuLabel>
+          <DropdownMenuLabel>{{ menu.label }}</DropdownMenuLabel>
           <MenuActions :items="menu.items" />
         </template>
         <template v-else>
           <slot name="heading" />
-          <DropdownMenuItem
-            v-for="(title, index) in menus"
-            :key="title.label"
-            :data-title="index"
-            :class="ITEM"
-            @select="stay($event, index)"
-          >
-            <span />
-            <span>{{ title.label }}</span>
-            <span class="text-muted" aria-hidden="true">›</span>
+          <DropdownMenuItem v-for="(title, index) in menus" :key="title.label" :data-title="index" @select="stay($event, index)">
+            {{ title.label }}
+            <ChevronRight class="ml-auto" aria-hidden="true" />
           </DropdownMenuItem>
         </template>
       </DropdownMenuContent>

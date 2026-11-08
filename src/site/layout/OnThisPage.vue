@@ -16,11 +16,11 @@ const backToParts = () => document.getElementById("sur-cette-page")?.scrollIntoV
 
 <template>
   <nav id="sur-cette-page" class="mt-8" aria-labelledby="on-this-page">
-    <p id="on-this-page" class="mb-2 text-[0.95rem] text-muted">Sur cette page</p>
+    <p id="on-this-page" class="mb-2 text-[0.95rem] text-dim">Sur cette page</p>
     <ul class="flex flex-wrap gap-2 m-0 p-0 list-none">
       <li v-for="part in parts" :key="part.id">
         <a
-          class="inline-block px-3 py-1 border border-line rounded-full bg-white text-[0.95rem] text-ink no-underline hover:border-accent hover:text-accent"
+          class="inline-block px-3 py-1 border border-line rounded-full bg-white text-[0.95rem] text-ink no-underline hover:border-brand hover:text-brand"
           :href="`#${part.id}`"
         >
           <RichLabel :label="part.label" />

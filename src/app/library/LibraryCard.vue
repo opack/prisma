@@ -18,11 +18,11 @@ const emit = defineEmits<{ open: [] }>();
   >
     <ThumbView :entry="entry" :options="options" />
     <span class="font-semibold">{{ titleOf(entry) }}</span>
-    <span class="text-left text-[13px] text-muted">{{ entry.composer ?? "\u00a0" }}</span>
+    <span class="text-left text-[13px] text-dim">{{ entry.composer ?? "\u00a0" }}</span>
     <!-- dans une boîte flexible, les espaces entre ces morceaux ne comptent pas -->
-    <span class="col-span-full flex items-center gap-2.5 text-muted flex-wrap text-[11px]">
+    <span class="col-span-full flex items-center gap-2.5 text-dim flex-wrap text-[11px]">
       {{ folder && entry.folder ? `${entry.folder}/` : "" }}{{ entry.name }}
-      <span v-if="entry.kind === 'musicxml'" class="px-1.5 rounded-[3px] bg-accent-12 text-accent">à importer</span>
+      <span v-if="entry.kind === 'musicxml'" class="px-1.5 rounded-[3px] bg-brand-12 text-brand">à importer</span>
     </span>
   </button>
 </template>

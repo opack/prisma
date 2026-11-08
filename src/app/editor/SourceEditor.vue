@@ -173,7 +173,7 @@ const where = computed(() => {
     <slot />
   </div>
   <div
-    class="flex items-baseline gap-4 min-w-0 px-3 py-[5px] text-[12px] text-muted whitespace-nowrap bg-panel border-t border-line"
+    class="flex items-baseline gap-4 min-w-0 px-3 py-[5px] text-[12px] text-dim whitespace-nowrap bg-panel border-t border-line"
     role="status"
     aria-live="polite"
   >

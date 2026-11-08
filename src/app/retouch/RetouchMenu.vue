@@ -56,7 +56,7 @@ const emit = defineEmits<{
 
 /** Un numéro de note, ramené entre 1 et 12. */
 const wrap = (note: number) => ((((note - 1) % 12) + 12) % 12) + 1;
-const NOTE = "mt-2 mb-0 text-muted text-[12px] leading-[1.35]";
+const NOTE = "mt-2 mb-0 text-dim text-[12px] leading-[1.35]";
 const AMEND_BUTTON = "flex-1 font-mono";
 
 const current = computed(() => mainOf(props.content));
@@ -144,7 +144,7 @@ function focusPanel(event: Event) {
       <span class="fixed size-0" :style="{ left: `${x}px`, top: `${y}px` }" />
     </PopoverAnchor>
     <PopoverContent
-      class="block gap-0 w-[300px] p-2.5 bg-white border border-line rounded-lg ring-0 shadow-[0_8px_24px_rgba(0,0,0,0.16)] text-ink text-[length:inherit]"
+      class="block w-80"
       role="dialog"
       tabindex="-1"
       aria-label="Note de la case"
@@ -156,11 +156,12 @@ function focusPanel(event: Event) {
     >
       <div class="flex items-center justify-between mt-0 mb-2 text-[12.5px] font-semibold">
         <p class="m-0">
-          {{ strings ? "Case" : "Note de la case" }} <span class="ml-1 font-normal text-muted">{{ label }}</span>
+          {{ strings ? "Case" : "Note de la case" }} <span class="ml-1 font-normal text-dim">{{ label }}</span>
         </p>
         <span v-if="octaves" class="flex gap-1">
           <Button
-            size="small"
+            variant="outline"
+            size="sm"
             :disabled="!octaves.up"
             :title="octaves.up ? 'monter la note d\'une octave, avec ses tenues' : 'plus haut que le clavier'"
             aria-label="Une octave au-dessus"
@@ -169,7 +170,8 @@ function focusPanel(event: Event) {
             ▲
           </Button>
           <Button
-            size="small"
+            variant="outline"
+            size="sm"
             :disabled="!octaves.down"
             :title="octaves.down ? 'descendre la note d\'une octave, avec ses tenues' : 'plus bas que le clavier'"
             aria-label="Une octave au-dessous"
@@ -184,7 +186,7 @@ function focusPanel(event: Event) {
         <Button
           v-for="(_, index) in strings.open"
           :key="index"
-          size="small"
+          variant="outline"
           :pressed="index + 1 === target"
           :disabled="!strings.free[index]"
           :title="stringTitle(index + 1)"
@@ -192,7 +194,7 @@ function focusPanel(event: Event) {
         >
           <span class="grid justify-items-center gap-px">
             <b :class="['font-mono text-[13px]', index + 1 === strings.string ? 'underline underline-offset-2' : '']">{{ index + 1 }}</b>
-            <small v-if="written !== 'none'" class="text-[10px] text-muted">{{ name(0, index + 1) }}</small>
+            <small v-if="written !== 'none'" class="text-[10px] opacity-70">{{ name(0, index + 1) }}</small>
           </span>
         </Button>
       </div>
@@ -202,7 +204,7 @@ function focusPanel(event: Event) {
         <Button
           v-for="number in choices"
           :key="number"
-          size="small"
+          variant="outline"
           :pressed="!elsewhere && String(number) === current"
           :title="sameSound(number) ? `${name(number, target)}, le même son` : name(number, target) || undefined"
           @click="choose(number)"
@@ -210,13 +212,10 @@ function focusPanel(event: Event) {
           <!-- sur une autre corde, la case du même son : son numéro souligné de tirets -->
           <span :class="['grid justify-items-center gap-px', written === 'none' ? 'py-1' : '']">
             <b
-              :class="[
-                'font-mono text-[15px]',
-                sameSound(number) ? 'underline decoration-dashed decoration-accent underline-offset-3' : '',
-              ]"
+              :class="['font-mono text-[15px]', sameSound(number) ? 'underline decoration-dashed decoration-brand underline-offset-3' : '']"
               >{{ number }}</b
             >
-            <small v-if="written !== 'none'" class="text-[10.5px] text-muted">{{ name(number, target) }}</small>
+            <small v-if="written !== 'none'" class="text-[10.5px] opacity-70">{{ name(number, target) }}</small>
           </span>
         </Button>
       </div>
@@ -230,13 +229,14 @@ function focusPanel(event: Event) {
         v-if="parts && !elsewhere"
         class="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1 mt-2 pt-2 text-[13px] border-t border-line"
       >
-        <span class="text-muted">Doigt</span>
+        <span class="text-dim">Doigt</span>
         <div class="flex gap-1">
           <Button
             v-for="finger in fingers"
             :key="finger"
+            variant="outline"
             :class="AMEND_BUTTON"
-            size="small"
+            size="sm"
             :pressed="parts.finger === String(finger)"
             :title="parts.finger === String(finger) ? 'retirer le doigté' : `jouer avec le doigt ${finger}`"
             @click="amend({ finger: parts.finger === String(finger) ? undefined : String(finger) })"
@@ -244,13 +244,14 @@ function focusPanel(event: Event) {
             {{ finger }}
           </Button>
         </div>
-        <span class="text-muted">Trille</span>
+        <span class="text-dim">Trille</span>
         <div class="flex gap-1">
           <Button
             v-for="trill in trills"
             :key="trill"
+            variant="outline"
             :class="AMEND_BUTTON"
-            size="small"
+            size="sm"
             :pressed="parts.trill === trill"
             :title="parts.trill === trill ? 'retirer la trille' : `alterner avec ${neighbour(Number(trill))}`"
             @click="amend({ trill: parts.trill === trill ? undefined : trill })"
@@ -258,13 +259,14 @@ function focusPanel(event: Event) {
             ~{{ trill }}
           </Button>
         </div>
-        <span class="text-muted">Petite note</span>
+        <span class="text-dim">Petite note</span>
         <div class="flex gap-1">
           <Button
             v-for="grace in graces"
             :key="grace"
+            variant="outline"
             :class="AMEND_BUTTON"
-            size="small"
+            size="sm"
             :pressed="parts.graces.includes(grace)"
             :title="
               parts.graces.includes(grace) ? 'retirer cette petite note' : `${name(Number(grace)) || grace} joué très vite juste avant`
@@ -277,9 +279,10 @@ function focusPanel(event: Event) {
       </div>
 
       <div v-if="duration && !elsewhere" class="flex items-center gap-1.5 mt-2 pt-2 text-[13px] border-t border-line">
-        <span class="flex-1 text-muted">Durée</span>
+        <span class="flex-1 text-dim">Durée</span>
         <Button
-          size="small"
+          variant="outline"
+          size="sm"
           :disabled="!duration.shorter"
           :title="duration.shorter ? 'raccourcir d\'une case : la dernière tenue s\'efface' : 'la note ne dure qu\'une case'"
           aria-label="Raccourcir d'une case"
@@ -289,7 +292,8 @@ function focusPanel(event: Event) {
         </Button>
         <b class="min-w-[5.5em] text-center font-semibold">{{ duration.count }} case{{ duration.count > 1 ? "s" : "" }}</b>
         <Button
-          size="small"
+          variant="outline"
+          size="sm"
           :disabled="!duration.longer"
           :title="
             duration.longer
@@ -307,17 +311,19 @@ function focusPanel(event: Event) {
         <Button
           v-for="hold in holds"
           :key="hold"
+          variant="outline"
           :title="`le ${hold} de la case d'avant continue dans celle-ci`"
           @click="emit('hold', hold)"
         >
           <span class="flex-1 text-left"
-            >Tenir le {{ hold }} <small class="ml-1 text-muted">{{ name(Number(hold)) }}</small></span
+            >Tenir le {{ hold }} <small class="ml-1 text-dim">{{ name(Number(hold)) }}</small></span
           >
         </Button>
       </div>
 
       <div v-if="!elsewhere" class="flex gap-1 mt-1.5">
         <Button
+          variant="outline"
           class="flex-1"
           :pressed="current === '-'"
           :disabled="!canHold"
@@ -326,7 +332,12 @@ function focusPanel(event: Event) {
         >
           – Tenue
         </Button>
-        <Button class="flex-1" :disabled="!content" title="rien ne sonne dans cette case sur cette ligne" @click="emit('pick', '')"
+        <Button
+          variant="outline"
+          class="flex-1"
+          :disabled="!content"
+          title="rien ne sonne dans cette case sur cette ligne"
+          @click="emit('pick', '')"
           >Vider</Button
         >
       </div>

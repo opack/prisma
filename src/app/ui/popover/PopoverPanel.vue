@@ -6,7 +6,7 @@
  * focus au bouton. Ouvert, le focus va au panneau lui-même (pas à son premier champ) : Tab y entre.
  * Sur le popover de Reka UI.
  */
-import { Popover, PopoverContent, PopoverTrigger } from ".";
+import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from ".";
 
 /** Le focus au panneau lui-même, comme à une fenêtre, plutôt qu'à son premier champ. */
 function focusPanel(event: Event) {
@@ -23,10 +23,7 @@ defineSlots<{ trigger(): unknown; default(): unknown }>();
   <Popover>
     <PopoverTrigger as-child><slot name="trigger" /></PopoverTrigger>
     <PopoverContent
-      :class="[
-        'grid gap-1.5 w-auto px-3 py-2.5 bg-white border border-line rounded-md ring-0 shadow-[0_6px_20px_rgba(0,0,0,0.12)] text-ink text-[length:inherit]',
-        $props.class,
-      ]"
+      :class="['w-auto', $props.class]"
       role="dialog"
       tabindex="-1"
       :aria-label="label"
@@ -35,7 +32,9 @@ defineSlots<{ trigger(): unknown; default(): unknown }>();
       :side-offset="above ? 8 : 6"
       @open-auto-focus="focusPanel"
     >
-      <p v-if="title" class="mt-0 mb-0.5 font-semibold">{{ title }}</p>
+      <PopoverHeader v-if="title"
+        ><PopoverTitle>{{ title }}</PopoverTitle></PopoverHeader
+      >
       <slot />
     </PopoverContent>
   </Popover>

@@ -48,20 +48,19 @@ const tip = computed(
     <!-- sur un téléphone, le nom du morceau passe en tête du menu -->
     <MenuBar :menus="menus">
       <template #heading>
-        <p class="hidden phone:block max-w-[260px] mt-0 mb-1 px-2.5 pt-1 pb-1.5 border-b border-line text-muted truncate" :title="tip">
+        <p class="hidden phone:block max-w-[260px] mt-0 mb-1 px-2.5 pt-1 pb-1.5 border-b border-line text-dim truncate" :title="tip">
           <FileName :name="fileName" :saved="saved" />
         </p>
       </template>
     </MenuBar>
-    <span class="text-muted ml-2 truncate min-w-[6em] phone:hidden" :title="tip">
+    <span class="text-dim ml-2 truncate min-w-[6em] phone:hidden" :title="tip">
       <FileName :name="fileName" :saved="saved" />
     </span>
     <span v-if="notes" class="contents phone:hidden"><NotesButton :notes="notes" /></span>
-    <span v-if="notice" class="text-accent ml-3 whitespace-nowrap" role="status">{{ notice }}</span>
+    <span v-if="notice" class="text-brand ml-3 whitespace-nowrap" role="status">{{ notice }}</span>
     <Button
       v-if="update"
-      kind="primary"
-      size="small"
+      size="sm"
       class="ml-2 whitespace-nowrap"
       title="Une nouvelle version de Prisma est prête : recharger l'application pour la prendre"
       @click="emit('update')"
@@ -73,7 +72,7 @@ const tip = computed(
     <span class="hidden crowded:contents">
       <PopoverPanel label="Réglages de l'écoute">
         <template #trigger>
-          <Button size="icon" title="Réglages de l'écoute" aria-label="Plus">
+          <Button variant="outline" size="icon" title="Réglages de l'écoute" aria-label="Plus">
             <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
               <path fill="currentColor" d="M2.5 6.5h3v3h-3zM6.5 6.5h3v3h-3zM10.5 6.5h3v3h-3z" />
             </svg>

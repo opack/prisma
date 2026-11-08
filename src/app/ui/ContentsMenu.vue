@@ -32,29 +32,23 @@ const part = computed(() => {
     <div class="max-w-[1112px] mx-auto">
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
-          <Button class="w-full max-w-[560px] min-w-0">
+          <Button variant="outline" class="w-full max-w-[560px] min-w-0">
             <span class="flex flex-1 items-center gap-2 min-w-0 py-0.5 text-left">
               <span class="flex-none font-semibold">{{ title }}</span>
-              <span v-if="part" class="truncate text-muted"><RichLabel :label="part.label" /></span>
+              <span v-if="part" class="truncate text-dim"><RichLabel :label="part.label" /></span>
               <svg class="ml-auto flex-none" width="10" height="16" viewBox="0 0 8 16" aria-hidden="true">
                 <path d="M1 6.5h6L4 10z" fill="currentColor" />
               </svg>
             </span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          class="p-1 bg-white rounded-md ring-0 border border-line shadow-[0_6px_18px_rgba(0,0,0,0.12)] text-[14px] leading-[1.35] text-ink"
-          :aria-label="title"
-          align="start"
-        >
+        <DropdownMenuContent class="w-auto" :aria-label="title" align="start">
           <DropdownMenuItem
             v-for="entry in entries"
             :key="entry.id"
-            :class="[
-              'py-1.5 px-2.5 rounded text-[14px] cursor-pointer',
-              entry.depth === 3 ? 'pl-[22px]' : 'font-semibold',
-              entry.id === current ? 'text-accent focus:text-accent' : entry.depth === 3 ? 'text-muted' : 'text-ink',
-            ]"
+            :inset="entry.depth === 3"
+            :aria-current="entry.id === current ? 'location' : undefined"
+            :class="entry.id === current && 'font-semibold'"
             @select="emit('go', entry.id)"
           >
             <RichLabel :label="entry.label" />

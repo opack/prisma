@@ -19,10 +19,10 @@ const corrected = computed(() => (several.value ? "les erreurs corrigées" : "l'
 </script>
 
 <template>
-  <div v-if="fixed" :class="[CARD, 'border-l-accent']" role="status">
+  <div v-if="fixed" :class="[CARD, 'border-l-brand']" role="status">
     <p class="font-semibold">L'erreur est corrigée.</p>
-    <p class="text-muted">Mettez le texte en page (Ctrl+Entrée) pour voir la partition.</p>
-    <Button @click="emit('engrave')">Mettre en page</Button>
+    <p class="text-dim">Mettez le texte en page (Ctrl+Entrée) pour voir la partition.</p>
+    <Button variant="outline" @click="emit('engrave')">Mettre en page</Button>
   </div>
   <div v-else-if="problems.length" :class="[CARD, 'border-l-[#d22c2c]']" role="alert">
     <p class="font-semibold">
@@ -34,14 +34,14 @@ const corrected = computed(() => (several.value ? "les erreurs corrigées" : "l'
     </p>
     <p><Message :text="first.message" /></p>
     <template v-if="first.line !== undefined">
-      <p class="text-muted">
+      <p class="text-dim">
         {{
           autoEngrave
             ? `Une fois ${corrected}, la mise en page reprend d'elle-même.`
             : `Une fois ${corrected}, remettez en page (Ctrl+Entrée).`
         }}
       </p>
-      <Button @click="emit('show', 0)">{{ several ? "Aller à la première" : "Aller à l'erreur" }}</Button>
+      <Button variant="outline" @click="emit('show', 0)">{{ several ? "Aller à la première" : "Aller à l'erreur" }}</Button>
     </template>
   </div>
 </template>
