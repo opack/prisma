@@ -39,6 +39,8 @@ function commit() {
 export default defineConfig({
   // @ : la racine des sources (src/), pour les composants de shadcn-vue et leurs imports
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
+  // plusieurs pages, sans repli : une adresse inconnue est une 404, pas la page d'accueil (comme en ligne)
+  appType: "mpa",
   plugins: [
     {
       name: "relais-pcloud",
