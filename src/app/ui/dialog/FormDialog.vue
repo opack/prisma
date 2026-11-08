@@ -34,7 +34,7 @@ function placeFocus(event: Event) {
   <Dialog :open="true" @update:open="(open) => open || emit('close')">
     <DialogContent
       :show-close-button="false"
-      class="block gap-0 inset-0 m-auto h-fit translate-x-0 translate-y-0 max-w-none sm:max-w-none w-[min(460px,calc(100%_-_32px))] p-0 border border-line rounded-lg ring-0 bg-panel text-ink text-[length:inherit] shadow-[0_12px_40px_rgba(0,0,0,0.18)]"
+      class="block gap-0 max-w-none sm:max-w-none w-[min(460px,calc(100%_-_32px))] p-0 border border-line rounded-lg ring-0 bg-panel text-ink text-[length:inherit] shadow-[0_12px_40px_rgba(0,0,0,0.18)]"
       @open-auto-focus="placeFocus"
     >
       <form class="grid gap-3.5 px-5 pt-4.5 pb-4" @submit.prevent="emit('submit')">
