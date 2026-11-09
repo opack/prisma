@@ -112,10 +112,10 @@ describe("complétion de parts:", () => {
 describe("complétion dans un temps de la règle", () => {
   const doc = "---\nformat: 1\n---\n\nm1 |1  |2  *  ||\n0  |5  |7  9  ||\n";
 
-  it("propose de détailler un temps d'une case, d'affiner ou refermer un temps détaillé", () => {
+  it("propose de détailler un temps d'une case ou refermer un temps détaillé", () => {
     expect(labels(doc, 4, 5)).toEqual(["Détailler en 2", "Détailler en 3"]);
-    // le 9 commence sur la case à refermer : seul l'affinage s'offre
-    expect(labels(doc, 4, 11)).toEqual(["Affiner"]);
+    // le 9 commence sur la case à refermer : seul « Détailler » s'offre
+    expect(labels(doc, 4, 11)).toEqual(["Détailler"]);
   });
 
   it("détaille le temps sur tout le système", () => {

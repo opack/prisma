@@ -49,7 +49,7 @@ describe("détailler un temps", () => {
     expect(notes(out)).toEqual(notes(lines));
   });
 
-  it("affine un temps déjà détaillé : les étiquettes écrites gardent leur sens", () => {
+  it("détaille encore un temps déjà détaillé : les étiquettes écrites gardent leur sens", () => {
     const out = apply(sys, splitBeat(sys, system, 9, 2, 3));
     expect(out[1]).toBe("m1 |1  |2  .  *  .  ||");
     expect(out[3]).toBe("0  |5  |7  -  9  -  ||");
@@ -103,18 +103,21 @@ describe("refermer un temps", () => {
 });
 
 describe("les actions d'un temps", () => {
-  it("détailler en 2 ou en 3 un temps d'une case ; affiner et refermer un temps détaillé", () => {
+  it("détailler en 2 ou en 3 un temps d'une case ; détailler encore et refermer un temps détaillé", () => {
     expect(beatActions(sys, system, 4).map((action) => action.label)).toEqual(["Détailler en 2", "Détailler en 3"]);
     const lines = ["m1 |1  *  ||", "0  |5  -  ||"];
     expect(beatActions(lines, systemOf(lines, 0)!, 4)).toEqual([
-      { kind: "split", factor: 2, label: "Affiner" },
+      { kind: "split", factor: 2, label: "Détailler" },
       { kind: "merge", factor: 2, label: "Refermer" },
     ]);
   });
 
-  it("n'affine pas au-delà de la virgule", () => {
+  it("ne détaille pas au-delà de la virgule", () => {
     const ruler = "m1 |1  ,  .  ,  *  ,  .  ,  ||";
-    expect(beatActions([ruler, "0  |5"], systemOf([ruler, "0  |5"], 0)!, 4).map((action) => action.label)).toEqual(["Affiner", "Refermer"]);
+    expect(beatActions([ruler, "0  |5"], systemOf([ruler, "0  |5"], 0)!, 4).map((action) => action.label)).toEqual([
+      "Détailler",
+      "Refermer",
+    ]);
     const sixteen = apply([ruler, "0  |5"], splitBeat([ruler, "0  |5"], systemOf([ruler, "0  |5"], 0)!, 4, 2, 3));
     expect(beatActions(sixteen, systemOf(sixteen, 0)!, 4).map((action) => action.label)).toEqual(["Refermer"]);
   });

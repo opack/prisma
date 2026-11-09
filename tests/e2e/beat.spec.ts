@@ -1,4 +1,4 @@
-/** La retouche d'un temps : un double-clic sur la règle de la partition le détaille, l'affine ou le referme. */
+/** La retouche d'un temps : un double-clic sur la règle de la partition le détaille ou le referme. */
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { SCALE, openApp } from "../support/app.ts";
@@ -27,7 +27,7 @@ test.describe("la retouche d'un temps", () => {
     await expect(stars(page)).toHaveCount(before + 1);
 
     await openBeat(page, "2");
-    await expect(menu(page).getByRole("menuitem")).toHaveText(["Affiner", "Refermer"]);
+    await expect(menu(page).getByRole("menuitem")).toHaveText(["Détailler", "Refermer"]);
     await menu(page).getByRole("menuitem", { name: "Refermer" }).click();
     await expect(stars(page)).toHaveCount(before);
   });

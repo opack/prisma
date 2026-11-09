@@ -28,7 +28,7 @@ import type { Case, Rewrite, System } from "./complete.ts";
 /** Le temps d'une case de la règle : ses cases, son nombre et son découpage. */
 export type Beat = { cases: Case[]; count: number; base: Division };
 
-/** Ce qu'on peut faire d'un temps : le détailler en 2 ou en 3, l'affiner, le refermer (ou pourquoi pas). */
+/** Ce qu'on peut faire d'un temps : le détailler en 2 ou en 3 puis plus finement, le refermer (ou pourquoi pas). */
 export type BeatAction =
   { kind: "split"; factor: 2 | 3; label: string } | { kind: "merge"; factor: 2 | 3; label: string; blocked?: string };
 
@@ -64,7 +64,7 @@ export function beatActions(lines: string[], sys: System, col: number): BeatActi
   const actions: BeatAction[] = [];
   if (beat.count === 1)
     actions.push({ kind: "split", factor: 2, label: "Détailler en 2" }, { kind: "split", factor: 3, label: "Détailler en 3" });
-  else if (beat.count * 2 <= beat.base * FINEST) actions.push({ kind: "split", factor: 2, label: "Affiner" });
+  else if (beat.count * 2 <= beat.base * FINEST) actions.push({ kind: "split", factor: 2, label: "Détailler" });
   const factor = mergeFactor(beat);
   if (factor) {
     const blocked = mergeBlocked(lines, sys, beat, factor);
