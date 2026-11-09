@@ -1,17 +1,17 @@
 /**
- * Détailler ou refermer un temps dans le texte : ce que proposent le double-clic sur la règle de la
+ * Diviser ou refermer un temps dans le texte : ce que proposent le double-clic sur la règle de la
  * partition et la complétion de l'éditeur sur une case de la règle.
  *
- * Toutes les cases d'un temps ont la même durée : on ne détaille pas une case seule, c'est le temps
+ * Toutes les cases d'un temps ont la même durée : on ne divise pas une case seule, c'est le temps
  * entier qui passe à un découpage plus fin (« 1 * » devient « 1 . * . ») ou plus large.
  *
- * Détailler : chaque case reçoit ses nouvelles cases juste après elle, sur toutes les lignes du
+ * Diviser : chaque case reçoit ses nouvelles cases juste après elle, sur toutes les lignes du
  * système. Sur la règle, leurs étiquettes ; sur une ligne de notes, « - » quand la case sonne (une
  * note, une tenue, une trille), pour que la note dure autant qu'avant, sinon du vide ; sur un trait,
  * du trait ; sur une ligne @, de l'espace, ou un soufflet prolongé. Les étiquettes déjà écrites
  * gardent leur sens : la case k devient la case k × facteur, de même nom.
  *
- * Refermer : les cases en trop disparaissent. Seulement si rien ne se perd : sur chaque ligne de
+ * Refermer : les cases en trop disparaissent, tous les niveaux superflus à la fois. Seulement si rien ne se perd : sur chaque ligne de
  * notes, une case en trop prolonge exactement ce qui sonne avant elle (« - » après une note ou une
  * tenue, du vide après du vide), et aucune indication, aucun accord, aucune syllabe ne commence
  * sur elle. Ses colonnes s'effacent quand elles ne portent que ses signes ; sinon (un texte qui
@@ -28,7 +28,7 @@ import type { Case, Rewrite, System } from "./complete.ts";
 /** Le temps d'une case de la règle : ses cases, son nombre et son découpage. */
 export type Beat = { cases: Case[]; count: number; base: Division };
 
-/** Ce qu'on peut faire d'un temps : le détailler en 2 ou en 3 puis plus finement, le refermer (ou pourquoi pas). */
+/** Ce qu'on peut faire d'un temps : le diviser en 2 ou en 3, puis en 2, le refermer (ou pourquoi pas). */
 export type BeatAction =
   { kind: "split"; factor: 2 | 3; label: string } | { kind: "merge"; factor: 2 | 3; label: string; blocked?: string };
 
@@ -63,8 +63,8 @@ export function beatActions(lines: string[], sys: System, col: number): BeatActi
   if (!beat) return [];
   const actions: BeatAction[] = [];
   if (beat.count === 1)
-    actions.push({ kind: "split", factor: 2, label: "Détailler en 2" }, { kind: "split", factor: 3, label: "Détailler en 3" });
-  else if (beat.count * 2 <= beat.base * FINEST) actions.push({ kind: "split", factor: 2, label: "Détailler" });
+    actions.push({ kind: "split", factor: 2, label: "Diviser en 2" }, { kind: "split", factor: 3, label: "Diviser en 3" });
+  else if (beat.count * 2 <= beat.base * FINEST) actions.push({ kind: "split", factor: 2, label: "Diviser en 2" });
   const factor = mergeFactor(beat);
   if (factor) {
     const blocked = mergeBlocked(lines, sys, beat, factor);
@@ -85,7 +85,7 @@ function padTo(line: string, col: number, ruler: string) {
   return out;
 }
 
-/** Détaille le temps de la colonne col : chaque case en factor cases, de cell colonnes pour les nouvelles. */
+/** Divise le temps de la colonne col : chaque case en factor cases, de cell colonnes pour les nouvelles. */
 export function splitBeat(lines: string[], sys: System, col: number, factor: 2 | 3, cell: number): Rewrite | undefined {
   const ruler = lines[sys.ruler];
   const beat = beatAt(ruler, col);
@@ -156,8 +156,25 @@ function erasable(segment: string, line: string, ruler: boolean) {
   return /^[\s-]*$/.test(segment);
 }
 
-/** Referme le temps de la colonne col d'un niveau, ou rien s'il ne le peut sans perte. */
+/**
+ * Referme le temps de la colonne col : tous les niveaux superflus à la fois, c'est-à-dire autant
+ * de fois que rien ne se perd. Rien s'il ne peut pas se refermer d'un seul niveau.
+ */
 export function mergeBeat(lines: string[], sys: System, col: number): Rewrite | undefined {
+  let current = lines;
+  let last: Rewrite | undefined;
+  for (let edit = closeOnce(current, sys, col); edit; edit = closeOnce(current, sys, col)) {
+    current = current.map((line, index) => edit!.lines.get(index) ?? line);
+    last = edit;
+  }
+  if (!last) return undefined;
+  const out = new Map<number, string>();
+  current.forEach((line, index) => line !== lines[index] && out.set(index, line));
+  return { lines: out, caret: last.caret };
+}
+
+/** Referme le temps de la colonne col d'un seul niveau, ou rien s'il ne le peut sans perte. */
+function closeOnce(lines: string[], sys: System, col: number): Rewrite | undefined {
   const ruler = lines[sys.ruler];
   const beat = beatAt(ruler, col);
   const factor = beat && mergeFactor(beat);
@@ -223,13 +240,13 @@ export function splitAt(text: string, tick: number): string | undefined {
     current = splitOnce(current, found.line, found.column, 3, cell);
     factor /= 3;
   }
-  // au-delà, chaque découpage coupe en 2
+  // au-delà, chaque découpage divise en 2
   if (factor & (factor - 1)) return undefined;
   for (; factor > 1; factor /= 2) current = splitOnce(current, found.line, found.column, 2, cell);
   return current;
 }
 
-/** Coupe une fois le temps de la colonne col de la règle de la ligne line. */
+/** Divise une fois le temps de la colonne col de la règle de la ligne line. */
 function splitOnce(text: string, line: number, col: number, factor: 2 | 3, cell: number) {
   const lines = text.split("\n");
   const sys = systemOf(lines, line)!;

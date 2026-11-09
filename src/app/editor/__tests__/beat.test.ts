@@ -20,7 +20,7 @@ const sys = [
 ];
 const system = systemOf(sys, 1)!;
 
-describe("détailler un temps", () => {
+describe("diviser un temps", () => {
   it("trouve le temps d'une colonne, son nombre de cases et son découpage", () => {
     expect(beatAt(sys[1], 5)).toMatchObject({ count: 1, base: 2 });
     expect(beatAt(sys[1], 11)).toMatchObject({ count: 2, base: 2 });
@@ -28,7 +28,7 @@ describe("détailler un temps", () => {
     expect(beatAt(sys[1], 1)).toBeUndefined();
   });
 
-  it("détaille un temps d'une case en 2 : la note se prolonge, les autres lignes suivent", () => {
+  it("divise un temps d'une case en 2 : la note se prolonge, les autres lignes suivent", () => {
     const out = apply(sys, splitBeat(sys, system, 4, 2, 3));
     expect(out).toEqual([
       "@   p         <-----",
@@ -49,7 +49,7 @@ describe("détailler un temps", () => {
     expect(notes(out)).toEqual(notes(lines));
   });
 
-  it("détaille encore un temps déjà détaillé : les étiquettes écrites gardent leur sens", () => {
+  it("divise encore un temps déjà divisé : les étiquettes écrites gardent leur sens", () => {
     const out = apply(sys, splitBeat(sys, system, 9, 2, 3));
     expect(out[1]).toBe("m1 |1  |2  .  *  .  ||");
     expect(out[3]).toBe("0  |5  |7  -  9  -  ||");
@@ -103,19 +103,19 @@ describe("refermer un temps", () => {
 });
 
 describe("les actions d'un temps", () => {
-  it("détailler en 2 ou en 3 un temps d'une case ; détailler encore et refermer un temps détaillé", () => {
-    expect(beatActions(sys, system, 4).map((action) => action.label)).toEqual(["Détailler en 2", "Détailler en 3"]);
+  it("diviser en 2 ou en 3 un temps d'une case ; diviser encore et refermer un temps divisé", () => {
+    expect(beatActions(sys, system, 4).map((action) => action.label)).toEqual(["Diviser en 2", "Diviser en 3"]);
     const lines = ["m1 |1  *  ||", "0  |5  -  ||"];
     expect(beatActions(lines, systemOf(lines, 0)!, 4)).toEqual([
-      { kind: "split", factor: 2, label: "Détailler" },
+      { kind: "split", factor: 2, label: "Diviser en 2" },
       { kind: "merge", factor: 2, label: "Refermer" },
     ]);
   });
 
-  it("ne détaille pas au-delà de la virgule", () => {
+  it("ne divise pas au-delà de la virgule", () => {
     const ruler = "m1 |1  ,  .  ,  *  ,  .  ,  ||";
     expect(beatActions([ruler, "0  |5"], systemOf([ruler, "0  |5"], 0)!, 4).map((action) => action.label)).toEqual([
-      "Détailler",
+      "Diviser en 2",
       "Refermer",
     ]);
     const sixteen = apply([ruler, "0  |5"], splitBeat([ruler, "0  |5"], systemOf([ruler, "0  |5"], 0)!, 4, 2, 3));
@@ -127,7 +127,7 @@ describe("détailler pour une case de la règle détaillée", () => {
   const text = piece(["m1 |1  |2  *  ||", "0  |5  |7  9  ||"]);
   const ruler = (rewritten?: string) => rewritten?.split("\n")[4];
 
-  it("détaille le temps juste assez pour qu'une case commence à l'instant voulu", () => {
+  it("divise le temps juste assez pour qu'une case commence à l'instant voulu", () => {
     expect(ruler(splitAt(text, BEAT / 2))).toBe("m1 |1  *  |2  *  ||");
     expect(ruler(splitAt(text, BEAT / 4))).toBe("m1 |1  .  *  .  |2  *  ||");
     expect(ruler(splitAt(text, BEAT / 3))).toBe("m1 |1  *  *  |2  *  ||");
@@ -144,5 +144,26 @@ describe("détailler pour une case de la règle détaillée", () => {
       .split("\n")
       .slice(4);
     expect(notes(lines)).toEqual(notes(text.split("\n").slice(4)));
+  });
+});
+
+describe("refermer tous les niveaux superflus", () => {
+  it("compresse un temps divisé plusieurs fois dont les niveaux fins ne servent pas", () => {
+    const lines = ["m1 |1  .  *  .  |2  ||", "0  |5  -  7  -  |   ||"];
+    const out = apply(lines, mergeBeat(lines, systemOf(lines, 0)!, 4));
+    expect(out).toEqual(["m1 |1  *  |2  ||", "0  |5  7  |   ||"]);
+    expect(notes(out)).toEqual(notes(lines));
+  });
+
+  it("va jusqu'à une seule case quand rien ne commence dans le temps", () => {
+    const lines = ["m1 |1  .  *  .  |2  ||", "0  |5  -  -  -  |   ||"];
+    expect(apply(lines, mergeBeat(lines, systemOf(lines, 0)!, 4))).toEqual(["m1 |1  |2  ||", "0  |5  |   ||"]);
+  });
+
+  it("s'arrête au niveau où une note commence, après avoir divisé un temps en 3 puis en 2", () => {
+    // un temps en 3, une note sur sa 2ᵉ case ; divisé encore, la note est sur la 3ᵉ case de 6
+    const lines = ["m1 |1  *  *  |2  ||", "0  |5  7  -  |   ||"];
+    const divided = apply(lines, splitBeat(lines, systemOf(lines, 0)!, 4, 2, 3));
+    expect(apply(divided, mergeBeat(divided, systemOf(divided, 0)!, 4))).toEqual(lines);
   });
 });

@@ -223,7 +223,7 @@ En 4/4 : `1  *` pour des croches, `1  .  *  .` pour des doubles croches. En 6/8 
 
 La partition montre les cases écrites dans le texte, même celles où rien ne commence ; un temps tenu peut n'en garder qu'une. Pour voir tout le découpage en lisant, l'application peut détailler la règle de la partition (Options › Partition › Règle) : chaque temps coupé au moins jusqu'au `*`, ou jusqu'au `.`, même sans attaque. Une note tenue y montre son trait case par case. Le texte, lui, ne change pas.
 
-Pour écrire sur un découpage plus fin, double-cliquez sur la règle de la partition : le temps se détaille en 2 ou en 3 puis plus finement, ou se referme quand rien ne s'y perd. Le texte suit, sur toutes les lignes du système. Dans l'éditeur, Ctrl+Espace sur un temps de la règle propose les mêmes découpages.
+Pour écrire sur un découpage plus fin, double-cliquez sur la règle de la partition : le temps se divise en 2 ou en 3 puis plus finement, ou se referme, d'un coup, jusqu'au niveau dont les notes ont besoin. Le texte suit, sur toutes les lignes du système. Dans l'éditeur, Ctrl+Espace sur un temps de la règle propose les mêmes découpages.
 
 ### Ce qui disparaît
 

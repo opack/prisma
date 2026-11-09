@@ -112,17 +112,17 @@ describe("complétion de parts:", () => {
 describe("complétion dans un temps de la règle", () => {
   const doc = "---\nformat: 1\n---\n\nm1 |1  |2  *  ||\n0  |5  |7  9  ||\n";
 
-  it("propose de détailler un temps d'une case ou refermer un temps détaillé", () => {
-    expect(labels(doc, 4, 5)).toEqual(["Détailler en 2", "Détailler en 3"]);
-    // le 9 commence sur la case à refermer : seul « Détailler » s'offre
-    expect(labels(doc, 4, 11)).toEqual(["Détailler"]);
+  it("propose de diviser un temps d'une case ou refermer un temps détaillé", () => {
+    expect(labels(doc, 4, 5)).toEqual(["Diviser en 2", "Diviser en 3"]);
+    // le 9 commence sur la case à refermer : seul « Diviser en 2 » s'offre
+    expect(labels(doc, 4, 11)).toEqual(["Diviser en 2"]);
   });
 
-  it("détaille le temps sur tout le système", () => {
+  it("divise le temps sur tout le système", () => {
     let state = EditorState.create({ doc });
     const line = state.doc.line(5);
     const result = source(new CompletionContext(state, line.from + 5, true))!;
-    const option = result.options.find((completion) => completion.label === "Détailler en 2")!;
+    const option = result.options.find((completion) => completion.label === "Diviser en 2")!;
     const view = {
       get state() {
         return state;

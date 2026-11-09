@@ -4,7 +4,7 @@
  * (RetouchMenu). Chaque choix réécrit le texte, comme une frappe, puis la partition est remise en
  * page ; la durée, les ajouts et l'octave laissent le choix ouvert, et la note écrite dans une case
  * vide aussi, pour lui donner aussitôt son doigté, sa trille, sa durée. Une case que seule la règle
- * détaillée montre se retouche aussi : le premier choix coupe son temps dans le texte, puis y écrit.
+ * détaillée montre se retouche aussi : le premier choix divise son temps dans le texte, puis y écrit.
  * Pendant l'écoute, la partition ne s'édite pas, et l'écoute qui démarre ferme le choix.
  */
 import { computed, onScopeDispose, ref, shallowRef, watch } from "vue";
