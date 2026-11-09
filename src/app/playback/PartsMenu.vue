@@ -15,7 +15,7 @@ import { ButtonGroup } from "../ui/button-group";
 import PopoverCheck from "../ui/popover/PopoverCheck.vue";
 import PopoverHint from "../ui/popover/PopoverHint.vue";
 import PopoverPanel from "../ui/popover/PopoverPanel.vue";
-import CaretIcon from "./CaretIcon.vue";
+import { ChevronDown } from "@lucide/vue";
 import PlayIcon from "./PlayIcon.vue";
 
 const { score, muted, instruments, volumes } = defineProps<{
@@ -88,13 +88,13 @@ const suffix = (name?: string) => (name ? ` : ${name}` : "");
     <PopoverPanel label="Parties et instruments" title="Parties et instruments" class="w-min min-w-[300px]">
       <template #trigger>
         <Button
-          variant="outline"
-          size="icon-sm"
+          :variant="silent ? 'outline' : 'default'"
+          size="icon"
           :disabled="!names.length"
           title="Portées jouées et instruments des parties"
           aria-label="Parties et instruments"
         >
-          <CaretIcon />
+          <ChevronDown />
         </Button>
       </template>
       <div v-for="(group, index) in groups" :key="index" :class="group.staves.length === 1 ? ROW : 'grid gap-1'">

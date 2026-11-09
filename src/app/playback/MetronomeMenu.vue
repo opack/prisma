@@ -9,7 +9,7 @@ import { Button } from "../ui/button";
 import { ButtonGroup } from "../ui/button-group";
 import PopoverChoices from "../ui/popover/PopoverChoices.vue";
 import PopoverPanel from "../ui/popover/PopoverPanel.vue";
-import CaretIcon from "./CaretIcon.vue";
+import { ChevronDown } from "@lucide/vue";
 import PlayIcon from "./PlayIcon.vue";
 
 const metronome = defineModel<boolean>("metronome", { required: true });
@@ -30,7 +30,9 @@ const clickGrid = defineModel<ClickGrid>("clickGrid", { required: true });
     </Button>
     <PopoverPanel label="Battre" title="Battre" class="w-[280px]">
       <template #trigger>
-        <Button variant="outline" size="icon-sm" title="Ce que bat le métronome" aria-label="Battre"><CaretIcon /></Button>
+        <Button :variant="metronome ? 'default' : 'outline'" size="icon" title="Ce que bat le métronome" aria-label="Battre">
+          <ChevronDown />
+        </Button>
       </template>
       <PopoverChoices v-model="clickGrid" name="click-grid-bar" :options="CLICK_GRIDS" />
     </PopoverPanel>

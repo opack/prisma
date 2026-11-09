@@ -4,6 +4,7 @@
  * texte (Ctrl+Entrée), sa flèche ouvre le choix de graver automatiquement. Il n'est actif que s'il
  * y a quelque chose à graver : un texte modifié depuis la dernière gravure, sans gravure automatique.
  */
+import { ChevronUp } from "@lucide/vue";
 import { computed } from "vue";
 import { Button } from "../ui/button";
 import { ButtonGroup } from "../ui/button-group";
@@ -45,8 +46,8 @@ const title = computed(() =>
     </Button>
     <PopoverPanel label="Réglages de la mise en page" above class="w-min min-w-[240px]">
       <template #trigger>
-        <Button size="icon-sm" title="Réglages de la mise en page" aria-label="Réglages de la mise en page">
-          <svg width="8" height="16" viewBox="0 0 8 16" aria-hidden="true"><path d="M1 9.5h6L4 6z" fill="currentColor" /></svg>
+        <Button size="icon" title="Réglages de la mise en page" aria-label="Réglages de la mise en page">
+          <ChevronUp />
         </Button>
       </template>
       <PopoverCheck v-model="auto">Mettre en page automatiquement</PopoverCheck>
