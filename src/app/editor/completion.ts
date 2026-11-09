@@ -16,7 +16,7 @@
  *   les siennes (nuances, soufflets, liaisons, articulations, pédale ; sur une corde, le médiator,
  *   l'étouffé et le vibrato plutôt que la pédale).
  * - Au bout d'une règle de comptage : le temps suivant, coupé ou non, ou la fin de la mesure ;
- *   dans un temps de la règle : le couper, le recouper ou le refermer (voir beat.ts).
+ *   dans un temps de la règle : le détailler, l'affiner ou le refermer (voir beat.ts).
  *
  * L'écriture garde l'alignement des colonnes (voir complete.ts). Les notes et la règle ne
  * s'offrent qu'à la demande : taper un numéro ne doit rien ouvrir. L'en-tête et les instruments
@@ -441,7 +441,7 @@ function rulerEnd(ctx: CompletionContext, lines: string[], lineIndex: number, co
 }
 
 /**
- * Dans un temps de la règle de comptage : le couper en 2 ou en 3, le recouper, le refermer d'un
+ * Dans un temps de la règle de comptage : le détailler en 2 ou en 3, l'affiner, le refermer d'un
  * niveau (seulement s'il le peut sans rien perdre), comme le double-clic sur la règle de la partition.
  */
 function rulerBeat(ctx: CompletionContext, lines: string[], lineIndex: number, column: number): CompletionResult | null {

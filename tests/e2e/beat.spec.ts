@@ -1,4 +1,4 @@
-/** La retouche d'un temps : un double-clic sur la règle de la partition le coupe, le recoupe ou le referme. */
+/** La retouche d'un temps : un double-clic sur la règle de la partition le détaille, l'affine ou le referme. */
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { SCALE, openApp } from "../support/app.ts";
@@ -18,16 +18,16 @@ async function openBeat(page: Page, label: string) {
 }
 
 test.describe("la retouche d'un temps", () => {
-  test("coupe un temps en 2, puis le referme", async ({ page }) => {
+  test("détaille un temps en 2, puis le referme", async ({ page }) => {
     await openApp(page, { source: SCALE, editing: false });
     const before = await stars(page).count();
     await openBeat(page, "2");
-    await expect(menu(page).getByRole("menuitem")).toHaveText(["Couper en 2", "Couper en 3"]);
-    await menu(page).getByRole("menuitem", { name: "Couper en 2" }).click();
+    await expect(menu(page).getByRole("menuitem")).toHaveText(["Détailler en 2", "Détailler en 3"]);
+    await menu(page).getByRole("menuitem", { name: "Détailler en 2" }).click();
     await expect(stars(page)).toHaveCount(before + 1);
 
     await openBeat(page, "2");
-    await expect(menu(page).getByRole("menuitem")).toHaveText(["Recouper", "Refermer"]);
+    await expect(menu(page).getByRole("menuitem")).toHaveText(["Affiner", "Refermer"]);
     await menu(page).getByRole("menuitem", { name: "Refermer" }).click();
     await expect(stars(page)).toHaveCount(before);
   });

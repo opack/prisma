@@ -91,7 +91,7 @@ export function useRetouch({ source, rewrite, editor, linked, score }: Deps) {
     // sur la règle : la retouche du temps (useBeatRetouch)
     if (kind === "edit" && at.staff < 0) return void (open.value = null);
     if (kind === "edit") {
-      // une case que seule la règle détaillée montre : son temps se coupe, dans un texte en attente
+      // une case que seule la règle détaillée montre : son temps se détaille, dans un texte en attente
       const split = isWrittenCase(source.value, at.t) ? undefined : splitAt(source.value, at.t);
       if (!split && !isWrittenCase(source.value, at.t)) return void (open.value = null);
       const described = describe(split ?? source.value, at, where);

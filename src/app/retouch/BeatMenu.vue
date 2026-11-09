@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * La retouche d'un temps, ouverte par un double-clic sur la règle de la partition : le couper en 2
- * ou en 3, le recouper, ou le refermer d'un niveau. Refermer reste visible quand il perdrait
+ * La retouche d'un temps, ouverte par un double-clic sur la règle de la partition : le détailler en
+ * 2 ou en 3, l'affiner, ou le refermer d'un niveau. Refermer reste visible quand il perdrait
  * quelque chose, inactif, avec sa raison. Le menu s'ouvre à côté du clic ; Échap ou un clic
  * ailleurs le ferme.
  */

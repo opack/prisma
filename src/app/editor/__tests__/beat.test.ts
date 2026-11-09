@@ -20,7 +20,7 @@ const sys = [
 ];
 const system = systemOf(sys, 1)!;
 
-describe("couper un temps", () => {
+describe("détailler un temps", () => {
   it("trouve le temps d'une colonne, son nombre de cases et son découpage", () => {
     expect(beatAt(sys[1], 5)).toMatchObject({ count: 1, base: 2 });
     expect(beatAt(sys[1], 11)).toMatchObject({ count: 2, base: 2 });
@@ -28,7 +28,7 @@ describe("couper un temps", () => {
     expect(beatAt(sys[1], 1)).toBeUndefined();
   });
 
-  it("coupe un temps d'une case en 2 : la note se prolonge, les autres lignes suivent", () => {
+  it("détaille un temps d'une case en 2 : la note se prolonge, les autres lignes suivent", () => {
     const out = apply(sys, splitBeat(sys, system, 4, 2, 3));
     expect(out).toEqual([
       "@   p         <-----",
@@ -49,7 +49,7 @@ describe("couper un temps", () => {
     expect(notes(out)).toEqual(notes(lines));
   });
 
-  it("recoupe un temps déjà coupé : les étiquettes écrites gardent leur sens", () => {
+  it("affine un temps déjà détaillé : les étiquettes écrites gardent leur sens", () => {
     const out = apply(sys, splitBeat(sys, system, 9, 2, 3));
     expect(out[1]).toBe("m1 |1  |2  .  *  .  ||");
     expect(out[3]).toBe("0  |5  |7  -  9  -  ||");
@@ -103,31 +103,28 @@ describe("refermer un temps", () => {
 });
 
 describe("les actions d'un temps", () => {
-  it("couper en 2 ou en 3 un temps d'une case ; recouper et refermer un temps coupé", () => {
-    expect(beatActions(sys, system, 4).map((action) => action.label)).toEqual(["Couper en 2", "Couper en 3"]);
+  it("détailler en 2 ou en 3 un temps d'une case ; affiner et refermer un temps détaillé", () => {
+    expect(beatActions(sys, system, 4).map((action) => action.label)).toEqual(["Détailler en 2", "Détailler en 3"]);
     const lines = ["m1 |1  *  ||", "0  |5  -  ||"];
     expect(beatActions(lines, systemOf(lines, 0)!, 4)).toEqual([
-      { kind: "split", factor: 2, label: "Recouper" },
+      { kind: "split", factor: 2, label: "Affiner" },
       { kind: "merge", factor: 2, label: "Refermer" },
     ]);
   });
 
-  it("ne recoupe pas au-delà de la virgule", () => {
+  it("n'affine pas au-delà de la virgule", () => {
     const ruler = "m1 |1  ,  .  ,  *  ,  .  ,  ||";
-    expect(beatActions([ruler, "0  |5"], systemOf([ruler, "0  |5"], 0)!, 4).map((action) => action.label)).toEqual([
-      "Recouper",
-      "Refermer",
-    ]);
+    expect(beatActions([ruler, "0  |5"], systemOf([ruler, "0  |5"], 0)!, 4).map((action) => action.label)).toEqual(["Affiner", "Refermer"]);
     const sixteen = apply([ruler, "0  |5"], splitBeat([ruler, "0  |5"], systemOf([ruler, "0  |5"], 0)!, 4, 2, 3));
     expect(beatActions(sixteen, systemOf(sixteen, 0)!, 4).map((action) => action.label)).toEqual(["Refermer"]);
   });
 });
 
-describe("couper pour une case de la règle détaillée", () => {
+describe("détailler pour une case de la règle détaillée", () => {
   const text = piece(["m1 |1  |2  *  ||", "0  |5  |7  9  ||"]);
   const ruler = (rewritten?: string) => rewritten?.split("\n")[4];
 
-  it("coupe le temps juste assez pour qu'une case commence à l'instant voulu", () => {
+  it("détaille le temps juste assez pour qu'une case commence à l'instant voulu", () => {
     expect(ruler(splitAt(text, BEAT / 2))).toBe("m1 |1  *  |2  *  ||");
     expect(ruler(splitAt(text, BEAT / 4))).toBe("m1 |1  .  *  .  |2  *  ||");
     expect(ruler(splitAt(text, BEAT / 3))).toBe("m1 |1  *  *  |2  *  ||");

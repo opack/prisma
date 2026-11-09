@@ -1,11 +1,11 @@
 /**
- * Couper ou refermer un temps dans le texte : ce que proposent le double-clic sur la règle de la
+ * Détailler ou refermer un temps dans le texte : ce que proposent le double-clic sur la règle de la
  * partition et la complétion de l'éditeur sur une case de la règle.
  *
- * Toutes les cases d'un temps ont la même durée : on ne coupe pas une case seule, c'est le temps
+ * Toutes les cases d'un temps ont la même durée : on ne détaille pas une case seule, c'est le temps
  * entier qui passe à un découpage plus fin (« 1 * » devient « 1 . * . ») ou plus large.
  *
- * Couper : chaque case reçoit ses nouvelles cases juste après elle, sur toutes les lignes du
+ * Détailler : chaque case reçoit ses nouvelles cases juste après elle, sur toutes les lignes du
  * système. Sur la règle, leurs étiquettes ; sur une ligne de notes, « - » quand la case sonne (une
  * note, une tenue, une trille), pour que la note dure autant qu'avant, sinon du vide ; sur un trait,
  * du trait ; sur une ligne @, de l'espace, ou un soufflet prolongé. Les étiquettes déjà écrites
@@ -28,7 +28,7 @@ import type { Case, Rewrite, System } from "./complete.ts";
 /** Le temps d'une case de la règle : ses cases, son nombre et son découpage. */
 export type Beat = { cases: Case[]; count: number; base: Division };
 
-/** Ce qu'on peut faire d'un temps : le couper en 2 ou en 3, le recouper, le refermer (ou pourquoi pas). */
+/** Ce qu'on peut faire d'un temps : le détailler en 2 ou en 3, l'affiner, le refermer (ou pourquoi pas). */
 export type BeatAction =
   { kind: "split"; factor: 2 | 3; label: string } | { kind: "merge"; factor: 2 | 3; label: string; blocked?: string };
 
@@ -63,8 +63,8 @@ export function beatActions(lines: string[], sys: System, col: number): BeatActi
   if (!beat) return [];
   const actions: BeatAction[] = [];
   if (beat.count === 1)
-    actions.push({ kind: "split", factor: 2, label: "Couper en 2" }, { kind: "split", factor: 3, label: "Couper en 3" });
-  else if (beat.count * 2 <= beat.base * FINEST) actions.push({ kind: "split", factor: 2, label: "Recouper" });
+    actions.push({ kind: "split", factor: 2, label: "Détailler en 2" }, { kind: "split", factor: 3, label: "Détailler en 3" });
+  else if (beat.count * 2 <= beat.base * FINEST) actions.push({ kind: "split", factor: 2, label: "Affiner" });
   const factor = mergeFactor(beat);
   if (factor) {
     const blocked = mergeBlocked(lines, sys, beat, factor);
@@ -85,7 +85,7 @@ function padTo(line: string, col: number, ruler: string) {
   return out;
 }
 
-/** Coupe le temps de la colonne col : chaque case en factor cases, de cell colonnes pour les nouvelles. */
+/** Détaille le temps de la colonne col : chaque case en factor cases, de cell colonnes pour les nouvelles. */
 export function splitBeat(lines: string[], sys: System, col: number, factor: 2 | 3, cell: number): Rewrite | undefined {
   const ruler = lines[sys.ruler];
   const beat = beatAt(ruler, col);
