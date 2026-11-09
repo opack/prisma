@@ -20,6 +20,11 @@ describe("la règle détaillée", () => {
     expect(labels(binary, "written")).toEqual(labels(binary));
   });
 
+  it("telle qu'écrite : une case du texte où rien ne commence est montrée quand même", () => {
+    const held = piece(["m1 |1  .  *  .  |2  *  *  ||", "───┼────────────┼─────────┼┼", "0  |5  -  -  -  |7  -  -  ||"]);
+    expect(labels(held)).toEqual(["1 . * .", "2 * *"]);
+  });
+
   it("au premier découpage : chaque temps en 2, un triolet reste en 3", () => {
     expect(labels(binary, "division")).toEqual(["1 *", "2 *", "3 * *", "4 . * ."]);
   });

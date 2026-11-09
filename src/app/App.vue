@@ -3,7 +3,7 @@
  * L'application : la barre du haut, et dessous l'éditeur du texte et la partition gravée (ou, à leur
  * place, la référence). Elle assemble ce que chaque domaine tient : le morceau ouvert
  * (files/useDocument), les réglages (options/settings), l'écoute (playback/usePieceSound), la
- * retouche (retouch/useRetouch), la vue (score/useView), le partage (files/useShare), la conversion
+ * retouche (retouch/useRetouch, useBeatRetouch), la vue (score/useView), le partage (files/useShare), la conversion
  * (editor/useConversion).
  *
  * Lecture, le mode ordinaire : pour jouer, sans l'éditeur, les pages côte à côte, chacune de toute la
@@ -48,7 +48,9 @@ import ListenControls from "./playback/ListenControls.vue";
 import Progress from "./playback/Progress.vue";
 import { usePieceSound } from "./playback/usePieceSound.ts";
 import ReferenceView from "./reference/ReferenceView.vue";
+import BeatMenu from "./retouch/BeatMenu.vue";
 import RetouchMenu from "./retouch/RetouchMenu.vue";
+import { useBeatRetouch } from "./retouch/useBeatRetouch.ts";
 import { useRetouch } from "./retouch/useRetouch.ts";
 import EngraveButton from "./score/EngraveButton.vue";
 import EngraveProblem from "./score/EngraveProblem.vue";
@@ -117,6 +119,7 @@ const errors = useErrors(
 const sound = usePieceSound(score);
 const linked = computed(() => !reading.value && options.value.scoreToText);
 const retouch = useRetouch({ source, rewrite: doc.rewrite, editor, linked, score });
+const beatRetouch = useBeatRetouch({ source, rewrite: doc.rewrite, score });
 const onCaret = useTextMark(linked, retouch.mark);
 
 const split = useTemplateRef<HTMLElement>("split");
@@ -326,6 +329,7 @@ function onFileChosen(event: Event) {
             @amend="retouch.amend"
             @close="retouch.close"
           />
+          <BeatMenu v-if="beatRetouch.menu.value" v-bind="beatRetouch.menu.value" @act="beatRetouch.act" @close="beatRetouch.close" />
           <EngraveProblem
             :problems="errors.problems.value"
             :fixed="errors.fixed.value"

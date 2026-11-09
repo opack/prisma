@@ -221,7 +221,9 @@ Chaque temps commence par son numéro, puis se coupe en **cases** de même duré
 
 En 4/4 : `1  *` pour des croches, `1  .  *  .` pour des doubles croches. En 6/8 : `1  *  *` pour des croches, `1  .  *  .  *  .` pour des doubles croches.
 
-Le texte n'écrit que les cases dont il a besoin : un temps tenu garde une seule case. Pour voir tout le découpage en lisant, l'application peut détailler la règle de la partition (Options › Partition › Règle) : chaque temps coupé au moins jusqu'au `*`, ou jusqu'au `.`, même sans attaque. Une note tenue y montre son trait case par case. Le texte, lui, ne change pas.
+La partition montre les cases écrites dans le texte, même celles où rien ne commence ; un temps tenu peut n'en garder qu'une. Pour voir tout le découpage en lisant, l'application peut détailler la règle de la partition (Options › Partition › Règle) : chaque temps coupé au moins jusqu'au `*`, ou jusqu'au `.`, même sans attaque. Une note tenue y montre son trait case par case. Le texte, lui, ne change pas.
+
+Pour écrire sur un découpage plus fin, double-cliquez sur la règle de la partition : le temps se coupe en 2 ou en 3, se recoupe, ou se referme quand rien ne s'y perd. Le texte suit, sur toutes les lignes du système. Dans l'éditeur, Ctrl+Espace sur un temps de la règle propose les mêmes découpages.
 
 ### Ce qui disparaît
 

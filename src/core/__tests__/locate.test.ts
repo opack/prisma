@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TICKS_PER_BEAT, octaveOf, parsePrisma } from "../index.ts";
-import { locate, textPlace } from "../locate.ts";
+import { locate, rulerCase, textPlace } from "../locate.ts";
 
 const text = [
   "---",
@@ -52,5 +52,15 @@ describe("de la partition au texte", () => {
     expect(textPlace(text, 5, 12)).toEqual({ t: TICKS_PER_BEAT, staff: -1 });
     expect(textPlace(text, 11, 5)).toEqual({ t: 0, staff: 1 });
     expect(textPlace(text, 2, 1)).toBeUndefined();
+  });
+});
+
+describe("la case de la règle d'un instant", () => {
+  it("donne la ligne de la règle, la colonne de la case qui contient l'instant, et son temps", () => {
+    const doc = "---\nformat: 1\n---\n\nm1 |1  |2  *  ||\n0  |5  |7  9  ||";
+    expect(rulerCase(doc, 0)).toEqual({ line: 4, column: 4, count: 1, beatStart: 0 });
+    expect(rulerCase(doc, TICKS_PER_BEAT / 4)).toEqual({ line: 4, column: 4, count: 1, beatStart: 0 });
+    expect(rulerCase(doc, TICKS_PER_BEAT + TICKS_PER_BEAT / 2)).toEqual({ line: 4, column: 11, count: 2, beatStart: TICKS_PER_BEAT });
+    expect(rulerCase(doc, 5 * TICKS_PER_BEAT)).toBeUndefined();
   });
 });

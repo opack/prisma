@@ -119,6 +119,21 @@ export function findRow(text: string, at: ScorePlace): { line: number; column: n
 }
 
 /**
+ * La case de la règle du texte où tombe l'instant tick : la ligne de la règle et la colonne de la
+ * case (à partir de 0), le nombre de cases de son temps, et l'instant où ce temps commence.
+ */
+export function rulerCase(text: string, tick: number): { line: number; column: number; count: number; beatStart: number } | undefined {
+  const system = systems(split(text)).find(
+    (candidate) => tick >= candidate.beat0 * TICKS_PER_BEAT && tick < (candidate.beat0 + candidate.beats.length) * TICKS_PER_BEAT,
+  );
+  if (!system) return undefined;
+  const beatIndex = Math.floor(tick / TICKS_PER_BEAT);
+  const beat = system.beats[beatIndex - system.beat0];
+  const cellIndex = Math.min(beat.length - 1, Math.floor(((tick % TICKS_PER_BEAT) * beat.length) / TICKS_PER_BEAT));
+  return { line: system.ruler, column: beat[cellIndex].start, count: beat.length, beatStart: beatIndex * TICKS_PER_BEAT };
+}
+
+/**
  * Vrai si une case du texte commence à l'instant t. Faux pour une case que la règle détaillée
  * ajoute à la gravure : le texte ne l'a pas, rien ne peut s'y écrire.
  */

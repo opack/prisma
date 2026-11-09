@@ -24,7 +24,7 @@ type Sep = { from: number; to: number; text: string };
 /** Ce qu'une écriture change : des lignes entières, et la place du curseur. */
 export type Rewrite = { lines: Map<number, string>; caret: { line: number; col: number } };
 
-const isRuleLine = (line: string) => {
+export const isRuleLine = (line: string) => {
   try {
     return !!parseRule(line, 0);
   } catch {
@@ -99,7 +99,7 @@ const ruleChar = (line: string) => line.match(/[─━\-=═]/)?.[0] ?? "─";
  * seul texte (« Andante très expressif ») ; sur une ligne de paroles ou d'accords, chaque mot est
  * à part.
  */
-function marksOf(line: string) {
+export function marksOf(line: string) {
   if (/^@[lc](\s|$)/.test(line))
     return [...line.matchAll(/\S+/g)].filter((match) => match.index > 0).map((match) => ({ col: match.index, text: match[0] }));
   return markTokens(line);
@@ -110,7 +110,7 @@ function marksOf(line: string) {
  * indication à cheval sur x n'est jamais coupée : un soufflet, une liaison ou un trait de
  * prolongation s'allonge ; un texte garde son début et l'espace va après lui.
  */
-function widen(line: string, column: number, count: number): string {
+export function widen(line: string, column: number, count: number): string {
   if (line.length <= column) return line;
   if (isRuleLine(line)) {
     // au milieu du nom d'une partie, écrit sur le trait : le trait s'allonge après le nom
