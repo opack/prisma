@@ -406,7 +406,7 @@ export function parsePrisma(text: string): Score {
       segBar.push(barIndex);
       segOpensBar.push(newBar);
       const beatIndex = beats.length;
-      beats.push({ bar, barIndex, label, division });
+      beats.push({ bar, barIndex, label, division, cells: count });
       for (let cellIndex = 0; cellIndex < count; cellIndex++) {
         anchors.push({
           t: beatIndex * TICKS_PER_BEAT + (cellIndex * TICKS_PER_BEAT) / count,

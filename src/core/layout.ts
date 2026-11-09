@@ -306,7 +306,7 @@ export function beatGrids(score: Score, detail: RulerDetail = "written"): BeatGr
     add(pedal.end, false);
   }
   return score.beats.map((beat, index) => {
-    const written = resolution(offsets[index]);
+    const written = lcm(resolution(offsets[index]), beat.cells ?? 1);
     const own = baseDivision(written, beat.division, attacks[index]);
     const count = detail === "written" ? written : lcm(written, detail === "division" ? own : own * 2);
     const base = baseDivision(count, own, attacks[index]);

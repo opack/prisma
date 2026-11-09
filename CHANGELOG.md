@@ -2,6 +2,13 @@
 
 Ce qui change pour vous d'une version à l'autre de Prisma, la plus récente en haut.
 
+## 0.5.0 — 9 novembre 2026
+
+- Un double-clic sur la règle de la partition ouvre le découpage du temps : le diviser en 2 ou en 3, puis en 2, ou le refermer : tous les niveaux dont rien ne se sert disparaissent d'un coup. Le texte suit, et Ctrl+Z annule.
+- Avec la règle détaillée, une case qu'elle ajoute se retouche aussi : la note choisie divise le temps juste ce qu'il faut, puis s'y écrit.
+- Dans l'éditeur, Ctrl+Espace sur un temps de la règle propose les mêmes actions.
+- La partition montre toutes les cases écrites dans le texte, même celles où rien ne commence.
+
 ## 0.4.3 — 8 novembre 2026
 
 - Les boutons, les menus, les petits panneaux et les fenêtres ont une allure nouvelle, un peu plus aérée ; un bouton allumé (le suivi de la lecture, le son, une note choisie) est désormais plein.

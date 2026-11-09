@@ -335,6 +335,16 @@ test("app retouche case vide", async ({ page }) => {
   await expect(page).toHaveScreenshot("app-retouche-case-vide.png");
 });
 
+// la retouche d'un temps : un double-clic sur la règle ; Refermer, inactif, dit pourquoi
+test("app retouche d'un temps", async ({ page }) => {
+  await openApp(page, { source: "---\nformat: 1\n---\n\nm1 |1  *  |2  |3  |4  ||\n0  |1  3  |5  |6  |8  ||\n", editing: false });
+  const box = (await page.locator('.page text[font-style="italic"]', { hasText: /^1$/ }).first().boundingBox())!;
+  await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.getByRole("menu", { name: "Découpage du temps" })).toBeVisible();
+  await settle(page);
+  await expect(page).toHaveScreenshot("app-retouche-temps.png");
+});
+
 test("app retouche d'une note", async ({ page }) => {
   await openApp(page, { source: CLAIR_SECTIONS, editing: false });
   // le chiffre ne reçoit pas le clic (la case, dessous, le reçoit) : on double-clique à sa place

@@ -98,15 +98,15 @@ m1 |1  |2  ||
 
   it("exporte une tablature, que l'import relit telle quelle", () => {
     // mi4 sur la 2ᵉ corde (case 3 au capo 2) plutôt qu'à vide sur la 1ʳᵉ : le choix de l'arrangeur revient
-    const text = writePrisma(
-      parsePrisma(
-        piece("Guitare (drop-d, capo 2)", [
-          "1  |      |      |0     |      ||",
-          "2  |      |   3  |      |      ||",
-          "6  |0  -  |-  -  |      |      ||",
-        ]),
-      ),
+    const parsed = parsePrisma(
+      piece("Guitare (drop-d, capo 2)", [
+        "1  |      |      |0     |      ||",
+        "2  |      |   3  |      |      ||",
+        "6  |0  -  |-  -  |      |      ||",
+      ]),
     );
+    // les cases écrites où rien ne commence ne passent pas par le MusicXML : le texte comparé s'en passe
+    const text = writePrisma({ ...parsed, beats: parsed.beats.map(({ cells: _cells, ...beat }) => beat) });
     const xml = exportMusicXml(parsePrisma(text));
     expect(xml).toContain("<sign>TAB</sign>");
     expect(xml).toContain("<capo>2</capo>");

@@ -3,14 +3,15 @@
  * édition, sans prendre le clavier) ; un double-clic ouvre le choix de la note de la case
  * (RetouchMenu). Chaque choix réécrit le texte, comme une frappe, puis la partition est remise en
  * page ; la durée, les ajouts et l'octave laissent le choix ouvert, et la note écrite dans une case
- * vide aussi, pour lui donner aussitôt son doigté, sa trille, sa durée. Pendant l'écoute, la partition ne
- * s'édite pas, et l'écoute qui démarre ferme le choix.
+ * vide aussi, pour lui donner aussitôt son doigté, sa trille, sa durée. Une case que seule la règle
+ * détaillée montre se retouche aussi : le premier choix divise son temps dans le texte, puis y écrit.
+ * Pendant l'écoute, la partition ne s'édite pas, et l'écoute qui démarre ferme le choix.
  */
 import { computed, onScopeDispose, ref, shallowRef, watch } from "vue";
 import type { Ref } from "vue";
 import { stringsOfStaff } from "../../core/index.ts";
 import type { Score } from "../../core/index.ts";
-import { STRING_LANE, isWrittenCase, locate } from "../../core/locate.ts";
+import { STRING_LANE, isWrittenCase, locate, rulerCase } from "../../core/locate.ts";
 import type { ScorePlace } from "../../core/locate.ts";
 import { player } from "../playback/player.ts";
 import {
@@ -28,9 +29,15 @@ import {
 import { pick } from "../score/pick.ts";
 import type { ScreenPoint } from "../score/pick.ts";
 import type { EditorHandle } from "../editor/codemirror.ts";
+import { splitAt } from "../editor/beat.ts";
 
-/** at : la note que le choix retouche (sa case d'attaque) ; clicked : la case cliquée, qui reste encadrée (une tenue de la note, par exemple). */
+/**
+ * at : la note que le choix retouche (sa case d'attaque) ; clicked : la case cliquée, qui reste
+ * encadrée (une tenue de la note, par exemple). split : sur une case que seule la règle détaillée
+ * montre, le texte où son temps est déjà coupé pour elle ; le premier choix l'écrit.
+ */
 type Retouch = {
+  split?: string;
   at: ScorePlace;
   clicked: ScorePlace;
   where: ScreenPoint;
@@ -81,10 +88,18 @@ export function useRetouch({ source, rewrite, editor, linked, score }: Deps) {
 
   const stopPick = pick.subscribe((at, where, kind) => {
     if (playing()) return;
-    // une case que la règle détaillée ajoute n'est pas dans le texte : rien à y retoucher
-    if (kind === "edit") return void (open.value = isWrittenCase(source.value, at.t) ? describe(source.value, at, where) : null);
+    // sur la règle : la retouche du temps (useBeatRetouch)
+    if (kind === "edit" && at.staff < 0) return void (open.value = null);
+    if (kind === "edit") {
+      // une case que seule la règle détaillée montre : son temps se détaille, dans un texte en attente
+      const split = isWrittenCase(source.value, at.t) ? undefined : splitAt(source.value, at.t);
+      if (!split && !isWrittenCase(source.value, at.t)) return void (open.value = null);
+      const described = describe(split ?? source.value, at, where);
+      return void (open.value = described && split ? { ...described, split } : described);
+    }
     if (!linked.value) return;
-    const place = locate(source.value, at);
+    const ruler = at.staff < 0 ? rulerCase(source.value, at.t) : undefined;
+    const place = ruler ? { line: ruler.line + 1, column: ruler.column + 1 } : locate(source.value, at);
     if (place) editor.value?.goTo(place.line, place.column, false);
   });
   const stopPlayer = player.subscribe(() => playing() && (open.value = null));
@@ -102,7 +117,7 @@ export function useRetouch({ source, rewrite, editor, linked, score }: Deps) {
       strings && {
         string: at.octave! - STRING_LANE,
         open: strings.open.map((midi) => midi + strings.capo),
-        free: freeStrings(source.value, at, strings.open.length),
+        free: freeStrings(open.value?.split ?? source.value, at, strings.open.length),
       }
     );
   }
@@ -125,6 +140,8 @@ export function useRetouch({ source, rewrite, editor, linked, score }: Deps) {
   });
 
   const close = () => (open.value = null);
+  /** Le texte que le choix retouche : celui où le temps est déjà coupé, avant le premier choix. */
+  const text = () => open.value?.split ?? source.value;
   return {
     menu,
     mark,
@@ -133,29 +150,29 @@ export function useRetouch({ source, rewrite, editor, linked, score }: Deps) {
     // dans une case vide, la note choisie : le choix reste ouvert sur elle, pour son doigté, sa trille, sa durée
     pick(content: string) {
       const { clicked, where, content: before } = open.value!;
-      const result = retouch(source.value, clicked, content);
+      const result = retouch(text(), clicked, content);
       const fresh = !before && /^\d+$/.test(content);
       open.value = rewrite(result) && fresh ? describe(result!.text, clicked, where) : null;
     },
     hold(note: string) {
-      rewrite(holdIn(source.value, open.value!.at, note));
+      rewrite(holdIn(text(), open.value!.at, note));
       close();
     },
     resize(by: 1 | -1) {
       const { at, where, clicked } = open.value!;
-      const done = resize(source.value, at, by);
+      const done = resize(text(), at, by);
       if (rewrite(done)) open.value = describe(done!.text, at, where, clicked);
     },
     // un ajout à la note (doigté, trille, petite note)
     amend(content: string) {
       const { at, where, clicked } = open.value!;
-      const result = retouch(source.value, at, content);
+      const result = retouch(text(), at, content);
       if (rewrite(result)) open.value = describe(result!.text, { ...at, content }, where, clicked);
     },
     // l'octave de la note : le choix reste sur la note, à sa nouvelle place
     octave(direction: 1 | -1) {
       const { at, where, clicked } = open.value!;
-      const result = moveOctave(source.value, at, direction);
+      const result = moveOctave(text(), at, direction);
       if (rewrite(result))
         open.value = describe(result!.text, { ...at, octave: result!.octave }, where, { ...clicked, octave: result!.octave });
     },
@@ -163,8 +180,7 @@ export function useRetouch({ source, rewrite, editor, linked, score }: Deps) {
     string(string: number, fret: number) {
       const { at, clicked, where, content } = open.value!;
       const home = string === at.octave! - STRING_LANE;
-      const result =
-        home && content.startsWith("-") ? retouch(source.value, clicked, String(fret)) : placeOnString(source.value, at, string, fret);
+      const result = home && content.startsWith("-") ? retouch(text(), clicked, String(fret)) : placeOnString(text(), at, string, fret);
       // dans une case vide de la corde, comme une note : le choix reste ouvert sur elle
       open.value = rewrite(result) && home && !content ? describe(result!.text, clicked, where) : null;
     },

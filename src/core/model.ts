@@ -59,6 +59,11 @@ export type Beat = {
   label: number;
   /** Découpage par défaut de ce temps. */
   division: Division;
+  /**
+   * Nombre de cases écrites sur la règle du texte (.prisma) : la gravure les montre toutes, même
+   * celles où rien ne commence. Absent d'un morceau importé : ses cases viennent de ses notes.
+   */
+  cells?: number;
 };
 
 export type Note = {

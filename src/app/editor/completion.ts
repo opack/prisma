@@ -15,7 +15,8 @@
  *   règle, celles du système (la section suivante, le point d'orgue, le tempo) ; sous une portée,
  *   les siennes (nuances, soufflets, liaisons, articulations, pédale ; sur une corde, le médiator,
  *   l'étouffé et le vibrato plutôt que la pédale).
- * - Au bout d'une règle de comptage : le temps suivant, coupé ou non, ou la fin de la mesure.
+ * - Au bout d'une règle de comptage : le temps suivant, coupé ou non, ou la fin de la mesure ;
+ *   dans un temps de la règle : le diviser ou le refermer (voir beat.ts).
  *
  * L'écriture garde l'alignement des colonnes (voir complete.ts). Les notes et la règle ne
  * s'offrent qu'à la demande : taper un numéro ne doit rien ouvrir. L'en-tête et les instruments
@@ -89,6 +90,7 @@ import {
   writeChord,
 } from "./complete.ts";
 import type { Rewrite } from "./complete.ts";
+import { beatActions, cellWidth, mergeBeat, splitBeat } from "./beat.ts";
 
 const FINGERS = ["pouce", "index", "majeur", "annulaire", "auriculaire"];
 /** Les groupes de la liste, dans cet ordre. */
@@ -439,6 +441,32 @@ function rulerEnd(ctx: CompletionContext, lines: string[], lineIndex: number, co
 }
 
 /**
+ * Dans un temps de la règle de comptage : le diviser en 2 ou en 3, puis en 2, le refermer d'un
+ * niveau (seulement s'il le peut sans rien perdre), comme le double-clic sur la règle de la partition.
+ */
+function rulerBeat(ctx: CompletionContext, lines: string[], lineIndex: number, column: number): CompletionResult | null {
+  const sys = systemOf(lines, lineIndex);
+  if (!sys || sys.ruler !== lineIndex) return null;
+  const cell = cellWidth(lines.join("\n"));
+  const options: Completion[] = beatActions(lines, sys, column)
+    .filter((action) => !(action.kind === "merge" && action.blocked))
+    .map((action) => ({
+      label: action.label,
+      detail: action.kind === "merge" ? "le temps, d'un niveau" : "le temps, sur tout le système",
+      type: "keyword",
+      apply: (view: EditorView) => {
+        const current = view.state.doc.toString().split("\n");
+        const target = systemOf(current, lineIndex);
+        const edit =
+          target &&
+          (action.kind === "split" ? splitBeat(current, target, column, action.factor, cell) : mergeBeat(current, target, column));
+        if (edit) rewrite(view, edit);
+      },
+    }));
+  return options.length ? { from: ctx.pos, options, filter: false } : null;
+}
+
+/**
  * Sur une corde, dans une case : les cases (avec leur note), la tenue, la note étouffée, les
  * harmoniques ; sur une case écrite, ses glissés (vers la note suivante d'abord, dans son sens), ses
  * bends et le doigt de la main gauche.
@@ -762,6 +790,7 @@ export function completionSource(names: () => NoteNames) {
       chordAt(ctx, lines, lineIndex, column, body, head) ??
       markLine(ctx, lines, lineIndex, column, body, head) ??
       rulerEnd(ctx, lines, lineIndex, column) ??
+      rulerBeat(ctx, lines, lineIndex, column) ??
       notes(ctx, lines, lineIndex, column, body, names(), head)
     );
   };

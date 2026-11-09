@@ -108,3 +108,28 @@ describe("complétion de parts:", () => {
     expect(labels(doc("Piano, "), 2, 14)).not.toContain("Piano");
   });
 });
+
+describe("complétion dans un temps de la règle", () => {
+  const doc = "---\nformat: 1\n---\n\nm1 |1  |2  *  ||\n0  |5  |7  9  ||\n";
+
+  it("propose de diviser un temps d'une case ou refermer un temps détaillé", () => {
+    expect(labels(doc, 4, 5)).toEqual(["Diviser en 2", "Diviser en 3"]);
+    // le 9 commence sur la case à refermer : seul « Diviser en 2 » s'offre
+    expect(labels(doc, 4, 11)).toEqual(["Diviser en 2"]);
+  });
+
+  it("divise le temps sur tout le système", () => {
+    let state = EditorState.create({ doc });
+    const line = state.doc.line(5);
+    const result = source(new CompletionContext(state, line.from + 5, true))!;
+    const option = result.options.find((completion) => completion.label === "Diviser en 2")!;
+    const view = {
+      get state() {
+        return state;
+      },
+      dispatch: (spec: Parameters<EditorState["update"]>[0]) => (state = state.update(spec).state),
+    };
+    (option.apply as (view: unknown, completion: unknown, from: number, to: number) => void)(view, option, result.from, result.from);
+    expect(state.doc.toString().split("\n").slice(4, 6)).toEqual(["m1 |1  *  |2  *  ||", "0  |5  -  |7  9  ||"]);
+  });
+});

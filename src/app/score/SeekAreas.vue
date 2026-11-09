@@ -2,9 +2,10 @@
 /**
  * Zones cliquables, une par système : un clic sur une colonne y place le curseur de lecture, d'où
  * la lecture démarre ou reprend (ou repart tout de suite si elle est en cours). Un double-clic,
- * ou au doigt deux touchers rapprochés, ouvre la retouche de la case.
+ * ou au doigt deux touchers rapprochés, ouvre la retouche de la case ; sur la règle, celle du temps.
  */
 import { rowLane } from "../../core/locate.ts";
+import { METRICS } from "./engrave.ts";
 import type { PlacedSystem } from "./engrave.ts";
 import { follow } from "./follow.ts";
 import { nearestColumn, systemBand } from "./geometry.ts";
@@ -39,6 +40,8 @@ function placeOf(placed: PlacedSystem, event: MouseEvent) {
   const tick = (sys.columns[best] as { t: number }).t;
   // la ligne sous le clic (les places des portées se comptent depuis le haut du système)
   const dy = y - placed.y;
+  // sur la règle : le temps, sans portée (son double-clic retouche le temps)
+  if (dy < placed.rulerTop + METRICS.rulerH) return { at: { t: tick, staff: -1 }, where: { x: event.clientX, y: event.clientY } };
   const staff = placed.staves.findIndex(
     (staffPlace, index) => dy >= staffPlace.rowsTop && dy < staffPlace.rowsTop + sys.staves[index].rows.length * placed.rowH,
   );
