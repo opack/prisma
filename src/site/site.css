@@ -9,12 +9,12 @@
     margin: 0 0 14px;
   }
   a {
-    color: var(--color-accent);
+    color: var(--color-brand);
     text-decoration: underline;
     text-underline-offset: 3px;
   }
   a:focus-visible {
-    outline: 3px solid var(--color-accent-40);
+    outline: 3px solid var(--color-brand-40);
     outline-offset: 2px;
   }
   ul {

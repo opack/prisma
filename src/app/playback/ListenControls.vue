@@ -12,7 +12,7 @@ import { DEFAULT_BPM, player } from "./player.ts";
 import { follow } from "../score/follow.ts";
 import { useSettings } from "../options/settings.ts";
 import { Button } from "../ui/button";
-import ButtonGroup from "../ui/button/ButtonGroup.vue";
+import { ButtonGroup } from "../ui/button-group";
 import MetronomeMenu from "./MetronomeMenu.vue";
 import PartsMenu from "./PartsMenu.vue";
 import PlayIcon from "./PlayIcon.vue";
@@ -65,11 +65,12 @@ const setting = computed(() => (bar.value ? "crowded:hidden" : ""));
 </script>
 
 <template>
-  <span v-if="bar && playerState.error" class="ml-3 text-accent whitespace-nowrap" role="status">{{ playerState.error }}</span>
+  <span v-if="bar && playerState.error" class="ml-3 text-brand whitespace-nowrap" role="status">{{ playerState.error }}</span>
   <span v-if="bar" class="flex-1" />
   <TempoControl :class="setting" :bpm="bpm" :written="written" :chosen="settings.piece.tempo !== undefined" @tempo="setTempo" />
-  <ButtonGroup v-if="bar" label="Lecture">
+  <ButtonGroup v-if="bar" aria-label="Lecture">
     <Button
+      variant="outline"
       size="icon"
       :disabled="disabled"
       title="Revenir au début du morceau"
@@ -79,6 +80,7 @@ const setting = computed(() => (bar.value ? "crowded:hidden" : ""));
       <PlayIcon path="M2 3h2v10H2zM9 3v10L4 8zM14 3v10L9 8z" />
     </Button>
     <Button
+      variant="outline"
       size="icon"
       :disabled="disabled"
       title="Début de la section (deux clics : section précédente)"
@@ -87,11 +89,19 @@ const setting = computed(() => (bar.value ? "crowded:hidden" : ""));
     >
       <PlayIcon path="M3 3h2v10H3zM13 3v10L5 8z" />
     </Button>
-    <Button size="icon" :disabled="disabled" :title="LABELS[playerState.state]" :aria-label="LABELS[playerState.state]" @click="toggle">
+    <Button
+      variant="outline"
+      size="icon"
+      :disabled="disabled"
+      :title="LABELS[playerState.state]"
+      :aria-label="LABELS[playerState.state]"
+      @click="toggle"
+    >
       <span v-if="playerState.state === 'loading'" class="leading-[14px]">…</span>
       <PlayIcon v-else :path="playerState.state === 'playing' ? 'M4 3h3v10H4zM9 3h3v10H9z' : 'M4 2.5v11L13 8z'" />
     </Button>
     <Button
+      variant="outline"
       size="icon"
       :disabled="disabled || entry + 1 >= playerState.entries"
       title="Section suivante"
@@ -101,6 +111,7 @@ const setting = computed(() => (bar.value ? "crowded:hidden" : ""));
       <PlayIcon path="M11 3h2v10h-2zM3 3v10l8-5z" />
     </Button>
     <Button
+      variant="outline"
       size="icon"
       :disabled="playerState.state === 'idle'"
       title="Arrêter et revenir au début"
@@ -111,6 +122,7 @@ const setting = computed(() => (bar.value ? "crowded:hidden" : ""));
     </Button>
   </ButtonGroup>
   <Button
+    variant="outline"
     size="icon"
     :class="setting"
     :pressed="following"

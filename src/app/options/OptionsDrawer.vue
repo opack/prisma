@@ -46,12 +46,12 @@ import { useSettings } from "./settings.ts";
 defineProps<{ name: string; where: string | null }>();
 const emit = defineEmits<{ close: [] }>();
 
-const LINK = "p-0 text-accent underline bg-transparent border-0 cursor-pointer";
-const SLIDER = "flex-1 min-w-0 accent-accent";
+const LINK = "p-0 text-brand underline bg-transparent border-0 cursor-pointer";
+const SLIDER = "flex-1 min-w-0 accent-brand";
 /** Générales, Partition : le choix de la portée des options. */
 const porteeButton = (on: boolean) => [
   "flex-1 px-2 py-1.5 border-0 rounded-none",
-  on ? "bg-accent-12 text-accent font-semibold" : "bg-white text-muted",
+  on ? "bg-brand-12 text-brand font-semibold" : "bg-white text-dim",
 ];
 
 const settings = useSettings();
@@ -91,7 +91,7 @@ const defineAll = () => settings.setPieceOptions(Object.fromEntries(PIECE_KEYS.m
   >
     <header class="flex items-center justify-between px-4 pt-3 pb-1">
       <h2 class="m-0 text-[1rem]">Options</h2>
-      <Button kind="quiet" size="icon" aria-label="Fermer les options" title="Fermer (Échap)" @click="emit('close')">×</Button>
+      <Button variant="ghost" size="icon" aria-label="Fermer les options" title="Fermer (Échap)" @click="emit('close')">×</Button>
     </header>
     <div class="flex mx-3 mt-0 mb-2 overflow-hidden border border-line rounded-md" role="radiogroup" aria-label="Portée des options">
       <button
@@ -114,7 +114,7 @@ const defineAll = () => settings.setPieceOptions(Object.fromEntries(PIECE_KEYS.m
       </button>
     </div>
     <div v-if="onPiece" class="mx-3 mt-0 mb-1.5">
-      <p class="mt-0 mb-0.5 text-[0.9em] text-muted leading-[1.4] wrap-anywhere">
+      <p class="mt-0 mb-0.5 text-[0.9em] text-dim leading-[1.4] wrap-anywhere">
         <strong>{{ name }}</strong> :
         {{
           where
@@ -148,7 +148,7 @@ const defineAll = () => settings.setPieceOptions(Object.fromEntries(PIECE_KEYS.m
         :aria-selected="tab === item.id"
         :class="[
           'flex-[1_1_auto] -mb-px px-1 py-2 whitespace-nowrap bg-transparent border-0 border-b-2 rounded-none',
-          tab === item.id ? 'text-ink border-b-accent font-semibold' : 'text-muted border-b-transparent hover:border-b-muted',
+          tab === item.id ? 'text-ink border-b-brand font-semibold' : 'text-dim border-b-transparent hover:border-b-dim',
         ]"
         @click="tabChoice = item.id"
       >

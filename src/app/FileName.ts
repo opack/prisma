@@ -9,6 +9,6 @@ import type { FunctionalComponent } from "vue";
 const FileName: FunctionalComponent<{ name: string; saved: boolean }> = ({ name, saved }) =>
   saved
     ? name
-    : [name, h("span", { class: "text-accent", "aria-hidden": "true" }, " ●"), h("span", { class: "sr-only" }, ", non enregistré")];
+    : [name, h("span", { class: "text-brand", "aria-hidden": "true" }, " ●"), h("span", { class: "sr-only" }, ", non enregistré")];
 FileName.props = ["name", "saved"];
 export default FileName;

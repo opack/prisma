@@ -12,28 +12,15 @@ defineProps<{ current: SitePage }>();
   <span class="hidden phone:flex">
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
-        <Button size="icon" title="Pages du site" aria-label="Pages du site">
+        <Button variant="outline" size="icon" title="Pages du site" aria-label="Pages du site">
           <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
             <path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" d="M2.5 4h11M2.5 8h11M2.5 12h11" />
           </svg>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        class="grid w-auto min-w-[260px] p-1.5 bg-white border border-line rounded-md ring-0 shadow-[0_6px_18px_rgba(0,0,0,0.12)] text-[length:inherit]"
-        align="end"
-        :side-offset="6"
-        aria-label="Pages du site"
-      >
-        <DropdownMenuItem
-          v-for="[page, label] in PAGES"
-          :key="page"
-          as-child
-          :class="[
-            'px-2.5 py-2 rounded text-[length:inherit] no-underline cursor-pointer',
-            page === current ? 'text-ink' : 'text-accent focus:text-accent',
-          ]"
-        >
-          <a :href="`${page}.html`">{{ label }}</a>
+      <DropdownMenuContent class="w-auto min-w-56" align="end" aria-label="Pages du site">
+        <DropdownMenuItem v-for="[page, label] in PAGES" :key="page" as-child :class="page === current && 'font-semibold'">
+          <a :href="`${page}.html`" :aria-current="page === current ? 'page' : undefined" class="no-underline">{{ label }}</a>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

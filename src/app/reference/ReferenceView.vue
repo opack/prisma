@@ -72,7 +72,7 @@ const backToTop = () =>
       class="sticky top-[60px] self-start max-h-[calc(100vh-140px)] overflow-auto py-6 pl-4 text-[13.5px] leading-[1.35] [@media(max-width:980px)]:hidden"
       aria-label="Sommaire de la référence"
     >
-      <p class="mb-2 text-[12px] font-semibold tracking-[0.04em] uppercase text-muted">Sommaire</p>
+      <p class="mb-2 text-[12px] font-semibold tracking-[0.04em] uppercase text-dim">Sommaire</p>
       <ul class="m-0 p-0 list-none border-l border-line">
         <li v-for="heading in headings" :key="heading.id">
           <!-- une partie en gras, une sous-partie en retrait ; celle qu'on lit, à l'accent -->
@@ -82,8 +82,8 @@ const backToTop = () =>
               heading.depth === 2 ? 'mt-1.5 font-semibold' : '',
               heading.depth === 3 ? 'pl-[22px]' : '',
               heading.id === current
-                ? 'text-accent border-l-accent'
-                : `border-l-transparent ${heading.depth === 2 ? 'text-ink' : 'text-muted hover:text-ink'}`,
+                ? 'text-brand border-l-brand'
+                : `border-l-transparent ${heading.depth === 2 ? 'text-ink' : 'text-dim hover:text-ink'}`,
             ]"
             :href="`#${heading.id}`"
             :aria-current="heading.id === current ? 'location' : undefined"

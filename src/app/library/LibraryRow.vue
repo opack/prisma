@@ -15,11 +15,11 @@ const emit = defineEmits<{ open: [] }>();
     @click="emit('open')"
   >
     <span class="font-semibold">{{ titleOf(entry) }}</span>
-    <span v-if="entry.composer" class="text-right text-muted">{{ entry.composer }}</span>
+    <span v-if="entry.composer" class="text-right text-dim">{{ entry.composer }}</span>
     <!-- dans une boîte flexible, les espaces entre ces morceaux ne comptent pas -->
-    <span class="col-span-full flex items-center gap-2.5 text-muted text-[12px]">
+    <span class="col-span-full flex items-center gap-2.5 text-dim text-[12px]">
       {{ folder && entry.folder ? `${entry.folder}/` : "" }}{{ entry.name }}
-      <span v-if="entry.kind === 'musicxml'" class="px-1.5 rounded-[3px] bg-accent-12 text-accent">à importer</span>
+      <span v-if="entry.kind === 'musicxml'" class="px-1.5 rounded-[3px] bg-brand-12 text-brand">à importer</span>
       <span class="ml-auto">{{ new Date(entry.modified).toLocaleDateString("fr-FR") }}</span>
     </span>
   </button>

@@ -14,7 +14,7 @@ import PageView from "../score/PageView.vue";
 
 const { entry, options } = defineProps<{ entry: LibraryEntry; options: RenderOptions }>();
 
-const NOTE = "absolute inset-0 grid place-items-center p-3 text-center text-muted text-[12px]";
+const NOTE = "absolute inset-0 grid place-items-center p-3 text-center text-dim text-[12px]";
 
 const frame = useTemplateRef<HTMLSpanElement>("frame");
 const visible = ref(false);

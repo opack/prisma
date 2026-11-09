@@ -10,7 +10,7 @@ const { direction = "up" } = defineProps<{ direction?: "up" | "left"; label: str
 <template>
   <button
     type="button"
-    class="grid place-items-center w-11 h-11 p-0 border-2 border-accent rounded-full bg-white text-accent cursor-pointer shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:bg-accent-8 print:hidden"
+    class="grid place-items-center w-11 h-11 p-0 border-2 border-brand rounded-full bg-white text-brand cursor-pointer shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:bg-brand-8 print:hidden"
     :title="label"
     :aria-label="label"
   >

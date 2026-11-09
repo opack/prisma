@@ -4,7 +4,7 @@ import { PCLOUD_FOLDER } from "./pcloud.ts";
 </script>
 
 <template>
-  <div class="text-muted leading-[1.5]">
+  <div class="text-dim leading-[1.5]">
     <p class="mt-0 mb-2">Aucune partition pour l'instant dans le dossier « {{ PCLOUD_FOLDER }} » de votre pCloud. Pour en ajouter :</p>
     <ul class="m-0 pl-5 grid gap-1 list-disc">
       <li>déplacez-y vos fichiers .prisma et MusicXML, depuis pCloud (le site, l'application) ou pCloud Drive sur votre ordinateur ;</li>

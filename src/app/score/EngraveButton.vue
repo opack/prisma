@@ -4,9 +4,10 @@
  * texte (Ctrl+Entrée), sa flèche ouvre le choix de graver automatiquement. Il n'est actif que s'il
  * y a quelque chose à graver : un texte modifié depuis la dernière gravure, sans gravure automatique.
  */
+import { ChevronUp } from "@lucide/vue";
 import { computed } from "vue";
 import { Button } from "../ui/button";
-import ButtonGroup from "../ui/button/ButtonGroup.vue";
+import { ButtonGroup } from "../ui/button-group";
 import PopoverCheck from "../ui/popover/PopoverCheck.vue";
 import PopoverHint from "../ui/popover/PopoverHint.vue";
 import PopoverPanel from "../ui/popover/PopoverPanel.vue";
@@ -27,7 +28,7 @@ const title = computed(() =>
 <template>
   <!-- sur un fond blanc : éteint, le bouton pâlit sans laisser voir le texte dessous -->
   <ButtonGroup class="absolute right-6 bottom-5 z-2 bg-white rounded shadow-[0_2px_6px_rgba(0,0,0,0.18),0_6px_16px_rgba(0,0,0,0.1)]">
-    <Button kind="primary" size="icon" :disabled="auto || !dirty" :title="title" aria-label="Mettre en page" @click="emit('engrave')">
+    <Button size="icon" :disabled="auto || !dirty" :title="title" aria-label="Mettre en page" @click="emit('engrave')">
       <svg
         viewBox="0 0 16 16"
         width="16"
@@ -45,8 +46,8 @@ const title = computed(() =>
     </Button>
     <PopoverPanel label="Réglages de la mise en page" above class="w-min min-w-[240px]">
       <template #trigger>
-        <Button kind="primary" size="caret" title="Réglages de la mise en page" aria-label="Réglages de la mise en page">
-          <svg width="8" height="16" viewBox="0 0 8 16" aria-hidden="true"><path d="M1 9.5h6L4 6z" fill="currentColor" /></svg>
+        <Button size="icon" title="Réglages de la mise en page" aria-label="Réglages de la mise en page">
+          <ChevronUp />
         </Button>
       </template>
       <PopoverCheck v-model="auto">Mettre en page automatiquement</PopoverCheck>

@@ -53,7 +53,7 @@ const CHORDS = [
         fill="#1b1d1f"
       />
       <text :x="chord.x" :y="112" text-anchor="middle" class="font-ui text-[11px] fill-ink" font-style="italic">{{ chord.name }}</text>
-      <text :x="chord.x" :y="127" text-anchor="middle" class="font-ui text-[10px] fill-muted">{{ chord.kind }}</text>
+      <text :x="chord.x" :y="127" text-anchor="middle" class="font-ui text-[10px] fill-dim">{{ chord.kind }}</text>
     </g>
   </svg>
 </template>

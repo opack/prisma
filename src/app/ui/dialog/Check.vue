@@ -5,7 +5,7 @@ const checked = defineModel<boolean>({ required: true });
 
 <template>
   <label class="flex gap-2 items-center mt-0.5 ml-3 cursor-pointer">
-    <input v-model="checked" class="m-0 accent-accent" type="checkbox" />
+    <input v-model="checked" class="m-0 accent-brand" type="checkbox" />
     <slot />
   </label>
 </template>

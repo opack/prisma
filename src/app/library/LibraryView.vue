@@ -13,7 +13,7 @@ import type { LibraryEntry } from "./library.ts";
 import { session } from "./pcloud.ts";
 import type { RenderOptions } from "../options/options.ts";
 import BackButton from "../ui/button/BackButton.vue";
-import ButtonGroup from "../ui/button/ButtonGroup.vue";
+import { ButtonGroup } from "../ui/button-group";
 import { Button } from "../ui/button";
 import FolderIcon from "../ui/icons/FolderIcon.vue";
 import RefreshIcon from "../ui/icons/RefreshIcon.vue";
@@ -27,9 +27,9 @@ const { options } = defineProps<{ options: RenderOptions }>();
 const emit = defineEmits<{ open: [entry: LibraryEntry]; close: [] }>();
 
 /** Une explication de la bibliothèque (le dossier à choisir, à autoriser…). */
-const NOTE = "text-muted leading-[1.5]";
+const NOTE = "text-dim leading-[1.5]";
 /** Afficher, Trier par : leur nom, puis leur liste. */
-const TOOL = "flex items-center gap-2 text-muted whitespace-nowrap";
+const TOOL = "flex items-center gap-2 text-dim whitespace-nowrap";
 const SELECT = "px-1.5 py-[5px] bg-white border border-line rounded";
 
 const { state, load, change, chooseFolder, choosePcloud, leavePcloud } = useLibrarySource();
@@ -61,9 +61,10 @@ const nothingFound = computed(() => {
     <div class="max-w-[860px] mx-auto px-8 pt-2 pb-16">
       <header>
         <h1 class="mx-0 mt-2 mb-1 text-[26px]">Bibliothèque</h1>
-        <p v-if="source" class="flex flex-wrap items-center gap-2 mt-0 mb-4 text-muted">
+        <p v-if="source" class="flex flex-wrap items-center gap-2 mt-0 mb-4 text-dim">
           {{ source.label }}
           <Button
+            variant="outline"
             size="icon"
             title="Changer de bibliothèque : un autre dossier, ou pCloud"
             aria-label="Changer de bibliothèque"
@@ -73,6 +74,7 @@ const nothingFound = computed(() => {
           </Button>
           <Button
             v-if="state.kind === 'ready'"
+            variant="outline"
             size="icon"
             title="Actualiser : relire le dossier"
             aria-label="Actualiser"
@@ -82,7 +84,8 @@ const nothingFound = computed(() => {
           </Button>
           <Button
             v-if="source.kind === 'pcloud' && session()"
-            size="small"
+            variant="outline"
+            size="sm"
             title="Se déconnecter de pCloud, dans ce navigateur"
             @click="leavePcloud"
           >
@@ -106,11 +109,11 @@ const nothingFound = computed(() => {
       <div v-else-if="state.kind === 'locked'" :class="NOTE">
         <p class="mt-0 mb-3">{{ state.source.locked.hint }}</p>
         <p v-if="state.reason" class="-mt-1 mb-3 text-[13px] text-error">{{ state.reason }}</p>
-        <Button kind="primary" @click="load(state.source, true)">{{ state.source.locked.action }}</Button>
+        <Button @click="load(state.source, true)">{{ state.source.locked.action }}</Button>
       </div>
       <div v-else-if="state.kind === 'error'" :class="NOTE">
         <p class="mt-0 mb-3">Lecture du dossier impossible : {{ state.message }}</p>
-        <Button kind="primary" @click="change">Choisir une bibliothèque</Button>
+        <Button @click="change">Choisir une bibliothèque</Button>
       </div>
 
       <template v-else-if="state.kind === 'ready'">
@@ -139,14 +142,14 @@ const nothingFound = computed(() => {
           </label>
           <label
             v-if="view === 'thumbs'"
-            class="inline-flex items-center gap-1.5 text-muted whitespace-nowrap cursor-pointer"
+            class="inline-flex items-center gap-1.5 text-dim whitespace-nowrap cursor-pointer"
             title="Les vignettes montrent chaque partition avec ses propres options, si elle en a ; sinon avec les options générales"
           >
             <input v-model="thumbsOwn" type="checkbox" />
             Options de chaque partition
           </label>
-          <ButtonGroup class="ml-auto" label="Présentation">
-            <Button size="icon" :pressed="view === 'list'" title="En liste" aria-label="En liste" @click="view = 'list'">
+          <ButtonGroup class="ml-auto" aria-label="Présentation">
+            <Button variant="outline" size="icon" :pressed="view === 'list'" title="En liste" aria-label="En liste" @click="view = 'list'">
               <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
                 <path
                   fill="currentColor"
@@ -155,6 +158,7 @@ const nothingFound = computed(() => {
               </svg>
             </Button>
             <Button
+              variant="outline"
               size="icon"
               :pressed="view === 'thumbs'"
               title="En vignettes : le haut de la première page"
@@ -173,7 +177,7 @@ const nothingFound = computed(() => {
         </template>
         <p v-else-if="!count" :class="NOTE">{{ nothingFound }}</p>
         <section v-for="group in groups" :key="group.folder">
-          <h2 v-if="group.folder" class="mx-0 mt-6 mb-1.5 text-[13px] uppercase tracking-[.06em] text-muted">{{ group.folder }}</h2>
+          <h2 v-if="group.folder" class="mx-0 mt-6 mb-1.5 text-[13px] uppercase tracking-[.06em] text-dim">{{ group.folder }}</h2>
           <ul v-if="view === 'thumbs'" class="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-[18px] m-0 px-0 pt-1 pb-0 list-none">
             <li v-for="entry in group.entries" :key="entry.path">
               <LibraryCard :entry="entry" :options="thumbOptions(entry)" :folder="sort === 'recent'" @open="emit('open', entry)" />

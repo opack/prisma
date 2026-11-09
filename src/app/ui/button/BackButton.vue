@@ -8,7 +8,13 @@ const label = "Retour à la partition";
 </script>
 
 <template>
-  <Button class="sticky top-3 z-1 mt-3 ml-4" size="icon" :title="`${label}${shortcut ? ` (${shortcut})` : ''}`" :aria-label="label">
+  <Button
+    variant="outline"
+    class="sticky top-3 z-1 mt-3 ml-4"
+    size="icon"
+    :title="`${label}${shortcut ? ` (${shortcut})` : ''}`"
+    :aria-label="label"
+  >
     <BackIcon />
   </Button>
 </template>

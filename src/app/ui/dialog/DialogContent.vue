@@ -18,7 +18,7 @@ const props = withDefaults(defineProps<DialogContentProps & { class?: HTMLAttrib
 });
 const emits = defineEmits<DialogContentEmits>();
 
-const delegatedProps = reactiveOmit(props, "class", "showCloseButton");
+const delegatedProps = reactiveOmit(props, "class");
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits);
 </script>
@@ -39,7 +39,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
       <slot />
 
       <DialogClose v-if="showCloseButton" data-slot="dialog-close" as-child>
-        <Button kind="quiet" class="absolute top-4 right-4" size="icon">
+        <Button variant="ghost" class="absolute top-4 right-4" size="icon-sm">
           <XIcon />
           <span class="sr-only">Close</span>
         </Button>

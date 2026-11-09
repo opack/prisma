@@ -11,7 +11,7 @@ import type { MenuDef } from "./menu.ts";
 import { Button } from "../button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "../dropdown-menu";
 import MenuActions from "./MenuActions.vue";
-import { COMPACT, PANEL } from "./menu.ts";
+import { COMPACT } from "./menu.ts";
 
 const { menus } = defineProps<{ menus: MenuDef[] }>();
 
@@ -80,12 +80,12 @@ function onMenuKey(index: number, event: KeyboardEvent) {
       @update:open="(isOpen) => change(index, isOpen)"
     >
       <DropdownMenuTrigger as-child>
-        <Button kind="quiet" @pointerenter="open !== null && open !== index && openMenu(index)" @keydown="onTitleKey(index, $event)">
+        <Button variant="ghost" @pointerenter="open !== null && open !== index && openMenu(index)" @keydown="onTitleKey(index, $event)">
           {{ menu.label }}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        :class="PANEL"
+        class="w-auto min-w-56"
         :aria-label="menu.label"
         align="start"
         :side-offset="4"

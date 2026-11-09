@@ -55,7 +55,7 @@ const octaves = computed(() =>
       <rect :x="left" :y="1" :width="WHITE_WIDTH * 7" :height="LANE - 4" :rx="4" :fill="tint.band" />
       <rect :x="left" :y="1" :width="40" :height="LANE - 4" :rx="4" :fill="tint.tab" />
       <text :x="left + 20" :y="LANE / 2 + 3" class="font-ui font-bold text-[14px] fill-ink" text-anchor="middle">{{ name }}</text>
-      <text :x="left + 52" :y="LANE / 2 + 3" class="font-ui text-[13px] fill-muted">octave {{ name }}</text>
+      <text :x="left + 52" :y="LANE / 2 + 3" class="font-ui text-[13px] fill-dim">octave {{ name }}</text>
       <g v-for="(note, index) in WHITE" :key="note" @pointerenter="hover = note" @pointerleave="hover = null">
         <rect
           :x="left + index * WHITE_WIDTH"

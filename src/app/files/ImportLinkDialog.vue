@@ -39,6 +39,6 @@ async function submit() {
         :aria-describedby="problem ? `${id}-problem` : undefined"
       />
     </label>
-    <p v-if="problem" :id="`${id}-problem`" class="m-0 text-accent" role="alert">{{ problem }}</p>
+    <p v-if="problem" :id="`${id}-problem`" class="m-0 text-brand" role="alert">{{ problem }}</p>
   </FormDialog>
 </template>

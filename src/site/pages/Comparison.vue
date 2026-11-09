@@ -32,7 +32,7 @@ m1 |1  |2  |3  ||1  |2  |3  ||
 `;
 
 /** Une tête de colonne du tableau : son nom, gris, au-dessus d'un trait noir. */
-const HEAD = "px-4 py-3.5 text-left align-top text-[0.95rem] text-muted border-b-2 border-ink";
+const HEAD = "px-4 py-3.5 text-left align-top text-[0.95rem] text-dim border-b-2 border-ink";
 
 /** Les parties de la page, pour « Sur cette page ». */
 const PARTS = {

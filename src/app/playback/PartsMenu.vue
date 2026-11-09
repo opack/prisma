@@ -11,11 +11,11 @@ import { MAX_VOLUME, MIN_VOLUME } from "../options/piece.ts";
 import { INSTRUMENTS, PIANO, instrumentLabel, scoreInstrument } from "./instruments.ts";
 import { staffNames } from "./staves.ts";
 import { Button } from "../ui/button";
-import ButtonGroup from "../ui/button/ButtonGroup.vue";
+import { ButtonGroup } from "../ui/button-group";
 import PopoverCheck from "../ui/popover/PopoverCheck.vue";
 import PopoverHint from "../ui/popover/PopoverHint.vue";
 import PopoverPanel from "../ui/popover/PopoverPanel.vue";
-import CaretIcon from "./CaretIcon.vue";
+import { ChevronDown } from "@lucide/vue";
 import PlayIcon from "./PlayIcon.vue";
 
 const { score, muted, instruments, volumes } = defineProps<{
@@ -82,18 +82,19 @@ const suffix = (name?: string) => (name ? ` : ${name}` : "");
 
 <template>
   <ButtonGroup class="ml-[5px]">
-    <Button size="icon" :pressed="!silent" :disabled="!names.length" :title="title" aria-label="Musique" @click="music">
+    <Button variant="outline" size="icon" :pressed="!silent" :disabled="!names.length" :title="title" aria-label="Musique" @click="music">
       <PlayIcon path="M6 2.5 13 1v9.2a2.3 2.3 0 1 1-1.5-2.15V4.1L7.5 5v6.7A2.3 2.3 0 1 1 6 9.55z" />
     </Button>
     <PopoverPanel label="Parties et instruments" title="Parties et instruments" class="w-min min-w-[300px]">
       <template #trigger>
         <Button
-          size="caret"
+          :variant="silent ? 'outline' : 'default'"
+          size="icon"
           :disabled="!names.length"
           title="Portées jouées et instruments des parties"
           aria-label="Parties et instruments"
         >
-          <CaretIcon />
+          <ChevronDown />
         </Button>
       </template>
       <div v-for="(group, index) in groups" :key="index" :class="group.staves.length === 1 ? ROW : 'grid gap-1'">
@@ -123,7 +124,8 @@ const suffix = (name?: string) => (name ? ` : ${name}` : "");
             </select>
             <Button
               v-if="group.instrument !== group.fromScore"
-              size="small"
+              variant="outline"
+              size="sm"
               :title="`Reprendre l'instrument de la partition (${instrumentLabel(group.fromScore)})`"
               aria-label="Reprendre l'instrument de la partition"
               @click="emit('instrument', index, group.fromScore)"
@@ -133,11 +135,11 @@ const suffix = (name?: string) => (name ? ` : ${name}` : "");
           </span>
           <!-- le volume de la partie : un réglage fin, pour équilibrer les parties (un double-clic le remet à 0) -->
           <label
-            class="inline-flex items-center gap-1 text-muted text-[12px] cursor-pointer whitespace-nowrap"
+            class="inline-flex items-center gap-1 text-dim text-[12px] cursor-pointer whitespace-nowrap"
             title="Le volume de la partie à l'écoute, pour ce morceau (double-clic : tel quel)"
           >
             <input
-              class="w-[72px] accent-accent"
+              class="w-[72px] accent-brand"
               type="range"
               :min="MIN_VOLUME"
               :max="MAX_VOLUME"
@@ -163,8 +165,8 @@ const suffix = (name?: string) => (name ? ` : ${name}` : "");
         </template>
       </div>
       <ButtonGroup class="mt-1 justify-self-start">
-        <Button size="small" :disabled="!muted.length" @click="emit('muted', [])">Toutes</Button>
-        <Button size="small" :disabled="silent" @click="emit('muted', all)">Aucune</Button>
+        <Button variant="outline" size="sm" :disabled="!muted.length" @click="emit('muted', [])">Toutes</Button>
+        <Button variant="outline" size="sm" :disabled="silent" @click="emit('muted', all)">Aucune</Button>
       </ButtonGroup>
       <PopoverHint>
         Une portée muette n'est pas jouée : à vous de la jouer, avec le métronome au besoin. L'instrument d'une partie est celui que la

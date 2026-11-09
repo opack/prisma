@@ -28,16 +28,20 @@ const title = computed(() => meta.value.title || shared.name.replace(/\.prisma$/
   <FormDialog title="Partition reçue" submit="Ouvrir" cancel="Ignorer" focus-submit @submit="emit('open', false)" @close="emit('close')">
     <div class="grid gap-1">
       <p class="m-0 font-semibold text-[1.05rem]">{{ title }}</p>
-      <p v-if="meta.composer" class="m-0 text-muted">{{ meta.composer }}</p>
-      <p class="m-0 text-muted text-[12px]">{{ shared.name }}</p>
+      <p v-if="meta.composer" class="m-0 text-dim">{{ meta.composer }}</p>
+      <p class="m-0 text-dim text-[12px]">{{ shared.name }}</p>
     </div>
     <p v-if="meta.notes" class="m-0 px-3 py-2 bg-white border border-line rounded whitespace-pre-line">{{ meta.notes }}</p>
-    <p v-if="library" class="m-0 text-muted text-[13px] leading-[1.4]">
+    <p v-if="library" class="m-0 text-dim text-[13px] leading-[1.4]">
       Enregistré dans la bibliothèque ({{ library }}), il s'y retrouve et s'y réécrit ; ouvert tel quel, il s'enregistre où vous le
       choisirez.
     </p>
     <template v-if="library" #actions>
-      <Button :title="`Enregistrer ${shared.name} dans la bibliothèque (${library}), puis l'ouvrir`" @click="emit('open', true)">
+      <Button
+        variant="outline"
+        :title="`Enregistrer ${shared.name} dans la bibliothèque (${library}), puis l'ouvrir`"
+        @click="emit('open', true)"
+      >
         Enregistrer dans la bibliothèque
       </Button>
     </template>

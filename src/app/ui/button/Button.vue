@@ -1,30 +1,34 @@
 <script setup lang="ts">
-/** Le bouton de Prisma (voir index.ts) ; sa place (class) dépend de ce qui l'entoure, ses autres attributs passent au bouton. */
 import type { PrimitiveProps } from "reka-ui";
-import { Primitive } from "reka-ui";
 import type { HTMLAttributes } from "vue";
-import { cn } from "../utils.ts";
 import type { ButtonVariants } from ".";
+import { cn } from "cn";
+import { Primitive } from "reka-ui";
 import { buttonVariants } from ".";
 
 interface Props extends PrimitiveProps {
-  kind?: ButtonVariants["kind"];
+  variant?: ButtonVariants["variant"];
   size?: ButtonVariants["size"];
-  pressed?: boolean;
   class?: HTMLAttributes["class"];
+  /** un bouton à bascule : allumé, il le dit (aria-pressed) et prend l'allure pleine (default) */
+  pressed?: boolean;
 }
 
-const props = withDefaults(defineProps<Props>(), { as: "button", pressed: undefined });
+const props = withDefaults(defineProps<Props>(), {
+  as: "button",
+  pressed: undefined,
+});
 </script>
 
 <template>
   <Primitive
     data-slot="button"
+    :data-variant="variant"
+    :aria-pressed="pressed"
+    :data-size="size"
     :as="as"
     :as-child="asChild"
-    :type="as === 'button' && !asChild ? 'button' : undefined"
-    :aria-pressed="pressed"
-    :class="cn(buttonVariants({ kind: pressed ? null : kind, size, pressed: !!pressed }), props.class)"
+    :class="cn(buttonVariants({ variant: pressed ? 'default' : variant, size }), props.class)"
   >
     <slot />
   </Primitive>

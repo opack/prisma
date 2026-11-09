@@ -312,7 +312,7 @@ function onFileChosen(event: Event) {
           :style="{ '--zoom': view.zoom }"
           @wheel="onWheel"
         >
-          <p v-if="score && !pages.length" class="text-muted">Aucune mesure à mettre en page.</p>
+          <p v-if="score && !pages.length" class="text-dim">Aucune mesure à mettre en page.</p>
           <RetouchMenu
             v-if="retouch.menu.value"
             v-bind="retouch.menu.value"

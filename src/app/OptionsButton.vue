@@ -6,7 +6,7 @@ defineProps<{ open: boolean }>();
 </script>
 
 <template>
-  <Button kind="quiet" size="icon" :pressed="open" aria-controls="options" title="Options" aria-label="Options">
+  <Button variant="ghost" size="icon" :pressed="open" aria-controls="options" title="Options" aria-label="Options">
     <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
       <path
         fill="currentColor"
