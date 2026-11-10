@@ -75,6 +75,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{html,js,css,svg,png,wav,woff2}"],
+        // pas de page de repli : une adresse inconnue va au serveur, qui répond par la page 404 (404.html),
+        // plutôt que l'accueil, dont les liens relatifs s'empileraient ensuite dans l'adresse
+        navigateFallback: null,
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.origin === "https://fonts.googleapis.com",
