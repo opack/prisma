@@ -1,0 +1,45 @@
+# Les en-têtes servis par Netlify : où un agent trouve le texte du site (RFC 8288).
+
+# toutes les pages : le résumé du site pour les agents
+/*
+  Link: </llms.txt>; rel="describedby"; type="text/markdown"
+
+# chaque page : sa version Markdown
+/
+  Link: </index.md>; rel="alternate"; type="text/markdown"
+/index.html
+  Link: </index.md>; rel="alternate"; type="text/markdown"
+/apprendre.html
+  Link: </apprendre.md>; rel="alternate"; type="text/markdown"
+/apprendre
+  Link: </apprendre.md>; rel="alternate"; type="text/markdown"
+/reference.html
+  Link: </reference.md>; rel="alternate"; type="text/markdown"
+/reference
+  Link: </reference.md>; rel="alternate"; type="text/markdown"
+/guitare.html
+  Link: </guitare.md>; rel="alternate"; type="text/markdown"
+/guitare
+  Link: </guitare.md>; rel="alternate"; type="text/markdown"
+/comparaison.html
+  Link: </comparaison.md>; rel="alternate"; type="text/markdown"
+/comparaison
+  Link: </comparaison.md>; rel="alternate"; type="text/markdown"
+
+# le texte pour les agents, en UTF-8 (les accents)
+/index.md
+  Content-Type: text/markdown; charset=utf-8
+/apprendre.md
+  Content-Type: text/markdown; charset=utf-8
+/reference.md
+  Content-Type: text/markdown; charset=utf-8
+/guitare.md
+  Content-Type: text/markdown; charset=utf-8
+/comparaison.md
+  Content-Type: text/markdown; charset=utf-8
+/format.md
+  Content-Type: text/markdown; charset=utf-8
+/llms.txt
+  Content-Type: text/markdown; charset=utf-8
+/llms-full.txt
+  Content-Type: text/markdown; charset=utf-8

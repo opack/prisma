@@ -2,7 +2,7 @@
 /** Le lien d'une page ; celui de la page où l'on est s'écrit comme le texte, sans soulignement. */
 import type { SitePage } from "./pages.ts";
 
-defineProps<{ page: SitePage; current: SitePage; label: string }>();
+defineProps<{ page: SitePage; current?: SitePage; label: string }>();
 </script>
 
 <template>

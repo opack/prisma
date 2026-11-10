@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** Le haut des pages : le nom à gauche, les pages et l'application à droite (les pages sous un bouton, sur un téléphone). */
+/** Le haut des pages (la page où l'on est, si c'est l’une du site) : le nom à gauche, les pages et l'application à droite (les pages sous un bouton, sur un téléphone). */
 import Logo from "../../app/ui/Logo.vue";
 import ButtonLink from "./ButtonLink.vue";
 import PageLink from "./PageLink.vue";
@@ -7,7 +7,7 @@ import PagesMenu from "./PagesMenu.vue";
 import { APP, PAGES } from "./pages.ts";
 import type { SitePage } from "./pages.ts";
 
-defineProps<{ current: SitePage }>();
+defineProps<{ current?: SitePage }>();
 </script>
 
 <template>

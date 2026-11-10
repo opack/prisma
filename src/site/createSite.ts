@@ -7,9 +7,10 @@ import Comparison from "./pages/Comparison.vue";
 import Guitar from "./pages/Guitar.vue";
 import Home from "./pages/Home.vue";
 import Learn from "./pages/Learn.vue";
+import NotFound from "./pages/NotFound.vue";
 import Reference from "./pages/Reference.vue";
 
-const PAGES = { comparaison: Comparison, apprendre: Learn, reference: Reference, guitare: Guitar } as const;
+const PAGES = { comparaison: Comparison, apprendre: Learn, reference: Reference, guitare: Guitar, 404: NotFound } as const;
 
 /** La page `page` ; `hydrate` : elle reprend le HTML déjà écrit au lieu de le refaire. */
 export function createSite(page: string | undefined, { hydrate }: { hydrate: boolean }) {

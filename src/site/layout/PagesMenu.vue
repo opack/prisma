@@ -5,7 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { PAGES } from "./pages.ts";
 import type { SitePage } from "./pages.ts";
 
-defineProps<{ current: SitePage }>();
+defineProps<{ current?: SitePage }>();
 </script>
 
 <template>
