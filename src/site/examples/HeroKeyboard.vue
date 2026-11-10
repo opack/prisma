@@ -3,9 +3,10 @@
  * Le clavier de l'accueil : deux octaves, chaque touche porte son numéro Prisma, et chaque octave
  * la couleur de son couloir sur la partition. Survoler une touche montre la même touche dans
  * l'autre octave : même numéro, même place sous la main. Sur un écran étroit, les deux octaves
- * s'empilent, l'aiguë au-dessus, comme leurs lignes sur la partition.
+ * s'empilent, l'aiguë au-dessus, comme leurs lignes sur la partition : une fois la page reprise par Vue,
+ * pour qu'elle reprenne le HTML écrit au build (côte à côte) tel qu'il est.
  */
-import { useMediaQuery } from "@vueuse/core";
+import { useMediaQuery, useMounted } from "@vueuse/core";
 import { computed, ref } from "vue";
 import { octaveTint } from "../../app/score/colors.ts";
 
@@ -28,7 +29,9 @@ const LANE = 30;
 const GAP = 14;
 
 const hover = ref<number | null>(null);
-const stacked = useMediaQuery("(max-width: 600px)");
+const narrow = useMediaQuery("(max-width: 600px)");
+const mounted = useMounted();
+const stacked = computed(() => mounted.value && narrow.value);
 
 const width = computed(() => (stacked.value ? WHITE_WIDTH * 7 : WHITE_WIDTH * 7 * OCTAVES.length));
 const height = computed(() => (stacked.value ? OCTAVES.length * (WHITE_HEIGHT + LANE) + (OCTAVES.length - 1) * GAP : WHITE_HEIGHT + LANE));

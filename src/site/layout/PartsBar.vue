@@ -34,7 +34,7 @@ function spy() {
 }
 onMounted(spy);
 onUnmounted(() => cancelAnimationFrame(frame));
-useEventListener(window, "scroll", spy, { passive: true });
+useEventListener("scroll", spy, { passive: true });
 
 function go(id: string) {
   const element = document.getElementById(id);
