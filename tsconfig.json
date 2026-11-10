@@ -13,5 +13,5 @@
     "paths": { "@/*": ["./src/*"] },
     "lib": ["ES2022", "DOM", "DOM.Iterable"]
   },
-  "include": ["src", "netlify", "tests", "vite.config.ts"]
+  "include": ["src", "netlify", "scripts", "tests", "vite.config.ts"]
 }
