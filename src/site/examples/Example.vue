@@ -20,7 +20,8 @@ const view = ref<(typeof VIEWS)[number][0]>("score");
 </script>
 
 <template>
-  <figure :class="frame(guide)" :aria-label="label">
+  <!-- le texte de l'exemple, pour sa version Markdown (src/site/agents/markdown.ts) -->
+  <figure :class="frame(guide)" :aria-label="label" :data-prisma="text">
     <div class="flex justify-end justify-self-stretch gap-0.5 -mt-1.5 -mr-1.5 mb-2" role="tablist" aria-label="Afficher">
       <button
         v-for="[target, name] in VIEWS"

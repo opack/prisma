@@ -2,6 +2,11 @@
 
 Ce qui change pour vous d'une version à l'autre de Prisma, la plus récente en haut.
 
+## 0.6.0 — 10 novembre 2026
+
+- Une adresse du site qui n'existe pas montre une page qui vous ramène à l'accueil ou à l'application.
+- Le site se trouve mieux : les moteurs de recherche et les assistants d'IA lisent chaque page, et y apprennent à lire et écrire en Prisma.
+
 ## 0.5.0 — 9 novembre 2026
 
 - Un double-clic sur la règle de la partition ouvre le découpage du temps : le diviser en 2 ou en 3, puis en 2, ou le refermer : tous les niveaux dont rien ne se sert disparaissent d'un coup. Le texte suit, et Ctrl+Z annule.

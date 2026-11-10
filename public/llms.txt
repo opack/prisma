@@ -1,0 +1,21 @@
+# Prisma
+
+> Prisma est une notation musicale chromatique, conçue en français. Chaque note de l'octave porte un nombre de 1 (do) à 12 (si), chaque octave a sa ligne (son couloir), et la durée se lit sur une règle de comptage : ni clés, ni dièses, ni bémols. Un morceau s'écrit en texte brut, dans un fichier `.prisma`, qu'une application gratuite grave en partition et joue dans le navigateur.
+
+Pour lire et écrire du Prisma, lisez la référence (pour le musicien, avec des exemples en texte `.prisma`), puis le format (la description exacte, pour écrire un fichier valide). Les deux sont réunis dans [llms-full.txt](https://prisma.valdera.fr/llms-full.txt). Chaque page du site existe aussi en Markdown : son adresse en `.md`, ou la page demandée avec `Accept: text/markdown`.
+
+## La notation
+
+- [La référence](https://prisma.valdera.fr/reference.md): comment lire et jouer une partition Prisma : hauteurs, temps, ornements, structure, nuances, pédale, accords et paroles, chaque signe avec son exemple
+- [Le format .prisma](https://prisma.valdera.fr/format.md): la description exacte du format texte : l'en-tête, les systèmes, la règle de comptage, les durées, les portées et les parties, les instruments à cordes, la structure
+- [Apprendre pas à pas](https://prisma.valdera.fr/apprendre.md): la notation en huit étapes, chacune avec son exemple
+- [La guitare et la basse](https://prisma.valdera.fr/guitare.md): une ligne par corde et la case en nombre, comme une tablature, posée sur la règle du temps
+- [Prisma et la partition classique](https://prisma.valdera.fr/comparaison.md): ce que Prisma garde, retire, simplifie et perd par rapport à la partition classique
+
+## L'application
+
+- [L'application Prisma](https://prisma.valdera.fr/app/): écrire un morceau en Prisma, le voir gravé, l'écouter ; importer et exporter du MusicXML. Gratuite, dans le navigateur, installable et utilisable sans réseau
+
+## Optional
+
+- [L'accueil](https://prisma.valdera.fr/index.md): la notation en quelques idées

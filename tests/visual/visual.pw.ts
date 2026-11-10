@@ -37,7 +37,7 @@ for (const [name, size] of [
   ["bureau", DESKTOP],
   ["telephone", PHONE],
 ] as const)
-  for (const pagePath of ["index", "apprendre", "reference", "guitare", "comparaison"])
+  for (const pagePath of ["index", "apprendre", "reference", "guitare", "comparaison", "404"])
     test(`site ${pagePath} ${name}`, async ({ page }) => {
       await page.setViewportSize(size);
       await page.goto(`/${pagePath}.html`);

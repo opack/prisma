@@ -112,6 +112,7 @@ export default defineConfig({
         apprendre: "apprendre.html",
         reference: "reference.html",
         guitare: "guitare.html",
+        404: "404.html",
         app: "app/index.html",
       },
     },

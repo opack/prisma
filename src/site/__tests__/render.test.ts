@@ -8,6 +8,7 @@ const PAGES = [
   ["reference", "Lire et jouer en Prisma"],
   ["guitare", "La guitare et la basse"],
   ["comparaison", "Prisma et la partition classique"],
+  ["404", "Cette page n&#39;existe pas"],
 ] as const;
 
 describe("le site écrit en HTML au build", () => {

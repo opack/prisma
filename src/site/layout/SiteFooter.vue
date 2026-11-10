@@ -4,7 +4,7 @@ import PageLink from "./PageLink.vue";
 import { APP, PAGES } from "./pages.ts";
 import type { SitePage } from "./pages.ts";
 
-defineProps<{ current: SitePage }>();
+defineProps<{ current?: SitePage }>();
 </script>
 
 <template>
