@@ -2,6 +2,10 @@
 
 Ce qui change pour vous d'une version à l'autre de Prisma, la plus récente en haut.
 
+## 0.6.1 — 10 novembre 2026
+
+- Une adresse du site qui n'existe pas montre bien la page « Cette page n'existe pas », et non plus l'accueil, dont les liens menaient ensuite à des adresses fausses.
+
 ## 0.6.0 — 10 novembre 2026
 
 - Une adresse du site qui n'existe pas montre une page qui vous ramène à l'accueil ou à l'application.
