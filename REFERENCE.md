@@ -56,7 +56,7 @@ Le titre et le compositeur s'impriment en tête de la première page ; la note r
 
 Au piano, les touches noires sont `2`, `4`, `7`, `9` et `11`. Le numéro désigne une hauteur, pas un nom : *do♯* et *ré♭* sonnent pareil, ils ont donc le même numéro. Il n'y a ni armure à retenir, ni altération qui vaut jusqu'à la fin de la mesure. Ce qui est écrit est ce qu'on joue.
 
-Pour jouer, la tonalité n'est donc pas nécessaire. Pour qui veut la connaître (improviser, comprendre l'harmonie), l'en-tête peut la donner, une fois pour toutes : `key: 8` pour *sol* majeur, `key: 5:m` pour *mi* mineur (ou en anglais, `key: G`, `key: Em`). C'est une simple information, affichée en tête de la partition : elle ne change aucune note.
+Pour jouer, la tonalité n'est donc pas nécessaire. Pour qui veut la connaître (improviser, comprendre l'harmonie), l'en-tête peut la donner, une fois pour toutes : `key: 8` pour *sol* majeur, `key: 5:m` pour *mi* mineur (ou en anglais, `key: G`, `key: Em`). C'est une simple information, affichée en tête de la partition : elle ne change aucune note. La partition l'écrit en Prisma (`8`, `5:m`), ou par son nom (*sol* majeur, ou `G` en anglais) : option « Noms des notes », onglet Partition.
 
 ### Les octaves
 
@@ -119,7 +119,7 @@ Dans le fichier, chaque accord se range depuis le haut de son couloir. Sur la pa
 
 ### Les instruments à cordes
 
-Une partie de guitare ou de basse s'écrit comme une tablature : chaque ligne est une **corde**, numérotée de `1`, la plus aiguë, en haut, à `6` (`4` pour la basse), et le nombre est la **case** où appuyer, de `0` (la corde à vide) à `24`. Le principe ne change pas : au piano, le couloir dit l'octave et le nombre la touche ; ici, le couloir dit la corde et le nombre la case. On lit et on joue sans calcul. Voici un arpège de *la* mineur, la corde de *la* à vide tenue pendant trois temps :
+Une partie de guitare ou de basse s'écrit comme une tablature : chaque ligne est une **corde**, numérotée de `1`, la plus aiguë, en haut, à `6` (`4` pour la basse), et le nombre est la **case** où appuyer, de `0` (la corde à vide) à `24`. Le principe ne change pas : au piano, le couloir dit l'octave et le nombre la touche ; ici, le couloir dit la corde et le nombre la case. On lit et on joue sans calcul. L'onglet de chaque corde peut aussi donner le nom de sa note à vide (*mi*, ou `E` en anglais) : option « Noms des notes », onglet Partition. Voici un arpège de *la* mineur, la corde de *la* à vide tenue pendant trois temps :
 
 ```prisma
 ---

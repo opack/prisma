@@ -37,6 +37,16 @@ export const CHORD_NAMES: Option<RenderOptions["chordNames"]>[] = [
   { value: "english", label: "Anglais", hint: "le nom anglais, lu par les accompagnateurs : Am, G7, G/B" },
 ];
 
+export const SCORE_NAMES: Option<RenderOptions["scoreNames"]>[] = [
+  { value: "prisma", label: "Prisma", hint: "la tonalité en Prisma (8, 5:m) ; chaque corde, son seul numéro" },
+  {
+    value: "latin",
+    label: "Do ré mi",
+    hint: "la tonalité par son nom (sol majeur, mi mineur), et la note à vide de chaque corde (mi, la)",
+  },
+  { value: "english", label: "C D E", hint: "la tonalité en notation anglaise (G, Em), et la note à vide de chaque corde (E, A)" },
+];
+
 export const NOTE_NAMES: Option<RenderOptions["noteNames"]>[] = [
   { value: "latin", label: "Do ré mi", hint: "dans la barre de statut de l'éditeur ; le do central est do3" },
   { value: "english", label: "C D E", hint: "dans la barre de statut de l'éditeur, en notation anglaise ; le do central est C4" },
@@ -140,6 +150,7 @@ const labelOf = <T extends string>(list: { value: T; label: string }[], value: T
 export const DESCRIBE: Record<PieceKey, (renderOptions: RenderOptions) => string> = {
   chords: (renderOptions) => labelOf(CHORDS, renderOptions.chords),
   chordNames: (renderOptions) => labelOf(CHORD_NAMES, renderOptions.chordNames),
+  scoreNames: (renderOptions) => labelOf(SCORE_NAMES, renderOptions.scoreNames),
   chordChart: (renderOptions) => (renderOptions.chordChart ? "récapitulées en tête" : "sur la partition seulement"),
   namesEverySystem: (renderOptions) => (renderOptions.namesEverySystem ? "à chaque système" : "au premier système"),
   sections: (renderOptions) => labelOf(SECTIONS, renderOptions.sections),

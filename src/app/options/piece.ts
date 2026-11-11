@@ -15,6 +15,7 @@ import { isInstrument } from "../playback/instruments.ts";
 export const PIECE_KEYS = [
   "chords",
   "chordNames",
+  "scoreNames",
   "chordChart",
   "namesEverySystem",
   "sections",

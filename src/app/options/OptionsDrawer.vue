@@ -14,6 +14,7 @@ import { computed, provide } from "vue";
 import {
   CHORDS,
   CHORD_NAMES,
+  SCORE_NAMES,
   CLICK_LEVELS,
   COLORS,
   DENSITIES,
@@ -193,6 +194,7 @@ const defineAll = () => settings.setPieceOptions(Object.fromEntries(PIECE_KEYS.m
           :options="CHORD_NAMES"
           piece-key="chordNames"
         />
+        <OptionChoice id="score-names" v-model="values.scoreNames" label="Noms des notes" :options="SCORE_NAMES" piece-key="scoreNames" />
         <OptionCheck
           id="chord-chart"
           v-model="values.chordChart"

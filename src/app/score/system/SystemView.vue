@@ -9,7 +9,7 @@ import { computed } from "vue";
 import { METRICS, PAGE, graceExtra, isPickSign, leadExtra } from "../engrave.ts";
 import type { PlacedSystem } from "../engrave.ts";
 import type { RenderOptions } from "../../options/options.ts";
-import { writtenNames } from "../../options/options.ts";
+import { engravedNames } from "../../options/options.ts";
 import { octaveTint } from "../colors.ts";
 import { arpeggioPath } from "../geometry.ts";
 import { numberOf, octaveOffset, pitchClass, stringsOfStaff } from "../../../core/index.ts";
@@ -46,10 +46,11 @@ const tint = (row: SystemRow) =>
   octaveTint(props.options.octaveColors, row.string !== undefined ? 4 - row.string : octaveOffset(row.octave));
 const tabFill = (row: SystemRow) => tint(row)?.tab ?? TAB;
 // le nom d'une corde, celui de sa note à vide dans l'accordage (le capo n'y change rien, comme pour
-// le guitariste), selon l'option des noms de notes
+// le guitariste), selon l'option des noms de notes de la partition ; en Prisma, aucun : un numéro à côté
+// de celui de la corde se lirait comme une case
 const stringName = (staff: number) => (string: number) => {
   const strings = stringsOfStaff(placed.value.sys.parts, staff);
-  const names = writtenNames(props.options.noteNames);
+  const names = engravedNames(props.options.scoreNames);
   return strings && names !== "none" ? pitchClass(numberOf(strings.open[string - 1]), names) : "";
 };
 

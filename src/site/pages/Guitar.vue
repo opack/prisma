@@ -76,7 +76,7 @@ const tab = asciiTab(GREENSLEEVES);
         </div>
         <div class="grid min-w-0 max-w-full">
           <Caption class="mb-1.5">Le même passage en Prisma</Caption>
-          <Example :text="GREENSLEEVES" label="Greensleeves en Prisma, à la guitare" :scale="1.3" />
+          <Example :text="GREENSLEEVES" label="Greensleeves en Prisma, à la guitare" :scale="1.3" :options="{ scoreNames: 'latin' }" />
         </div>
       </div>
     </Idea>

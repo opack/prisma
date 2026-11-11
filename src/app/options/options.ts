@@ -13,6 +13,11 @@ export type NameDisplay = NoteNames | "keyboard";
 /** Les noms à écrire : le clavier se dessine, il n'écrit pas de nom. */
 export const writtenNames = (nameDisplay: NameDisplay): NoteNames => (nameDisplay === "keyboard" ? "none" : nameDisplay);
 
+/** Comment la partition nomme une hauteur (la tonalité, la note à vide d'une corde) : en Prisma (« 8 », « 5:m »), en do ré mi, ou en anglais. */
+export type ScoreNames = "prisma" | "latin" | "english";
+/** Les noms à graver : en Prisma, aucun nom de note, le numéro suffit. */
+export const engravedNames = (scoreNames: ScoreNames): NoteNames => (scoreNames === "prisma" ? "none" : scoreNames);
+
 export type OctaveStyle = "arrow" | "sign" | "triangle";
 export type OctavePosition = "top" | "center";
 export type NotePosition = "top" | "center" | "aligned" | "pitch";
@@ -47,6 +52,8 @@ export type RenderOptions = {
   chords: ChordStyle;
   /** Nom des accords : en notation Prisma (« 10:m ») ou en anglais (« Am »). */
   chordNames: ChordNames;
+  /** Partition : la tonalité, en tête, en Prisma, en do ré mi ou en anglais ; la note à vide de chaque corde, nommée en do ré mi ou en anglais. */
+  scoreNames: ScoreNames;
   /** Les grilles de guitare des accords du morceau, récapitulées en tête de partition. */
   chordChart: boolean;
   /** Sections : chacune commence une nouvelle ligne, ou suit la précédente sur la même ligne, séparée par un blanc. */
@@ -86,6 +93,7 @@ export const DEFAULT_OPTIONS: RenderOptions = {
   octaveColors: "rainbow",
   chords: "both",
   chordNames: "prisma",
+  scoreNames: "prisma",
   chordChart: false,
   sections: "newLine",
   noteNames: "latin",
@@ -186,6 +194,7 @@ export function loadOptions(stored?: string | null): RenderOptions {
       : DEFAULT_OPTIONS.octaveColors;
     const chords = CHORD_STYLES.some((choice) => choice.value === raw.chords) ? raw.chords : DEFAULT_OPTIONS.chords;
     const chordNames = raw.chordNames === "english" || raw.chordNames === "prisma" ? raw.chordNames : DEFAULT_OPTIONS.chordNames;
+    const scoreNames = ["prisma", "latin", "english"].includes(raw.scoreNames) ? raw.scoreNames : DEFAULT_OPTIONS.scoreNames;
     const chordChart = typeof raw.chordChart === "boolean" ? raw.chordChart : DEFAULT_OPTIONS.chordChart;
     const simile = SIMILE_DISPLAYS.some((choice) => choice.value === raw.simile) ? raw.simile : DEFAULT_OPTIONS.simile;
     const sections = SECTION_LAYOUTS.some((choice) => choice.value === raw.sections) ? raw.sections : DEFAULT_OPTIONS.sections;
@@ -219,6 +228,7 @@ export function loadOptions(stored?: string | null): RenderOptions {
       octaveColors,
       chords,
       chordNames,
+      scoreNames,
       chordChart,
       sections,
       noteNames,
