@@ -4,7 +4,7 @@
  * commence ou recommence la musique, illustrée au piano. La comparaison détaillée avec la partition classique a sa page.
  */
 import { ref } from "vue";
-import type { OctaveColors } from "../../app/score/colors.ts";
+import type { LaneColors } from "../../app/score/colors.ts";
 import { Button } from "../../app/ui/button";
 import { CLAIR, CLAIR_SECTIONS, LANES, RULER, SCALE } from "../examples/pieces.ts";
 import Engraving from "../examples/Engraving.vue";
@@ -35,7 +35,7 @@ const PARTS = [
   { id: "vos-morceaux", label: "Vos morceaux" },
 ];
 
-const PALETTES: { value: OctaveColors; label: string }[] = [
+const PALETTES: { value: LaneColors; label: string }[] = [
   { value: "rainbow", label: "Arc-en-ciel" },
   { value: "muted", label: "Feutré" },
   { value: "none", label: "Blanc et gris" },
@@ -44,7 +44,7 @@ const PALETTES: { value: OctaveColors; label: string }[] = [
 /** Le nom d'un réglage à essayer, sur sa ligne. */
 const TRY_LABEL = "w-full text-[0.95rem] text-dim mt-1.5";
 
-const colors = ref<OctaveColors>("rainbow");
+const colors = ref<LaneColors>("rainbow");
 const pitch = ref(false);
 const inline = ref(false);
 
@@ -195,7 +195,7 @@ const backToTop = () => scrollTo({ top: 0, behavior: matchMedia("(prefers-reduce
       <Example
         :text="CLAIR_SECTIONS"
         :scale="1.25"
-        :options="{ octaveColors: colors, notePosition: pitch ? 'pitch' : 'top', sections: inline ? 'inline' : 'newLine' }"
+        :options="{ laneColors: colors, notePosition: pitch ? 'pitch' : 'top', sections: inline ? 'inline' : 'newLine' }"
         label="Au clair de la lune en entier, avec les réglages choisis"
       />
     </Idea>

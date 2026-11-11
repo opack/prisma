@@ -8,7 +8,7 @@
  */
 import { useMediaQuery, useMounted } from "@vueuse/core";
 import { computed, ref } from "vue";
-import { octaveTint } from "../../app/score/colors.ts";
+import { laneTint } from "../../app/score/colors.ts";
 
 const WHITE = [1, 3, 5, 6, 8, 10, 12];
 /** Les touches noires : leur note, et la touche blanche à la droite de laquelle elles commencent. */
@@ -39,7 +39,7 @@ const octaves = computed(() =>
   OCTAVES.map((octave, index) => ({
     octave,
     name: octave > 0 ? `+${octave}` : String(octave),
-    tint: octaveTint("rainbow", octave)!,
+    tint: laneTint("rainbow", octave)!,
     left: stacked.value ? 1 : 1 + index * WHITE_WIDTH * 7,
     top: stacked.value ? (OCTAVES.length - 1 - index) * (WHITE_HEIGHT + LANE + GAP) : 0,
   })),

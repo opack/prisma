@@ -27,8 +27,8 @@ import {
 import { parseOctaveLabel } from "../../core/pitch.ts";
 import { STRING_LANE } from "../../core/locate.ts";
 import { CHORD_LINE, isRuler, markTokens, parseRule } from "../../core/prisma-parse.ts";
-import { octaveTint } from "../score/colors.ts";
-import type { OctaveColors } from "../score/colors.ts";
+import { laneTint } from "../score/colors.ts";
+import type { LaneColors } from "../score/colors.ts";
 
 /** La coloration : les signes et les couloirs d'octave, les signes seuls, ou aucune. */
 export type SourceColors = "octaves" | "signs" | "none";
@@ -85,7 +85,7 @@ function markClass(token: string) {
   return "cm-p-text";
 }
 
-function readLine(text: string, state: State, mode: SourceColors, palette: OctaveColors): Line {
+function readLine(text: string, state: State, mode: SourceColors, palette: LaneColors): Line {
   const spans: Span[] = [];
   const trimmed = text.trim();
   const line: Line = { spans };
@@ -191,7 +191,7 @@ function readLine(text: string, state: State, mode: SourceColors, palette: Octav
     state.octave = octaveLane;
   }
   const offset = (lane: number) => (lane >= STRING_LANE ? 4 - (lane - STRING_LANE) : octaveOffset(lane));
-  const tint = mode === "octaves" && state.octave !== undefined ? octaveTint(palette, offset(state.octave)) : undefined;
+  const tint = mode === "octaves" && state.octave !== undefined ? laneTint(palette, offset(state.octave)) : undefined;
   if (mode === "octaves" && state.octave !== undefined) line.band = tint?.band ?? (state.lane % 2 === 1 ? BAND : undefined);
   if (label) {
     const at = text.indexOf(label);
@@ -209,7 +209,7 @@ function readLine(text: string, state: State, mode: SourceColors, palette: Octav
 }
 
 /** Les décorations des lignes visibles ; l'état se lit depuis le début du texte. */
-function build(view: EditorView, mode: SourceColors, palette: OctaveColors): DecorationSet {
+function build(view: EditorView, mode: SourceColors, palette: LaneColors): DecorationSet {
   const rangeSetBuilder = new RangeSetBuilder<Decoration>();
   const doc = view.state.doc;
   const state: State = { head: "before", lane: 0 };
@@ -254,7 +254,7 @@ const theme = EditorView.baseTheme({
 });
 
 /** L'extension de la coloration choisie, avec la palette des octaves. */
-export function sourceColors(mode: SourceColors, palette: OctaveColors): Extension {
+export function sourceColors(mode: SourceColors, palette: LaneColors): Extension {
   if (mode === "none") return [];
   const plugin = ViewPlugin.fromClass(
     class {

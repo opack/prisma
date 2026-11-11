@@ -3,7 +3,7 @@
  * et ce qu'elles font ; le nom en clair de la valeur d'une option du rendu, pour dire celle de l'autre
  * portée.
  */
-import type { OctaveColors } from "../score/colors.ts";
+import type { LaneColors } from "../score/colors.ts";
 import type { ClickLevel } from "../playback/performance.ts";
 import type { RenderOptions } from "./options.ts";
 import type { PieceKey } from "./piece.ts";
@@ -14,7 +14,7 @@ export type Option<T> = { value: T; label: string; hint: string };
 export const TABS = [
   { id: "editing", label: "Édition", piece: false },
   { id: "score", label: "Partition", piece: true },
-  { id: "octaves", label: "Octaves", piece: true },
+  { id: "lanes", label: "Couloirs", piece: true },
   { id: "notes", label: "Notes", piece: true },
   { id: "playback", label: "Lecture", piece: false },
   { id: "metronome", label: "Métronome", piece: false },
@@ -83,13 +83,13 @@ export const SIMILE: Option<RenderOptions["simile"]>[] = [
   { value: "text", label: "Mention seule", hint: "« Ped. simile », sans les pédales qu'il demande" },
 ];
 
-export const COLORS: Option<OctaveColors>[] = [
+export const COLORS: Option<LaneColors>[] = [
   { value: "none", label: "Blanc et gris", hint: "des bandes alternées, sans couleur" },
-  { value: "rainbow", label: "Arc-en-ciel", hint: "une couleur fixe par octave, du violet (grave) au rose (aigu)" },
+  { value: "rainbow", label: "Arc-en-ciel", hint: "une couleur fixe par octave (ou par corde), du violet (grave) au rose (aigu)" },
   {
     value: "rainbowMixed",
     label: "Arc-en-ciel mélangé",
-    hint: "les mêmes couleurs dans un ordre mélangé : deux octaves voisines contrastent davantage",
+    hint: "les mêmes couleurs dans un ordre mélangé : deux couloirs voisins contrastent davantage",
   },
   { value: "muted", label: "Feutré", hint: "des teintes douces et discrètes, dans l'ordre" },
   { value: "mutedMixed", label: "Feutré mélangé", hint: "les teintes feutrées dans un ordre mélangé" },
@@ -157,7 +157,7 @@ export const DESCRIBE: Record<PieceKey, (renderOptions: RenderOptions) => string
   simile: (renderOptions) => labelOf(SIMILE, renderOptions.simile),
   octavePosition: (renderOptions) => labelOf(OCTAVE_POSITIONS, renderOptions.octavePosition),
   octaveStyle: (renderOptions) => labelOf(OCTAVE_SYMBOLS, renderOptions.octaveStyle),
-  octaveColors: (renderOptions) => labelOf(COLORS, renderOptions.octaveColors),
+  laneColors: (renderOptions) => labelOf(COLORS, renderOptions.laneColors),
   density: (renderOptions) => labelOf(DENSITIES, renderOptions.density),
   rulerDetail: (renderOptions) => labelOf(RULER_DETAILS, renderOptions.rulerDetail),
   notePosition: (renderOptions) => labelOf(NOTE_POSITIONS, renderOptions.notePosition),

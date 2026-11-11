@@ -22,7 +22,7 @@ export const PIECE_KEYS = [
   "simile",
   "octavePosition",
   "octaveStyle",
-  "octaveColors",
+  "laneColors",
   "density",
   "rulerDetail",
   "notePosition",

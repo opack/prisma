@@ -711,7 +711,7 @@ test("app avis", async ({ page }) => {
 // la gravure : un petit corpus, à plusieurs réglages, et à l'impression
 const ENGRAVINGS: [string, string, Record<string, unknown>?][] = [
   ["gymnopedie", GYMNOPEDIE],
-  ["gymnopedie-compact", GYMNOPEDIE, { density: "compact", octaveColors: "none" }],
+  ["gymnopedie-compact", GYMNOPEDIE, { density: "compact", laneColors: "none" }],
   ["clair-une-ligne-par-note", CLAIR_SECTIONS, { notePosition: "pitch", sections: "inline" }],
   ["greensleeves-grilles", GREENSLEEVES_CHORDS, { chords: "grid", chordChart: true }],
   ["techniques", TECHNIQUES],
