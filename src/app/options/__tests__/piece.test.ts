@@ -16,6 +16,11 @@ describe("réglages d'un morceau", () => {
     expect(JSON.parse(writeSettings(settings))).toEqual({ format: 1, ...settings });
   });
 
+  it("gardent les noms des notes de la partition, propres au morceau", () => {
+    expect(parseSettings(writeSettings({ options: { scoreNames: "latin" } }))).toEqual({ options: { scoreNames: "latin" } });
+    expect(parseSettings(JSON.stringify({ format: 1, options: { scoreNames: "keyboard" } }))).toEqual({});
+  });
+
   it("laissent de côté ce qu'ils ne comprennent pas, et appliquent le reste", () => {
     const text = JSON.stringify({
       format: 1,

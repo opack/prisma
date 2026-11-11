@@ -1,6 +1,6 @@
 /** Les options : générales, ou propres à la partition ouverte. */
 import { expect, test } from "@playwright/test";
-import { CLAIR_SECTIONS, chooseMenu, openApp, settle } from "../support/app.ts";
+import { CLAIR_SECTIONS, GREENSLEEVES_CHORDS, chooseMenu, openApp, settle } from "../support/app.ts";
 
 const drawer = (page: import("@playwright/test").Page) => page.getByRole("complementary", { name: "Options" });
 
@@ -69,5 +69,17 @@ test.describe("les options", () => {
     await drawer(page).getByRole("button", { name: "Tout retirer" }).click();
     await expect(define).not.toHaveCount(0);
     await expect(drawer(page).getByRole("button", { name: "Tout retirer" })).toHaveCount(0);
+  });
+
+  test("la partition nomme la tonalité en Prisma, ou par son nom au choix, sans suivre l'éditeur", async ({ page }) => {
+    // la tonalité écrite en anglais : la partition la montre tout de même en Prisma
+    await openApp(page, { source: GREENSLEEVES_CHORDS.replace(/^---\n/, "---\nkey: Am\n"), options: { noteNames: "english" } });
+    // la marque de la tonalité, en tête : son titre, et son texte à côté
+    const key = page.locator(".page title", { hasText: "tonalité" }).locator("..");
+    await expect(key).toHaveText(/10:m/);
+    await page.getByRole("button", { name: "Options", exact: true }).click();
+    await drawer(page).getByRole("tab", { name: "Partition" }).click();
+    await drawer(page).getByRole("combobox", { name: "Noms des notes" }).selectOption({ label: "Do ré mi" });
+    await expect(key).toHaveText(/la mineur/);
   });
 });

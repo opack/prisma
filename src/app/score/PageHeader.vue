@@ -7,13 +7,13 @@
  */
 import { computed } from "vue";
 import { METRICS, PAGE } from "./engrave.ts";
-import type { NameDisplay } from "../options/options.ts";
-import { writtenNames } from "../options/options.ts";
+import type { ScoreNames } from "../options/options.ts";
+import { engravedNames } from "../options/options.ts";
 import { keyName, parseKey, prismaKey } from "../../core/key.ts";
 import type { Meta } from "../../core/index.ts";
 import { INK } from "./drawing.ts";
 
-const props = defineProps<{ meta: Meta; noteNames: NameDisplay }>();
+const props = defineProps<{ meta: Meta; names: ScoreNames }>();
 
 const LINE = 4.6;
 /** La ligne du compositeur, sous le sous-titre s'il y en a un. */
@@ -24,8 +24,8 @@ const marks = computed(() => {
   const key = meta.key ? parseKey(meta.key) : undefined;
   const marks = [
     ...(meta.bpm ? [{ icon: "metronome", text: String(meta.bpm), title: `tempo : ${meta.bpm} temps par minute` }] : []),
-    // la tonalité, comme dans un titre : son nom (« la mineur », « Am »), ou sa forme Prisma sans noms de notes
-    ...(key ? [{ icon: "key", text: keyName(key, writtenNames(props.noteNames)) || prismaKey(key), title: "tonalité" }] : []),
+    // la tonalité, comme dans un titre : sa forme Prisma (« 10:m »), ou son nom (« la mineur », « Am »), selon l'option
+    ...(key ? [{ icon: "key", text: keyName(key, engravedNames(props.names)) || prismaKey(key), title: "tonalité" }] : []),
   ];
   return marks.map((mark, index) => ({ ...mark, y: composerY.value - (marks.length - 1 - index) * LINE }));
 });

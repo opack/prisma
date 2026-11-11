@@ -715,6 +715,7 @@ const ENGRAVINGS: [string, string, Record<string, unknown>?][] = [
   ["clair-une-ligne-par-note", CLAIR_SECTIONS, { notePosition: "pitch", sections: "inline" }],
   ["greensleeves-grilles", GREENSLEEVES_CHORDS, { chords: "grid", chordChart: true }],
   ["techniques", TECHNIQUES],
+  ["greensleeves-noms", GREENSLEEVES_CHORDS.replace(/^---\n/, "---\nkey: Am\n"), { scoreNames: "latin" }],
 ];
 for (const [name, source, options] of ENGRAVINGS)
   test(`gravure ${name}`, async ({ page }) => {

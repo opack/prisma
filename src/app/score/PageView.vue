@@ -33,7 +33,7 @@ const { still = false } = defineProps<{ page: Page; total: number; meta: Meta; o
     style="font-variant-numeric: tabular-nums"
   >
     <rect :width="PAGE.w" :height="PAGE.h" fill="#fff" />
-    <PageHeader v-if="page.header" :meta="meta" :note-names="options.noteNames" />
+    <PageHeader v-if="page.header" :meta="meta" :names="options.scoreNames" />
     <!-- le récapitulatif des grilles, sous le titre : chaque accord du morceau, une fois -->
     <g v-for="(item, index) in page.chart" :key="'cc' + index">
       <text :x="item.x" :y="item.y + 3.4" font-size="3.4" font-weight="700" :fill="INK">{{ item.name }}</text>

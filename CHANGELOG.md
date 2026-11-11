@@ -2,6 +2,10 @@
 
 Ce qui change pour vous d'une version à l'autre de Prisma, la plus récente en haut.
 
+## 0.7.0 — 11 novembre 2026
+
+- La partition a ses propres noms des notes (Options, onglet Partition), sans plus suivre le réglage de l'éditeur : la tonalité en tête s'écrit en Prisma (`8`, `5:m`, par défaut), en do ré mi ou en anglais ; en do ré mi ou en anglais, chaque corde d'une tablature rappelle aussi sa note à vide.
+
 ## 0.6.1 — 10 novembre 2026
 
 - Une adresse du site qui n'existe pas montre bien la page « Cette page n'existe pas », et non plus l'accueil, dont les liens menaient ensuite à des adresses fausses.
