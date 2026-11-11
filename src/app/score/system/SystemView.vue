@@ -10,7 +10,7 @@ import { METRICS, PAGE, graceExtra, isPickSign, leadExtra } from "../engrave.ts"
 import type { PlacedSystem } from "../engrave.ts";
 import type { RenderOptions } from "../../options/options.ts";
 import { engravedNames } from "../../options/options.ts";
-import { octaveTint } from "../colors.ts";
+import { laneTint } from "../colors.ts";
 import { arpeggioPath } from "../geometry.ts";
 import { numberOf, octaveOffset, pitchClass, stringsOfStaff } from "../../../core/index.ts";
 import type { SystemRow } from "../../../core/index.ts";
@@ -42,8 +42,7 @@ const lanes = computed(() => {
 });
 
 // une couleur par octave (option), ou par corde, chacune la sienne ; sans palette, une bande grise un couloir sur deux
-const tint = (row: SystemRow) =>
-  octaveTint(props.options.octaveColors, row.string !== undefined ? 4 - row.string : octaveOffset(row.octave));
+const tint = (row: SystemRow) => laneTint(props.options.laneColors, row.string !== undefined ? 4 - row.string : octaveOffset(row.octave));
 const tabFill = (row: SystemRow) => tint(row)?.tab ?? TAB;
 // le nom d'une corde, celui de sa note à vide dans l'accordage (le capo n'y change rien, comme pour
 // le guitariste), selon l'option des noms de notes de la partition ; en Prisma, aucun : un numéro à côté

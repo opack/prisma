@@ -1,5 +1,5 @@
 /** Options de rendu et d'écoute, choisies dans le panneau « Options » et gardées dans le navigateur. */
-import type { OctaveColors } from "../score/colors.ts";
+import type { LaneColors } from "../score/colors.ts";
 import type { SourceColors } from "../editor/sourceColors.ts";
 import type { ChordNames, ChordStyle } from "../score/engrave.ts";
 import type { SimileDisplay } from "../playback/pedal.ts";
@@ -46,8 +46,8 @@ export type RenderOptions = {
   namesEverySystem: boolean;
   /** En début de ligne, rappeler la note tenue depuis la ligne précédente (« — 8 ») ; sinon le seul trait de tenue. */
   holdReminders: boolean;
-  /** Couleur des couloirs d'octave : aucune (bandes grises alternées), ou une palette, dans l'ordre ou mélangée. */
-  octaveColors: OctaveColors;
+  /** Couleur des couloirs (octaves ou cordes) : aucune (bandes grises alternées), ou une palette, dans l'ordre ou mélangée. */
+  laneColors: LaneColors;
   /** Accords : leur nom, leurs notes Prisma empilées, ou les deux. */
   chords: ChordStyle;
   /** Nom des accords : en notation Prisma (« 10:m ») ou en anglais (« Am »). */
@@ -90,7 +90,7 @@ export const DEFAULT_OPTIONS: RenderOptions = {
   fingerings: true,
   namesEverySystem: false,
   holdReminders: true,
-  octaveColors: "rainbow",
+  laneColors: "rainbow",
   chords: "both",
   chordNames: "prisma",
   scoreNames: "prisma",
@@ -130,7 +130,7 @@ export const NOTE_POSITIONS: { value: NotePosition; label: string }[] = [
   { value: "pitch", label: "Une ligne par note" },
 ];
 
-export const OCTAVE_COLORS: { value: OctaveColors; label: string }[] = [
+export const LANE_COLORS: { value: LaneColors; label: string }[] = [
   { value: "none", label: "Blanc et gris" },
   { value: "rainbow", label: "Arc-en-ciel" },
   { value: "rainbowMixed", label: "Arc-en-ciel mélangé" },
@@ -189,9 +189,7 @@ export function loadOptions(stored?: string | null): RenderOptions {
     const fingerings = typeof raw.fingerings === "boolean" ? raw.fingerings : DEFAULT_OPTIONS.fingerings;
     const namesEverySystem = typeof raw.namesEverySystem === "boolean" ? raw.namesEverySystem : DEFAULT_OPTIONS.namesEverySystem;
     const holdReminders = typeof raw.holdReminders === "boolean" ? raw.holdReminders : DEFAULT_OPTIONS.holdReminders;
-    const octaveColors = OCTAVE_COLORS.some((choice) => choice.value === raw.octaveColors)
-      ? raw.octaveColors
-      : DEFAULT_OPTIONS.octaveColors;
+    const laneColors = LANE_COLORS.some((choice) => choice.value === raw.laneColors) ? raw.laneColors : DEFAULT_OPTIONS.laneColors;
     const chords = CHORD_STYLES.some((choice) => choice.value === raw.chords) ? raw.chords : DEFAULT_OPTIONS.chords;
     const chordNames = raw.chordNames === "english" || raw.chordNames === "prisma" ? raw.chordNames : DEFAULT_OPTIONS.chordNames;
     const scoreNames = ["prisma", "latin", "english"].includes(raw.scoreNames) ? raw.scoreNames : DEFAULT_OPTIONS.scoreNames;
@@ -225,7 +223,7 @@ export function loadOptions(stored?: string | null): RenderOptions {
       fingerings,
       namesEverySystem,
       holdReminders,
-      octaveColors,
+      laneColors,
       chords,
       chordNames,
       scoreNames,

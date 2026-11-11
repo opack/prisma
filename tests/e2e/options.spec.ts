@@ -37,6 +37,9 @@ test.describe("les options", () => {
     await drawer(page).getByRole("tab", { name: "Métronome" }).click();
     await expect(drawer(page).getByRole("tab", { name: "Métronome" })).toHaveAttribute("aria-selected", "true");
     await expect(drawer(page).getByRole("checkbox", { name: /Une mesure avant de jouer/ })).toBeVisible();
+    // les couloirs : des octaves, ou des cordes ; leurs couleurs valent pour les deux
+    await drawer(page).getByRole("tab", { name: "Couloirs" }).click();
+    await expect(drawer(page).getByRole("combobox", { name: "Couleurs" })).toBeVisible();
   });
 
   test("côté partition, une option se définit pour elle seule, puis se retire", async ({ page }) => {

@@ -1,13 +1,13 @@
 <script setup lang="ts">
-/** Le drapeau d'une palette : les octaves empilées, de l'aigu (en haut) au grave. */
+/** Le drapeau d'une palette : les couloirs empilés, de l'aigu (en haut) au grave. */
 import { computed } from "vue";
-import { octaveTint } from "../score/colors.ts";
-import type { OctaveColors } from "../score/colors.ts";
+import { laneTint } from "../score/colors.ts";
+import type { LaneColors } from "../score/colors.ts";
 
-const { colors } = defineProps<{ colors: OctaveColors }>();
+const { colors } = defineProps<{ colors: LaneColors }>();
 
 const stripes = computed(() =>
-  Array.from({ length: 9 }, (_, index) => octaveTint(colors, 4 - index)?.tab ?? (index % 2 ? "#ffffff" : "#e6e8e3")),
+  Array.from({ length: 9 }, (_, index) => laneTint(colors, 4 - index)?.tab ?? (index % 2 ? "#ffffff" : "#e6e8e3")),
 );
 </script>
 

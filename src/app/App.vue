@@ -287,7 +287,7 @@ function onFileChosen(event: Event) {
             v-model="source"
             :note-names="options.noteNames"
             :colors="options.sourceColors"
-            :palette="options.octaveColors"
+            :palette="options.laneColors"
             @check="errors.setChecked"
             @caret="onCaret"
           >

@@ -20,7 +20,7 @@ import type { SourceColors } from "./sourceColors.ts";
 import { writtenNames } from "../options/options.ts";
 import type { NameDisplay } from "../options/options.ts";
 import { staffNames } from "../playback/staves.ts";
-import type { OctaveColors } from "../score/colors.ts";
+import type { LaneColors } from "../score/colors.ts";
 import MiniKeyboard from "../ui/keyboard/MiniKeyboard.vue";
 import { SEARCH_PHRASES, diagnose, errorLineField, keys, short, theme } from "./codemirror.ts";
 import type { EditorHandle } from "./codemirror.ts";
@@ -29,7 +29,7 @@ const props = defineProps<{
   noteNames: NameDisplay;
   /** La coloration du texte, et la palette des couloirs d'octave (celle de la partition). */
   colors: SourceColors;
-  palette: OctaveColors;
+  palette: LaneColors;
 }>();
 const value = defineModel<string>({ required: true });
 const emit = defineEmits<{

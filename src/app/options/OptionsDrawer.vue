@@ -35,7 +35,7 @@ import { PIECE_KEYS } from "./piece.ts";
 import { CLICK_SOUNDS } from "../playback/metronome.ts";
 import type { ClickLevel } from "../playback/performance.ts";
 import { Button } from "../ui/button";
-import OctaveFlag from "./OctaveFlag.vue";
+import LaneFlag from "./LaneFlag.vue";
 import OptionCheck from "./OptionCheck.vue";
 import OptionChoice from "./OptionChoice.vue";
 import OptionRow from "./OptionRow.vue";
@@ -224,7 +224,7 @@ const defineAll = () => settings.setPieceOptions(Object.fromEntries(PIECE_KEYS.m
         <OptionChoice id="simile" v-model="values.simile" label="Ped. simile" :options="SIMILE" piece-key="simile" />
       </template>
 
-      <template v-else-if="tab === 'octaves'">
+      <template v-else-if="tab === 'lanes'">
         <OptionChoice
           id="octave-position"
           v-model="values.octavePosition"
@@ -233,8 +233,8 @@ const defineAll = () => settings.setPieceOptions(Object.fromEntries(PIECE_KEYS.m
           piece-key="octavePosition"
         />
         <OptionChoice id="octave-symbol" v-model="values.octaveStyle" label="Symbole" :options="OCTAVE_SYMBOLS" piece-key="octaveStyle" />
-        <OptionChoice id="octave-colors" v-model="values.octaveColors" label="Couleurs" :options="COLORS" piece-key="octaveColors">
-          <template #icon="{ value }"><OctaveFlag :colors="value" /></template>
+        <OptionChoice id="lane-colors" v-model="values.laneColors" label="Couleurs" :options="COLORS" piece-key="laneColors">
+          <template #icon="{ value }"><LaneFlag :colors="value" /></template>
         </OptionChoice>
       </template>
 

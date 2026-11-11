@@ -5,6 +5,7 @@ Ce qui change pour vous d'une version à l'autre de Prisma, la plus récente en 
 ## 0.7.0 — 11 novembre 2026
 
 - La partition a ses propres noms des notes (Options, onglet Partition), sans plus suivre le réglage de l'éditeur : la tonalité en tête s'écrit en Prisma (`8`, `5:m`, par défaut), en do ré mi ou en anglais ; en do ré mi ou en anglais, chaque corde d'une tablature rappelle aussi sa note à vide.
+- L'onglet « Octaves » des options s'appelle désormais « Couloirs » : ses couleurs valent aussi pour les cordes d'une tablature. Votre choix de couleurs revient une fois à l'arc-en-ciel.
 
 ## 0.6.1 — 10 novembre 2026
 

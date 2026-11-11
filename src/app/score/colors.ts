@@ -1,15 +1,15 @@
 /**
- * Couleur par octave : chaque couloir d'octave sur un fond pâle, toujours le même pour une
- * octave donnée, dans tous les morceaux, pour apprendre à situer les octaves. L'onglet
- * reprend la couleur un ton plus soutenu. Le numéro d'octave reste dans l'onglet : la
- * couleur ne porte jamais seule l'information (impression en noir et blanc, daltonisme).
+ * Couleur par couloir : chaque couloir (une octave, ou une corde) sur un fond pâle, toujours le
+ * même pour une octave donnée, dans tous les morceaux, pour apprendre à situer les octaves.
+ * L'onglet reprend la couleur un ton plus soutenu. Le numéro d'octave (ou de corde) reste dans
+ * l'onglet : la couleur ne porte jamais seule l'information (impression en noir et blanc, daltonisme).
  */
 /**
- * Les couleurs des octaves : aucune (bandes grises alternées), ou une palette, dans l'ordre (une
+ * Les couleurs des couloirs : aucune (bandes grises alternées), ou une palette, dans l'ordre (une
  * progression qui dit aussi « plus haut » ou « plus bas ») ou mélangée (un ordre fixe où deux
  * octaves voisines ont toujours des teintes bien différentes ; l'octave 0 garde sa couleur).
  */
-export type OctaveColors = "none" | "rainbow" | "rainbowMixed" | "muted" | "mutedMixed";
+export type LaneColors = "none" | "rainbow" | "rainbowMixed" | "muted" | "mutedMixed";
 
 /** Une teinte : le fond du couloir et celui de son onglet. */
 type Tint = { band: string; tab: string };
@@ -40,7 +40,7 @@ const MUTED = {
 };
 
 /** Teinte de chaque octave, de -4 (le plus grave) à +4, pour chaque palette. */
-const PALETTES: Record<Exclude<OctaveColors, "none">, Tint[]> = {
+const PALETTES: Record<Exclude<LaneColors, "none">, Tint[]> = {
   rainbow: [
     RAINBOW.greyviolet,
     RAINBOW.violet,
@@ -67,8 +67,8 @@ const PALETTES: Record<Exclude<OctaveColors, "none">, Tint[]> = {
   mutedMixed: [MUTED.red, MUTED.blue, MUTED.yellow, MUTED.purple, MUTED.gray, MUTED.green, MUTED.orange, MUTED.pink, MUTED.brown],
 };
 
-/** Teinte d'une octave (écart au do central, de -4 à +4), ou rien sans couleurs. */
-export function octaveTint(colors: OctaveColors, offset: number): Tint | undefined {
+/** Teinte d'un couloir : celle d'une octave (écart au do central, de -4 à +4 ; une corde prend 4 moins son numéro), ou rien sans couleurs. */
+export function laneTint(colors: LaneColors, offset: number): Tint | undefined {
   if (colors === "none") return undefined;
   return PALETTES[colors][Math.max(0, Math.min(8, offset + 4))];
 }
