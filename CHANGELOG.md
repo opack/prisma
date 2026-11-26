@@ -2,6 +2,11 @@
 
 Ce qui change pour vous d'une version à l'autre de Prisma, la plus récente en haut.
 
+## 0.8.0 — 26 novembre 2026
+
+- Fichier › Partager par un QR code… montre le QR code de votre morceau : scanné avec un téléphone, il ouvre le morceau dans Prisma. Vous pouvez aussi en télécharger l'image.
+- Une nouvelle option, « QR code » (Options, onglet Partition), l'affiche en haut à droite de la première page : il s'imprime avec la partition. Un morceau très long ne tient pas dans un QR code : Prisma vous le signale.
+
 ## 0.7.0 — 11 novembre 2026
 
 - La partition a ses propres noms des notes (Options, onglet Partition), sans plus suivre le réglage de l'éditeur : la tonalité en tête s'écrit en Prisma (`8`, `5:m`, par défaut), en do ré mi ou en anglais ; en do ré mi ou en anglais, chaque corde d'une tablature rappelle aussi sa note à vide.

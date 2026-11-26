@@ -11,6 +11,7 @@ type Ctx = {
   saveToLibrary: () => void;
   exportFile: () => void;
   share: () => void;
+  shareQrCode: () => void;
   importLink: () => void;
   reload?: () => void;
   engrave: () => void;
@@ -46,6 +47,7 @@ export function appMenus(ctx: Ctx): MenuDef[] {
         { label: "Exporter en MusicXML…", onSelect: ctx.exportFile },
         "separator",
         { label: "Partager par un lien", onSelect: ctx.share },
+        { label: "Partager par un QR code…", onSelect: ctx.shareQrCode },
         { label: "Importer un lien…", onSelect: ctx.importLink },
         "separator",
         { label: "Recharger", onSelect: () => ctx.reload?.(), disabled: !ctx.reload },

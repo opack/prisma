@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TICKS_PER_BEAT, parsePrisma } from "../../../core/index.ts";
-import { METRICS, engrave } from "../engrave.ts";
+import { METRICS, QR, engrave } from "../engrave.ts";
 import { anchorAt, arpeggioPath, barsIn, columnAt, markWidth, nearestColumn, spacedWidths, systemBand, trillPath } from "../geometry.ts";
 
 /** Deux mesures de deux temps, le premier temps coupé en deux cases : cinq cases en tout. */
@@ -68,5 +68,13 @@ describe("les largeurs", () => {
     expect(repeated.close).toBe(METRICS.barSep + METRICS.repeatDots);
     expect(repeated.open).toBe(METRICS.repeatDots + METRICS.beatSep);
     expect(repeated.gap).toEqual([50 + repeated.close, 60 - repeated.open]);
+  });
+});
+
+describe("le QR code du morceau, en tête de la première page", () => {
+  it("allonge l'en-tête : le premier système descend, assez pour passer sous le code", () => {
+    const top = (qr: boolean) => engrave(parsePrisma(piece), { qr })[0].systems[0].y;
+    expect(top(true)).toBeGreaterThan(top(false));
+    expect(top(true)).toBeGreaterThanOrEqual(QR.top + QR.size);
   });
 });

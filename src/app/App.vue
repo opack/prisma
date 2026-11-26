@@ -3,7 +3,7 @@
  * L'application : la barre du haut, et dessous l'éditeur du texte et la partition gravée (ou, à leur
  * place, la référence). Elle assemble ce que chaque domaine tient : le morceau ouvert
  * (files/useDocument), les réglages (options/settings), l'écoute (playback/usePieceSound), la
- * retouche (retouch/useRetouch, useBeatRetouch), la vue (score/useView), le partage (files/useShare), la conversion
+ * retouche (retouch/useRetouch, useBeatRetouch), la vue (score/useView), le partage (files/useShare, useQrCode), la conversion
  * (editor/useConversion).
  *
  * Lecture, le mode ordinaire : pour jouer, sans l'éditeur, les pages côte à côte, chacune de toute la
@@ -36,10 +36,12 @@ import { useErrors } from "./editor/useErrors.ts";
 import DropZone from "./files/DropZone.vue";
 import ExportDialog from "./files/ExportDialog.vue";
 import ImportLinkDialog from "./files/ImportLinkDialog.vue";
+import QrCodeDialog from "./files/QrCodeDialog.vue";
 import LibraryView from "./library/LibraryView.vue";
 import NewDialog from "./files/NewDialog.vue";
 import ReceivedDialog from "./files/ReceivedDialog.vue";
 import { useDocument } from "./files/useDocument.ts";
+import { useQrCode } from "./files/useQrCode.ts";
 import { useShare } from "./files/useShare.ts";
 import OptionsDrawer from "./options/OptionsDrawer.vue";
 import { useSettings } from "./options/settings.ts";
@@ -106,6 +108,7 @@ useSettingsAutosave(doc.handle, notify);
 const appUpdate = useAppUpdate(notify);
 const about = useAbout();
 const sharing = useShare({ source, fileName: doc.fileName, piece, notify, openShared: doc.openShared });
+const qrSharing = useQrCode({ prepared: sharing.prepared, onPage: computed(() => options.value.qrCode), notify });
 const conversion = useConversion(source, doc.rewrite, notify);
 const { fullScreen, toggle: toggleFullScreen } = useFullScreen(notify);
 
@@ -156,6 +159,7 @@ const menus = computed(() =>
     saveToLibrary: () => saveToLibrary(doc.saveInto, notify),
     exportFile: () => (doc.exporting.value = true),
     share: sharing.share,
+    shareQrCode: () => (qrSharing.showing.value = true),
     importLink: () => (sharing.importing.value = true),
     reload: doc.handle.value ? doc.reloadFile : undefined,
     engrave: doc.engraveNow,
@@ -242,6 +246,13 @@ function onFileChosen(event: Event) {
       <LibraryView v-if="panel === 'library'" :options="general" @open="doc.openEntry" @close="panel = null" />
       <ExportDialog v-if="doc.exporting.value" @export="doc.exportFile" @close="doc.exporting.value = false" />
       <NewDialog v-if="doc.choosingNew.value" @create="doc.newFile" @close="doc.choosingNew.value = false" />
+      <QrCodeDialog
+        v-if="qrSharing.showing.value"
+        :code="qrSharing.code.value"
+        :name="sharing.prepared.value?.name"
+        @download="qrSharing.downloadImage"
+        @close="qrSharing.showing.value = false"
+      />
       <ImportLinkDialog v-if="sharing.importing.value" :import-link="sharing.importLink" @close="sharing.importing.value = false" />
       <ReceivedDialog
         v-if="sharing.received.value"
@@ -348,12 +359,21 @@ function onFileChosen(event: Event) {
                 :total="pages.length"
                 :meta="score!.meta"
                 :options="options"
+                :qr="qrSharing.code.value"
                 still
               />
             </div>
           </template>
           <template v-else>
-            <PageView v-for="page in pages" :key="page.index" :page="page" :total="pages.length" :meta="score!.meta" :options="options" />
+            <PageView
+              v-for="page in pages"
+              :key="page.index"
+              :page="page"
+              :total="pages.length"
+              :meta="score!.meta"
+              :options="options"
+              :qr="qrSharing.code.value"
+            />
           </template>
         </section>
         <ScrollBackButton

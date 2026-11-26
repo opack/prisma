@@ -23,6 +23,7 @@ export type EngraveOptions = Pick<
   | "simile"
   | "sections"
   | "rulerDetail"
+  | "qrCode"
 >;
 export const engraveOptions = (renderOptions: RenderOptions): EngraveOptions => ({
   density: renderOptions.density,
@@ -35,6 +36,7 @@ export const engraveOptions = (renderOptions: RenderOptions): EngraveOptions => 
   simile: renderOptions.simile,
   sections: renderOptions.sections,
   rulerDetail: renderOptions.rulerDetail,
+  qrCode: renderOptions.qrCode,
 });
 
 export function engravePages(score: Score, options: EngraveOptions): Page[] {
@@ -50,6 +52,7 @@ export function engravePages(score: Score, options: EngraveOptions): Page[] {
     reminders: options.holdReminders,
     inlineSections: options.sections === "inline",
     detail: options.rulerDetail,
+    qr: options.qrCode,
   });
 }
 

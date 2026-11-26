@@ -10,6 +10,7 @@ import { headerHeight, METRICS, PAGE } from "./engrave.ts";
 import type { Page } from "./engrave.ts";
 import type { RenderOptions } from "../options/options.ts";
 import type { Meta } from "../../core/index.ts";
+import type { QrCode } from "../files/qrCode.ts";
 import "./page.css";
 import { FONT, GREY, INK } from "./drawing.ts";
 import OrderLine from "./OrderLine.vue";
@@ -20,7 +21,15 @@ import ChordGrid from "./system/ChordGrid.vue";
 import SystemView from "./system/SystemView.vue";
 import TextMarks from "./TextMarks.vue";
 
-const { still = false } = defineProps<{ page: Page; total: number; meta: Meta; options: RenderOptions; still?: boolean }>();
+/** qr : le QR code du morceau, dessiné en tête quand l'option le demande. */
+const { still = false } = defineProps<{
+  page: Page;
+  total: number;
+  meta: Meta;
+  options: RenderOptions;
+  qr?: QrCode | null;
+  still?: boolean;
+}>();
 </script>
 
 <template>
@@ -33,7 +42,7 @@ const { still = false } = defineProps<{ page: Page; total: number; meta: Meta; o
     style="font-variant-numeric: tabular-nums"
   >
     <rect :width="PAGE.w" :height="PAGE.h" fill="#fff" />
-    <PageHeader v-if="page.header" :meta="meta" :names="options.scoreNames" />
+    <PageHeader v-if="page.header" :meta="meta" :names="options.scoreNames" :qr="options.qrCode ? qr : null" />
     <!-- le récapitulatif des grilles, sous le titre : chaque accord du morceau, une fois -->
     <g v-for="(item, index) in page.chart" :key="'cc' + index">
       <text :x="item.x" :y="item.y + 3.4" font-size="3.4" font-weight="700" :fill="INK">{{ item.name }}</text>
@@ -42,7 +51,7 @@ const { still = false } = defineProps<{ page: Page; total: number; meta: Meta; o
     <OrderLine
       v-if="page.order.length > 0"
       :order="page.order"
-      :y="page.header ? PAGE.marginTop + headerHeight(meta) - 1 : PAGE.marginTop - 2"
+      :y="page.header ? PAGE.marginTop + headerHeight(meta, options.qrCode) - 1 : PAGE.marginTop - 2"
       :live="!still"
     />
     <!-- les noms des parties : au premier système du morceau, comme sur une partition, ou à chaque système (option) -->

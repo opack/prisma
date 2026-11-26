@@ -232,8 +232,15 @@ export const noteExtra = (sys: System, anchor: number, cellW: number, reminders 
     ),
   );
 
-/** Hauteur de l'en-tête de la première page : titre, sous-titre éventuel, compositeur. */
-export const headerHeight = (meta: Score["meta"]) => METRICS.headerH + (meta.subtitle ? METRICS.subtitleH : 0);
+/**
+ * Le QR code du morceau, en haut à droite de la première page : son côté, assez grand pour se lire
+ * imprimé même dense (un long morceau), et son haut, dans la marge.
+ */
+export const QR = { size: 30, top: PAGE.marginTop - 4, gap: 3 };
+
+/** Hauteur de l'en-tête de la première page : titre, sous-titre éventuel, compositeur ; et le QR code, qui l'allonge. */
+export const headerHeight = (meta: Score["meta"], qr = false) =>
+  Math.max(METRICS.headerH + (meta.subtitle ? METRICS.subtitleH : 0), qr ? QR.top + QR.size + QR.gap - PAGE.marginTop : 0);
 
 /** Largeur des rangs de petites notes d'une portée, dans une case. */
 export const graceSlotW = (digits: number) => digits * METRICS.graceDigit + METRICS.graceGap;
@@ -495,6 +502,7 @@ export function engrave(
     reminders = true,
     inlineSections = false,
     detail = "written" as RulerDetail,
+    qr = false,
   } = {},
 ): Page[] {
   const cellW = compact ? METRICS.compactCell : METRICS.cell;
@@ -532,7 +540,7 @@ export function engrave(
   const order = score.order;
   const orderH = order.length ? METRICS.orderH : 0;
   let page: Page = { index: 0, systems: [], header: true, order };
-  let y = PAGE.marginTop + headerHeight(score.meta) + orderH;
+  let y = PAGE.marginTop + headerHeight(score.meta, qr) + orderH;
   if (chart) {
     const chordChartPlaced = chordChart(score, chordNames, y);
     if (chordChartPlaced.items.length) {

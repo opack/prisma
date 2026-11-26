@@ -208,6 +208,18 @@ const defineAll = () => settings.setPieceOptions(Object.fromEntries(PIECE_KEYS.m
           piece-key="chordChart"
         />
         <OptionCheck
+          id="qr-code"
+          v-model="values.qrCode"
+          label="QR code"
+          text="Afficher le QR code du morceau"
+          :hint="
+            values.qrCode
+              ? 'en haut à droite de la première page, imprimé avec elle : scanné, il ouvre le morceau dans Prisma'
+              : 'pas de QR code sur la page ; Fichier › Partager par un QR code… le montre à l\'écran'
+          "
+          piece-key="qrCode"
+        />
+        <OptionCheck
           id="names-every-system"
           v-model="values.namesEverySystem"
           label="Parties"
