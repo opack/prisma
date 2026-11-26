@@ -74,11 +74,11 @@ describe("les largeurs", () => {
 describe("le cartouche du QR code, en fin de partition", () => {
   const pages = (qr: boolean, text = piece) => engrave(parsePrisma(text), { qr });
 
-  it("suit le dernier système, calé à droite, sans rien déplacer", () => {
+  it("suit le dernier système, centré, sans rien déplacer", () => {
     const [page] = pages(true);
     const last = page.systems.at(-1)!;
     expect(page.qrCard!.y).toBeGreaterThan(last.y);
-    expect(page.qrCard!.x + qrCardSize.w).toBe(PAGE.w - PAGE.marginX);
+    expect(page.qrCard!.x + qrCardSize.w / 2).toBe(PAGE.w / 2);
     expect(page.systems.map((system) => system.y)).toEqual(pages(false)[0].systems.map((system) => system.y));
     expect(pages(false)[0].qrCard).toBeUndefined();
   });

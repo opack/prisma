@@ -236,11 +236,11 @@ export const noteExtra = (sys: System, anchor: number, cellW: number, reminders 
 export const headerHeight = (meta: Score["meta"]) => METRICS.headerH + (meta.subtitle ? METRICS.subtitleH : 0);
 
 /**
- * Le cartouche du QR code, en fin de partition, calé à droite : le code, assez grand pour se lire
+ * Le cartouche du QR code, en fin de partition, centré : le code, assez grand pour se lire
  * imprimé même dense (un long morceau), et à côté, ce qu'il fait et le site. Son côté, sa marge
  * intérieure, la colonne du texte, et l'espace qui le sépare du dernier système.
  */
-export const QR_CARD = { qr: 45, padding: 3, text: 50, gap: 4 };
+export const QR_CARD = { qr: 45, padding: 4, text: 40, gap: 5 };
 export const qrCardSize = {
   w: QR_CARD.padding * 2 + QR_CARD.qr + QR_CARD.gap + QR_CARD.text,
   h: QR_CARD.padding * 2 + QR_CARD.qr,
@@ -577,14 +577,14 @@ export function engrave(
     page.systems.push(placed);
     y += height + (compact ? METRICS.compactSystemGap : METRICS.systemGap);
   });
-  // le cartouche du QR code, après le dernier système : sur une nouvelle page s'il n'y tient plus, jamais rétréci
+  // le cartouche du QR code, après le dernier système, centré : sur une nouvelle page s'il n'y tient plus, jamais rétréci
   if (qr) {
     if (y + qrCardSize.h > bottom && page.systems.length) {
       pages.push(page);
       page = { index: pages.length, systems: [], header: false, order };
       y = PAGE.marginTop + orderH;
     }
-    page.qrCard = { x: PAGE.w - PAGE.marginX - qrCardSize.w, y };
+    page.qrCard = { x: (PAGE.w - qrCardSize.w) / 2, y };
   }
   pages.push(page);
   return pages;
