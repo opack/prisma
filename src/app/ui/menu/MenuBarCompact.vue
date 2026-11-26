@@ -71,7 +71,7 @@ function stay(event: Event, index: number | null) {
       </DropdownMenuTrigger>
       <DropdownMenuContent
         :id="id"
-        class="w-auto min-w-56 print:hidden"
+        class="w-auto min-w-56"
         :aria-label="menu ? menu.label : 'Menu'"
         align="start"
         :side-offset="4"

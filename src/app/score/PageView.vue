@@ -66,10 +66,11 @@ const { still = false } = defineProps<{
     />
     <QrCard v-if="page.qrCard && qr" :card="page.qrCard" :qr="qr" :site="site ?? ''" />
     <text :x="PAGE.w / 2" :y="PAGE.h - 8" font-size="2.6" text-anchor="middle" :fill="GREY">{{ page.index + 1 }} / {{ total }}</text>
-    <template v-if="!still">
+    <!-- ce qui ne sert qu'à l'écran, jamais imprimé -->
+    <g v-if="!still" class="print:hidden">
       <TextMarks :systems="page.systems" />
       <SeekAreas :systems="page.systems" />
       <PlayCursor :page="page" :look-ahead="options.lookAhead" />
-    </template>
+    </g>
   </svg>
 </template>

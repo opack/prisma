@@ -85,7 +85,7 @@ function onMenuKey(index: number, event: KeyboardEvent) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        class="w-auto min-w-56 print:hidden"
+        class="w-auto min-w-56"
         :aria-label="menu.label"
         align="start"
         :side-offset="4"
