@@ -478,6 +478,7 @@ test("app réglages de la mise en page", async ({ page }) => {
 for (const [item, file] of [
   ["Nouveau…", "nouveau"],
   ["Exporter en MusicXML…", "export"],
+  ["Partager par un QR code…", "qr-code"],
 ] as const)
   test(`app dialogue ${file}`, async ({ page }) => {
     await openApp(page, { source: CLAIR_SECTIONS });
@@ -715,6 +716,7 @@ const ENGRAVINGS: [string, string, Record<string, unknown>?][] = [
   ["clair-une-ligne-par-note", CLAIR_SECTIONS, { notePosition: "pitch", sections: "inline" }],
   ["greensleeves-grilles", GREENSLEEVES_CHORDS, { chords: "grid", chordChart: true }],
   ["techniques", TECHNIQUES],
+  ["clair-qr-code", CLAIR_SECTIONS, { qrCode: true }],
   ["greensleeves-noms", GREENSLEEVES_CHORDS.replace(/^---\n/, "---\nkey: Am\n"), { scoreNames: "latin" }],
 ];
 for (const [name, source, options] of ENGRAVINGS)

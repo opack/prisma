@@ -93,9 +93,9 @@ export async function targetIn(dir: StoredFolder, name: string): Promise<StoredF
   return window.confirm(`${name} existe déjà dans ce dossier. Le remplacer ?`) ? existing : null;
 }
 
-/** Télécharge un fichier sous ce nom, tel quel (voir AS_IS). */
-export function download(name: string, text: string) {
-  const blob = new Blob([text], { type: AS_IS });
+/** Télécharge un fichier sous ce nom : un texte tel quel (voir AS_IS), ou une image. */
+export function download(name: string, content: string | Blob) {
+  const blob = typeof content === "string" ? new Blob([content], { type: AS_IS }) : content;
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
   link.download = name;

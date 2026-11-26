@@ -235,6 +235,19 @@ export const noteExtra = (sys: System, anchor: number, cellW: number, reminders 
 /** Hauteur de l'en-tête de la première page : titre, sous-titre éventuel, compositeur. */
 export const headerHeight = (meta: Score["meta"]) => METRICS.headerH + (meta.subtitle ? METRICS.subtitleH : 0);
 
+/**
+ * Le cartouche du QR code, en fin de partition, centré : le code, et à côté, ce qu'il fait et le
+ * site. Sa marge intérieure, la colonne du texte, l'espace entre le code et le texte ; le côté d'un
+ * module du code (en dessous de 0,46 mm, un téléphone le lit mal sur papier) et le côté minimal du code.
+ */
+export const QR_CARD = { padding: 4, text: 40, gap: 5, module: 0.46, minSide: 30 };
+
+/** Le côté du QR code et la taille de son cartouche, pour un code de tant de modules de côté : plus il est dense, plus il est grand. */
+export function qrCardSize(modules: number) {
+  const side = Math.max(QR_CARD.minSide, modules * QR_CARD.module);
+  return { side, w: QR_CARD.padding * 2 + side + QR_CARD.gap + QR_CARD.text, h: QR_CARD.padding * 2 + side };
+}
+
 /** Largeur des rangs de petites notes d'une portée, dans une case. */
 export const graceSlotW = (digits: number) => digits * METRICS.graceDigit + METRICS.graceGap;
 const graceW = (digits: number[]) => digits.reduce((total, digitCount) => total + graceSlotW(digitCount), 0);
@@ -296,7 +309,15 @@ export type StaffPlace = {
 /** order : ordre de jeu des sections, gravé en tête de chaque page (vide s'il n'y a pas de section). */
 /** Une grille du récapitulatif en tête de partition : le nom de l'accord, sa grille, et sa place. */
 export type ChartItem = { name: string; shape: Shape; x: number; y: number };
-export type Page = { index: number; systems: PlacedSystem[]; header: boolean; order: string[]; chart?: ChartItem[] };
+/** Une page : ses systèmes, l'en-tête (la première), l'ordre de jeu, les grilles ; sur la dernière, le cartouche du QR code (son coin haut gauche, sa taille). */
+export type Page = {
+  index: number;
+  systems: PlacedSystem[];
+  header: boolean;
+  order: string[];
+  chart?: ChartItem[];
+  qrCard?: { x: number; y: number } & ReturnType<typeof qrCardSize>;
+};
 
 // l'arpège se dessine devant l'accord, pas dans la bande des nuances
 // l'arpège et les articulations se dessinent sur la note, pas dans la bande des nuances
@@ -495,6 +516,7 @@ export function engrave(
     reminders = true,
     inlineSections = false,
     detail = "written" as RulerDetail,
+    qrModules = undefined as number | undefined,
   } = {},
 ): Page[] {
   const cellW = compact ? METRICS.compactCell : METRICS.cell;
@@ -557,6 +579,16 @@ export function engrave(
     page.systems.push(placed);
     y += height + (compact ? METRICS.compactSystemGap : METRICS.systemGap);
   });
+  // le cartouche du QR code, après le dernier système, centré : sur une nouvelle page s'il n'y tient plus, jamais rétréci
+  if (qrModules) {
+    const card = qrCardSize(qrModules);
+    if (y + card.h > bottom && page.systems.length) {
+      pages.push(page);
+      page = { index: pages.length, systems: [], header: false, order };
+      y = PAGE.marginTop + orderH;
+    }
+    page.qrCard = { x: (PAGE.w - card.w) / 2, y, ...card };
+  }
   pages.push(page);
   return pages;
 }

@@ -56,6 +56,8 @@ export type RenderOptions = {
   scoreNames: ScoreNames;
   /** Les grilles de guitare des accords du morceau, récapitulées en tête de partition. */
   chordChart: boolean;
+  /** Le QR code du morceau, dans un cartouche en fin de partition : scanné, il ouvre le morceau dans Prisma. */
+  qrCode: boolean;
   /** Sections : chacune commence une nouvelle ligne, ou suit la précédente sur la même ligne, séparée par un blanc. */
   sections: SectionLayout;
   /** Éditeur : le nom des notes (barre de statut, choix de la note d'une case) : do ré mi, notation anglaise, un petit clavier, ou rien. */
@@ -95,6 +97,7 @@ export const DEFAULT_OPTIONS: RenderOptions = {
   chordNames: "prisma",
   scoreNames: "prisma",
   chordChart: false,
+  qrCode: false,
   sections: "newLine",
   noteNames: "latin",
   sourceColors: "octaves",
@@ -194,6 +197,7 @@ export function loadOptions(stored?: string | null): RenderOptions {
     const chordNames = raw.chordNames === "english" || raw.chordNames === "prisma" ? raw.chordNames : DEFAULT_OPTIONS.chordNames;
     const scoreNames = ["prisma", "latin", "english"].includes(raw.scoreNames) ? raw.scoreNames : DEFAULT_OPTIONS.scoreNames;
     const chordChart = typeof raw.chordChart === "boolean" ? raw.chordChart : DEFAULT_OPTIONS.chordChart;
+    const qrCode = typeof raw.qrCode === "boolean" ? raw.qrCode : DEFAULT_OPTIONS.qrCode;
     const simile = SIMILE_DISPLAYS.some((choice) => choice.value === raw.simile) ? raw.simile : DEFAULT_OPTIONS.simile;
     const sections = SECTION_LAYOUTS.some((choice) => choice.value === raw.sections) ? raw.sections : DEFAULT_OPTIONS.sections;
     const noteNames = ["latin", "english", "keyboard", "none"].includes(raw.noteNames) ? raw.noteNames : DEFAULT_OPTIONS.noteNames;
@@ -228,6 +232,7 @@ export function loadOptions(stored?: string | null): RenderOptions {
       chordNames,
       scoreNames,
       chordChart,
+      qrCode,
       sections,
       noteNames,
       sourceColors,
