@@ -11,7 +11,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" />
   </head>
-  <body class="h-full m-0 font-ui text-[14px] text-ink bg-chrome print:bg-white">
+  <!-- à l'impression, seule l'application : pas les menus, fenêtres et panneaux qui s'ouvrent à côté, dans <body> -->
+  <body class="h-full m-0 font-ui text-[14px] text-ink bg-chrome print:bg-white print:[&>:not(#app)]:hidden">
     <div id="app" class="h-full"></div>
     <script type="module" src="/src/app/main.ts"></script>
   </body>

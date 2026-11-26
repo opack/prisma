@@ -18,5 +18,6 @@ const playerState = usePlayer();
     height="4.9"
     rx="0.9"
     fill="rgb(255, 200, 70)"
+    class="print:hidden"
   />
 </template>

@@ -12,7 +12,7 @@ const props = defineProps<{ problems: Problem[]; fixed: boolean; autoEngrave: bo
 const emit = defineEmits<{ engrave: []; show: [index: number] }>();
 
 const CARD =
-  "max-w-[460px] mx-auto my-12 px-5 py-4 bg-white border border-line border-l-4 rounded-md shadow-[0_2px_10px_rgba(0,0,0,0.06)] [&_p]:mb-2";
+  "max-w-[460px] mx-auto my-12 px-5 py-4 bg-white border border-line border-l-4 rounded-md shadow-[0_2px_10px_rgba(0,0,0,0.06)] [&_p]:mb-2 print:hidden";
 const first = computed(() => props.problems[0]);
 const several = computed(() => props.problems.length > 1);
 const corrected = computed(() => (several.value ? "les erreurs corrigées" : "l'erreur corrigée"));

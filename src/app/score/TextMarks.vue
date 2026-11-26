@@ -51,7 +51,7 @@ watch(
   <rect
     v-if="shown"
     ref="frame"
-    class="text-mark print:hidden"
+    class="text-mark"
     :x="shown.x"
     :y="shown.y"
     :width="shown.width"
