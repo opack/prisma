@@ -265,9 +265,9 @@ export function useDocument({ autoEngrave, editor, notify, onLoaded, onSavedIn, 
       if (into && !file) return false; // il y avait déjà un fichier de ce nom, qu'on garde
       if (file && into) {
         await file.write(shared.text);
-        await saveSettings(into, shared.name, shared.settings);
+        await saveSettings(into, shared.name, { options: shared.options });
       }
-      await open({ name: shared.name, text: async () => shared.text }, file, false, into ?? null, shared.settings);
+      await open({ name: shared.name, text: async () => shared.text }, file, false, into ?? null, { options: shared.options });
       if (!file) savedText.value = null;
       onOpenedFrom("link");
       notify(file ? `${shared.name} enregistré dans la bibliothèque, ${file.where}` : `${shared.name} ouvert`);

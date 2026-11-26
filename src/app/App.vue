@@ -107,7 +107,13 @@ const { source, fileInput } = doc;
 useSettingsAutosave(doc.handle, notify);
 const appUpdate = useAppUpdate(notify);
 const about = useAbout();
-const sharing = useShare({ source, fileName: doc.fileName, piece, notify, openShared: doc.openShared });
+const sharing = useShare({
+  source,
+  fileName: doc.fileName,
+  options: computed(() => piece.value.options),
+  notify,
+  openShared: doc.openShared,
+});
 const qrSharing = useQrCode({ prepared: sharing.prepared, onPage: computed(() => options.value.qrCode), notify });
 const conversion = useConversion(source, doc.rewrite, notify);
 const { fullScreen, toggle: toggleFullScreen } = useFullScreen(notify);

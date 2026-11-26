@@ -14,12 +14,13 @@ import type { Shared } from "./share.ts";
 import type { StoredFolder } from "./stored.ts";
 import type { LibrarySource } from "../library/library.ts";
 import { savedSource } from "../library/sources.ts";
-import type { PieceSettings } from "../options/piece.ts";
+import type { PieceOptions } from "../options/piece.ts";
 
 type Deps = {
   source: Ref<string>;
   fileName: Ref<string>;
-  piece: Ref<PieceSettings>;
+  /** Les options du rendu du morceau : seules, de ses réglages, à partir avec lui (pas ceux de l'écoute). */
+  options: Ref<PieceOptions | undefined>;
   notify: (message: string) => void;
   openShared: (shared: Shared, into?: StoredFolder) => Promise<boolean>;
 };
@@ -27,7 +28,7 @@ type Deps = {
 /** Le lien qui partage le morceau, et le nom sous lequel il part. */
 export type Prepared = { name: string; url: string };
 
-async function link(source: string, fileName: string, piece: PieceSettings): Promise<Prepared> {
+async function link(source: string, fileName: string, options: PieceOptions = {}): Promise<Prepared> {
   let title: string | undefined;
   try {
     title = parseFrontmatter(source.split(/\r?\n/)).meta.title;
@@ -35,12 +36,12 @@ async function link(source: string, fileName: string, piece: PieceSettings): Pro
     /* un en-tête illisible : le nom du fichier */
   }
   const name = shareName(fileName, title);
-  return { name, url: shareLink(await encodeShare({ name, text: source, settings: piece }), location.origin + location.pathname) };
+  return { name, url: shareLink(await encodeShare({ name, text: source, options }), location.origin + location.pathname) };
 }
 
 const touch = () => typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
 
-export function useShare({ source, fileName, piece, notify, openShared }: Deps) {
+export function useShare({ source, fileName, options, notify, openShared }: Deps) {
   /** Le morceau reçu, en attente d'être ouvert ; et la bibliothèque où l'enregistrer, s'il y en a une. */
   const received = shallowRef<Shared | null>(null);
   const library = shallowRef<LibrarySource | null>(null);
@@ -63,11 +64,11 @@ export function useShare({ source, fileName, piece, notify, openShared }: Deps) 
   // le lien, tenu prêt : Safari ne partage et ne copie qu'aussitôt après le geste, sans attente entre les deux
   const ready = shallowRef<Prepared | null>(null);
   watch(
-    [source, fileName, piece],
+    [source, fileName, options],
     (_, __, onCleanup) => {
       let live = true;
       const timeout = setTimeout(
-        () => link(source.value, fileName.value, piece.value).then((prepared) => live && (ready.value = prepared)),
+        () => link(source.value, fileName.value, options.value).then((prepared) => live && (ready.value = prepared)),
         300,
       );
       onCleanup(() => {
@@ -79,7 +80,7 @@ export function useShare({ source, fileName, piece, notify, openShared }: Deps) 
   );
 
   async function share() {
-    const { name, url } = ready.value ?? (await link(source.value, fileName.value, piece.value));
+    const { name, url } = ready.value ?? (await link(source.value, fileName.value, options.value));
     const long = url.length > LONG_LINK ? " (un lien long : s'il arrive coupé, envoyez plutôt le fichier)" : "";
     try {
       if (touch() && navigator.share) {

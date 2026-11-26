@@ -1,16 +1,27 @@
 /**
- * Le partage par un lien : le morceau (son nom, son texte, ses réglages), compressé, tient dans le
- * fragment de l'adresse de l'application (`app/#p=…`). Le fragment n'est jamais envoyé au serveur :
- * le morceau ne passe que par le message qui porte le lien. Ouvrir le lien, c'est le recevoir.
+ * Le partage par un lien : la partition (son nom, son texte, les options de son rendu), compressée,
+ * tient dans le fragment de l'adresse de l'application (`app/#p=…`). Le fragment n'est jamais envoyé
+ * au serveur : le morceau ne passe que par le message qui porte le lien. Ouvrir le lien, c'est le
+ * recevoir.
+ *
+ * Seul part ce qui est sur la partition : le tempo écrit dans son en-tête, pas celui choisi pour
+ * l'écoute ; ni les portées muettes, ni les instruments, ni les volumes, choix de qui écoute.
+ *
+ * Le fragment : du JSON compressé, aux clés d'une lettre (il n'est jamais lu tel quel) :
+ * `v` la version, `n` le nom, `t` le texte, `o` les options du rendu (absentes s'il n'y en a pas).
  */
-import { isEmpty, parseSettings, writeSettings } from "../options/piece.ts";
-import type { PieceSettings } from "../options/piece.ts";
+import { parseOptions } from "../options/piece.ts";
+import type { PieceOptions } from "../options/piece.ts";
 
 /** Un morceau partagé. */
-export type Shared = { name: string; text: string; settings: PieceSettings };
+export type Shared = { name: string; text: string; options: PieceOptions };
 
-/** La version de ce qu'écrit le lien : un lien d'une autre version ne se lit pas. */
-const VERSION = 1;
+/**
+ * La version de ce qu'écrit le lien. La 1 portait aussi les réglages de l'écoute, dans `s` (avec les
+ * options sous `s.options`) : ses liens se lisent encore, sans eux.
+ */
+const VERSION = 2;
+const FIRST_VERSION = 1;
 const PARAM = "p";
 
 /** Au-delà, certaines messageries coupent un lien : mieux vaut envoyer le fichier. */
@@ -56,7 +67,7 @@ export async function encodeShare(shared: Shared): Promise<string> {
     v: VERSION,
     n: shared.name,
     t: shared.text,
-    ...(isEmpty(shared.settings) ? {} : { s: JSON.parse(writeSettings(shared.settings)) }),
+    ...(Object.keys(shared.options).length ? { o: shared.options } : {}),
   };
   return toBase64(await through(new TextEncoder().encode(JSON.stringify(data)), new CompressionStream("deflate-raw")));
 }
@@ -65,8 +76,10 @@ export async function encodeShare(shared: Shared): Promise<string> {
 export async function decodeShare(data: string): Promise<Shared | null> {
   try {
     const raw = JSON.parse(new TextDecoder().decode(await through(fromBase64(data), new DecompressionStream("deflate-raw"))));
-    if (raw?.v !== VERSION || typeof raw.t !== "string") return null;
-    return { name: safeName(raw.n), text: raw.t, settings: raw.s ? parseSettings(JSON.stringify(raw.s)) : {} };
+    if (typeof raw?.t !== "string") return null;
+    if (raw.v === VERSION) return { name: safeName(raw.n), text: raw.t, options: parseOptions(raw.o) };
+    if (raw.v === FIRST_VERSION) return { name: safeName(raw.n), text: raw.t, options: parseOptions(raw.s?.options) };
+    return null;
   } catch {
     return null;
   }

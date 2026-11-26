@@ -2,6 +2,11 @@
 
 Ce qui change pour vous d'une version à l'autre de Prisma, la plus récente en haut.
 
+## 0.8.3 — 27 novembre 2026
+
+- Le lien de partage et son QR code ne portent plus que la partition : le tempo est celui écrit sur la partition, et vos réglages d'écoute (tempo choisi, portées muettes, instruments, volumes) restent chez vous. Le QR code ne change donc plus quand vous les modifiez.
+- Une partition reçue par un lien s'enregistre de nouveau dans la bibliothèque quand vous le demandez, au lieu de seulement s'ouvrir.
+
 ## 0.8.2 — 26 novembre 2026
 
 - La partition imprimée ne montre plus le curseur de lecture, la section en cours d'écoute ni les panneaux et fenêtres restés ouverts.
