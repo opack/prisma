@@ -10,17 +10,28 @@ import { headerHeight, METRICS, PAGE } from "./engrave.ts";
 import type { Page } from "./engrave.ts";
 import type { RenderOptions } from "../options/options.ts";
 import type { Meta } from "../../core/index.ts";
+import type { QrCode } from "../files/qrCode.ts";
 import "./page.css";
 import { FONT, GREY, INK } from "./drawing.ts";
 import OrderLine from "./OrderLine.vue";
 import PageHeader from "./PageHeader.vue";
+import QrCard from "./QrCard.vue";
 import PlayCursor from "./PlayCursor.vue";
 import SeekAreas from "./SeekAreas.vue";
 import ChordGrid from "./system/ChordGrid.vue";
 import SystemView from "./system/SystemView.vue";
 import TextMarks from "./TextMarks.vue";
 
-const { still = false } = defineProps<{ page: Page; total: number; meta: Meta; options: RenderOptions; still?: boolean }>();
+/** qr : le QR code du morceau, dans son cartouche en fin de partition, quand l'option le demande ; site : le domaine écrit à côté. */
+const { still = false } = defineProps<{
+  page: Page;
+  total: number;
+  meta: Meta;
+  options: RenderOptions;
+  qr?: QrCode | null;
+  site?: string;
+  still?: boolean;
+}>();
 </script>
 
 <template>
@@ -53,6 +64,7 @@ const { still = false } = defineProps<{ page: Page; total: number; meta: Meta; o
       :options="options"
       :names="(page.index === 0 && index === 0) || options.namesEverySystem"
     />
+    <QrCard v-if="page.qrCard && qr" :card="page.qrCard" :qr="qr" :site="site ?? ''" />
     <text :x="PAGE.w / 2" :y="PAGE.h - 8" font-size="2.6" text-anchor="middle" :fill="GREY">{{ page.index + 1 }} / {{ total }}</text>
     <template v-if="!still">
       <TextMarks :systems="page.systems" />

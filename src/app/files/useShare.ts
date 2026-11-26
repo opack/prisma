@@ -24,9 +24,9 @@ type Deps = {
   openShared: (shared: Shared, into?: StoredFolder) => Promise<boolean>;
 };
 
-type Prepared = { name: string; url: string };
-
 /** Le lien qui partage le morceau, et le nom sous lequel il part. */
+export type Prepared = { name: string; url: string };
+
 async function link(source: string, fileName: string, piece: PieceSettings): Promise<Prepared> {
   let title: string | undefined;
   try {
@@ -117,5 +117,5 @@ export function useShare({ source, fileName, piece, notify, openShared }: Deps) 
     if (await openShared(received.value, into?.root)) close();
   }
 
-  return { share, received, library, accept, close, importing, importLink };
+  return { share, prepared: ready, received, library, accept, close, importing, importLink };
 }

@@ -17,6 +17,7 @@ export const PIECE_KEYS = [
   "chordNames",
   "scoreNames",
   "chordChart",
+  "qrCode",
   "namesEverySystem",
   "sections",
   "simile",
