@@ -64,7 +64,7 @@ const { still = false } = defineProps<{
       :options="options"
       :names="(page.index === 0 && index === 0) || options.namesEverySystem"
     />
-    <QrCard v-if="page.qrCard && qr" :x="page.qrCard.x" :y="page.qrCard.y" :qr="qr" :site="site ?? ''" />
+    <QrCard v-if="page.qrCard && qr" :card="page.qrCard" :qr="qr" :site="site ?? ''" />
     <text :x="PAGE.w / 2" :y="PAGE.h - 8" font-size="2.6" text-anchor="middle" :fill="GREY">{{ page.index + 1 }} / {{ total }}</text>
     <template v-if="!still">
       <TextMarks :systems="page.systems" />

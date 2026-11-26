@@ -113,7 +113,9 @@ const conversion = useConversion(source, doc.rewrite, notify);
 const { fullScreen, toggle: toggleFullScreen } = useFullScreen(notify);
 
 const score = computed(() => doc.engraved.value.score);
-const pages = computed(() => (score.value ? engravePages(score.value, engraveOptions(options.value)) : []));
+// le QR code en fin de partition : sa place suit sa densité (son nombre de modules), pas son contenu
+const qrModules = computed(() => (options.value.qrCode ? (qrSharing.code.value?.size ?? undefined) : undefined));
+const pages = computed(() => (score.value ? engravePages(score.value, engraveOptions(options.value), qrModules.value) : []));
 const errors = useErrors(
   computed(() => doc.engraved.value.problem),
   editor,

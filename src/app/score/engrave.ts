@@ -236,15 +236,17 @@ export const noteExtra = (sys: System, anchor: number, cellW: number, reminders 
 export const headerHeight = (meta: Score["meta"]) => METRICS.headerH + (meta.subtitle ? METRICS.subtitleH : 0);
 
 /**
- * Le cartouche du QR code, en fin de partition, centré : le code, assez grand pour se lire
- * imprimé même dense (un long morceau), et à côté, ce qu'il fait et le site. Son côté, sa marge
- * intérieure, la colonne du texte, et l'espace qui le sépare du dernier système.
+ * Le cartouche du QR code, en fin de partition, centré : le code, et à côté, ce qu'il fait et le
+ * site. Sa marge intérieure, la colonne du texte, l'espace entre le code et le texte ; le côté d'un
+ * module du code (en dessous de 0,46 mm, un téléphone le lit mal sur papier) et le côté minimal du code.
  */
-export const QR_CARD = { qr: 45, padding: 4, text: 40, gap: 5 };
-export const qrCardSize = {
-  w: QR_CARD.padding * 2 + QR_CARD.qr + QR_CARD.gap + QR_CARD.text,
-  h: QR_CARD.padding * 2 + QR_CARD.qr,
-};
+export const QR_CARD = { padding: 4, text: 40, gap: 5, module: 0.46, minSide: 30 };
+
+/** Le côté du QR code et la taille de son cartouche, pour un code de tant de modules de côté : plus il est dense, plus il est grand. */
+export function qrCardSize(modules: number) {
+  const side = Math.max(QR_CARD.minSide, modules * QR_CARD.module);
+  return { side, w: QR_CARD.padding * 2 + side + QR_CARD.gap + QR_CARD.text, h: QR_CARD.padding * 2 + side };
+}
 
 /** Largeur des rangs de petites notes d'une portée, dans une case. */
 export const graceSlotW = (digits: number) => digits * METRICS.graceDigit + METRICS.graceGap;
@@ -307,14 +309,14 @@ export type StaffPlace = {
 /** order : ordre de jeu des sections, gravé en tête de chaque page (vide s'il n'y a pas de section). */
 /** Une grille du récapitulatif en tête de partition : le nom de l'accord, sa grille, et sa place. */
 export type ChartItem = { name: string; shape: Shape; x: number; y: number };
-/** Une page : ses systèmes, l'en-tête (la première), l'ordre de jeu, les grilles ; sur la dernière, le coin haut gauche du cartouche du QR code. */
+/** Une page : ses systèmes, l'en-tête (la première), l'ordre de jeu, les grilles ; sur la dernière, le cartouche du QR code (son coin haut gauche, sa taille). */
 export type Page = {
   index: number;
   systems: PlacedSystem[];
   header: boolean;
   order: string[];
   chart?: ChartItem[];
-  qrCard?: { x: number; y: number };
+  qrCard?: { x: number; y: number } & ReturnType<typeof qrCardSize>;
 };
 
 // l'arpège se dessine devant l'accord, pas dans la bande des nuances
@@ -514,7 +516,7 @@ export function engrave(
     reminders = true,
     inlineSections = false,
     detail = "written" as RulerDetail,
-    qr = false,
+    qrModules = undefined as number | undefined,
   } = {},
 ): Page[] {
   const cellW = compact ? METRICS.compactCell : METRICS.cell;
@@ -578,13 +580,14 @@ export function engrave(
     y += height + (compact ? METRICS.compactSystemGap : METRICS.systemGap);
   });
   // le cartouche du QR code, après le dernier système, centré : sur une nouvelle page s'il n'y tient plus, jamais rétréci
-  if (qr) {
-    if (y + qrCardSize.h > bottom && page.systems.length) {
+  if (qrModules) {
+    const card = qrCardSize(qrModules);
+    if (y + card.h > bottom && page.systems.length) {
       pages.push(page);
       page = { index: pages.length, systems: [], header: false, order };
       y = PAGE.marginTop + orderH;
     }
-    page.qrCard = { x: (PAGE.w - qrCardSize.w) / 2, y };
+    page.qrCard = { x: (PAGE.w - card.w) / 2, y, ...card };
   }
   pages.push(page);
   return pages;

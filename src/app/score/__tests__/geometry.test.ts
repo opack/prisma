@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TICKS_PER_BEAT, parsePrisma } from "../../../core/index.ts";
-import { METRICS, PAGE, engrave, qrCardSize } from "../engrave.ts";
+import { METRICS, PAGE, QR_CARD, engrave, qrCardSize } from "../engrave.ts";
 import { anchorAt, arpeggioPath, barsIn, columnAt, markWidth, nearestColumn, spacedWidths, systemBand, trillPath } from "../geometry.ts";
 
 /** Deux mesures de deux temps, le premier temps coupé en deux cases : cinq cases en tout. */
@@ -72,26 +72,34 @@ describe("les largeurs", () => {
 });
 
 describe("le cartouche du QR code, en fin de partition", () => {
-  const pages = (qr: boolean, text = piece) => engrave(parsePrisma(text), { qr });
+  /** Le QR code de la Gymnopédie : 133 modules de côté. */
+  const DENSE = 133;
+  const pages = (qrModules?: number, text = piece) => engrave(parsePrisma(text), { qrModules });
 
   it("suit le dernier système, centré, sans rien déplacer", () => {
-    const [page] = pages(true);
-    const last = page.systems.at(-1)!;
-    expect(page.qrCard!.y).toBeGreaterThan(last.y);
-    expect(page.qrCard!.x + qrCardSize.w / 2).toBe(PAGE.w / 2);
-    expect(page.systems.map((system) => system.y)).toEqual(pages(false)[0].systems.map((system) => system.y));
-    expect(pages(false)[0].qrCard).toBeUndefined();
+    const [page] = pages(DENSE);
+    expect(page.qrCard!.y).toBeGreaterThan(page.systems.at(-1)!.y);
+    expect(page.qrCard!.x + page.qrCard!.w / 2).toBe(PAGE.w / 2);
+    expect(page.systems.map((system) => system.y)).toEqual(pages()[0].systems.map((system) => system.y));
+    expect(pages()[0].qrCard).toBeUndefined();
+  });
+
+  it("grandit avec la densité du code, pour se lire sur papier ; un code peu dense garde une taille minimale", () => {
+    // la Gymnopédie, essayée sur papier : lue à partir de 6 cm
+    expect(qrCardSize(DENSE).side).toBeGreaterThanOrEqual(60);
+    expect(qrCardSize(DENSE).side).toBeGreaterThan(qrCardSize(101).side);
+    expect(qrCardSize(25).side).toBe(QR_CARD.minSide);
   });
 
   it("passe sur une nouvelle page quand il ne tient plus sur la dernière, jamais rétréci", () => {
     // le morceau répété autant qu'il tient sur une seule page : la page pleine, le cartouche (plus haut qu'un système) n'y tient plus
     const repeated = (times: number) => Array(times).fill(piece).join("\n");
     let times = 1;
-    while (pages(false, repeated(times + 1)).length === 1) times++;
-    const full = repeated(times);
-    const withCard = pages(true, full);
+    while (pages(undefined, repeated(times + 1)).length === 1) times++;
+    const withCard = pages(DENSE, repeated(times));
     expect(withCard).toHaveLength(2);
     expect(withCard[1].systems).toHaveLength(0);
-    expect(withCard[1].qrCard!.y + qrCardSize.h).toBeLessThanOrEqual(PAGE.h - PAGE.marginBottom);
+    expect(withCard[1].qrCard!.side).toBe(qrCardSize(DENSE).side);
+    expect(withCard[1].qrCard!.y + withCard[1].qrCard!.h).toBeLessThanOrEqual(PAGE.h - PAGE.marginBottom);
   });
 });

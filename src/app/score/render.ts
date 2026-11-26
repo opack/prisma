@@ -23,7 +23,6 @@ export type EngraveOptions = Pick<
   | "simile"
   | "sections"
   | "rulerDetail"
-  | "qrCode"
 >;
 export const engraveOptions = (renderOptions: RenderOptions): EngraveOptions => ({
   density: renderOptions.density,
@@ -36,10 +35,10 @@ export const engraveOptions = (renderOptions: RenderOptions): EngraveOptions => 
   simile: renderOptions.simile,
   sections: renderOptions.sections,
   rulerDetail: renderOptions.rulerDetail,
-  qrCode: renderOptions.qrCode,
 });
 
-export function engravePages(score: Score, options: EngraveOptions): Page[] {
+/** qrModules : le côté, en modules, du QR code à mettre en fin de partition (l'option « QR code »), s'il y en a un. */
+export function engravePages(score: Score, options: EngraveOptions, qrModules?: number): Page[] {
   // doigtés masqués : retirés avant la gravure, pour que les cases reprennent leur largeur
   const plain = options.fingerings ? score : { ...score, notes: score.notes.map(({ finger: _, ...note }) => note) };
   // « Ped. simile » : les pédales qu'il demande, gravées comme les autres ou atténuées, ou la mention seule
@@ -52,7 +51,7 @@ export function engravePages(score: Score, options: EngraveOptions): Page[] {
     reminders: options.holdReminders,
     inlineSections: options.sections === "inline",
     detail: options.rulerDetail,
-    qr: options.qrCode,
+    qrModules,
   });
 }
 
