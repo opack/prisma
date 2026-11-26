@@ -232,15 +232,19 @@ export const noteExtra = (sys: System, anchor: number, cellW: number, reminders 
     ),
   );
 
-/**
- * Le QR code du morceau, en haut à droite de la première page : son côté, assez grand pour se lire
- * imprimé même dense (un long morceau), et son haut, dans la marge.
- */
-export const QR = { size: 30, top: PAGE.marginTop - 4, gap: 3 };
+/** Hauteur de l'en-tête de la première page : titre, sous-titre éventuel, compositeur. */
+export const headerHeight = (meta: Score["meta"]) => METRICS.headerH + (meta.subtitle ? METRICS.subtitleH : 0);
 
-/** Hauteur de l'en-tête de la première page : titre, sous-titre éventuel, compositeur ; et le QR code, qui l'allonge. */
-export const headerHeight = (meta: Score["meta"], qr = false) =>
-  Math.max(METRICS.headerH + (meta.subtitle ? METRICS.subtitleH : 0), qr ? QR.top + QR.size + QR.gap - PAGE.marginTop : 0);
+/**
+ * Le cartouche du QR code, en fin de partition, calé à droite : le code, assez grand pour se lire
+ * imprimé même dense (un long morceau), et à côté, ce qu'il fait et le site. Son côté, sa marge
+ * intérieure, la colonne du texte, et l'espace qui le sépare du dernier système.
+ */
+export const QR_CARD = { qr: 45, padding: 3, text: 50, gap: 4 };
+export const qrCardSize = {
+  w: QR_CARD.padding * 2 + QR_CARD.qr + QR_CARD.gap + QR_CARD.text,
+  h: QR_CARD.padding * 2 + QR_CARD.qr,
+};
 
 /** Largeur des rangs de petites notes d'une portée, dans une case. */
 export const graceSlotW = (digits: number) => digits * METRICS.graceDigit + METRICS.graceGap;
@@ -303,7 +307,15 @@ export type StaffPlace = {
 /** order : ordre de jeu des sections, gravé en tête de chaque page (vide s'il n'y a pas de section). */
 /** Une grille du récapitulatif en tête de partition : le nom de l'accord, sa grille, et sa place. */
 export type ChartItem = { name: string; shape: Shape; x: number; y: number };
-export type Page = { index: number; systems: PlacedSystem[]; header: boolean; order: string[]; chart?: ChartItem[] };
+/** Une page : ses systèmes, l'en-tête (la première), l'ordre de jeu, les grilles ; sur la dernière, le coin haut gauche du cartouche du QR code. */
+export type Page = {
+  index: number;
+  systems: PlacedSystem[];
+  header: boolean;
+  order: string[];
+  chart?: ChartItem[];
+  qrCard?: { x: number; y: number };
+};
 
 // l'arpège se dessine devant l'accord, pas dans la bande des nuances
 // l'arpège et les articulations se dessinent sur la note, pas dans la bande des nuances
@@ -540,7 +552,7 @@ export function engrave(
   const order = score.order;
   const orderH = order.length ? METRICS.orderH : 0;
   let page: Page = { index: 0, systems: [], header: true, order };
-  let y = PAGE.marginTop + headerHeight(score.meta, qr) + orderH;
+  let y = PAGE.marginTop + headerHeight(score.meta) + orderH;
   if (chart) {
     const chordChartPlaced = chordChart(score, chordNames, y);
     if (chordChartPlaced.items.length) {
@@ -565,6 +577,15 @@ export function engrave(
     page.systems.push(placed);
     y += height + (compact ? METRICS.compactSystemGap : METRICS.systemGap);
   });
+  // le cartouche du QR code, après le dernier système : sur une nouvelle page s'il n'y tient plus, jamais rétréci
+  if (qr) {
+    if (y + qrCardSize.h > bottom && page.systems.length) {
+      pages.push(page);
+      page = { index: pages.length, systems: [], header: false, order };
+      y = PAGE.marginTop + orderH;
+    }
+    page.qrCard = { x: PAGE.w - PAGE.marginX - qrCardSize.w, y };
+  }
   pages.push(page);
   return pages;
 }

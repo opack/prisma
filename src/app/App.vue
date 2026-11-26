@@ -360,6 +360,7 @@ function onFileChosen(event: Event) {
                 :meta="score!.meta"
                 :options="options"
                 :qr="qrSharing.code.value"
+                :site="qrSharing.site"
                 still
               />
             </div>
@@ -373,6 +374,7 @@ function onFileChosen(event: Event) {
               :meta="score!.meta"
               :options="options"
               :qr="qrSharing.code.value"
+              :site="qrSharing.site"
             />
           </template>
         </section>

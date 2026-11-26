@@ -214,7 +214,7 @@ const defineAll = () => settings.setPieceOptions(Object.fromEntries(PIECE_KEYS.m
           text="Afficher le QR code du morceau"
           :hint="
             values.qrCode
-              ? 'en haut à droite de la première page, imprimé avec elle : scanné, il ouvre le morceau dans Prisma'
+              ? 'dans un cartouche en fin de partition, imprimé avec elle : scanné, il ouvre le morceau dans Prisma'
               : 'pas de QR code sur la page ; Fichier › Partager par un QR code… le montre à l\'écran'
           "
           piece-key="qrCode"

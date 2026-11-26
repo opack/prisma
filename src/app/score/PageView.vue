@@ -15,19 +15,21 @@ import "./page.css";
 import { FONT, GREY, INK } from "./drawing.ts";
 import OrderLine from "./OrderLine.vue";
 import PageHeader from "./PageHeader.vue";
+import QrCard from "./QrCard.vue";
 import PlayCursor from "./PlayCursor.vue";
 import SeekAreas from "./SeekAreas.vue";
 import ChordGrid from "./system/ChordGrid.vue";
 import SystemView from "./system/SystemView.vue";
 import TextMarks from "./TextMarks.vue";
 
-/** qr : le QR code du morceau, dessiné en tête quand l'option le demande. */
+/** qr : le QR code du morceau, dans son cartouche en fin de partition, quand l'option le demande ; site : le domaine écrit à côté. */
 const { still = false } = defineProps<{
   page: Page;
   total: number;
   meta: Meta;
   options: RenderOptions;
   qr?: QrCode | null;
+  site?: string;
   still?: boolean;
 }>();
 </script>
@@ -42,7 +44,7 @@ const { still = false } = defineProps<{
     style="font-variant-numeric: tabular-nums"
   >
     <rect :width="PAGE.w" :height="PAGE.h" fill="#fff" />
-    <PageHeader v-if="page.header" :meta="meta" :names="options.scoreNames" :qr="options.qrCode ? qr : null" />
+    <PageHeader v-if="page.header" :meta="meta" :names="options.scoreNames" />
     <!-- le récapitulatif des grilles, sous le titre : chaque accord du morceau, une fois -->
     <g v-for="(item, index) in page.chart" :key="'cc' + index">
       <text :x="item.x" :y="item.y + 3.4" font-size="3.4" font-weight="700" :fill="INK">{{ item.name }}</text>
@@ -51,7 +53,7 @@ const { still = false } = defineProps<{
     <OrderLine
       v-if="page.order.length > 0"
       :order="page.order"
-      :y="page.header ? PAGE.marginTop + headerHeight(meta, options.qrCode) - 1 : PAGE.marginTop - 2"
+      :y="page.header ? PAGE.marginTop + headerHeight(meta) - 1 : PAGE.marginTop - 2"
       :live="!still"
     />
     <!-- les noms des parties : au premier système du morceau, comme sur une partition, ou à chaque système (option) -->
@@ -62,6 +64,7 @@ const { still = false } = defineProps<{
       :options="options"
       :names="(page.index === 0 && index === 0) || options.namesEverySystem"
     />
+    <QrCard v-if="page.qrCard && qr" :x="page.qrCard.x" :y="page.qrCard.y" :qr="qr" :site="site ?? ''" />
     <text :x="PAGE.w / 2" :y="PAGE.h - 8" font-size="2.6" text-anchor="middle" :fill="GREY">{{ page.index + 1 }} / {{ total }}</text>
     <template v-if="!still">
       <TextMarks :systems="page.systems" />

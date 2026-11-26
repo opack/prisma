@@ -1,5 +1,5 @@
 /**
- * Le QR code du morceau : sur la première page (l'option « QR code »), et dans la fenêtre Fichier ›
+ * Le QR code du morceau : en fin de partition (l'option « QR code »), et dans la fenêtre Fichier ›
  * Partager par un QR code…, d'où l'on télécharge son image. Il porte le lien de partage, tenu prêt
  * par useShare : il suit le morceau. Le module qui le dessine ne se charge qu'à la première demande.
  */
@@ -11,7 +11,7 @@ import type { Prepared } from "./useShare.ts";
 
 type Deps = {
   prepared: Ref<Prepared | null>;
-  /** L'option « QR code » : le QR code sur la première page. */
+  /** L'option « QR code » : le QR code en fin de partition. */
   onPage: Ref<boolean>;
   notify: (message: string) => void;
 };
@@ -58,5 +58,8 @@ export function useQrCode({ prepared, onPage, notify }: Deps) {
     }
   }
 
-  return { code, showing, downloadImage };
+  /** Le site, écrit à côté du code imprimé : son seul domaine, pas tout le lien. */
+  const site = location.host;
+
+  return { code, showing, site, downloadImage };
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TICKS_PER_BEAT, parsePrisma } from "../../../core/index.ts";
-import { METRICS, QR, engrave } from "../engrave.ts";
+import { METRICS, PAGE, engrave, qrCardSize } from "../engrave.ts";
 import { anchorAt, arpeggioPath, barsIn, columnAt, markWidth, nearestColumn, spacedWidths, systemBand, trillPath } from "../geometry.ts";
 
 /** Deux mesures de deux temps, le premier temps coupé en deux cases : cinq cases en tout. */
@@ -71,10 +71,27 @@ describe("les largeurs", () => {
   });
 });
 
-describe("le QR code du morceau, en tête de la première page", () => {
-  it("allonge l'en-tête : le premier système descend, assez pour passer sous le code", () => {
-    const top = (qr: boolean) => engrave(parsePrisma(piece), { qr })[0].systems[0].y;
-    expect(top(true)).toBeGreaterThan(top(false));
-    expect(top(true)).toBeGreaterThanOrEqual(QR.top + QR.size);
+describe("le cartouche du QR code, en fin de partition", () => {
+  const pages = (qr: boolean, text = piece) => engrave(parsePrisma(text), { qr });
+
+  it("suit le dernier système, calé à droite, sans rien déplacer", () => {
+    const [page] = pages(true);
+    const last = page.systems.at(-1)!;
+    expect(page.qrCard!.y).toBeGreaterThan(last.y);
+    expect(page.qrCard!.x + qrCardSize.w).toBe(PAGE.w - PAGE.marginX);
+    expect(page.systems.map((system) => system.y)).toEqual(pages(false)[0].systems.map((system) => system.y));
+    expect(pages(false)[0].qrCard).toBeUndefined();
+  });
+
+  it("passe sur une nouvelle page quand il ne tient plus sur la dernière, jamais rétréci", () => {
+    // le morceau répété autant qu'il tient sur une seule page : la page pleine, le cartouche (plus haut qu'un système) n'y tient plus
+    const repeated = (times: number) => Array(times).fill(piece).join("\n");
+    let times = 1;
+    while (pages(false, repeated(times + 1)).length === 1) times++;
+    const full = repeated(times);
+    const withCard = pages(true, full);
+    expect(withCard).toHaveLength(2);
+    expect(withCard[1].systems).toHaveLength(0);
+    expect(withCard[1].qrCard!.y + qrCardSize.h).toBeLessThanOrEqual(PAGE.h - PAGE.marginBottom);
   });
 });

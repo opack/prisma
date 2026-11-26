@@ -56,7 +56,7 @@ export type RenderOptions = {
   scoreNames: ScoreNames;
   /** Les grilles de guitare des accords du morceau, récapitulées en tête de partition. */
   chordChart: boolean;
-  /** Le QR code du morceau en haut à droite de la première page : scanné, il ouvre le morceau dans Prisma. */
+  /** Le QR code du morceau, dans un cartouche en fin de partition : scanné, il ouvre le morceau dans Prisma. */
   qrCode: boolean;
   /** Sections : chacune commence une nouvelle ligne, ou suit la précédente sur la même ligne, séparée par un blanc. */
   sections: SectionLayout;

@@ -71,15 +71,17 @@ test.describe("le morceau", () => {
     expect((await downloading).suggestedFilename()).toBe("Au clair de la lune (QR).png");
   });
 
-  test("l'option QR code le met en tête de la première page, et seulement d'elle", async ({ page }) => {
+  test("l'option QR code le met dans un cartouche en fin de partition, avec le site", async ({ page }) => {
     await openApp(page, { source: GYMNOPEDIE, editing: false });
     const qrCodes = page.getByRole("img", { name: /^QR code du morceau/ });
     await expect(qrCodes).toHaveCount(0);
     await page.getByRole("button", { name: "Options", exact: true }).click();
     await page.getByRole("checkbox", { name: "Afficher le QR code du morceau" }).check();
     await settle(page);
-    await expect(firstPage(page).getByRole("img", { name: /^QR code du morceau/ })).toBeVisible();
     await expect(qrCodes).toHaveCount(1);
+    const lastPage = page.locator(".page").last();
+    await expect(lastPage.getByRole("img", { name: /^QR code du morceau/ })).toBeVisible();
+    await expect(lastPage).toContainText(new URL(page.url()).host);
   });
 
   test("un morceau reçu par un lien : son titre ; ouvert, il remplace le morceau en cours", async ({ page }) => {

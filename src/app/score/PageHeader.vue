@@ -3,26 +3,21 @@
  * L'en-tête de la première page : le titre, le sous-titre, le compositeur à droite, et à gauche, l'un
  * sous l'autre, le tempo et la tonalité (chacun son signe, puis sa valeur ; le dernier sur la ligne
  * du compositeur). Les signes sont dessinés en millimètres sur la ligne du texte : ils ont la hauteur
- * d'un chiffre, centrés comme lui. Le QR code du morceau (une option), en haut à droite : le
- * compositeur passe à sa gauche.
+ * d'un chiffre, centrés comme lui.
  */
 import { computed } from "vue";
-import { METRICS, PAGE, QR } from "./engrave.ts";
+import { METRICS, PAGE } from "./engrave.ts";
 import type { ScoreNames } from "../options/options.ts";
 import { engravedNames } from "../options/options.ts";
 import { keyName, parseKey, prismaKey } from "../../core/key.ts";
 import type { Meta } from "../../core/index.ts";
 import { INK } from "./drawing.ts";
-import type { QrCode } from "../files/qrCode.ts";
 
-const props = defineProps<{ meta: Meta; names: ScoreNames; qr?: QrCode | null }>();
+const props = defineProps<{ meta: Meta; names: ScoreNames }>();
 
 const LINE = 4.6;
 /** La ligne du compositeur, sous le sous-titre s'il y en a un. */
 const composerY = computed(() => PAGE.marginTop + 12 + (props.meta.subtitle ? METRICS.subtitleH : 0));
-
-/** Le bord droit du compositeur : la marge, ou la gauche du QR code. */
-const composerX = computed(() => PAGE.w - PAGE.marginX - (props.qr ? QR.size + QR.gap : 0));
 
 const marks = computed(() => {
   const { meta } = props;
@@ -44,11 +39,9 @@ const marks = computed(() => {
     <text v-if="meta.subtitle" :x="PAGE.w / 2" :y="PAGE.marginTop + 12" font-size="3.8" text-anchor="middle" :fill="INK">{{
       meta.subtitle
     }}</text>
-    <text v-if="meta.composer" :x="composerX" :y="composerY" font-size="3.4" text-anchor="end" :fill="INK">{{ meta.composer }}</text>
-    <g v-if="qr" role="img" :transform="`translate(${PAGE.w - PAGE.marginX - QR.size} ${QR.top}) scale(${QR.size / qr.size})`">
-      <title>QR code du morceau : scanné, il l'ouvre dans Prisma</title>
-      <path :d="qr.path" fill="#000" shape-rendering="crispEdges" />
-    </g>
+    <text v-if="meta.composer" :x="PAGE.w - PAGE.marginX" :y="composerY" font-size="3.4" text-anchor="end" :fill="INK">{{
+      meta.composer
+    }}</text>
     <g v-for="mark in marks" :key="mark.title">
       <title>{{ mark.title }}</title>
       <g :transform="`translate(${PAGE.marginX} ${mark.y})`">
