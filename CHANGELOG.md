@@ -2,6 +2,10 @@
 
 Ce qui change pour vous d'une version à l'autre de Prisma, la plus récente en haut.
 
+## 0.8.1 — 26 novembre 2026
+
+- Le menu ouvert pour lancer l'impression n'apparaît plus sur la feuille imprimée.
+
 ## 0.8.0 — 26 novembre 2026
 
 - Fichier › Partager par un QR code… montre le QR code de votre morceau : scanné avec un téléphone, il ouvre le morceau dans Prisma. Vous pouvez aussi en télécharger l'image.

@@ -72,4 +72,22 @@ test.describe("la barre des menus", () => {
     await page.getByRole("button", { name: "Menu", exact: true }).click();
     await expect(page.locator("p", { hasText: "morceau.prisma" })).toBeVisible();
   });
+
+  // « Imprimer… » est dans un menu, encore ouvert quand le navigateur fige la page à imprimer
+  test("à l'impression, le menu ouvert ne paraît pas sur la feuille", async ({ page }) => {
+    await openApp(page, { source: CLAIR_SECTIONS });
+    await page.getByRole("button", { name: "Partition", exact: true }).click();
+    await expect(page.getByRole("menuitem", { name: /Imprimer/ })).toBeVisible();
+    await page.emulateMedia({ media: "print" });
+    await expect(page.getByRole("menu")).toBeHidden();
+  });
+
+  test("à l'impression, le menu unique d'une tablette ne paraît pas non plus", async ({ page }) => {
+    await openApp(page, { source: CLAIR_SECTIONS, editing: false, size: TABLET });
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
+    await page.getByRole("menuitem", { name: /Partition/ }).click();
+    await expect(page.getByRole("menuitem", { name: /Imprimer/ })).toBeVisible();
+    await page.emulateMedia({ media: "print" });
+    await expect(page.getByRole("menu")).toBeHidden();
+  });
 });
