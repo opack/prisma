@@ -38,6 +38,7 @@ const title = computed(() => meta.value.title || shared.name.replace(/\.prisma$/
     </p>
     <template v-if="library" #actions>
       <Button
+        type="button"
         variant="outline"
         :title="`Enregistrer ${shared.name} dans la bibliothèque (${library}), puis l'ouvrir`"
         @click="emit('open', true)"

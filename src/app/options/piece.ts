@@ -33,6 +33,9 @@ export const PIECE_KEYS = [
 export type PieceKey = (typeof PIECE_KEYS)[number];
 export const isPieceKey = (key: string): key is PieceKey => (PIECE_KEYS as readonly string[]).includes(key);
 
+/** Les options du rendu qu'un morceau définit pour lui-même. */
+export type PieceOptions = Partial<Pick<RenderOptions, PieceKey>>;
+
 export type PieceSettings = {
   /** Le tempo choisi pour l'écoute, à la place de celui de la partition. */
   tempo?: number;
@@ -43,7 +46,7 @@ export type PieceSettings = {
   /** Le volume de chaque partie à l'écoute, dans l'ordre : en décibels, 0 tel quel. */
   volumes?: number[];
   /** Les options du rendu définies pour ce morceau : elles priment sur les générales. */
-  options?: Partial<Pick<RenderOptions, PieceKey>>;
+  options?: PieceOptions;
 };
 
 const FORMAT = 1;
@@ -88,15 +91,23 @@ export function parseSettings(text: string): PieceSettings {
     );
     if (volumes.some((volume: number) => volume !== 0)) out.volumes = volumes;
   }
-  if (raw.options && typeof raw.options === "object") {
-    // les valeurs se valident comme celles des options générales : une valeur refusée y reprend la valeur par défaut
-    const checked = loadOptionsFrom(raw.options);
-    const options: PieceSettings["options"] = {};
-    for (const key of PIECE_KEYS)
-      if (key in raw.options && checked[key] === raw.options[key]) (options as Record<string, unknown>)[key] = checked[key];
-    if (Object.keys(options).length) out.options = options;
-  }
+  const options = parseOptions(raw.options);
+  if (Object.keys(options).length) out.options = options;
   return out;
+}
+
+/**
+ * Lit les options du rendu d'un morceau : une option inconnue, ou une valeur hors de ses choix, est
+ * laissée de côté.
+ */
+export function parseOptions(raw: unknown): PieceOptions {
+  if (!raw || typeof raw !== "object") return {};
+  // les valeurs se valident comme celles des options générales : une valeur refusée y reprend la valeur par défaut
+  const checked = loadOptionsFrom(raw);
+  const options: PieceOptions = {};
+  for (const key of PIECE_KEYS)
+    if (key in raw && checked[key] === (raw as Record<string, unknown>)[key]) (options as Record<string, unknown>)[key] = checked[key];
+  return options;
 }
 
 export function writeSettings(settings: PieceSettings): string {

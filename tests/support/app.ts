@@ -64,23 +64,23 @@ export async function chooseMenu(page: Page, title: string, action: string) {
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** Le lien de partage d'un morceau, écrit par l'application elle-même (le serveur de développement sert ses modules). */
-export async function shareLinkFor(page: Page, text: string, settings: Record<string, unknown> = {}) {
+export async function shareLinkFor(page: Page, text: string, options: Record<string, unknown> = {}) {
   return page.evaluate(
-    async ([pieceText, pieceSettings]) => {
+    async ([pieceText, pieceOptions]) => {
       const module = "/src/app/files/share.ts";
       const { encodeShare, shareLink } = await import(/* @vite-ignore */ module);
       return shareLink(
-        await encodeShare({ name: "Au clair de la lune.prisma", text: pieceText, settings: pieceSettings }),
+        await encodeShare({ name: "Au clair de la lune.prisma", text: pieceText, options: pieceOptions }),
         location.href,
       ) as string;
     },
-    [text, settings] as const,
+    [text, options] as const,
   );
 }
 
 /** Ouvre un lien de partage dans la page, comme un lien reçu. */
-export async function receiveShared(page: Page, text: string, settings: Record<string, unknown> = {}) {
-  const link = await shareLinkFor(page, text, settings);
+export async function receiveShared(page: Page, text: string, options: Record<string, unknown> = {}) {
+  const link = await shareLinkFor(page, text, options);
   await page.evaluate((hash) => (location.hash = hash), new URL(link).hash);
 }
 

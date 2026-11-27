@@ -248,7 +248,7 @@ test("app partition reçue", async ({ page }) => {
   await page.evaluate(async (pieceText) => {
     const module = "/src/app/files/share.ts";
     const { encodeShare } = await import(/* @vite-ignore */ module);
-    location.hash = `p=${await encodeShare({ name: "Au clair de la lune.prisma", text: pieceText, settings: {} })}`;
+    location.hash = `p=${await encodeShare({ name: "Au clair de la lune.prisma", text: pieceText, options: {} })}`;
   }, text);
   await expect(page.getByRole("dialog")).toContainText("Partition reçue");
   await settle(page);
@@ -266,7 +266,7 @@ test("app importer un lien", async ({ page }) => {
   const link = await page.evaluate(async (text) => {
     const module = "/src/app/files/share.ts";
     const { encodeShare, shareLink } = await import(/* @vite-ignore */ module);
-    return shareLink(await encodeShare({ name: "Au clair de la lune.prisma", text, settings: {} }), location.href);
+    return shareLink(await encodeShare({ name: "Au clair de la lune.prisma", text, options: {} }), location.href);
   }, CLAIR_SECTIONS);
   await chooseMenu(page, "Fichier", "Importer un lien…");
   // le champ a le focus : on colle aussitôt
@@ -293,7 +293,7 @@ test("app partition reçue, avec une bibliothèque", async ({ page }) => {
   await page.evaluate(async (text) => {
     const module = "/src/app/files/share.ts";
     const { encodeShare } = await import(/* @vite-ignore */ module);
-    location.hash = `p=${await encodeShare({ name: "Au clair de la lune.prisma", text, settings: { tempo: 72 } })}`;
+    location.hash = `p=${await encodeShare({ name: "Au clair de la lune.prisma", text, options: { fingerings: false } })}`;
   }, CLAIR_SECTIONS);
   await expect(page.getByRole("dialog")).toContainText("Dossier « recus »");
   await settle(page);
@@ -306,8 +306,7 @@ test("app partition reçue, avec une bibliothèque", async ({ page }) => {
     return { piece: await read("Au clair de la lune.prisma"), settings: JSON.parse(await read("Au clair de la lune.prisma.json")) };
   });
   expect(saved.piece).toContain("title: Au clair de la lune");
-  expect(saved.settings.tempo).toBe(72);
-  await expect(page.getByRole("spinbutton", { name: "Tempo de l'écoute" })).toHaveValue("72");
+  expect(saved.settings.options).toEqual({ fingerings: false });
   await expect(page.locator("[data-library]")).toHaveCount(0);
 });
 

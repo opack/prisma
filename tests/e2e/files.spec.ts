@@ -84,6 +84,21 @@ test.describe("le morceau", () => {
     await expect(lastPage).toContainText(new URL(page.url()).host);
   });
 
+  test("le lien partagé ne porte que la partition : le tempo choisi pour l'écoute n'y part pas", async ({ page, context }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await openApp(page, { source: CLAIR_SECTIONS });
+    const copied = async () => {
+      await chooseMenu(page, "Fichier", "Partager par un lien");
+      await expect(page.getByText("Lien de partage copié")).toBeVisible();
+      return page.evaluate(() => navigator.clipboard.readText());
+    };
+    const before = await copied();
+    await page.getByRole("button", { name: "Plus rapide", exact: true }).click();
+    await expect(page.getByRole("spinbutton", { name: "Tempo de l'écoute" })).toHaveValue("101");
+    await page.waitForTimeout(400); // le lien se prépare 300 ms après un changement
+    expect(await copied()).toBe(before);
+  });
+
   test("un morceau reçu par un lien : son titre ; ouvert, il remplace le morceau en cours", async ({ page }) => {
     await openApp(page, { source: TECHNIQUES, editing: false });
     await receiveShared(page, CLAIR_SECTIONS);
@@ -113,14 +128,13 @@ test.describe("le morceau", () => {
     await chooseMenu(page, "Fichier", "Bibliothèque");
     await page.getByRole("button", { name: "Choisir un dossier" }).click();
     await settle(page);
-    await receiveShared(page, CLAIR_SECTIONS, { tempo: 72 });
+    await receiveShared(page, CLAIR_SECTIONS, { fingerings: false });
     const dialog = page.getByRole("dialog", { name: "Partition reçue" });
     await expect(dialog).toContainText("Dossier « recus »");
     await dialog.getByRole("button", { name: "Enregistrer dans la bibliothèque" }).click();
     await settle(page);
     expect(await readProvided(page, "recus", "Au clair de la lune.prisma")).toContain("title: Au clair de la lune");
-    expect(JSON.parse(await readProvided(page, "recus", "Au clair de la lune.prisma.json")).tempo).toBe(72);
-    await expect(page.getByRole("spinbutton", { name: "Tempo de l'écoute" })).toHaveValue("72");
+    expect(JSON.parse(await readProvided(page, "recus", "Au clair de la lune.prisma.json")).options).toEqual({ fingerings: false });
   });
 
   test("un fichier .prisma déposé sur la fenêtre s'ouvre", async ({ page }) => {
